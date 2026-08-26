@@ -5,7 +5,7 @@
     <p id="cms-modal-message"></p>
     <input type="text" id="cms-modal-input" hidden>
     <label id="cms-modal-count-label" class="cms-modal-count-label" hidden>How many to generate?
-      <select id="cms-modal-count">
+      <select id="cms-modal-count" title="How many to add.">
         <option value="1">1</option>
         <option value="2">2</option>
         <option value="3">3</option>
@@ -13,15 +13,15 @@
       </select>
     </label>
     <label id="cms-modal-snapshot-label" class="cms-modal-count-label" hidden>
-      <input type="checkbox" id="cms-modal-snapshot"> Save the current setup as a new template first
+      <input type="checkbox" id="cms-modal-snapshot" title="Save the site as a new template first, so this can be undone by activating it again."> Save the current setup as a new template first
     </label>
     <div class="cms-modal-actions">
-      <button type="button" id="cms-modal-cancel">Cancel</button>
+      <button type="button" id="cms-modal-cancel" title="Leave everything as it is.">Cancel</button>
       {# A third answer, for the questions that genuinely have one — see
          modal.js's altLabel. Hidden unless the caller asks for it, so
          every existing confirm still reads as yes-or-no. #}
       <button type="button" id="cms-modal-alt" hidden></button>
-      <button type="button" id="cms-modal-confirm" class="cms-danger">Confirm</button>
+      <button type="button" id="cms-modal-confirm" class="cms-danger" title="Go ahead with the action described above.">Confirm</button>
     </div>
   </div>
 </div>

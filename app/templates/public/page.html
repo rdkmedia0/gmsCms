@@ -493,13 +493,13 @@
           <option value="horizontal" {{ 'selected' if not cell.menu_direction or cell.menu_direction == 'horizontal' }}>Horizontal</option>
           <option value="vertical" {{ 'selected' if cell.menu_direction == 'vertical' }}>Vertical</option>
         </select>
-        <label class="cms-menu-align-label"><input type="checkbox" name="menu_text_color_on" {{ 'checked' if cell.menu_text_color }} onchange="this.form.requestSubmit()"> {{ 'button color' if cell.menu_style == 'buttons' else 'text' }}</label>
+        <label class="cms-menu-align-label"><input type="checkbox" name="menu_text_color_on" {{ 'checked' if cell.menu_text_color }} onchange="this.form.requestSubmit()" title="Use your own colour for the menu's words instead of the template's."> {{ 'button color' if cell.menu_style == 'buttons' else 'text' }}</label>
         <input type="color" name="menu_text_color" value="{{ cell.menu_text_color or ('#2563eb' if cell.menu_style == 'buttons' else '#1f2430') }}" onchange="this.form.requestSubmit()" title="{{ 'Button color' if cell.menu_style == 'buttons' else 'Text color' }}">
-        <label class="cms-menu-align-label"><input type="checkbox" name="menu_bg_color_on" {{ 'checked' if cell.menu_bg_color }} onchange="this.form.requestSubmit()"> bg</label>
+        <label class="cms-menu-align-label"><input type="checkbox" name="menu_bg_color_on" {{ 'checked' if cell.menu_bg_color }} onchange="this.form.requestSubmit()" title="Give the menu a background colour of your own."> bg</label>
         <input type="color" name="menu_bg_color" value="{{ cell.menu_bg_color or '#ffffff' }}" onchange="this.form.requestSubmit()" title="Background color">
-        <label class="cms-menu-align-label"><input type="checkbox" name="menu_highlight_current" {{ 'checked' if cell.menu_highlight_current }} onchange="this.form.requestSubmit()"> highlight current</label>
+        <label class="cms-menu-align-label"><input type="checkbox" name="menu_highlight_current" {{ 'checked' if cell.menu_highlight_current }} onchange="this.form.requestSubmit()" title="Mark the page the visitor is on, so they can see where they are."> highlight current</label>
         <div class="cms-menu-pages-picker">
-          <button type="button" class="cms-menu-pages-btn">Items ({{ items | length }}) ▾</button>
+          <button type="button" class="cms-menu-pages-btn" title="Choose which pages appear in this menu.">Items ({{ items | length }}) ▾</button>
           <div class="cms-menu-pages-dropdown" hidden>
             {# Selection only — checked state already shows what's in the menu.
                Order, nesting, and removal all happen on the live rendered
@@ -573,7 +573,7 @@
       </label>
       <label class="cms-accordion-style-label" title="Let visitors click a panel to see the full picture">
         <input type="checkbox" name="lightbox" value="1" onchange="this.form.requestSubmit()"
-               {{ 'checked' if cell.accordion and cell.accordion.lightbox }}> Click to enlarge
+               {{ 'checked' if cell.accordion and cell.accordion.lightbox }} title="Let a visitor click the picture to see it full size."> Click to enlarge
       </label>
     </div>
     {% set panel_count = (cell.accordion.panels if cell.accordion and cell.accordion.panels else 5) %}
@@ -620,7 +620,7 @@
         {% endfor %}
       </select>
       <label class="cms-table-config-check" title="Show a heading row across the top of the table">
-        <input type="checkbox" class="cms-table-header-toggle" {{ 'checked' if cell.table and cell.table.has_header }}> Header row
+        <input type="checkbox" class="cms-table-header-toggle" {{ 'checked' if cell.table and cell.table.has_header }} title="Treat the first row as headings rather than as data."> Header row
       </label>
       <span class="cms-stepper" title="Add or remove a row at the bottom of the table">
         Rows
@@ -697,7 +697,7 @@
     {% if faq.style != 'document' %}
     <label class="cms-faq-config-label" title="Opening one question closes the others">
       <input type="checkbox" name="one_at_a_time" value="1" onchange="this.form.requestSubmit()"
-             {{ 'checked' if faq.one_at_a_time }}> One open at a time
+             {{ 'checked' if faq.one_at_a_time }} title="Open one panel at a time, closing whichever was open."> One open at a time
     </label>
     {% endif %}
   {% endmacro %}
@@ -785,7 +785,7 @@
       {{ faq_style_fields(faq) }}
       <label class="cms-faq-config-label" title="List the questions above them, as a contents">
         <input type="checkbox" name="show_contents" value="1" onchange="this.form.requestSubmit()"
-               {{ 'checked' if faq.show_contents }}> Contents list
+               {{ 'checked' if faq.show_contents }} title="Show a list of the questions at the top, each linking to its answer."> Contents list
       </label>
     </div>
     {% if not sources %}
@@ -797,7 +797,7 @@
       <label class="cms-faq-pick" title="Show this question here">
         <input type="checkbox" name="faq_pick" value="{{ item.id }}"
                onchange="this.form.requestSubmit()"
-               {{ 'checked' if item.id in faq.mirror_ids }}>
+               {{ 'checked' if item.id in faq.mirror_ids }} title="Show this question here. Its words stay with the FAQ it came from.">
         {{ item.q }}
       </label>
       {% endfor %}
@@ -924,7 +924,7 @@
       </label>
       <label class="cms-faq-config-label" title="Hide it until somebody has put something in it">
         <input type="checkbox" name="hide_when_empty" value="1" onchange="this.form.requestSubmit()"
-               {{ 'checked' if basket.hide_when_empty }}> Hide when empty
+               {{ 'checked' if basket.hide_when_empty }} title="Hide this block entirely when it has nothing to show."> Hide when empty
       </label>
     </div>
     <p class="hint">Put this in your header and it shows on every page, which is where people look for it.

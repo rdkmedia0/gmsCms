@@ -195,12 +195,21 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--c
 .favicon-emoji-picker summary, .favicon-ai-gen summary { list-style: none; cursor: pointer; }
 .favicon-emoji-picker summary::-webkit-details-marker, .favicon-ai-gen summary::-webkit-details-marker { display: none; }
 .favicon-text-btn::-webkit-details-marker { display: none; }
+/*  Sized by its contents, not by a number that disagreed with them: six
+    32px buttons plus five 4px gaps plus 16px of padding is 228, and the
+    box was fixed at 220 -- so the right-hand column was drawn outside
+    the popover, and on a phone that put it off the screen entirely,
+    where it could not be tapped. */
 .favicon-emoji-grid {
   position: absolute; top: 100%; left: 0; z-index: 20; margin-top: 6px;
-  display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px;
+  display: grid; grid-template-columns: repeat(6, 32px); gap: 4px;
   background: var(--card-bg, #fff); border: 1px solid var(--border); border-radius: var(--cms-ui-radius-surface);
-  padding: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); width: 220px;
+  padding: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); width: max-content;
+  max-width: calc(100vw - 24px);
 }
+/*  On a narrow screen the card it hangs from sits far enough right that
+    a popover anchored to its left edge runs off the screen -- so anchor
+    it to the right edge instead, where there is always room behind it. */
 .favicon-emoji-grid form { margin: 0; }
 .favicon-emoji-btn {
   width: 32px; height: 32px; font-size: 17px; border: 1px solid transparent; border-radius: var(--cms-ui-radius-control);
@@ -211,6 +220,17 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--c
   position: absolute; top: 100%; left: 0; z-index: 20; margin-top: 6px; display: flex; gap: 6px;
   background: var(--card-bg, #fff); border: 1px solid var(--border); border-radius: var(--cms-ui-radius-surface);
   padding: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); width: 260px;
+}
+
+@media (max-width: 560px) {
+  /*  Both popovers hang off the left edge of a card that sits well to the
+      right on a phone, so they open leftwards instead -- and the input
+      inside the AI one gives up its 180px minimum, which was what pushed
+      it 129px off the screen. */
+  .favicon-emoji-grid,
+  .favicon-ai-gen form { left: auto; right: 0; }
+  .favicon-ai-gen form { max-width: calc(100vw - 24px); }
+  .favicon-ai-gen form input { min-width: 0; }
 }
 .favicon-ai-gen input[type="text"] { flex: 1; min-width: 0; }
 
@@ -475,6 +495,13 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--c
   white-space: pre-wrap; word-break: break-word; background: #fff; padding: 10px;
   border-radius: var(--cms-ui-radius-surface); border: 1px solid var(--border); max-height: 240px; overflow-y: auto; font-size: 13px;
 }
+
+/*  A word that cannot fit still has to wrap. The Help page lists a
+    tool's features as bold/italic/underline/... -- one unbreakable
+    526px string, which on a phone made the whole page scroll sideways.
+    break-word only intervenes when a word genuinely does not fit, so
+    ordinary prose is untouched. */
+.admin-main { overflow-wrap: break-word; }
 
 .flash-list { margin-bottom: 20px; }
 .flash { padding: 12px 16px; border-radius: var(--cms-ui-radius-surface); margin-bottom: 10px; font-weight: 600; }

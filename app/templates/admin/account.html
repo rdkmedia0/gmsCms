@@ -7,13 +7,13 @@
   <h2>Change Password</h2>
   <form method="post">
     <label for="current_password">Current Password</label>
-    <input type="password" id="current_password" name="current_password" required>
+    <input type="password" id="current_password" name="current_password" required title="The password you signed in with.">
 
     <label for="new_password">New Password</label>
-    <input type="password" id="new_password" name="new_password" required minlength="6">
+    <input type="password" id="new_password" name="new_password" required minlength="6" title="Your new password. Longer is better than more punctuation.">
 
     <label for="confirm_password">Confirm New Password</label>
-    <input type="password" id="confirm_password" name="confirm_password" required minlength="6">
+    <input type="password" id="confirm_password" name="confirm_password" required minlength="6" title="The same new password again, to catch a typing slip.">
 
     <button type="submit" class="btn btn-primary">Update Password</button>
   </form>
@@ -40,7 +40,7 @@
         data-confirm="You are about to turn off password sign-in. From then on the only way in is with Google."
         data-confirm-danger="1">
     <input type="hidden" name="disable" value="1">
-    <button type="submit" class="btn btn-danger">Disable Password Sign-In</button>
+    <button type="submit" class="btn btn-danger" title="Turn off username-and-password sign-in. Only possible while Google sign-in is working.">Disable Password Sign-In</button>
   </form>
   {% else %}
   <p class="hint">Set up Google Sign-In below and link your own Google address first — this stays on until then, so you can't be locked out.</p>
@@ -74,16 +74,16 @@
     <summary class="hint" style="cursor:pointer;">+ Add an admin</summary>
     <form method="post" action="{{ url_for('admin.admins') }}">
       <label for="new_admin_username">Username</label>
-      <input type="text" id="new_admin_username" name="username" required>
+      <input type="text" id="new_admin_username" name="username" required title="What the new administrator signs in as.">
 
       <label for="new_admin_password">Password</label>
-      <input type="password" id="new_admin_password" name="password" required minlength="6" autocomplete="new-password">
+      <input type="password" id="new_admin_password" name="password" required minlength="6" autocomplete="new-password" title="Their first password. They can change it once they are in.">
 
       <label for="new_admin_google_email">Google Account (optional)</label>
-      <input type="text" id="new_admin_google_email" name="google_email" placeholder="them@gmail.com" autocomplete="off">
+      <input type="text" id="new_admin_google_email" name="google_email" placeholder="them@gmail.com" autocomplete="off" title="Their Google address, if they should be able to sign in with Google.">
       <p class="hint">Lets them sign in with Google instead of the password above — only needed if Google Sign-In is set up below.</p>
 
-      <button type="submit" class="btn btn-primary">Add Admin</button>
+      <button type="submit" class="btn btn-primary" title="Create another administrator. They can do everything you can, including removing you.">Add Admin</button>
     </form>
   </details>
 </div>
@@ -106,10 +106,10 @@
   <p class="hint">Set up a Google Cloud OAuth Client ID (type "Web application") and paste its details below. Neither field is ever shown back to you once saved, only whether it's set &mdash; leave a field blank to keep what's already there.</p>
   <form method="post" action="{{ url_for('admin.settings_google') }}">
     <label for="google_client_id">Client ID {% if google_settings.client_id_set %}<span class="badge">already set</span>{% endif %}</label>
-    <input type="text" id="google_client_id" name="google_client_id" autocomplete="off" placeholder="{{ 'Leave blank to keep the saved Client ID' if google_settings.client_id_set else '...apps.googleusercontent.com' }}">
+    <input type="text" id="google_client_id" name="google_client_id" autocomplete="off" placeholder="{{ 'Leave blank to keep the saved Client ID' if google_settings.client_id_set else '...apps.googleusercontent.com' }}" title="From the Google Cloud console, under Credentials. Not a secret.">
 
     <label for="google_client_secret">Client Secret {% if google_settings.client_secret_set %}<span class="badge">already set</span>{% endif %}</label>
-    <input type="password" id="google_client_secret" name="google_client_secret" autocomplete="new-password" placeholder="{{ 'Leave blank to keep the saved secret' if google_settings.client_secret_set else 'GOCSPX-...' }}">
+    <input type="password" id="google_client_secret" name="google_client_secret" autocomplete="new-password" placeholder="{{ 'Leave blank to keep the saved secret' if google_settings.client_secret_set else 'GOCSPX-...' }}" title="From the Google Cloud console, beside the client id. This one IS a secret.">
 
     <p class="hint">Authorized redirect URI to add in Google Cloud Console: <code>{{ url_for('auth.google_callback', _external=True) }}</code></p>
 

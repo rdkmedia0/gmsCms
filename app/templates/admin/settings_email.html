@@ -42,24 +42,24 @@
     <p class="hint">Set to Gmail's server by default. Using another provider? Outlook is <code>smtp.office365.com</code>, and most hosts publish theirs as &ldquo;SMTP server&rdquo;.</p>
 
     <label for="smtp_port">SMTP Port</label>
-    <input type="text" id="smtp_port" name="smtp_port" value="{{ settings.smtp_port or '587' }}" placeholder="587">
+    <input type="text" id="smtp_port" name="smtp_port" value="{{ settings.smtp_port or '587' }}" placeholder="587" title="The port your mail provider uses. 587 for almost everyone.">
 
     <label for="smtp_username">Username</label>
-    <input type="text" id="smtp_username" name="smtp_username" value="{{ settings.smtp_username }}" placeholder="you@gmail.com">
+    <input type="text" id="smtp_username" name="smtp_username" value="{{ settings.smtp_username }}" placeholder="you@gmail.com" title="Usually the whole email address you are sending from.">
 
     <label for="smtp_password">Password (App Password for Gmail)</label>
-    <input type="password" id="smtp_password" name="smtp_password" value="{{ settings.smtp_password }}" autocomplete="new-password">
+    <input type="password" id="smtp_password" name="smtp_password" value="{{ settings.smtp_password }}" autocomplete="new-password" title="Gmail needs an App Password here, not your normal password.">
 
     <div class="inline-form">
-      <input type="checkbox" id="smtp_use_tls" name="smtp_use_tls" {{ 'checked' if settings.smtp_use_tls != '0' }} style="width:auto;">
+      <input type="checkbox" id="smtp_use_tls" name="smtp_use_tls" {{ 'checked' if settings.smtp_use_tls != '0' }} style="width:auto;" title="Encrypts the connection to your mail provider. Leave it on unless yours says otherwise.">
       <label for="smtp_use_tls" style="margin:0;">Use TLS (leave checked for Gmail)</label>
     </div>
 
     <label for="from_email">"From" Email Address</label>
-    <input type="text" id="from_email" name="from_email" value="{{ settings.from_email }}" placeholder="you@gmail.com">
+    <input type="text" id="from_email" name="from_email" value="{{ settings.from_email }}" placeholder="you@gmail.com" title="The address your site sends as. It usually has to match the account above.">
 
     <label for="from_name">"From" Name</label>
-    <input type="text" id="from_name" name="from_name" value="{{ settings.from_name }}" placeholder="My Site">
+    <input type="text" id="from_name" name="from_name" value="{{ settings.from_name }}" placeholder="My Site" title="The name people see in their inbox, next to the address.">
 
     <label for="to_email">Send contact form messages to</label>
     <input type="text" id="to_email" name="to_email"

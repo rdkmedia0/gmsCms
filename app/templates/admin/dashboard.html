@@ -168,7 +168,7 @@
   </div>
   <p class="muted" style="margin-top:16px;">Default Section Width — applies to any section that hasn't had its own width set (via the section's own "Section width" control) — that's every section until it's touched individually.</p>
   <form method="post" action="{{ url_for('admin.settings_layout') }}" class="inline-form">
-    <select name="default_section_width" id="default-width-select">
+    <select name="default_section_width" id="default-width-select" title="How wide new sections start out. Every section can still be changed on its own afterwards.">
       <option value="auto" {{ 'selected' if layout_settings.default_section_width == 'auto' }}>Auto</option>
       <option value="full" {{ 'selected' if layout_settings.default_section_width == 'full' }}>Full width</option>
       <option value="custom" {{ 'selected' if layout_settings.default_section_width == 'custom' }}>Custom %</option>
@@ -258,7 +258,7 @@
     <form method="post" action="{{ url_for('admin.content_reset_all') }}"
           data-confirm="You are about to clear the content of every page on this site. The pages themselves and your blog posts are kept, but every section on every one of them is deleted. This cannot be undone."
           data-confirm-danger="1">
-      <button type="submit" class="btn btn-danger">Reset All Content</button>
+      <button type="submit" class="btn btn-danger" title="Replace every page with the active template's own example pages. What you have written is lost.">Reset All Content</button>
     </form>
   </details>
 </section>

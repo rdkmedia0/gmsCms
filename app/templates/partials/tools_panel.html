@@ -17,7 +17,7 @@
     <span class="cms-dock-title">🧰 Tools</span>
     <span class="cms-dock-header-actions">
       {% include "partials/dock_position_toggle.html" %}
-      <button type="button" class="cms-assistant-close" id="cms-tools-close">&times;</button>
+      <button type="button" class="cms-assistant-close" id="cms-tools-close" title="Close the toolbox.">&times;</button>
     </span>
     <div class="cms-dock-header-filters">
       {% include "partials/dock_tool_search.html" %}
@@ -62,8 +62,8 @@
       <p class="hint">No custom tools yet — import a toolkit someone shared with you, or one bundled in a Template Package.</p>
       {% endif %}
       <form method="post" action="{{ url_for('admin.tools_import') }}" enctype="multipart/form-data" class="cms-toolkit-import-form">
-        <input type="file" name="toolkit" accept="application/json,.json" required>
-        <button type="submit" class="btn btn-small">Import Toolkit</button>
+        <input type="file" name="toolkit" accept="application/json,.json" required title="A toolkit file (.json) exported from another site, holding one or more tools.">
+        <button type="submit" class="btn btn-small" title="Add the tools in that file to this site's toolbox.">Import Toolkit</button>
       </form>
           </details>
   </div>

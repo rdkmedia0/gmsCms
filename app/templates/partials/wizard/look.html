@@ -17,11 +17,18 @@
 
 <label for="content">And its example pages?</label>
 <select id="content" name="content" title="Example pages are a starting point to edit over. Choosing “just the look” keeps the pages you have and changes only the design.">
-  <option value="look">Just the look &mdash; keep the pages I have</option>
-  <option value="everything">Take everything &mdash; its pages too, so I have something to edit over</option>
+  {#  Preselected by which site this is. The hint below says taking
+    everything is the easier start on a new site -- and the control
+    defaulted to the opposite of its own advice, which left a life
+    coach's site carrying a landscaping blog called Yard Notes. #}
+<option value="look" {{ 'selected' if not fresh }}>Just the look &mdash; keep the pages I have</option>
+  <option value="everything" {{ 'selected' if fresh }}>Take everything &mdash; its pages too, so I have something to edit over</option>
 </select>
-<p class="hint">On a brand-new site, taking everything is the easier start: you get a finished
-  example site and change the words. On a site you have written, keep your pages.</p>
+<p class="hint">{% if fresh %}This site has nothing of its own on it yet, so taking everything
+  is preselected: you get a finished example site and change the words. Choose &ldquo;just the
+  look&rdquo; to keep the pages that are there instead.{% else %}This site has been used, so
+  keeping your pages is preselected &mdash; taking everything would replace them with the
+  look&rsquo;s examples.{% endif %}</p>
 
 <label for="colors">Colours</label>
 <select id="colors" name="colors" title="Keep the look's own palette, or swap in one of these. Either way you can fine-tune every colour later from the Colors panel while editing a page.">

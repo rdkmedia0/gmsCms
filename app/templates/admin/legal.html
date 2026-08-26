@@ -28,7 +28,7 @@
            title="Where cancellations and questions should go">
 
     <label for="phone">Phone (optional)</label>
-    <input type="text" id="phone" name="phone" value="{{ settings.phone }}" maxlength="60">
+    <input type="text" id="phone" name="phone" value="{{ settings.phone }}" maxlength="60" title="Shown on your legal pages as a way to reach you. Optional in most countries.">
 
     <label for="country">Where you're based</label>
     <select id="country" name="country" title="Decides which rules the wording follows">
@@ -38,10 +38,10 @@
     </select>
 
     <label for="vat_number">VAT number (optional)</label>
-    <input type="text" id="vat_number" name="vat_number" value="{{ settings.vat_number }}" maxlength="60">
+    <input type="text" id="vat_number" name="vat_number" value="{{ settings.vat_number }}" maxlength="60" title="Your VAT number, if you have one. Required on an invoice in most of the EU.">
 
     <label for="company_number">Company number (optional)</label>
-    <input type="text" id="company_number" name="company_number" value="{{ settings.company_number }}" maxlength="60">
+    <input type="text" id="company_number" name="company_number" value="{{ settings.company_number }}" maxlength="60" title="Your registration number, if the business is registered.">
 
     <label for="withdrawal_days">Days to change their mind</label>
     <input type="number" id="withdrawal_days" name="withdrawal_days" min="14" max="365"
@@ -76,7 +76,7 @@
     {% for slug, doc in documents.items() %}
     <label class="checkbox-row" title="{{ doc[2] }}">
       <input type="checkbox" name="documents" value="{{ slug }}"
-             {{ 'checked' if slug in existing or slug in ('refunds', 'terms', 'privacy') }}>
+             {{ 'checked' if slug in existing or slug in ('refunds', 'terms', 'privacy') }} title="Include this document on your legal page.">
       <strong>{{ doc[0] }}</strong> — <span class="hint">{{ doc[2] }}</span>
       {%- if slug in existing %} <span class="badge">on your site{% if existing[slug].written %}, written {{ existing[slug].written }}{% endif %}</span>{% endif %}
     </label>
@@ -84,12 +84,12 @@
     <fieldset class="legal-layout">
       <legend>Where to put them</legend>
       <label class="checkbox-row" title="One page called Terms &amp; Conditions, with each document under its own heading">
-        <input type="radio" name="layout" value="combined" checked>
+        <input type="radio" name="layout" value="combined" checked title="One page holding every document, or a separate page for each.">
         <strong>One page called Terms &amp; Conditions</strong>
         &mdash; <span class="hint">each document under its own heading, one entry in your menu</span>
       </label>
       <label class="checkbox-row" title="A separate page for each document, each with its own address">
-        <input type="radio" name="layout" value="separate">
+        <input type="radio" name="layout" value="separate" title="One page holding every document, or a separate page for each.">
         <strong>A page for each</strong>
         &mdash; <span class="hint">choose this if you need an Impressum under its own clearly labelled link, which Germany and Austria expect</span>
       </label>

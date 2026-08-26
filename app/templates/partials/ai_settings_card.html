@@ -15,7 +15,7 @@
   <form method="post" action="{{ url_for('admin.settings_ai') }}" id="ai-settings-form"
         data-models-url="{{ url_for('admin.settings_ai_models') }}">
     <label for="ai_provider">Provider</label>
-    <select id="ai_provider" name="ai_provider">
+    <select id="ai_provider" name="ai_provider" title="Which AI service this site talks to. Leave it unset to hide the assistant entirely.">
       <option value="">Not configured</option>
       {% for p in ai_providers %}
       <option value="{{ p }}" {{ 'selected' if ai_settings.provider == p }}>{{ ai_provider_labels[p] }}</option>
@@ -25,12 +25,12 @@
     <fieldset class="ai-provider-fields" data-provider="openwebui">
       <legend>Open WebUI</legend>
       <label for="openwebui_url">Server URL</label>
-      <input type="text" id="openwebui_url" name="openwebui_url" value="{{ ai_settings.openwebui_url }}" placeholder="https://your-openwebui-host">
+      <input type="text" id="openwebui_url" name="openwebui_url" value="{{ ai_settings.openwebui_url }}" placeholder="https://your-openwebui-host" title="The address of your Open WebUI server, e.g. https://ai.example.com.">
       <label for="openwebui_api_key">API Key {% if ai_settings.openwebui_api_key_set %}<span class="badge">already set</span>{% endif %}</label>
-      <input type="password" id="openwebui_api_key" name="openwebui_api_key" autocomplete="new-password" placeholder="{{ 'Leave blank to keep the saved key' if ai_settings.openwebui_api_key_set else 'sk-...' }}">
+      <input type="password" id="openwebui_api_key" name="openwebui_api_key" autocomplete="new-password" placeholder="{{ 'Leave blank to keep the saved key' if ai_settings.openwebui_api_key_set else 'sk-...' }}" title="From Open WebUI: Settings, Account, API Keys. Not a Google or OAuth token.">
       <label for="openwebui_model">Model</label>
       <div class="inline-form">
-        <select id="openwebui_model" name="openwebui_model" class="cms-model-select">
+        <select id="openwebui_model" name="openwebui_model" class="cms-model-select" title="Which model answers the assistant. Load Models fills this from your server.">
           {% if ai_settings.openwebui_model %}<option value="{{ ai_settings.openwebui_model }}" selected>{{ ai_settings.openwebui_model }}</option>{% endif %}
         </select>
         <button type="button" class="btn btn-small cms-load-models-btn" data-provider="openwebui" data-url-input="openwebui_url" data-key-input="openwebui_api_key" data-targets="openwebui_model">🔄 Load Models</button>
@@ -38,11 +38,11 @@
       <p class="hint">Open WebUI doesn't report per-model capabilities the way Ollama does, so models aren't tagged here — check the model itself supports image input if you're attaching screenshots in the chat.</p>
 
       <label for="openwebui_image_model">Image Generation Model / Workflow <span class="hint">(optional)</span></label>
-      <input type="text" id="openwebui_image_model" name="openwebui_image_model" value="{{ ai_settings.openwebui_image_model }}" placeholder="e.g. buddy — leave blank to use Open WebUI's default">
+      <input type="text" id="openwebui_image_model" name="openwebui_image_model" value="{{ ai_settings.openwebui_image_model }}" placeholder="e.g. buddy — leave blank to use Open WebUI's default" title="The model or workflow that makes pictures. Leave blank to use Open WebUI's default.">
       <p class="hint">Used by the ✨ Generate buttons (Image/Banner/Card) — sent as the <code>model</code> field to Open WebUI's own image-generation API, which proxies to whatever backend it's configured with (ComfyUI, AUTOMATIC1111, ...). This app has no visibility into that backend or its workflow — if generation fails, check Open WebUI's own Image Generation settings first. A reference/"keyframe" image is sent along when the tool provides one, but whether the backend actually uses it (image-to-image) instead of ignoring it (text-to-image only) depends entirely on how that workflow is built — not something this app can detect.</p>
 
       <label for="openwebui_video_model">Video Generation Model <span class="hint">(optional)</span></label>
-      <input type="text" id="openwebui_video_model" name="openwebui_video_model" value="{{ ai_settings.openwebui_video_model }}" placeholder="e.g. buddy — a model/persona with a video-generation Tool attached">
+      <input type="text" id="openwebui_video_model" name="openwebui_video_model" value="{{ ai_settings.openwebui_video_model }}" placeholder="e.g. buddy — a model/persona with a video-generation Tool attached" title="A model with a video-generation Tool attached. Leave blank if you do not make videos.">
       <p class="hint">Used by the 🎥 Generate button on Media Player sections. Unlike image generation, Open WebUI has no built-in video API — this instead names a <strong>model that has a video-generation Tool attached</strong> in Open WebUI's own Workspace → Tools (Open WebUI's chat-completions API only executes a Tool when the request is tied to a real chat, so this runs as a background task and picks up the resulting video file once it's ready — same "no visibility into the backend" boundary as image generation: whatever that Tool actually calls (ComfyUI, a hosted API, anything) is entirely up to how it's configured on the Open WebUI side).</p>
     </fieldset>
 
@@ -50,10 +50,10 @@
       <legend>Ollama</legend>
       <p class="hint">Self-hosted, no API key needed for a LAN/localhost instance.</p>
       <label for="ollama_url">Server URL</label>
-      <input type="text" id="ollama_url" name="ollama_url" value="{{ ai_settings.ollama_url }}" placeholder="http://localhost:11434">
+      <input type="text" id="ollama_url" name="ollama_url" value="{{ ai_settings.ollama_url }}" placeholder="http://localhost:11434" title="The address of your Ollama server, e.g. http://192.168.1.10:11434.">
       <label for="ollama_model">Model</label>
       <div class="inline-form">
-        <select id="ollama_model" name="ollama_model" class="cms-model-select">
+        <select id="ollama_model" name="ollama_model" class="cms-model-select" title="Which model answers the assistant. Load Models fills this from your server.">
           {% if ai_settings.ollama_model %}<option value="{{ ai_settings.ollama_model }}" selected>{{ ai_settings.ollama_model }}</option>{% endif %}
         </select>
         <button type="button" class="btn btn-small cms-load-models-btn" data-provider="ollama" data-url-input="ollama_url" data-targets="ollama_model">🔄 Load Models</button>
@@ -65,7 +65,7 @@
     <fieldset class="ai-provider-fields" data-provider="gemini">
       <legend>Google Gemini</legend>
       <label for="gemini_api_key">API Key {% if ai_settings.gemini_api_key_set %}<span class="badge">already set</span>{% endif %}</label>
-      <input type="password" id="gemini_api_key" name="gemini_api_key" autocomplete="new-password" placeholder="{{ 'Leave blank to keep the saved key' if ai_settings.gemini_api_key_set else 'AIza...' }}">
+      <input type="password" id="gemini_api_key" name="gemini_api_key" autocomplete="new-password" placeholder="{{ 'Leave blank to keep the saved key' if ai_settings.gemini_api_key_set else 'AIza...' }}" title="From Google AI Studio. Stored encrypted and never shown back to you.">
       <label for="gemini_model">Chat Model</label>
       <div class="inline-form">
         <select id="gemini_model" name="gemini_model" class="cms-model-select">
@@ -74,7 +74,7 @@
         <button type="button" class="btn btn-small cms-load-models-btn" data-provider="gemini" data-key-input="gemini_api_key" data-targets="gemini_model,gemini_image_model">🔄 Load Models</button>
       </div>
       <label for="gemini_image_model">Image Generation Model <span class="hint">(used by the ✨ Generate buttons on Image/Banner/Card)</span></label>
-      <select id="gemini_image_model" name="gemini_image_model" class="cms-model-select cms-model-select-image">
+      <select id="gemini_image_model" name="gemini_image_model" class="cms-model-select cms-model-select-image" title="Which Gemini model makes pictures. Leave blank to use the default.">
         {% if ai_settings.gemini_image_model %}<option value="{{ ai_settings.gemini_image_model }}" selected>{{ ai_settings.gemini_image_model }}</option>{% endif %}
       </select>
       <p class="hint">Image generation needs a Gemini account with <strong>billing enabled</strong> — the free tier covers chat but not image output, and a free-tier key will fail with an error when you click Generate rather than up front here.</p>

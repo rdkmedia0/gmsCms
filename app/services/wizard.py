@@ -183,6 +183,8 @@ def summary(db):
     disagree about what is still missing.
     """
     from . import site as site_service
+    from . import integrations
+    from .. import assistant
 
     site_title = _setting(db, "site_title")
     does = what_this_site_does(db)
@@ -215,17 +217,21 @@ def summary(db):
          "needed": does["collects_email"],
          "because": "There is a form on your site asking visitors for their address, and nothing "
                     "they send can reach you."},
-        {"what": "Taking payments", "set": bool(_setting(db, "stripe_secret_key_enc")),
+        #  Asked of the service that owns it, not of a settings key
+        #  guessed at from here. Guessing reported a connected Stripe, a
+        #  connected Cal.com and a configured Ollama as three things the
+        #  owner had not set up yet.
+        {"what": "Taking payments", "set": integrations.is_configured(db, "stripe"),
          "value": "", "where": "admin.settings_integrations",
          "why": "Only if you sell something. A Shop or a Buy button needs it; nothing else does.",
          "needed": does["sells"],
          "because": "There is a Shop or a Buy button on your site and no way for anybody to pay."},
-        {"what": "Taking bookings", "set": bool(_setting(db, "calcom_api_key_enc")),
+        {"what": "Taking bookings", "set": integrations.is_configured(db, "calcom"),
          "value": "", "where": "admin.settings_integrations",
          "why": "Only if people book time with you.",
          "needed": does["books"],
          "because": "There is a booking block on your site that is not connected to anything."},
-        {"what": "AI help", "set": bool(_setting(db, "openwebui_url")),
+        {"what": "AI help", "set": assistant.is_configured(db),
          "value": "", "where": "admin.settings_ai",
          "why": "Optional everywhere. Writing, pictures and the theme generator use it if it is there.",
          "needed": False,

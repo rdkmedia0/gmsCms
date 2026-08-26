@@ -8,10 +8,10 @@
   <h2>Back up now</h2>
   <form method="post" action="{{ url_for('admin.backup_create') }}" class="fulfilment-form">
     <label class="checkbox-row" title="Pictures, video and the files buyers download. Leave off for a small, quick backup of just your data.">
-      <input type="checkbox" name="include_media" value="1" checked> Include pictures and download files
+      <input type="checkbox" name="include_media" value="1" checked title="Include uploaded pictures and files. Bigger, and the only way to restore them."> Include pictures and download files
     </label>
     <label class="checkbox-row" title="Only tick this to move the site to a different machine. It puts your Stripe, Cal.com and email credentials in the file itself.">
-      <input type="checkbox" name="include_key" value="1"> Include the encryption key <span class="hint">(only for moving to a new machine)</span>
+      <input type="checkbox" name="include_key" value="1" title="Include the key that decrypts your saved API keys. Leave OFF: a stolen backup could then spend money."> Include the encryption key <span class="hint">(only for moving to a new machine)</span>
     </label>
     <p class="hint">Without the key, your saved Stripe and Cal.com credentials can't be read from the backup &mdash; on this machine they still work as normal, and restoring somewhere else just means typing those few keys in again. That's on purpose: it means a backup that goes astray can't be used to spend your money.</p>
     <button type="submit" class="btn btn-primary btn-small" title="Take a backup now">Back up now</button>
@@ -33,7 +33,7 @@
            title="Older backups beyond this number are deleted automatically.">
 
     <label class="checkbox-row" title="Including media makes each backup much larger.">
-      <input type="checkbox" name="include_media" value="1" {{ 'checked' if settings.include_media }}> Include pictures and download files
+      <input type="checkbox" name="include_media" value="1" {{ 'checked' if settings.include_media }} title="Include uploaded pictures and files. Bigger, and the only way to restore them."> Include pictures and download files
     </label>
 
     <button type="submit" class="btn btn-primary btn-small">Save</button>
@@ -51,7 +51,7 @@
     <label for="archive">Upload a backup file</label>
     <input type="file" id="archive" name="archive" accept=".zip" title="A backup .zip taken from this site, on this machine or another one">
     <label class="checkbox-row" title="Also restore pictures and download files from the archive.">
-      <input type="checkbox" name="restore_media" value="1" checked> Restore pictures and download files too
+      <input type="checkbox" name="restore_media" value="1" checked title="Also restore the pictures and files from this archive, replacing what is here."> Restore pictures and download files too
     </label>
     <button type="submit" class="btn btn-danger btn-small"
             data-confirm="You are about to restore the site from this file. Everything on the site now is replaced. A backup of the current state is taken first."
@@ -89,7 +89,7 @@
            title="Download this backup to your own computer">Download</a>
         <form method="post" action="{{ url_for('admin.backup_restore') }}" class="is-inline">
           <input type="hidden" name="name" value="{{ b.name }}">
-          <input type="hidden" name="restore_media" value="1">
+          <input type="hidden" name="restore_media" value="1" title="Also restore the pictures and files from this archive, replacing what is here.">
           <button type="submit" class="btn btn-small"
                   data-confirm="You are about to restore the site to how it was on {{ b.created_at.replace('T', ' ')[:16] }}. Everything on the site now is replaced. A backup of the current state is taken first."
                   data-confirm-danger="1"
