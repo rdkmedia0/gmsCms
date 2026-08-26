@@ -1724,33 +1724,19 @@ def faq_settings(content):
 #  separate choice — read straight through as a document, or folded into
 #  rows that open — and the same text serves both.
 
-#  Understanding an FAQ however it was typed.
+#  Reads an FAQ however it was typed, and stores whatever was typed --
+#  this only decides how it is READ, so nobody's text is rewritten under
+#  them.
 #
-#  Requiring Markdown put a format between somebody and their own FAQ:
-#  before writing a word they had to learn that a question starts with #.
-#  That is backwards — the tool should read what people already write, and
-#  people already write an FAQ as a question with its answer underneath.
-#
-#  So the plain shape needs no syntax at all:
+#  The plain shape needs no syntax: a question, its answer underneath, a
+#  blank line before the next.
 #
 #      Do you deliver?
 #      Within five miles, yes.
 #
-#      How long does it take?
-#      Usually two weeks.
-#
-#  A blank line ends one question and starts the next. Nothing to learn,
-#  and it is what a FAQ pasted out of a document or an email already looks
-#  like.
-#
-#  The marked-up shapes still work, because a real FAQ often arrives in
-#  one of them: lines beginning with #, or "Q:", or numbered. If any of
-#  those are present they win, because they say explicitly where each
-#  question starts — which is also what makes an answer of several
-#  paragraphs possible, since blank lines inside it are then unambiguous.
-#
-#  Whatever was typed is what gets stored. This only decides how it is
-#  read, so nobody's text is quietly rewritten under them.
+#  Marked-up shapes win when present -- lines beginning with #, "Q:", or
+#  numbered -- because they say explicitly where each question starts,
+#  which is what lets an answer run to several paragraphs.
 
 FAQ_MARKER_RES = (
     re.compile(r"^\s{0,3}#{1,6}\s+(.+?)\s*#*\s*$"),        # # Question

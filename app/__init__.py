@@ -433,31 +433,15 @@ def _seed(app):
         # default but a published password. See bootstrap.py.
         bootstrap.seed_admin(db, app)
 
-        # Every built-in package (theme-only or content-bearing alike) is a
-        # Template Package under app/data/templates/ — see CLAUDE.md's
-        # "Template Packages" section. Every one gets a `templates` row at
-        # boot, whether or not it ships pages/: a template's LOOK
-        # (activate) and its CONTENT (load — see routes/admin/templates.py's
-        # load-content route) are independent actions available on any
-        # installed template, not something gated on seed time. A
-        # theme's palette_json (when it has one) makes the Colors panel's
-        # presets/advanced pickers work on it immediately, via
-        # var(--wp--preset--color--<slug>, <fallback>) in its CSS. Menu
-        # structure (topbar/split/centered/sidebar/minimal — see
-        # routes/admin/__init__.py's NAV_LAYOUTS) is a single site-wide
-        # setting, not a per-theme one: a layout is reusable structure,
-        # independent of which theme happens to be active, so any theme
-        # can be paired with any layout rather than each theme carrying
-        # its own fixed shape. See get_nav_layout/settings_nav_layout.
-        #  The templates this image ships arrive as one .zip each, built
-        #  from the source folders when the image was built, and are
-        #  installed through the same extractor and installer an admin's
-        #  own uploaded package goes through. That sameness is the point:
-        #  the import path used to be exercised only when somebody
-        #  uploaded something, which is how it came to discard a
-        #  package's pages and pictures without anyone noticing. It now
-        #  runs sixteen times on every boot, so a break in it is a broken
-        #  start rather than a surprise months later.
+        #  Every shipped package becomes a `templates` row, whether or
+        #  not it has pages: a template's LOOK and its CONTENT are
+        #  independent actions on any installed template. See CLAUDE.md,
+        #  "Template Packages".
+        #
+        #  They arrive as one .zip each and are installed through the same
+        #  extractor and installer an uploaded package goes through --
+        #  deliberately the same path, so it runs sixteen times on every
+        #  boot rather than only when somebody uploads something.
         for slug, zip_path in packages.list_template_zips():
             #  adopt_manifest_overrides=False: this runs on every boot, and
             #  a re-seed must not undo the admin's own Corner/Depth/font

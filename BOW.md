@@ -4229,3 +4229,112 @@ of them is finished work, written in the past tense):**
   messages, and the Fonts panel's live "which font is applied to each
   role" readout — those are feedback and data, not descriptions, and
   hiding them behind a hover would be a regression.
+
+
+## Shade spreads: where those numbers came from (2026-08-26)
+
+Moved out of `services/design.py`, which now carries the two rules that
+bound a change and a pointer here. The measurements, over all 72 shipped
+colours:
+
+How much COLOUR the eleven shades of each palette colour carry as they
+move away from the colour itself. The page paints fills from the light
+end and text from the dark end, so this is the one control that decides
+how much tonal depth a three-colour site has — the answer to "give me
+more than three flat colours" without asking anyone to choose nine.
+
+Named rather than numeric, and site-wide rather than per colour, for
+the same reason Corners and Depth are: an admin can picture "Subtle"
+and cannot picture "0.62".
+
+The variation is carried almost entirely by `sat_ease` — how fast
+colour drains out toward the ends — and barely at all by `spread`, the
+distance the scale reaches. That split is not a preference, it is what
+the numbers allow: the page sets text from the dark end on fills from
+the light end, so compressing the scale compresses that pair's
+contrast. Measured over all 72 shipped colours, a spread of 0.80 put
+two ramps out of order and dropped the worst pair to 4.7:1, under the
+4.5:1 AA needs once rounding is counted; 0.85 was the floor. Saturation
+has no such limit — across the whole range every ramp stays in order
+and no pair falls below 6.8:1, while the colour left in a light fill
+more than doubles. So the control varies what is free to vary.
+`curve` is what carries the difference. Saturation alone was almost
+invisible on a real page: it only bites at the far ends of the scale,
+and the far light end is nearly white, where a doubling of saturation
+is a couple of values of chroma nobody can see. `curve` bends how fast
+the scale descends from its light end INTO the colour, which is where
+the fills a page actually paints with live — steps 100 and 200. Below
+1 they dive into colour immediately; above 1 they hug the light end and
+stay pale.
+
+It is safe for the same reason the saturation was and the compression
+was not: bending the path between two fixed endpoints never moves the
+endpoints, so the contrast between the light fill and the dark text is
+identical at every setting.
+
+Where each number came from, since none of them is a taste call:
+
+  Subtle's curve stops at 3.0. Past 3.2 the light steps crowd so close
+  to the light end that two of them land on the same value once
+  rounded to 8 bits, and a scale with a flat spot in it is a broken
+  scale. Its dark_curve stays at 1.0 deliberately — bending BOTH
+  halves is what put six ramps out of order and dropped the worst pair
+  to 3.7:1 at an earlier attempt, because the dark half is the text.
+
+  Bold pulls its light end 38% of the way back toward the colour
+  (light_spread 0.62), which is what actually puts colour in a fill,
+  and deepens the dark end to buy back the contrast that costs. It
+  lands at 7.4:1 — the same neighbourhood as Balanced's 7.3:1.
+
+Measured across all 72 shipped colours, average chroma of the fill at
+step 100: 3, 23, 92. Thirty times the colour between the ends of the
+control, with every ramp in order and no pair below 7.3:1.
+
+
+## Corner presets: the full derivation (2026-08-26)
+
+Moved out of `services/design.py`, which keeps the geometry and the three
+properties that bound a change. The reasoning in full:
+
+Corner-radius language — bridged into --site-radius, which the generic
+card/banner/panel classes in site-base.css read via
+var(--site-radius, <theme's own original value>), so picking a preset
+here can only ever move a template AWAY from its own default, never
+break a template that hasn't opted in (see shape_override being NULL by
+default). "Organic" is a full border-radius shorthand rather than a
+single length because that's what an asymmetric "worn pebble" shape
+actually requires — still just one preset choice from the admin's side.
+
+Four of these curve far enough to reach into their own box. A radius of
+999px turns a tall card into a stadium, but its content is still laid
+out in the rectangle, so on a phone the button at the foot of a pricing
+tier sat outside the curve. The shape is not the problem — it is the
+whole character of those presets — the padding is: content has to be
+inset far enough to clear the corner it is sitting in.
+
+So those four carry the padding their own shape needs, and
+_color_override_css in routes/public.py emits it as a rule over the
+boxes whose content reaches their edges. The numbers are geometry, not
+taste. A corner is an ellipse of radii (rx, ry) centred that far in
+from the corner, and content inset by (px, py) clears it while
+((rx-px)/rx)^2 + ((ry-py)/ry)^2 <= 1. Solving that for a card at least
+as tall as it is wide — which is what all of these are, a card in a
+column — gives the pairs below, with a margin over the minimum, since
+the binding corner is a full-width button sitting flush with the bottom
+of the padding box and one that only just clears the curve stops
+clearing it the moment a theme adds a border.
+
+They are deliberately lopsided. On a tall box the curve is at the top
+and the bottom, so that is where the room should come from; paying for
+it sideways instead just narrows the text for no gain (it cost a
+pricing tier 40px of line length before this was split). The Lens and
+the Organics curve more deeply again, and their vertical radius is a
+share of the HEIGHT, so they hold to roughly two and a half times
+taller than wide and want a squarer box past that.
+
+The absolute caps are for the other extreme: a wide box, where a
+percentage of the width is a percentage of the LONG side and would pad
+a 1100px box by 264px for a corner only 150px across.
+
+Decorative surfaces — a banner, a picture, a button — are left alone:
+nothing inside them can spill.

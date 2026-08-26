@@ -27,40 +27,23 @@ def get_db():
     if "db" not in g:
         g.db = sqlite3.connect(DB_PATH, timeout=BUSY_TIMEOUT_MS / 1000)
         g.db.row_factory = sqlite3.Row
-        #  FIRST, before anything that can be refused. This was set below
-        #  the journal_mode switch, which meant the one setting that makes
-        #  a contended pragma wait was not yet in effect for the only
-        #  pragma here that needs an exclusive lock -- and a first boot,
-        #  where two workers migrate and seed at the same moment, died on
-        #  it with "database is locked".
+        #  FIRST, before any pragma that can be refused: it is what makes
+        #  a contended one wait rather than fail. (A first boot has two
+        #  workers migrating at once, and the WAL switch below needs it.)
         g.db.execute("PRAGMA busy_timeout = %d" % BUSY_TIMEOUT_MS)
         g.db.execute("PRAGMA foreign_keys = ON")
-        #  The app runs two gunicorn workers against one database file.
-        #  Under the default rollback journal a writer blocks every
-        #  reader, so an admin saving a page could 500 a visitor reading
-        #  one -- the failure gets likelier the busier the site is, which
-        #  is the worst possible shape for a fault. WAL lets readers carry
-        #  on through a write; only writers queue against each other.
+        #  WAL, so readers carry on through a write instead of blocking
+        #  on it. Set per connection because the mode belongs to the FILE,
+        #  which brings a restored or copied database into line the first
+        #  time it is opened.
         #
-        #  Set per connection because it is cheap and self-healing: the
-        #  mode is a property of the FILE, so a database restored from a
-        #  backup, or copied from an older install, is brought into line
-        #  the first time it is opened rather than staying slow silently.
-        #
-        #  Two things to know. WAL wants a real local filesystem -- it
-        #  needs shared memory beside the database -- so a data directory
-        #  on NFS or an SMB share will refuse it and fall back, which is
-        #  why the return value is not asserted on. And it puts two more
-        #  files next to cms.db (-wal, -shm); backups go through
-        #  VACUUM INTO and SQLite's backup API precisely so that they
-        #  capture a consistent database rather than a file that is
-        #  missing its log.
-        #
-        #  Asked before it is set, because SETTING it takes an exclusive
-        #  lock on the database and reading it takes nothing. Since the
-        #  mode belongs to the file, the answer is already "wal" on every
-        #  boot after the first, so the lock is never even requested in
-        #  the ordinary case.
+        #  Three things it constrains: WAL needs a local filesystem (NFS
+        #  or SMB refuses it, which is why the result is not asserted on),
+        #  it puts -wal and -shm files beside cms.db so the database must
+        #  never be copied as a file (backups go through VACUUM INTO), and
+        #  SETTING it takes an exclusive lock -- so the mode is read
+        #  first, which takes none, and on every boot after the first the
+        #  answer is already "wal" and the lock is never requested.
         try:
             if (g.db.execute("PRAGMA journal_mode").fetchone()[0] or "").lower() != "wal":
                 g.db.execute("PRAGMA journal_mode = WAL")
@@ -413,47 +396,27 @@ def _migrate(db):
     #  which is a different thing and the wrong one. A backfilled row
     #  with no milliseconds still sorts correctly against these, since
     #  "…:02" is less than "…:02.123" as text.
-    #  ...and a COUNTER beside the clock, because a clock ties.
+    #  ...and a COUNTER beside the clock, because a clock ties. Two
+    #  writes in the same millisecond carry the same stamp, and the
+    #  tie-break -- the row id -- means "added last", which is a different
+    #  question. MAX + 1 is strictly greater than every value already
+    #  there, so the order is total and is the order things were written.
     #
-    #  The millisecond stamp above was the second attempt at this (whole
-    #  seconds tied first), and it has the same flaw one decimal place
-    #  further down: two writes in the same millisecond carry the same
-    #  stamp, and the tie-break falls back to the row id -- the newest
-    #  ADDED rather than the most recently CHANGED, which is the precise
-    #  thing this was supposed to stop meaning. It stopped being
-    #  theoretical the moment the database was put into WAL mode: writes
-    #  got fast enough that three of them land inside one millisecond, and
-    #  "send the latest section" started picking the wrong one.
-    #
-    #  A clock cannot fix this at any resolution -- there is always a
-    #  faster machine. A counter can: MAX + 1 is strictly greater than
-    #  every value already there, including the row's own, so the order is
-    #  total and it is genuinely the order things were written in.
-    #
-    #  updated_at stays: it is the human-readable "when", shown to the
-    #  owner. changed_seq is the "in what order", read by the code.
+    #  updated_at stays as the human-readable "when"; changed_seq is the
+    #  "in what order", and it is what code should read.
     _add_column(db, "sections", "changed_seq", "INTEGER")
-    #  The triggers come off BEFORE the backfill, and this ordering is the
-    #  whole of it. The first version of this migration backfilled with
-    #  the old timestamp trigger still installed, so every row it wrote
-    #  fired that trigger, which set that row's updated_at to "now" --
-    #  moving it to the front of the exact ordering the NEXT row was
-    #  about to be ranked against. Each row in turn found itself alone at
-    #  the end of time and took rank 1: twenty-eight sections numbered 1.
-    #  It also rewrote every section's updated_at to the moment of the
-    #  migration, which is the half that actually matters: a migration is
-    #  not allowed to destroy the data it exists to preserve.
+    #  The triggers come off BEFORE the backfill. A stamping trigger
+    #  firing on the backfill's own UPDATE rewrites the column the
+    #  ranking is being computed from, one row at a time, and every row
+    #  comes out first. Drop triggers before backfilling anything they
+    #  stamp.
     db.execute("DROP TRIGGER IF EXISTS sections_stamp_insert")
     db.execute("DROP TRIGGER IF EXISTS sections_stamp_update")
-    #  Backfill in the order the old stamp implies -- a dense rank over
-    #  (updated_at, id), which is exactly what the old comparison did, so
-    #  nothing REORDERS on upgrade. It only stops tying from here on.
-    #
-    #  Re-run whenever the numbering is not a total order, rather than
-    #  only when it is missing: that repairs a database upgraded by the
-    #  broken version above, which left real values that were simply all
-    #  the same. Cheap to ask -- two counts over a table with as many
-    #  rows as the site has blocks.
+    #  Backfill as a dense rank over (updated_at, id) -- the comparison
+    #  the code used before -- so nothing reorders on upgrade. Re-run
+    #  whenever the numbering is not a total order rather than only when
+    #  it is missing, which repairs a database an earlier version left
+    #  with every row numbered the same.
     total, distinct = db.execute(
         "SELECT COUNT(*), COUNT(DISTINCT changed_seq) FROM sections").fetchone()
     if total != distinct:
