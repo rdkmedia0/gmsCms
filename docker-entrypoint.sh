@@ -33,6 +33,23 @@ if [ "$(id -u)" = "0" ]; then
     for d in /app/data /app/app/static/uploads /app/app/static/themes; do
         [ -d "$d" ] && chown -R cms:cms "$d" 2>/dev/null || true
     done
+    # Docker copies /etc/resolv.conf in from the host WITH ITS MODE. A
+    # host that keeps its own at 0640 hands this container a resolver
+    # config that root can read and the app's unprivileged user cannot --
+    # and glibc does not report that. Given an unreadable resolv.conf it
+    # falls back to 127.0.0.1:53, which is nothing here, so every name
+    # lookup fails with "Temporary failure in name resolution" and
+    # payments, bookings and email all stop working at once.
+    #
+    # Almost no image hits this, because almost no image gives up root.
+    # This one does, so it has to make the file readable to the user it is
+    # about to become. The mode of the CONTAINER's copy is changed; the
+    # host's own file is untouched, and no DNS server is imposed -- it
+    # keeps whatever resolver the host gave it.
+    if [ -f /etc/resolv.conf ] && ! setpriv --reuid=cms --regid=cms --init-groups test -r /etc/resolv.conf; then
+        chmod o+r /etc/resolv.conf 2>/dev/null             && echo "Made /etc/resolv.conf readable by the app's user (it arrived unreadable)."             || echo "WARNING: /etc/resolv.conf is not readable by uid 1000 and could not be changed. No name will resolve." >&2
+    fi
+
     # A certificate this process can read as root and the app cannot
     # read as cms is the same outage as no certificate at all, arriving
     # one second later with a worse error. Ask now, while there is
