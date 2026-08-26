@@ -178,6 +178,23 @@ def stripe_mode(db):
     return ""
 
 
+#  Prefix on an error that never reached the provider. Ugly, and the
+#  alternative is a third return value threaded through every call site.
+UNREACHABLE = "[could-not-reach] "
+
+
+def _reachability(error, name):
+    """The human half of an error: what happened, and whose problem it is."""
+    if error.startswith(UNREACHABLE):
+        detail = error[len(UNREACHABLE):]
+        return ("Could not reach %s at all, so the key was never tested. That is a "
+                "network problem on the machine running this site, not a problem "
+                "with your key — %s" % (name, detail))
+    if error.startswith(("401", "403")):
+        return "%s refused the key — %s" % (name, error)
+    return "%s answered with an error — %s" % (name, error)
+
+
 def _request(url, headers, data=None, method=None, timeout=20):
     body = None
     if data is not None:
@@ -195,7 +212,12 @@ def _request(url, headers, data=None, method=None, timeout=20):
             pass
         return None, f"{e.code}: {detail}"
     except (urllib.error.URLError, TimeoutError, ValueError) as e:
-        return None, f"{type(e).__name__}: {e}"
+        #  UNREACHABLE: the request never got an answer -- no DNS, no
+        #  route, a timeout. Marked so the caller does not report it
+        #  as the provider saying no: that is a different problem
+        #  with a different fix, and it sends people off to
+        #  regenerate a key that was never wrong.
+        return None, f"{UNREACHABLE}{type(e).__name__}: {e}"
 
 
 def stripe_connected(db):
@@ -245,7 +267,7 @@ def test_connection(db, provider):
     if provider == "stripe":
         data, error = stripe_call(db, "/products?limit=3&active=true")
         if error:
-            return False, f"Stripe rejected the key — {error}"
+            return False, _reachability(error, "Stripe")
         count = len(data.get("data", []))
         mode = stripe_mode(db)
         which = "test mode" if mode == "test" else "LIVE mode"
@@ -256,7 +278,7 @@ def test_connection(db, provider):
     if provider == "calcom":
         data, error = calcom_call(db, "/event-types")
         if error:
-            return False, f"Cal.com rejected the key — {error}"
+            return False, _reachability(error, "Cal.com")
         payload = data.get("data", data)
         groups = payload if isinstance(payload, list) else payload.get("eventTypeGroups", []) or []
         types = []
