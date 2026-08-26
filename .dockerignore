@@ -50,6 +50,13 @@ id_ed25519
 .github/
 deploy/
 
+# Repository furniture. Nothing at runtime reads any of it, and an image
+# is not a place to keep the instructions for building itself.
+.gitattributes
+.gitignore
+Dockerfile
+docker-compose.yml
+
 # Development material, not product. Nothing at runtime reads any of it —
 # the code only mentions CLAUDE.md inside comments — and a distributed
 # image should carry the app, not the notes about how it was built.

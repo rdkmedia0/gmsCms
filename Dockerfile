@@ -21,20 +21,25 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
-RUN python -c "from app.services.packages import build_template_zips;         print('built %d template packages' % len(build_template_zips()))"     && rm -rf app/data/templates
+RUN python -c "from app.services.packages import build_template_zips;         print('built %d template packages' % len(build_template_zips()))"     && rm -rf app/data/templates     && find /app -name __pycache__ -type d -prune -exec rm -rf {} +
 
 
 FROM python:3.12-slim
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    && rm -rf /var/lib/apt/lists/*
-
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY --from=packager /app /app
+# The user the app runs as, created BEFORE the COPY below, because
+# that COPY hands it the files directly with --chown.
+RUN useradd --create-home --uid 1000 cms
+
+# --chown on the COPY, not a chown afterwards. `chown -R` rewrites the
+# metadata of every file it touches, and to a layer a changed file is a
+# new file -- so the recursive chown wrote a second, complete copy of
+# everything COPY had just written. 126MB of image, to set an owner.
+COPY --from=packager --chown=cms:cms /app /app
 
 # Everything that must outlive the container. Three things live here and
 # all three are unrecoverable if they are lost:
@@ -60,7 +65,7 @@ VOLUME ["/app/data", "/app/app/static/uploads", "/app/app/static/themes"]
 #  between "an app bug" and "an app bug with root on the container". The
 #  data directory is chowned so the app can still write its database,
 #  uploads and backups.
-RUN useradd --create-home --uid 1000 cms     && chown -R cms:cms /app
+RUN chown cms:cms /app/data /app/app/static/uploads /app/app/static/themes
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 #  Deliberately NOT `USER cms`: the entrypoint needs root for exactly as
