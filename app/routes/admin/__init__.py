@@ -779,8 +779,16 @@ def _apply_pack_content(db, pack, page_slugs=None):
         if target:
             page_id = target["id"]
             db.execute(
-                "UPDATE pages SET meta_description = ?, page_type = ? WHERE id = ?",
-                (page_spec["meta_description"], page_spec["page_type"], page_id),
+                #  The TITLE comes too. Without it a reused page keeps
+                #  whatever the previous template called it, so loading
+                #  the coaching pack over a landscaping site left its
+                #  journal page titled "Yard Notes" -- the right page,
+                #  the right content, the old template's name on it, in
+                #  the navigation. Loading a template's content is
+                #  all-or-nothing by design; the name is part of it.
+                "UPDATE pages SET title = ?, meta_description = ?, page_type = ? WHERE id = ?",
+                (page_spec["title"], page_spec["meta_description"],
+                 page_spec["page_type"], page_id),
             )
             created = False
         else:
