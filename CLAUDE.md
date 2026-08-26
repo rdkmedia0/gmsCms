@@ -156,6 +156,45 @@ only markup and identity — so this is enforced by the schema rather than
 by discipline. Keep it that way: a tool that needs a new look needs a
 rule in the central stylesheet, not a style of its own.
 
+## Is it a defect, or is it the site's look?
+
+The chrome-vs-content boundary above says WHO owns a style. This says
+whether a thing that looks wrong is yours to fix at all. Two questions,
+and a fix in shared CSS needs BOTH answers to be no:
+
+  1. **Could an owner change it with a control?** If a select, a checkbox
+     or a panel already governs it, the current value is somebody's
+     answer. Overriding it in CSS overrules a person.
+  2. **Did anyone choose this outcome?** A template picking pill corners
+     chose that. A breadcrumb receiving 88px of padding because a
+     percentage resolved against the box's WIDTH chose nothing -- no
+     hand set that number and no control can unset it.
+
+Worked through, from a real review of a live site:
+
+  * **A video's controls clipped by a 999px radius** -- no control, and
+    nobody chose an unusable player. Fix it. The shape rules already say
+    "a banner, a picture, a button: nothing inside them can spill", and a
+    video is the case that breaks the exemption: its controls live on the
+    edge that curves away. Same for a caption, and for a textarea, which
+    is the one field tall enough for a pill to become a stadium.
+  * **A menu aligned left inside a symmetric shape** -- `menu_align`
+     (left/centre/right) is a control on the Menu tool. That is a choice,
+     and centring it in CSS overrode it. If a TEMPLATE should ship
+     centred, set it in that template's page data, where the owner can
+     still change it afterwards.
+
+The two mistakes this prevents are opposite and equally common: styling
+around a defect in the machinery instead of fixing it, and "fixing" a
+site's own look out from under the person whose site it is.
+
+A related trap, found the same day: **you cannot select on a CSS
+variable's value.** `[data-corner-style]` is empty unless an ADMIN has
+overridden the shape -- a template that simply IS curved sets
+`--site-radius` in its own CSS -- so a rule keyed off that attribute
+silently matches nothing on most sites. A rule that has to respond to the
+shape must be unconditional, or read the variable with `clamp()`/`min()`.
+
 ## Templates: HTML, CSS, and JS stay separate
 
 A Jinja template (`app/templates/**/*.html`) should contain **structure and

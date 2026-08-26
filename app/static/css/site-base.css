@@ -997,8 +997,11 @@ video, .cms-media video, .cms-video {
 /*  Content in a strongly-curved block is centred, because the curve eats
     both ends symmetrically -- left-aligned links in a stadium sit hard
     against the part of the box that is not there. */
-.block-html:has(.cms-menu) .cms-menu,
-.block-html:has(.cms-menu) .cms-menu-links,
+/*  Only the breadcrumb. A MENU's alignment is a control the owner sets
+    (menu_align: left/centre/right), so centring one in CSS overrides a
+    choice somebody made -- which is the thing this project keeps saying
+    not to do. A breadcrumb has no such control, so its alignment is the
+    app's to decide. */
 .block-html:has(.cms-breadcrumb) .cms-breadcrumb {
   justify-content: center;
   flex-wrap: wrap;
