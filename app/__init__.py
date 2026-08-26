@@ -2,6 +2,7 @@ import os
 import json
 import secrets
 from flask import Flask, url_for, request, session
+import mimetypes
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask.sessions import SecureCookieSessionInterface
 from flask import has_request_context
@@ -117,6 +118,17 @@ class _SchemeAwareSessions(SecureCookieSessionInterface):
         if app.config.get("SESSION_COOKIE_SECURE"):
             return True
         return bool(has_request_context() and request.is_secure)
+
+
+#  Python works out a static file's Content-Type from the system's mime
+#  table, and a slim base image does not have one -- so .webp came back as
+#  application/octet-stream, which some browsers decline to render and
+#  none of them cache as an image. Registered here rather than relied on,
+#  because the alternative is a picture that works on the machine it was
+#  developed on.
+mimetypes.add_type("image/webp", ".webp")
+mimetypes.add_type("video/webm", ".webm")
+mimetypes.add_type("font/woff2", ".woff2")
 
 
 def create_app():

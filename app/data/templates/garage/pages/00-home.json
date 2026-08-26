@@ -7,7 +7,7 @@
     [
       "banner",
       "",
-      "<div class=\"cms-banner\" style=\"background-image:url('media/garage-banner.png')\"><div class=\"cms-banner-overlay\"><h2>Fixed properly, explained plainly</h2><p>Independent garage, all makes, since 1994. We show you the old part.</p></div></div>",
+      "<div class=\"cms-banner\" style=\"background-image:url('media/garage-banner.webp')\"><div class=\"cms-banner-overlay\"><h2>Fixed properly, explained plainly</h2><p>Independent garage, all makes, since 1994. We show you the old part.</p></div></div>",
       {}
     ],
     [
@@ -27,7 +27,7 @@
     [
       "html",
       "",
-      "<div class=\"cms-block cms-block-testimonial\" data-style=\"card\"><figure class=\"cms-quote cms-quote-card\"><img class=\"cms-quote-photo\" src=\"media/garage-quote.png\" alt=\"\" data-field=\"photo\"><blockquote data-field=\"quote\">Rang me to say the noise was a loose heat shield, not the exhaust, and charged me twenty for the clip.</blockquote><figcaption><span class=\"cms-quote-name\" data-field=\"name\">Andreas Lang</span><span class=\"cms-quote-role\" data-field=\"role\">Customer since 2016</span></figcaption></figure></div>",
+      "<div class=\"cms-block cms-block-testimonial\" data-style=\"card\"><figure class=\"cms-quote cms-quote-card\"><img class=\"cms-quote-photo\" src=\"media/garage-quote.webp\" alt=\"\" data-field=\"photo\"><blockquote data-field=\"quote\">Rang me to say the noise was a loose heat shield, not the exhaust, and charged me twenty for the clip.</blockquote><figcaption><span class=\"cms-quote-name\" data-field=\"name\">Andreas Lang</span><span class=\"cms-quote-role\" data-field=\"role\">Customer since 2016</span></figcaption></figure></div>",
       {}
     ],
     [

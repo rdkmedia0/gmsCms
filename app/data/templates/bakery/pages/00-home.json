@@ -7,7 +7,7 @@
     [
       "banner",
       "",
-      "<div class=\"cms-banner\" style=\"background-image:url('media/bakery-shop.png')\"><div class=\"cms-banner-overlay\"><h2>Out of the oven at six</h2><p>Sourdough, pastry, and whatever the weather made us feel like baking.</p></div></div>",
+      "<div class=\"cms-banner\" style=\"background-image:url('media/bakery-shop.webp')\"><div class=\"cms-banner-overlay\"><h2>Out of the oven at six</h2><p>Sourdough, pastry, and whatever the weather made us feel like baking.</p></div></div>",
       {}
     ],
     [
@@ -15,7 +15,7 @@
       "",
       "<div class=\"cms-block cms-block-stats\" data-count=\"3\"><div class=\"cms-stat-row\"><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat1_value\">4am</span><span class=\"cms-stat-label\" data-field=\"stat1_label\">Ovens on</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat2_value\">36h</span><span class=\"cms-stat-label\" data-field=\"stat2_label\">The sourdough takes</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat3_value\">2pm</span><span class=\"cms-stat-label\" data-field=\"stat3_label\">Usually sold out by</span></div></div></div>",
       {
-        "bg_image": "media/bakery-band-1.png",
+        "bg_image": "media/bakery-band-1.webp",
         "bg_overlay": "dark",
         "bg_position": "center",
         "bg_color": "#e3d4b9"
@@ -30,7 +30,7 @@
     [
       "html",
       "",
-      "<div class=\"cms-image-accordion cms-accordion-style-masonry cms-accordion-lightbox\"><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/bakery-work-1.png')\"><span class=\"cms-accordion-caption\">Sourdough, cooling</span></div><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/bakery-work-2.png')\"><span class=\"cms-accordion-caption\">Croissant, torn open</span></div><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/bakery-work-3.png')\"><span class=\"cms-accordion-caption\">Rye, in from the deck</span></div><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/bakery-work-4.png')\"><span class=\"cms-accordion-caption\">Cinnamon buns, weekends only</span></div></div>",
+      "<div class=\"cms-image-accordion cms-accordion-style-masonry cms-accordion-lightbox\"><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/bakery-work-1.webp')\"><span class=\"cms-accordion-caption\">Sourdough, cooling</span></div><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/bakery-work-2.webp')\"><span class=\"cms-accordion-caption\">Croissant, torn open</span></div><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/bakery-work-3.webp')\"><span class=\"cms-accordion-caption\">Rye, in from the deck</span></div><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/bakery-work-4.webp')\"><span class=\"cms-accordion-caption\">Cinnamon buns, weekends only</span></div></div>",
       {}
     ],
     [
@@ -44,7 +44,7 @@
       "",
       "<div class=\"cms-block cms-block-cta\" data-tone=\"solid\"><div class=\"cms-cta cms-cta-solid\"><h2 data-field=\"heading\">Order a loaf for Saturday</h2><p data-field=\"text\">Weekend bread goes fast. Order by Thursday and it will be under the counter with your name on it.</p><a class=\"cms-cta-btn\" href=\"/contact\" data-href-field=\"link\"><span data-field=\"cta\">Order ahead</span></a></div></div>",
       {
-        "bg_image": "media/bakery-band-2.png",
+        "bg_image": "media/bakery-band-2.webp",
         "bg_overlay": "tint",
         "bg_position": "center",
         "bg_color": "#ce99a8"

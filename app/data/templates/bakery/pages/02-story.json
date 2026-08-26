@@ -19,9 +19,9 @@
     [
       "html",
       "",
-      "<div class=\"cms-block cms-block-team\" data-count=\"2\"><div class=\"cms-team-grid\"><div class=\"cms-person\"><img class=\"cms-person-photo\" src=\"media/bakery-team-1.png\" alt=\"\" loading=\"lazy\" data-field=\"person1_photo\"><h3 class=\"cms-person-name\" data-field=\"person1_name\">Elif</h3><p class=\"cms-person-role\" data-field=\"person1_role\">Bread</p><p class=\"cms-person-bio\" data-field=\"person1_bio\">Runs the sourdough and the overnight shift. Will talk about hydration for longer than you want.</p></div><div class=\"cms-person\"><img class=\"cms-person-photo\" src=\"media/bakery-team-2.png\" alt=\"\" loading=\"lazy\" data-field=\"person2_photo\"><h3 class=\"cms-person-name\" data-field=\"person2_name\">Georg</h3><p class=\"cms-person-role\" data-field=\"person2_role\">Pastry</p><p class=\"cms-person-bio\" data-field=\"person2_bio\">Laminates everything by hand. Claims the cinnamon buns are not the best thing here and is wrong.</p></div></div></div>",
+      "<div class=\"cms-block cms-block-team\" data-count=\"2\"><div class=\"cms-team-grid\"><div class=\"cms-person\"><img class=\"cms-person-photo\" src=\"media/bakery-team-1.webp\" alt=\"\" loading=\"lazy\" data-field=\"person1_photo\"><h3 class=\"cms-person-name\" data-field=\"person1_name\">Elif</h3><p class=\"cms-person-role\" data-field=\"person1_role\">Bread</p><p class=\"cms-person-bio\" data-field=\"person1_bio\">Runs the sourdough and the overnight shift. Will talk about hydration for longer than you want.</p></div><div class=\"cms-person\"><img class=\"cms-person-photo\" src=\"media/bakery-team-2.webp\" alt=\"\" loading=\"lazy\" data-field=\"person2_photo\"><h3 class=\"cms-person-name\" data-field=\"person2_name\">Georg</h3><p class=\"cms-person-role\" data-field=\"person2_role\">Pastry</p><p class=\"cms-person-bio\" data-field=\"person2_bio\">Laminates everything by hand. Claims the cinnamon buns are not the best thing here and is wrong.</p></div></div></div>",
       {
-        "bg_image": "media/bakery-band-2.png",
+        "bg_image": "media/bakery-band-2.webp",
         "bg_overlay": "medium",
         "bg_position": "bottom"
       }

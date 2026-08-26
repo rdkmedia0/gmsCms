@@ -7,7 +7,7 @@
     [
       "banner",
       "",
-      "<div class=\"cms-banner\" style=\"background-image:url('media/self-help-banner.png')\"><div class=\"cms-banner-overlay\"><h2>Begin Your Journey</h2><p>Simple, sustainable tools for a calmer, more intentional life.</p></div></div>",
+      "<div class=\"cms-banner\" style=\"background-image:url('media/self-help-banner.webp')\"><div class=\"cms-banner-overlay\"><h2>Begin Your Journey</h2><p>Simple, sustainable tools for a calmer, more intentional life.</p></div></div>",
       {}
     ],
     [
@@ -39,7 +39,7 @@
     [
       "html",
       "",
-      "<div class=\"cms-block cms-block-testimonial\" data-style=\"card\"><figure class=\"cms-quote cms-quote-card\"><img class=\"cms-quote-photo\" src=\"media/self-help-quote-marta.png\" alt=\"\" data-field=\"photo\"><blockquote data-field=\"quote\">I have read a shelf of these books. This is the first one that asked me to do something on page four.</blockquote><figcaption><span class=\"cms-quote-name\" data-field=\"name\">Marta Nowak</span><span class=\"cms-quote-role\" data-field=\"role\">Read it twice</span></figcaption></figure></div>",
+      "<div class=\"cms-block cms-block-testimonial\" data-style=\"card\"><figure class=\"cms-quote cms-quote-card\"><img class=\"cms-quote-photo\" src=\"media/self-help-quote-marta.webp\" alt=\"\" data-field=\"photo\"><blockquote data-field=\"quote\">I have read a shelf of these books. This is the first one that asked me to do something on page four.</blockquote><figcaption><span class=\"cms-quote-name\" data-field=\"name\">Marta Nowak</span><span class=\"cms-quote-role\" data-field=\"role\">Read it twice</span></figcaption></figure></div>",
       {
         "bg_color": "#e5d9d3"
       }

@@ -13,7 +13,7 @@
     [
       "html",
       "",
-      "<div class=\"cms-block cms-block-team\" data-count=\"1\"><div class=\"cms-team-grid\"><div class=\"cms-person\"><img class=\"cms-person-photo\" src=\"media/restaurant-team.png\" alt=\"\" loading=\"lazy\" data-field=\"person1_photo\"><h3 class=\"cms-person-name\" data-field=\"person1_name\">Iona Vasquez</h3><p class=\"cms-person-role\" data-field=\"person1_role\">Chef</p><p class=\"cms-person-bio\" data-field=\"person1_bio\">Cooked in other people&#x27;s kitchens for fourteen years before this one. Writes the menu after the market, every day.</p></div></div></div>",
+      "<div class=\"cms-block cms-block-team\" data-count=\"1\"><div class=\"cms-team-grid\"><div class=\"cms-person\"><img class=\"cms-person-photo\" src=\"media/restaurant-team.webp\" alt=\"\" loading=\"lazy\" data-field=\"person1_photo\"><h3 class=\"cms-person-name\" data-field=\"person1_name\">Iona Vasquez</h3><p class=\"cms-person-role\" data-field=\"person1_role\">Chef</p><p class=\"cms-person-bio\" data-field=\"person1_bio\">Cooked in other people&#x27;s kitchens for fourteen years before this one. Writes the menu after the market, every day.</p></div></div></div>",
       {}
     ],
     [
@@ -21,7 +21,7 @@
       "",
       "<div class=\"cms-block cms-block-testimonial\" data-style=\"large\"><figure class=\"cms-quote cms-quote-large\"><blockquote data-field=\"quote\">We sat at the counter and by the third course had stopped talking to each other, which is the highest praise I have.</blockquote><figcaption><span class=\"cms-quote-name\" data-field=\"name\">Daniel Meier</span><span class=\"cms-quote-role\" data-field=\"role\">Booked again for March</span></figcaption></figure></div>",
       {
-        "bg_image": "media/restaurant-band.png",
+        "bg_image": "media/restaurant-band.webp",
         "bg_overlay": "dark",
         "bg_position": "center"
       }

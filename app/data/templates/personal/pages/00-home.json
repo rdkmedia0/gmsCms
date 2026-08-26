@@ -7,7 +7,7 @@
     [
       "banner",
       "",
-      "<div class=\"cms-banner\" style=\"background-image:url('media/personal-banner.png')\"><div class=\"cms-banner-overlay\"><h2>Hi, I'm Sam</h2><p>Photographer and writer based in Portland, Oregon.</p></div></div>",
+      "<div class=\"cms-banner\" style=\"background-image:url('media/personal-banner.webp')\"><div class=\"cms-banner-overlay\"><h2>Hi, I'm Sam</h2><p>Photographer and writer based in Portland, Oregon.</p></div></div>",
       {}
     ],
     [
@@ -19,7 +19,7 @@
     [
       "columns",
       "",
-      "{\"columns\": [{\"type\": \"banner\", \"tool_name\": \"Banner\", \"content\": \"<div class=\\\"cms-banner\\\" style=\\\"background-image:url('media/personal-work-1.png')\\\"><div class=\\\"cms-banner-overlay\\\"><h2>Photography</h2><p>Landscape and documentary work.</p></div></div>\"}, {\"type\": \"banner\", \"tool_name\": \"Banner\", \"content\": \"<div class=\\\"cms-banner\\\" style=\\\"background-image:url('media/personal-work-2.png')\\\"><div class=\\\"cms-banner-overlay\\\"><h2>Writing</h2><p>Essays on travel and craft.</p></div></div>\"}, {\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>Currently</h3><p>Working on a book about the Pacific coastline.</p></div>\", \"tool_name\": \"Card\"}]}",
+      "{\"columns\": [{\"type\": \"banner\", \"tool_name\": \"Banner\", \"content\": \"<div class=\\\"cms-banner\\\" style=\\\"background-image:url('media/personal-work-1.webp')\\\"><div class=\\\"cms-banner-overlay\\\"><h2>Photography</h2><p>Landscape and documentary work.</p></div></div>\"}, {\"type\": \"banner\", \"tool_name\": \"Banner\", \"content\": \"<div class=\\\"cms-banner\\\" style=\\\"background-image:url('media/personal-work-2.webp')\\\"><div class=\\\"cms-banner-overlay\\\"><h2>Writing</h2><p>Essays on travel and craft.</p></div></div>\"}, {\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>Currently</h3><p>Working on a book about the Pacific coastline.</p></div>\", \"tool_name\": \"Card\"}]}",
       {}
     ],
     [

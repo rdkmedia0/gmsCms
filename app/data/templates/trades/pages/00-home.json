@@ -7,7 +7,7 @@
     [
       "banner",
       "",
-      "<div class=\"cms-banner\" style=\"background-image:url('media/trades-banner.png')\"><div class=\"cms-banner-overlay\"><h2>Someone answers the phone</h2><p>Plumbing, heating and bathrooms. Same-day call-back, always a price first.</p></div></div>",
+      "<div class=\"cms-banner\" style=\"background-image:url('media/trades-banner.webp')\"><div class=\"cms-banner-overlay\"><h2>Someone answers the phone</h2><p>Plumbing, heating and bathrooms. Same-day call-back, always a price first.</p></div></div>",
       {}
     ],
     [
@@ -35,7 +35,7 @@
       "",
       "<div class=\"cms-block cms-block-cta\" data-tone=\"solid\"><div class=\"cms-cta cms-cta-solid\"><h2 data-field=\"heading\">Leaking now?</h2><p data-field=\"text\">Ring and someone will pick up. If it is out of hours, leave a message and you will get a call back within the hour.</p><a class=\"cms-cta-btn\" href=\"/contact\" data-href-field=\"link\"><span data-field=\"cta\">Call the office</span></a></div></div>",
       {
-        "bg_image": "media/trades-band.png",
+        "bg_image": "media/trades-band.webp",
         "bg_overlay": "tint",
         "bg_position": "center",
         "bg_color": "#e3baa1"

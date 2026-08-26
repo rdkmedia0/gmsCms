@@ -7,7 +7,7 @@
     [
       "banner",
       "",
-      "<div class=\"cms-banner\" style=\"background-image:url('media/coffee-shop-banner.png')\"><div class=\"cms-banner-overlay\"><h2>Riverside Roasters</h2><p>Small-batch coffee, roasted daily — right in the heart of downtown.</p></div></div>",
+      "<div class=\"cms-banner\" style=\"background-image:url('media/coffee-shop-banner.webp')\"><div class=\"cms-banner-overlay\"><h2>Riverside Roasters</h2><p>Small-batch coffee, roasted daily — right in the heart of downtown.</p></div></div>",
       {}
     ],
     [
@@ -41,7 +41,7 @@
     [
       "html",
       "",
-      "<div class=\"cms-block cms-block-team\" data-count=\"3\"><div class=\"cms-team-grid\"><div class=\"cms-person\"><img class=\"cms-person-photo\" src=\"media/coffee-shop-team-ilona.png\" alt=\"\" loading=\"lazy\" data-field=\"person1_photo\"><h3 class=\"cms-person-name\" data-field=\"person1_name\">Ilona</h3><p class=\"cms-person-role\" data-field=\"person1_role\">Head roaster</p><p class=\"cms-person-bio\" data-field=\"person1_bio\">Roasts on Tuesdays and Fridays and will talk you through every batch if you let her.</p></div><div class=\"cms-person\"><img class=\"cms-person-photo\" src=\"media/coffee-shop-team-sam.png\" alt=\"\" loading=\"lazy\" data-field=\"person2_photo\"><h3 class=\"cms-person-name\" data-field=\"person2_name\">Sam</h3><p class=\"cms-person-role\" data-field=\"person2_role\">Behind the bar</p><p class=\"cms-person-bio\" data-field=\"person2_bio\">Knows your order by the second visit. Sorry in advance about the playlist.</p></div><div class=\"cms-person\"><img class=\"cms-person-photo\" src=\"media/coffee-shop-team-yusuf.png\" alt=\"\" loading=\"lazy\" data-field=\"person3_photo\"><h3 class=\"cms-person-name\" data-field=\"person3_name\">Yusuf</h3><p class=\"cms-person-role\" data-field=\"person3_role\">Kitchen</p><p class=\"cms-person-bio\" data-field=\"person3_bio\">Bakes the pastries at four in the morning, which is why they are gone by two.</p></div></div></div>",
+      "<div class=\"cms-block cms-block-team\" data-count=\"3\"><div class=\"cms-team-grid\"><div class=\"cms-person\"><img class=\"cms-person-photo\" src=\"media/coffee-shop-team-ilona.webp\" alt=\"\" loading=\"lazy\" data-field=\"person1_photo\"><h3 class=\"cms-person-name\" data-field=\"person1_name\">Ilona</h3><p class=\"cms-person-role\" data-field=\"person1_role\">Head roaster</p><p class=\"cms-person-bio\" data-field=\"person1_bio\">Roasts on Tuesdays and Fridays and will talk you through every batch if you let her.</p></div><div class=\"cms-person\"><img class=\"cms-person-photo\" src=\"media/coffee-shop-team-sam.webp\" alt=\"\" loading=\"lazy\" data-field=\"person2_photo\"><h3 class=\"cms-person-name\" data-field=\"person2_name\">Sam</h3><p class=\"cms-person-role\" data-field=\"person2_role\">Behind the bar</p><p class=\"cms-person-bio\" data-field=\"person2_bio\">Knows your order by the second visit. Sorry in advance about the playlist.</p></div><div class=\"cms-person\"><img class=\"cms-person-photo\" src=\"media/coffee-shop-team-yusuf.webp\" alt=\"\" loading=\"lazy\" data-field=\"person3_photo\"><h3 class=\"cms-person-name\" data-field=\"person3_name\">Yusuf</h3><p class=\"cms-person-role\" data-field=\"person3_role\">Kitchen</p><p class=\"cms-person-bio\" data-field=\"person3_bio\">Bakes the pastries at four in the morning, which is why they are gone by two.</p></div></div></div>",
       {}
     ],
     [

@@ -29,7 +29,7 @@
       {}
     ]
   ],
-  "bg_image": "media/hair-salon-backdrop.png",
+  "bg_image": "media/hair-salon-backdrop.webp",
   "bg_attach": "scroll",
   "bg_overlay": "light",
   "bg_surface": "panels"

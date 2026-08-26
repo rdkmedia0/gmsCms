@@ -7,7 +7,7 @@
     [
       "banner",
       "",
-      "<div class=\"cms-banner\" style=\"background-image:url('media/community-banner.png')\"><div class=\"cms-banner-overlay\"><h2>Turn up on a Saturday</h2><p>A community garden run by whoever shows up. No membership, no experience, no fee.</p></div></div>",
+      "<div class=\"cms-banner\" style=\"background-image:url('media/community-banner.webp')\"><div class=\"cms-banner-overlay\"><h2>Turn up on a Saturday</h2><p>A community garden run by whoever shows up. No membership, no experience, no fee.</p></div></div>",
       {}
     ],
     [
@@ -21,7 +21,7 @@
       "",
       "<div class=\"cms-block cms-block-stats\" data-count=\"3\"><div class=\"cms-stat-row\"><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat1_value\">2011</span><span class=\"cms-stat-label\" data-field=\"stat1_label\">Digging here since</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat2_value\">60+</span><span class=\"cms-stat-label\" data-field=\"stat2_label\">People through the gate each month</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat3_value\">0</span><span class=\"cms-stat-label\" data-field=\"stat3_label\">Membership fee, ever</span></div></div></div>",
       {
-        "bg_image": "media/community-band.png",
+        "bg_image": "media/community-band.webp",
         "bg_overlay": "tint",
         "bg_position": "center",
         "bg_color": "#cdbdab"

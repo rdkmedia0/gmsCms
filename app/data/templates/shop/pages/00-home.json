@@ -7,7 +7,7 @@
     [
       "banner",
       "",
-      "<div class=\"cms-banner\" style=\"background-image:url('media/shop-banner.png')\"><div class=\"cms-banner-overlay\"><h2>Useful things, made nearby</h2><p>Ceramics, linen and plants. Most of it made within a hundred miles of the shop.</p></div></div>",
+      "<div class=\"cms-banner\" style=\"background-image:url('media/shop-banner.webp')\"><div class=\"cms-banner-overlay\"><h2>Useful things, made nearby</h2><p>Ceramics, linen and plants. Most of it made within a hundred miles of the shop.</p></div></div>",
       {}
     ],
     [
@@ -27,7 +27,7 @@
       "",
       "<div class=\"cms-block cms-block-stats\" data-count=\"3\"><div class=\"cms-stat-row\"><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat1_value\">30</span><span class=\"cms-stat-label\" data-field=\"stat1_label\">Makers we buy from</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat2_value\">100mi</span><span class=\"cms-stat-label\" data-field=\"stat2_label\">Most of it made within</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat3_value\">2018</span><span class=\"cms-stat-label\" data-field=\"stat3_label\">On the high street since</span></div></div></div>",
       {
-        "bg_image": "media/shop-band.png",
+        "bg_image": "media/shop-band.webp",
         "bg_overlay": "light",
         "bg_position": "center",
         "bg_color": "#d9cabe"

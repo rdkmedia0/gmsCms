@@ -7,7 +7,7 @@
     [
       "banner",
       "",
-      "<div class=\"cms-banner\" style=\"background-image:url('media/hair-salon-chair.png')\"><div class=\"cms-banner-overlay\"><h2>An hour that is actually yours</h2><p>Four chairs, unhurried appointments, and colour that grows out kindly.</p></div></div>",
+      "<div class=\"cms-banner\" style=\"background-image:url('media/hair-salon-chair.webp')\"><div class=\"cms-banner-overlay\"><h2>An hour that is actually yours</h2><p>Four chairs, unhurried appointments, and colour that grows out kindly.</p></div></div>",
       {}
     ],
     [
@@ -21,7 +21,7 @@
       "",
       "<div class=\"cms-block cms-block-stats\" data-count=\"3\"><div class=\"cms-stat-row\"><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat1_value\">4</span><span class=\"cms-stat-label\" data-field=\"stat1_label\">Chairs, deliberately</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat2_value\">60 min</span><span class=\"cms-stat-label\" data-field=\"stat2_label\">A cut, not 30</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat3_value\">2011</span><span class=\"cms-stat-label\" data-field=\"stat3_label\">On this street since</span></div></div></div>",
       {
-        "bg_image": "media/hair-salon-band-1.png",
+        "bg_image": "media/hair-salon-band-1.webp",
         "bg_overlay": "dark",
         "bg_position": "center",
         "bg_color": "#d1bcc2"
@@ -30,7 +30,7 @@
     [
       "html",
       "",
-      "<div class=\"cms-image-accordion cms-accordion-style-panels cms-accordion-lightbox\"><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/hair-salon-work-1.png')\"><span class=\"cms-accordion-caption\">Balayage, grown out kindly</span></div><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/hair-salon-work-2.png')\"><span class=\"cms-accordion-caption\">A blunt bob</span></div><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/hair-salon-work-4.png')\"><span class=\"cms-accordion-caption\">A short textured crop</span></div><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/hair-salon-work-5.png')\"><span class=\"cms-accordion-caption\">Copper, kept warm</span></div><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/hair-salon-work-3.png')\"><span class=\"cms-accordion-caption\">Foils in progress</span></div></div>",
+      "<div class=\"cms-image-accordion cms-accordion-style-panels cms-accordion-lightbox\"><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/hair-salon-work-1.webp')\"><span class=\"cms-accordion-caption\">Balayage, grown out kindly</span></div><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/hair-salon-work-2.webp')\"><span class=\"cms-accordion-caption\">A blunt bob</span></div><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/hair-salon-work-4.webp')\"><span class=\"cms-accordion-caption\">A short textured crop</span></div><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/hair-salon-work-5.webp')\"><span class=\"cms-accordion-caption\">Copper, kept warm</span></div><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/hair-salon-work-3.webp')\"><span class=\"cms-accordion-caption\">Foils in progress</span></div></div>",
       {}
     ],
     [
@@ -50,7 +50,7 @@
       "",
       "<div class=\"cms-block cms-block-cta\" data-tone=\"solid\"><div class=\"cms-cta cms-cta-solid\"><h2 data-field=\"heading\">Book a chair</h2><p data-field=\"text\">Evenings on Thursdays. New colour clients need a patch test 48 hours before.</p><a class=\"cms-cta-btn\" href=\"/contact\" data-href-field=\"link\"><span data-field=\"cta\">Book an appointment</span></a></div></div>",
       {
-        "bg_image": "media/hair-salon-band-2.png",
+        "bg_image": "media/hair-salon-band-2.webp",
         "bg_overlay": "tint",
         "bg_position": "center",
         "bg_color": "#dbcab2"

@@ -13,13 +13,13 @@
     [
       "html",
       "",
-      "<div class=\"cms-image-accordion cms-accordion-style-carousel cms-accordion-lightbox\"><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/personal-work-1.png')\"><span class=\"cms-accordion-caption\">Seasonal menu, Hirschen</span></div><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/personal-work-2.png')\"><span class=\"cms-accordion-caption\">The room before service</span></div><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/personal-work-3.png')\"><span class=\"cms-accordion-caption\">Mid-service, kitchen pass</span></div><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/personal-work-4.png')\"><span class=\"cms-accordion-caption\">Bread, morning light</span></div><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/personal-work-5.png')\"><span class=\"cms-accordion-caption\">Market, Tuesday</span></div></div>",
+      "<div class=\"cms-image-accordion cms-accordion-style-carousel cms-accordion-lightbox\"><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/personal-work-1.webp')\"><span class=\"cms-accordion-caption\">Seasonal menu, Hirschen</span></div><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/personal-work-2.webp')\"><span class=\"cms-accordion-caption\">The room before service</span></div><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/personal-work-3.webp')\"><span class=\"cms-accordion-caption\">Mid-service, kitchen pass</span></div><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/personal-work-4.webp')\"><span class=\"cms-accordion-caption\">Bread, morning light</span></div><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/personal-work-5.webp')\"><span class=\"cms-accordion-caption\">Market, Tuesday</span></div></div>",
       {}
     ],
     [
       "image",
       "Coastal morning",
-      "media/personal-work-3.png",
+      "media/personal-work-3.webp",
       {
         "width": "medium",
         "corner_style": "rounded"
@@ -28,7 +28,7 @@
     [
       "image",
       "Canyon at sunset",
-      "media/personal-work-4.png",
+      "media/personal-work-4.webp",
       {
         "width": "medium",
         "corner_style": "rounded"
@@ -37,7 +37,7 @@
     [
       "image",
       "Alpine lake",
-      "media/personal-work-5.png",
+      "media/personal-work-5.webp",
       {
         "width": "medium",
         "corner_style": "rounded"

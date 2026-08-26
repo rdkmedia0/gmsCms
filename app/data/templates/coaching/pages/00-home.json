@@ -7,7 +7,7 @@
     [
       "banner",
       "",
-      "<div class=\"cms-banner\" style=\"background-image:url('media/coaching-banner.png')\"><div class=\"cms-banner-overlay\"><h2>Come Back To Yourself</h2><p>1:1 coaching rooted in presence, not pressure — for people ready to live a little more free.</p></div></div>",
+      "<div class=\"cms-banner\" style=\"background-image:url('media/coaching-banner.webp')\"><div class=\"cms-banner-overlay\"><h2>Come Back To Yourself</h2><p>1:1 coaching rooted in presence, not pressure — for people ready to live a little more free.</p></div></div>",
       {}
     ],
     [
@@ -39,7 +39,7 @@
     [
       "html",
       "",
-      "<div class=\"cms-block cms-block-testimonial\" data-style=\"large\"><figure class=\"cms-quote cms-quote-large\"><img class=\"cms-quote-photo\" src=\"media/coaching-quote-lena.png\" alt=\"\" data-field=\"photo\"><blockquote data-field=\"quote\">I had been carrying the same decision around for two years. It took four sessions.</blockquote><figcaption><span class=\"cms-quote-name\" data-field=\"name\">Lena Fischer</span><span class=\"cms-quote-role\" data-field=\"role\">Zurich</span></figcaption></figure></div>",
+      "<div class=\"cms-block cms-block-testimonial\" data-style=\"large\"><figure class=\"cms-quote cms-quote-large\"><img class=\"cms-quote-photo\" src=\"media/coaching-quote-lena.webp\" alt=\"\" data-field=\"photo\"><blockquote data-field=\"quote\">I had been carrying the same decision around for two years. It took four sessions.</blockquote><figcaption><span class=\"cms-quote-name\" data-field=\"name\">Lena Fischer</span><span class=\"cms-quote-role\" data-field=\"role\">Zurich</span></figcaption></figure></div>",
       {
         "bg_color": "#adbe9f"
       }

@@ -7,7 +7,7 @@
     [
       "banner",
       "",
-      "<div class=\"cms-banner\" style=\"background-image:url('media/business-banner.png')\"><div class=\"cms-banner-overlay\"><h2>Your Yard, Cared for Like Family</h2><p>Lawn care & landscaping, proudly serving the neighborhood since 1985.</p></div></div>",
+      "<div class=\"cms-banner\" style=\"background-image:url('media/business-banner.webp')\"><div class=\"cms-banner-overlay\"><h2>Your Yard, Cared for Like Family</h2><p>Lawn care & landscaping, proudly serving the neighborhood since 1985.</p></div></div>",
       {}
     ],
     [
@@ -47,7 +47,7 @@
     [
       "html",
       "",
-      "<div class=\"cms-block cms-block-testimonial\" data-style=\"card\"><figure class=\"cms-quote cms-quote-card\"><img class=\"cms-quote-photo\" src=\"media/business-quote-helen.png\" alt=\"\" data-field=\"photo\"><blockquote data-field=\"quote\">They have cut our grass since my mother lived here. Same family, same day of the week, thirty years.</blockquote><figcaption><span class=\"cms-quote-name\" data-field=\"name\">Helen Roth</span><span class=\"cms-quote-role\" data-field=\"role\">Ostring, two streets over</span></figcaption></figure></div>",
+      "<div class=\"cms-block cms-block-testimonial\" data-style=\"card\"><figure class=\"cms-quote cms-quote-card\"><img class=\"cms-quote-photo\" src=\"media/business-quote-helen.webp\" alt=\"\" data-field=\"photo\"><blockquote data-field=\"quote\">They have cut our grass since my mother lived here. Same family, same day of the week, thirty years.</blockquote><figcaption><span class=\"cms-quote-name\" data-field=\"name\">Helen Roth</span><span class=\"cms-quote-role\" data-field=\"role\">Ostring, two streets over</span></figcaption></figure></div>",
       {}
     ],
     [

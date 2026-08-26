@@ -7,7 +7,7 @@
     [
       "banner",
       "",
-      "<div class=\"cms-banner\" style=\"background-image:url('media/restaurant-banner.png')\"><div class=\"cms-banner-overlay\"><h2>Dinner, Wednesday to Saturday</h2><p>One sitting a night. The menu is written that afternoon.</p></div></div>",
+      "<div class=\"cms-banner\" style=\"background-image:url('media/restaurant-banner.webp')\"><div class=\"cms-banner-overlay\"><h2>Dinner, Wednesday to Saturday</h2><p>One sitting a night. The menu is written that afternoon.</p></div></div>",
       {}
     ],
     [
@@ -21,7 +21,7 @@
       "",
       "<div class=\"cms-block cms-block-stats\" data-count=\"3\"><div class=\"cms-stat-row\"><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat1_value\">26</span><span class=\"cms-stat-label\" data-field=\"stat1_label\">Covers a night</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat2_value\">5</span><span class=\"cms-stat-label\" data-field=\"stat2_label\">Courses, no choices</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat3_value\">7:30</span><span class=\"cms-stat-label\" data-field=\"stat3_label\">Everyone sits at</span></div></div></div>",
       {
-        "bg_image": "media/restaurant-band.png",
+        "bg_image": "media/restaurant-band.webp",
         "bg_overlay": "dark",
         "bg_position": "fixed",
         "bg_color": "#1d1b19"
@@ -30,7 +30,7 @@
     [
       "image",
       "",
-      "media/restaurant-dish.png",
+      "media/restaurant-dish.webp",
       {
         "caption": "Whatever the boat brought in"
       }
