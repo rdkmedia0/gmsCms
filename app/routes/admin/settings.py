@@ -701,6 +701,7 @@ def settings_integrations():
         providers=integrations.PROVIDERS,
         values={key: integrations.get_provider_settings(db, key) for key in integrations.PROVIDERS},
         configured={key: integrations.is_configured(db, key) for key in integrations.PROVIDERS},
+        verified={key: integrations.is_verified(db, key) for key in integrations.PROVIDERS},
         stripe_mode=integrations.stripe_mode(db),
         webhook_url=site.absolute(db, url_for("public.stripe_webhook"), request.host_url),
         site_base=site.public_base(db),
@@ -719,8 +720,21 @@ def settings_integration_save(provider):
         flash("Unknown provider.", "error")
         return redirect(url_for("admin.settings_integrations"))
     integrations.save_provider_settings(db, provider, request.form)
-    flash(f"{integrations.PROVIDERS[provider]['name']} settings saved.", "success")
-    return redirect(url_for("admin.settings_integrations"))
+    name = integrations.PROVIDERS[provider]["name"]
+    #  Then try it, because a key that is stored and a key that works are
+    #  different things and only one of them is worth being told about.
+    #  This is where an install that cannot reach the internet finds out,
+    #  rather than months later when the first order does not arrive.
+    if integrations.is_configured(db, provider):
+        ok, message = integrations.test_connection(db, provider)
+        integrations.record_test(db, provider, ok)
+        db.commit()
+        flash("%s saved. %s" % (name, message), "success" if ok else "error")
+    else:
+        integrations.record_test(db, provider, False)
+        db.commit()
+        flash("%s settings saved." % name, "success")
+    return redirect(url_for("admin.settings_integrations", tab=provider))
 
 
 @bp.route("/settings/integrations/<provider>/test", methods=["POST"])
@@ -733,6 +747,10 @@ def settings_integration_test(provider):
     if provider not in integrations.PROVIDERS:
         return jsonify({"ok": False, "message": "Unknown provider."}), 404
     ok, message = integrations.test_connection(db, provider)
+    #  Recorded, so the badge on this page agrees with what the button
+    #  just said rather than contradicting it.
+    integrations.record_test(db, provider, ok)
+    db.commit()
     return jsonify({"ok": ok, "message": message})
 
 

@@ -147,6 +147,29 @@ def clear_provider(db, provider):
     db.commit()
 
 
+def record_test(db, provider, ok):
+    """Remember whether the last real call to this provider worked.
+
+    Kept so a badge can say "Connected" only when something actually
+    connected. Cleared rather than set to 0 on failure: absence reads as
+    "not verified", which is the honest state for a key that has never
+    been tried.
+    """
+    key = "%s_verified" % provider
+    if ok:
+        db.execute("INSERT INTO settings (key, value) VALUES (?, '1') "
+                   "ON CONFLICT(key) DO UPDATE SET value = '1'", (key,))
+    else:
+        db.execute("DELETE FROM settings WHERE key = ?", (key,))
+
+
+def is_verified(db, provider):
+    """Whether a real call to this provider has succeeded."""
+    row = db.execute("SELECT value FROM settings WHERE key = ?",
+                     ("%s_verified" % provider,)).fetchone()
+    return bool(row and row["value"] == "1")
+
+
 def is_configured(db, provider):
     """Configured means the provider could actually be called — every
     field it needs is present, not merely that the row exists."""

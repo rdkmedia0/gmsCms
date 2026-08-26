@@ -28,12 +28,16 @@
   <div class="integration-head">
     <h2>{{ provider.icon }} {{ provider.name }}</h2>
     {% if configured[key] %}
-      {% if key == 'stripe' and stripe_mode == 'live' %}
+      {#  "Connected" is a claim about a call that succeeded, not about a
+          key being stored. A key that has never answered says so. #}
+      {% if not verified[key] %}
+      <span class="integration-badge is-off" title="A key is saved, but no call to this provider has succeeded yet. Use Test connection.">Key saved &mdash; not verified</span>
+      {% elif key == 'stripe' and stripe_mode == 'live' %}
       <span class="integration-badge is-live" title="This key takes real payments from real cards">LIVE — real money</span>
       {% elif key == 'stripe' and stripe_mode == 'test' %}
       <span class="integration-badge is-test" title="This key only accepts Stripe's test cards — nothing is charged">Test mode</span>
       {% else %}
-      <span class="integration-badge is-on" title="This provider is connected">Connected</span>
+      <span class="integration-badge is-on" title="A real call to this provider succeeded">Connected</span>
       {% endif %}
     {% else %}
       <span class="integration-badge is-off" title="Not connected yet">Not connected</span>
