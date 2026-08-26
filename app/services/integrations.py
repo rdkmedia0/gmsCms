@@ -19,6 +19,7 @@ separate switch would only create a way for the two to disagree.
 """
 import datetime
 import json
+import os
 import time
 import urllib.error
 import urllib.parse
@@ -183,13 +184,40 @@ def stripe_mode(db):
 UNREACHABLE = "[could-not-reach] "
 
 
+def _why_no_dns():
+    """The one cause of a name lookup failing that this app can identify.
+
+    A container's /etc/resolv.conf is copied from its host, mode and all.
+    A host that has tightened it to 0640 hands the container a resolver
+    config the app's own unprivileged user cannot read -- and glibc, given
+    an unreadable resolv.conf, does not complain: it falls back to
+    127.0.0.1:53, which is nothing here, and every lookup fails with
+    "Temporary failure in name resolution".
+
+    Everything else then looks broken for no reason -- payments, bookings,
+    email -- and every test in the container passes, because anyone
+    debugging runs as root and root can read the file whatever its mode.
+    """
+    path = "/etc/resolv.conf"
+    try:
+        if os.path.exists(path) and not os.access(path, os.R_OK):
+            mode = oct(os.stat(path).st_mode & 0o777)[2:]
+            return (" The cause is on this machine: %s is mode %s and cannot be read by "
+                    "the user this app runs as (uid %d), so no name can be looked up. "
+                    "Run: chmod 644 %s on the host, then restart the container."
+                    % (path, mode, os.getuid(), path))
+    except OSError:
+        pass
+    return ""
+
+
 def _reachability(error, name):
     """The human half of an error: what happened, and whose problem it is."""
     if error.startswith(UNREACHABLE):
         detail = error[len(UNREACHABLE):]
         return ("Could not reach %s at all, so the key was never tested. That is a "
                 "network problem on the machine running this site, not a problem "
-                "with your key — %s" % (name, detail))
+                "with your key — %s%s" % (name, detail, _why_no_dns()))
     if error.startswith(("401", "403")):
         return "%s refused the key — %s" % (name, error)
     return "%s answered with an error — %s" % (name, error)
