@@ -149,19 +149,25 @@ def _apply_look(db):
 
     chosen = request.form.get("template", type=int)
     row = db.execute("SELECT * FROM templates WHERE id = ?", (chosen,)).fetchone() if chosen else None
-    if row is not None and not row["is_active"]:
+    if row is not None:
         pack = packages.load_template_package(current_app.static_folder, row["slug"],
                                               bool(row["is_builtin"]))
-        db.execute("UPDATE templates SET is_active = 0")
-        db.execute("UPDATE templates SET is_active = 1 WHERE id = ?", (row["id"],))
-        #  Deliberately NOT _apply_pack_identity: the owner has just told
-        #  this site its own name, and a template brings a look and some
-        #  pages, never an identity.
-        if pack:
-            if pack.get("pages") and request.form.get("content") == "everything":
-                _apply_pack_content(db, pack)
-                _retire_foreign_pack_pages(db, row["slug"])
-            _apply_default_layout(db, row["id"], pack, force=True)
+        if not row["is_active"]:
+            db.execute("UPDATE templates SET is_active = 0")
+            db.execute("UPDATE templates SET is_active = 1 WHERE id = ?", (row["id"],))
+            #  Deliberately NOT _apply_pack_identity: the owner has just
+            #  told this site its own name, and a template brings a look
+            #  and some pages, never an identity.
+            if pack:
+                _apply_default_layout(db, row["id"], pack, force=True)
+        #  Content is applied because it was ASKED for, not because the
+        #  template happened to be changing. Choosing the look you already
+        #  have and asking for its pages used to do nothing at all and say
+        #  nothing about it -- which is how a coach's site kept a
+        #  landscaping blog through two runs of the walk-through.
+        if pack and pack.get("pages") and request.form.get("content") == "everything":
+            _apply_pack_content(db, pack)
+            _retire_foreign_pack_pages(db, row["slug"])
         refresh_site_menus(db)
 
     active = db.execute("SELECT * FROM templates WHERE is_active = 1").fetchone()
