@@ -1,0 +1,26 @@
+{
+  "title": "Packages",
+  "slug_suffix": "packages",
+  "page_type": "standard",
+  "meta_description": "Coaching packages and pricing.",
+  "sections": [
+    [
+      "text",
+      "Coaching Packages",
+      "<p>Every package starts with a free 20-minute discovery call.</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<table class=\"cms-table\"><thead><tr><th>Package</th><th>Sessions</th><th>Price</th></tr></thead><tbody><tr><td>Single Session</td><td>1 session</td><td>$150</td></tr><tr><td>Momentum</td><td>4 sessions / monthly</td><td>$540</td></tr><tr><td>Transformation</td><td>12 sessions / 3 months</td><td>$1,500</td></tr></tbody></table>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-pricing\" data-columns=\"3\"><div class=\"cms-price-grid\"><div class=\"cms-price-tier\"><h3 class=\"cms-price-name\" data-field=\"tier1_name\">Single session</h3><p class=\"cms-price-amount\"><span data-field=\"tier1_price\">140</span><small data-field=\"tier1_period\">per hour</small></p><ul class=\"cms-price-features\" data-field=\"tier1_features\"><li>One hour</li><li>Notes afterwards if you want them</li><li>No commitment beyond it</li></ul><a class=\"cms-price-btn\" href=\"/contact\" data-href-field=\"tier1_link\"><span data-field=\"tier1_cta\">Book one</span></a></div><div class=\"cms-price-tier is-featured\" data-flag=\"tier2_featured\"><h3 class=\"cms-price-name\" data-field=\"tier2_name\">Six sessions</h3><p class=\"cms-price-amount\"><span data-field=\"tier2_price\">750</span><small data-field=\"tier2_period\">for six</small></p><ul class=\"cms-price-features\" data-field=\"tier2_features\"><li>Six hours, at your pace</li><li>Email between sessions</li><li>A written summary at the end</li><li>Use them within a year</li></ul><a class=\"cms-price-btn\" href=\"/contact\" data-href-field=\"tier2_link\"><span data-field=\"tier2_cta\">Start the six</span></a></div><div class=\"cms-price-tier\"><h3 class=\"cms-price-name\" data-field=\"tier3_name\">A day</h3><p class=\"cms-price-amount\"><span data-field=\"tier3_price\">600</span><small data-field=\"tier3_period\">one day</small></p><ul class=\"cms-price-features\" data-field=\"tier3_features\"><li>A full day, somewhere quiet</li><li>For a decision that needs proper space</li><li>Written plan to take away</li></ul><a class=\"cms-price-btn\" href=\"/contact\" data-href-field=\"tier3_link\"><span data-field=\"tier3_cta\">Ask about a day</span></a></div></div></div>",
+      {}
+    ]
+  ]
+}

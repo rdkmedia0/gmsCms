@@ -1,0 +1,50 @@
+{
+  "name": "Family Business",
+  "icon": "🌻",
+  "description": "A warm, family-run local business — homepage, an about/family story page, a services price list, a media page, blog posts, and a contact page with a downloadable flyer.",
+  "google_fonts_url": "/static/fonts/fraunces-nunito.css",
+  "palette": [
+    {
+      "slug": "primary",
+      "name": "Primary",
+      "color": "#3d5c3a"
+    },
+    {
+      "slug": "secondary",
+      "name": "Secondary",
+      "color": "#a0522d"
+    },
+    {
+      "slug": "accent",
+      "name": "Accent",
+      "color": "#e8b84b"
+    }
+  ],
+  "nav_layout": "topbar",
+  "page_layout": "publisher",
+  "footer_layout": "columns",
+  "business_name": "Miller Family Landscaping",
+  "footer_contact": {
+    "phone": "5550192837",
+    "email": "hello@millerlandscaping.example",
+    "facebook": "https://facebook.com/millerlandscaping"
+  },
+  "footer_blurb": "Family-owned and locally operated since day one — proud to keep your yard looking its best.",
+  "sidebar_widget": [
+    {
+      "type": "card",
+      "content": "<div class=\"cms-card-shape\"><h3>🌼 Free Estimates</h3><p>Stop by or give us a call — we're happy to come take a look, no charge, no pressure.</p></div>",
+      "tool_name": "Card"
+    },
+    {
+      "type": "card",
+      "content": "<div class=\"cms-card-shape\"><h3>📍 Find Us</h3><p>412 Maple Street<br>Open Mon–Sat · 8am–5pm</p></div>",
+      "tool_name": "Card"
+    }
+  ],
+  "slug": "business",
+  "has_content": true,
+  "shape_override": "sharp",
+  "shadow_override": "subtle",
+  "tagline": "Advice for owner-run businesses"
+}

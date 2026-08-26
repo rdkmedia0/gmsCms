@@ -1,0 +1,36 @@
+{
+  "title": "The team",
+  "slug_suffix": "team",
+  "page_type": "standard",
+  "meta_description": "The people who will be cutting your hair.",
+  "sections": [
+    [
+      "text",
+      "Who is here",
+      "<p>Between us there is about forty years of this. Ask for whoever you like, or let us match you.</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-team\" data-count=\"3\"><div class=\"cms-team-grid\"><div class=\"cms-person\"><img class=\"cms-person-photo\" src=\"media/hair-salon-team-1.png\" alt=\"\" loading=\"lazy\" data-field=\"person1_photo\"><h3 class=\"cms-person-name\" data-field=\"person1_name\">Rae</h3><p class=\"cms-person-role\" data-field=\"person1_role\">Cutting</p><p class=\"cms-person-bio\" data-field=\"person1_bio\">Precision cuts and anything that needs to look sharp without needing an hour at home.</p></div><div class=\"cms-person\"><img class=\"cms-person-photo\" src=\"media/hair-salon-team-2.png\" alt=\"\" loading=\"lazy\" data-field=\"person2_photo\"><h3 class=\"cms-person-name\" data-field=\"person2_name\">Dom</h3><p class=\"cms-person-role\" data-field=\"person2_role\">Barbering</p><p class=\"cms-person-bio\" data-field=\"person2_bio\">Clippers, fades and beards. Also the one who chooses the music.</p></div><div class=\"cms-person\"><img class=\"cms-person-photo\" src=\"media/hair-salon-team-3.png\" alt=\"\" loading=\"lazy\" data-field=\"person3_photo\"><h3 class=\"cms-person-name\" data-field=\"person3_name\">Ines</h3><p class=\"cms-person-role\" data-field=\"person3_role\">Colour</p><p class=\"cms-person-bio\" data-field=\"person3_bio\">Balayage and correction work. Will talk you out of a colour that will not last.</p></div></div></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-timeline\" data-style=\"vertical\"><ol class=\"cms-timeline cms-timeline-vertical\"><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step1_when\">Before</span><div class=\"cms-timeline-body\"><h3 data-field=\"step1_title\">We talk first</h3><p data-field=\"step1_text\">Ten minutes with your hair dry, about what you actually do with it on a Tuesday morning.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step2_when\">During</span><div class=\"cms-timeline-body\"><h3 data-field=\"step2_title\">You get told things</h3><p data-field=\"step2_text\">What we are doing and why, including when what you asked for is not what will suit you.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step3_when\">After</span><div class=\"cms-timeline-body\"><h3 data-field=\"step3_title\">You can do it yourself</h3><p data-field=\"step3_text\">If it only looks right when we do it, we have cut it wrong. That is the test.</p></div></li></ol></div>",
+      {
+        "bg_image": "media/hair-salon-band-1.png",
+        "bg_overlay": "medium",
+        "bg_position": "bottom"
+      }
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-newsletter\" ><div class=\"cms-newsletter\"><h2 data-field=\"heading\">Cancellations and colour days</h2><p data-field=\"text\">Occasional: last-minute cancellations, and when we run colour clinics with the technicians.</p><form class=\"cms-newsletter-form\" method=\"post\" action=\"/subscribe\"><label class=\"cms-visually-hidden\" for=\"cms-sub-email\">Email address</label><input type=\"email\" id=\"cms-sub-email\" name=\"email\" required placeholder=\"you@example.com\" data-attr-field=\"placeholder\"><button type=\"submit\" class=\"cms-action-btn\"><span data-field=\"cta\">Let me know</span></button><input type=\"hidden\" name=\"consent_text\" value=\"Yes, email me about appointments and colour days. Unsubscribe any time.\"><p class=\"cms-newsletter-consent\" data-field=\"consent\">Yes, email me about appointments and colour days. Unsubscribe any time.</p><p class=\"cms-newsletter-howitworks\">We&rsquo;ll email you a link to confirm. Nothing else is sent until you follow it.</p><p class=\"cms-subscribe-note\" data-subscribe-note role=\"status\" hidden></p></form></div></div>",
+      {}
+    ]
+  ]
+}

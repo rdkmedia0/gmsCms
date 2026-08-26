@@ -1,0 +1,119 @@
+{% from "partials/panel_help.html" import panel_help, panel_section with context %}
+{# Template and Layout, picked from the live page instead of only the
+   Dashboard. A Template (below) is the complete package — colors, fonts,
+   and optionally ready-made content — picking one is a full look
+   swap. Header/Page/Footer layout are CUSTOMIZATIONS layered on top of
+   whichever template is active, not templates of their own — a single
+   site-wide structural choice, reused by any template rather than
+   repeated per template. Both are non-destructive to page content
+   (which lives independently of template/layout — see
+   content_reset_all's docstring in admin.py), so every click here
+   applies immediately, same as the Dashboard's own pickers — no
+   separate "Save" step to remember. #}
+{% from "partials/nav_layout_diagram.html" import nav_layout_diagram, sidebar_layout_diagram, footer_layout_diagram %}
+<button type="button" class="cms-dock-tab-btn cms-dock-tab-template" id="cms-template-tab" data-panel="template" title="Template &amp; Layout">📐</button>
+
+<div class="cms-dock-panel" id="cms-template-panel" data-panel="template">
+  <div class="cms-dock-resize-handle" title="Drag to resize"></div>
+  <div class="cms-dock-resize-edge" title="Drag to resize width"></div>
+  <div class="cms-dock-header">
+    <span class="cms-dock-title">📐 Template &amp; Layout{{ panel_help("Click to apply — everything below takes effect immediately.") }}</span>
+    <span class="cms-dock-header-actions">
+      {% include "partials/dock_position_toggle.html" %}
+      <button type="button" class="cms-assistant-close" id="cms-template-close">&times;</button>
+    </span>
+    <div class="cms-dock-header-filters">
+      {% include "partials/dock_tool_search.html" %}
+      {% include "partials/dock_grouped_toggle.html" %}
+    </div>
+  </div>
+  <div class="cms-dock-content">
+    
+
+    {{ panel_section("Template", "A complete look: colors, fonts, and (if it has any) ready-made content. Picking one applies all of it.", tag="p") }}
+    <div class="cms-tpl-grid" id="cms-tpl-theme-grid">
+      {% for t in all_templates %}
+      <div class="cms-tpl-choice-wrap">
+        <button type="button" class="cms-tpl-choice {{ 'cms-tpl-choice-selected' if t.id == template.id }}"
+                data-activate-url="{{ url_for('admin.template_activate', template_id=t.id) }}"
+                data-conflict="{{ 'true' if activate_conflict_map.get(t.id) else 'false' }}" title="{{ t.name }}">
+          <span class="cms-tpl-dots">
+            {% if t.palette_json %}
+            {% for c in (t.palette_json | from_json)[:3] %}
+            <span class="cms-tpl-dot" style="background:{{ c.color }}"></span>
+            {% endfor %}
+            {% else %}
+            <span class="cms-tpl-dot cms-tpl-dot-empty"></span>
+            {% endif %}
+          </span>
+          <span class="cms-tpl-name">{{ t.name }}</span>
+        </button>
+        {% if t.id != template.id %}
+        <button type="button" class="cms-tpl-delete-btn" data-delete-url="{{ url_for('admin.template_delete', template_id=t.id) }}" data-name="{{ t.name }}" title="Delete {{ t.name }}">&times;</button>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% if active_content %}
+    <button type="button" class="cms-tpl-save-btn cms-load-content-btn" data-url="{{ url_for('admin.template_load_content', template_id=active_content.template_id) }}" title="Reload all of {{ active_content.name }}'s pages, overwriting any of them you've since changed.">Reload</button>
+    {% endif %}
+
+    {# No "Customize" heading over the three below. It introduced them back
+       when they were a run of pickers with no headings of their own; now
+       that each has one, it was a heading over headings with nothing of
+       its own under it — which reads as an empty section. What it said
+       that the others do not — that these are site-wide layout choices
+       rather than templates — moves onto the first one's help. #}
+    {{ panel_section("Headers", "Header, page and footer structure: site-wide layout choices applied on top of whichever template is active, not templates of their own. One choice each, reused by any template.", tag="p") }}
+    <div class="nav-layout-picker" id="cms-tpl-structure-grid" data-has-sidebar-content="{{ 'true' if has_sidebar_content else 'false' }}">
+      {% for key, info in nav_layouts.items() %}
+      <button type="button" class="nav-layout-option {{ 'nav-layout-option-selected' if nav_layout == key }}"
+              data-nav-url="{{ url_for('admin.settings_nav_layout') }}" data-nav-layout="{{ key }}" title="{{ info[0] }} — {{ info[1] }}">
+        {{ nav_layout_diagram(key) }}
+        <span class="nav-layout-option-label">{{ info[0] }}</span>
+      </button>
+      {% endfor %}
+    </div>
+    {% if sidebar_layout_presets %}
+    {{ panel_section("Pages", "The page's structural shape: sidebars, or none. One site-wide choice. A sidebar's own Width/Height controls (in its section toolbar, or drag its edge directly) fine-tune it further: Width resizes the rail; Height is really reach — Auto keeps it body-height only, Full runs it the entire page height, pushing the header and footer over too.", tag="p") }}
+    <div class="nav-layout-picker" id="cms-tpl-sidebar-grid">
+      {% for key, preset in sidebar_layout_presets.items() %}
+      <button type="button" class="nav-layout-option"
+              data-sidebar-url="{{ url_for('admin.template_apply_sidebar_layout', template_id=template.id) }}" data-preset="{{ key }}" title="{{ preset.name }} — {{ preset.description }}">
+        {{ sidebar_layout_diagram(key) }}
+        <span class="nav-layout-option-label">{{ preset.name }}</span>
+      </button>
+      {% endfor %}
+    </div>
+    
+    {% endif %}
+
+    {% if footer_layout_presets %}
+    {{ panel_section("Footers", "Drops ordinary, editable sections (menu, contact icons, columns) into an empty footer. Like the header, footer width comes from the section width picker, not this choice — this only sets what is inside.", tag="p") }}
+    <div class="nav-layout-picker" id="cms-tpl-footer-grid">
+      {% for key, preset in footer_layout_presets.items() %}
+      <button type="button" class="nav-layout-option"
+              data-footer-url="{{ url_for('admin.template_apply_footer_layout', template_id=template.id) }}" data-preset="{{ key }}" title="{{ preset.name }} — {{ preset.description }}">
+        {{ footer_layout_diagram(key) }}
+        <span class="nav-layout-option-label">{{ preset.name }}</span>
+      </button>
+      {% endfor %}
+    </div>
+    
+    {% endif %}
+
+    {# No heading above this one. The disclosure's own summary is the
+       button — "Save site" — and since it opens as a panel rather than
+       expanding in place, a section heading over a single control was one
+       label too many. #}
+    <details>
+      <summary class="hint" style="cursor:pointer;">Save site{{ panel_help("Captures the active look, layout and every page's content as a brand new template in your library. This is also your get-back-to-this-later point: save one before a risky change, then activate it again to restore everything. Leave the name blank for a timestamped default you can rename afterwards.") }}</summary>
+      <form method="post" action="{{ url_for('admin.template_save_current') }}">
+        <input type="text" name="name" class="cms-tpl-save-name" placeholder="Name (optional)" maxlength="80" title="What to call this new template in your library. Leave blank to use a timestamped default you can rename later.">
+        <button type="submit" class="cms-tpl-save-btn" title="Save the active look, layout, and every page's content as a brand new template.">Save</button>
+      </form>
+    </details>
+  </div>
+</div>
+
+<script src="{{ static_url('js/admin/template-panel.js') }}"></script>

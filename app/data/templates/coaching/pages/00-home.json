@@ -1,0 +1,54 @@
+{
+  "title": "Home",
+  "slug_suffix": "home",
+  "page_type": "standard",
+  "meta_description": "1:1 coaching rooted in presence, not pressure.",
+  "sections": [
+    [
+      "banner",
+      "",
+      "<div class=\"cms-banner\" style=\"background-image:url('media/coaching-banner.png')\"><div class=\"cms-banner-overlay\"><h2>Come Back To Yourself</h2><p>1:1 coaching rooted in presence, not pressure — for people ready to live a little more free.</p></div></div>",
+      {}
+    ],
+    [
+      "text",
+      "About My Approach",
+      "<p>I work with people who've been carrying more than their share — helping you slow down, reconnect with what actually matters, and take the next right step from a grounded place instead of a frantic one. Sessions are honest and unhurried, always centered on where you actually are.</p>",
+      {}
+    ],
+    [
+      "columns",
+      "",
+      "{\"columns\": [{\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>Work & Purpose</h3><p>Find work that doesn't ask you to abandon yourself to do it.</p></div>\", \"tool_name\": \"Card\"}, {\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>Relationships</h3><p>Show up honestly, and set boundaries with love, not guilt.</p></div>\", \"tool_name\": \"Card\"}, {\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>Inner Ground</h3><p>Trade self-doubt for a quiet, steady kind of trust.</p></div>\", \"tool_name\": \"Card\"}]}",
+      {}
+    ],
+    [
+      "media",
+      "A Note From Me",
+      "/static/video/templates/coaching-home.mp4",
+      {
+        "media_type": "video"
+      }
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-timeline\" data-style=\"vertical\"><ol class=\"cms-timeline cms-timeline-vertical\"><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step1_when\">First</span><div class=\"cms-timeline-body\"><h3 data-field=\"step1_title\">A conversation, no charge</h3><p data-field=\"step1_text\">Twenty minutes to hear what is going on and whether I am the right person for it. Often I am not, and I will tell you who might be.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step2_when\">Then</span><div class=\"cms-timeline-body\"><h3 data-field=\"step2_title\">We agree what we are doing</h3><p data-field=\"step2_text\">What you want to be different, how we will know, and how many sessions that is likely to take.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step3_when\">After</span><div class=\"cms-timeline-body\"><h3 data-field=\"step3_title\">The work itself</h3><p data-field=\"step3_text\">Fortnightly, an hour at a time, with something to try between them. You can stop whenever you like.</p></div></li></ol></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-testimonial\" data-style=\"large\"><figure class=\"cms-quote cms-quote-large\"><img class=\"cms-quote-photo\" src=\"media/coaching-quote-lena.png\" alt=\"\" data-field=\"photo\"><blockquote data-field=\"quote\">I had been carrying the same decision around for two years. It took four sessions.</blockquote><figcaption><span class=\"cms-quote-name\" data-field=\"name\">Lena Fischer</span><span class=\"cms-quote-role\" data-field=\"role\">Zurich</span></figcaption></figure></div>",
+      {
+        "bg_color": "#adbe9f"
+      }
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-newsletter\" ><div class=\"cms-newsletter\"><h2 data-field=\"heading\">Something once a month</h2><p data-field=\"text\">One short letter, usually a question worth sitting with. No course, nothing to buy.</p><form class=\"cms-newsletter-form\" method=\"post\" action=\"/subscribe\"><label class=\"cms-visually-hidden\" for=\"cms-sub-email\">Email address</label><input type=\"email\" id=\"cms-sub-email\" name=\"email\" required placeholder=\"you@example.com\" data-attr-field=\"placeholder\"><button type=\"submit\" class=\"cms-action-btn\"><span data-field=\"cta\">Send it to me</span></button><input type=\"hidden\" name=\"consent_text\" value=\"Yes, send me the monthly letter. Unsubscribe any time.\"><p class=\"cms-newsletter-consent\" data-field=\"consent\">Yes, send me the monthly letter. Unsubscribe any time.</p><p class=\"cms-newsletter-howitworks\">We&rsquo;ll email you a link to confirm. Nothing else is sent until you follow it.</p><p class=\"cms-subscribe-note\" data-subscribe-note role=\"status\" hidden></p></form></div></div>",
+      {}
+    ]
+  ]
+}

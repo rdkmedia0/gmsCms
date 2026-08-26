@@ -1,0 +1,26 @@
+{
+  "title": "Contact",
+  "slug_suffix": "contact",
+  "page_type": "standard",
+  "meta_description": "Where the garden is and when it is open.",
+  "sections": [
+    [
+      "text",
+      "Finding us",
+      "<p>Behind the leisure centre, through the green gate. If it is locked, someone is usually in the shed.</p>",
+      {}
+    ],
+    [
+      "text",
+      "Opening hours",
+      "<p>Saturdays 10 till 2, Wednesday evenings in summer</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-contact-form-tool\"></div>",
+      {}
+    ]
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "name": "Self-Help & Wellness",
+  "icon": "🌱",
+  "description": "Wellness homepage, an about/philosophy page, a programs pricing table, a media page, blog posts, and a contact page with a free workbook download.",
+  "google_fonts_url": "/static/fonts/marcellus-karla.css",
+  "palette": [
+    {
+      "slug": "primary",
+      "name": "Primary",
+      "color": "#7c8c74"
+    },
+    {
+      "slug": "secondary",
+      "name": "Secondary",
+      "color": "#c9a89a"
+    },
+    {
+      "slug": "accent",
+      "name": "Accent",
+      "color": "#a56b4b"
+    }
+  ],
+  "nav_layout": "split",
+  "page_layout": "sidebar-blog",
+  "footer_layout": "simple",
+  "business_name": "Begin Wellness Co.",
+  "footer_contact": {
+    "email": "hello@yourwellness.example",
+    "instagram": "https://instagram.com/beginwellnessco"
+  },
+  "footer_blurb": "Gentle, practical tools for building a calmer, healthier everyday life.",
+  "header_menu": false,
+  "slug": "self-help",
+  "has_content": true,
+  "shape_override": "pill",
+  "shadow_override": "raised",
+  "tagline": "A method, a book, and eight weeks"
+}

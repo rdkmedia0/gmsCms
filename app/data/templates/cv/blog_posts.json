@@ -1,0 +1,12 @@
+[
+  {
+    "title": "Redesigning Our Onboarding: A Case Study",
+    "excerpt": "We cut time-to-first-value from 12 minutes to 3 by removing steps, not adding tooltips.",
+    "content": "<p>Our onboarding had 9 steps and a 40% completion rate. The fix wasn't more explanation — it was removing 5 of the 9 steps entirely and deferring them to first real use.</p><p>Time-to-first-value went from 12 minutes to under 3.</p>"
+  },
+  {
+    "title": "Why I Stopped Designing in High Fidelity First",
+    "excerpt": "Polished mockups get less honest feedback — people critique the color, not the flow.",
+    "content": "<p>I used to jump straight to high-fidelity mockups. The feedback I got was almost always about color and spacing, never the actual flow — because a polished screen looks \"done,\" and people don't want to argue with done.</p><p>Grayscale wireframes get much more honest structural feedback.</p>"
+  }
+]

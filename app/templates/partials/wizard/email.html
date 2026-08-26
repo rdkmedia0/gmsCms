@@ -1,0 +1,36 @@
+{#  Ahead of Stripe and Cal.com both: a contact form and a newsletter are
+    dead without it, and it is the integration a small site is most likely
+    to actually need. #}
+<p class="hint">Needed for contact forms, for confirming a newsletter sign-up, and for sending a
+  newsletter at all. These are the details your email provider gives you &mdash; if you do not have
+  them to hand, skip this and add them later from Email Settings.</p>
+
+<label for="smtp_host">Mail server</label>
+<input type="text" id="smtp_host" name="smtp_host" value="{{ email.smtp_host or '' }}"
+       placeholder="smtp.example.com" title="Your email provider's outgoing (SMTP) server.">
+
+<label for="smtp_port">Port</label>
+<input type="text" id="smtp_port" name="smtp_port" value="{{ email.smtp_port or '587' }}"
+       placeholder="587" title="587 for most providers, 465 for some. Your provider says which.">
+
+<label for="smtp_username">Username</label>
+<input type="text" id="smtp_username" name="smtp_username" value="{{ email.smtp_username or '' }}"
+       placeholder="you@example.com" title="Usually the full email address.">
+
+<label for="smtp_password">Password</label>
+<input type="password" id="smtp_password" name="smtp_password" value=""
+       placeholder="{{ '••••••••  (already set — leave blank to keep it)' if email.smtp_password else '' }}"
+       title="Stored encrypted and never shown back to you. Leave blank to keep the one already saved.">
+
+<label class="cms-inline-label" title="Nearly always yes. Your provider will say if not.">
+  <input type="checkbox" name="smtp_use_tls" value="1" {{ 'checked' if (email.smtp_use_tls or '1') != '0' }}>
+  Use a secure connection (TLS)
+</label>
+
+<label for="from_email">Send from</label>
+<input type="email" id="from_email" name="from_email" value="{{ email.from_email or '' }}"
+       placeholder="hello@example.com" title="The address your emails appear to come from.">
+
+<label for="to_email">Contact form messages go to</label>
+<input type="email" id="to_email" name="to_email" value="{{ email.to_email or '' }}"
+       placeholder="you@example.com" title="Where a message from your Contact form lands.">

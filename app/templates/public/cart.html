@@ -1,0 +1,55 @@
+{% extends "public/checkout_shell.html" %}
+{% block title %}Your basket{% endblock %}
+{% block checkout_content %}
+<h1>Your basket</h1>
+
+{% for problem in problems %}
+<p class="cms-account-flash bad">{{ problem }}</p>
+{% endfor %}
+
+{% if not lines %}
+  <p class="cms-account-sub">There's nothing in it yet.</p>
+  <p><a href="{{ url_for('public.home') }}">Back to the site</a></p>
+{% else %}
+<ul class="cms-cart-list">
+  {% for line in lines %}
+  <li class="cms-cart-line">
+    {% if line.image %}<img src="{{ line.image }}" alt="" class="cms-cart-thumb">{% endif %}
+    <div class="cms-cart-detail">
+      <strong>{{ line.name }}</strong>
+      <span class="cms-account-sub">{{ '%.2f'|format(line.amount / 100) }} {{ line.currency }} each
+        {%- if line.stock is not none %} · only {{ line.stock }} left{% endif %}</span>
+    </div>
+    <form method="post" action="{{ url_for('public.cart_update') }}" class="cms-cart-qty">
+      <input type="hidden" name="price_id" value="{{ line.price_id }}">
+      <label class="cms-visually-hidden" for="qty-{{ loop.index }}">Quantity of {{ line.name }}</label>
+      <input type="number" id="qty-{{ loop.index }}" name="quantity" value="{{ line.quantity }}"
+             min="0" max="{{ line.stock if line.stock is not none else 99 }}"
+             title="How many you want — set it to 0 to take it out">
+      <button type="submit" class="cms-cart-update" title="Update the quantity">Update</button>
+    </form>
+    <span class="cms-cart-total">{{ '%.2f'|format(line.line_total / 100) }} {{ line.currency }}</span>
+  </li>
+  {% endfor %}
+</ul>
+
+<dl class="cms-cart-sums">
+  <dt>Subtotal</dt><dd>{{ '%.2f'|format(subtotal / 100) }} {{ currency }}</dd>
+  {% if shipping %}
+  <dt>{{ shipping.label }}</dt>
+  <dd>{{ 'Free' if not shipping.amount else '%.2f'|format(shipping.amount / 100) ~ ' ' ~ currency }}</dd>
+  {% endif %}
+  <dt class="is-total">Total</dt><dd class="is-total">{{ '%.2f'|format(total / 100) }} {{ currency }}</dd>
+</dl>
+<p class="cms-account-sub">Any tax is worked out by Stripe at the payment step, along with your delivery address if we're posting something to you.</p>
+
+{% if stripe_ready %}
+<form method="post" action="{{ url_for('public.checkout') }}" class="cms-cart-checkout">
+  <button type="submit" class="cms-action-btn" title="Pay securely through Stripe — card details never touch this site">Checkout</button>
+</form>
+{% else %}
+<p class="cms-account-flash bad">This site can't take payments yet.</p>
+{% endif %}
+<p><a href="{{ url_for('public.home') }}">Keep shopping</a></p>
+{% endif %}
+{% endblock %}

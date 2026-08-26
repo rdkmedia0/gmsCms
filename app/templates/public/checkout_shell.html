@@ -1,0 +1,20 @@
+{# Minimal shell for the checkout return page: the buyer is coming back
+   from Stripe, mid-transaction, and the one thing that matters is a clear
+   answer about their money. It borrows the site's own stylesheet so it
+   still looks like the site, without pulling in the editor chrome. #}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Order — {{ site_settings.site_title if site_settings else 'My Site' }}{% endblock %}</title>
+  <link rel="stylesheet" href="{{ static_url('css/site-base.css') }}">
+  {% if google_fonts_url %}<link rel="stylesheet" href="{{ google_fonts_url }}">{% endif %}
+  {% if color_css %}<style>{{ color_css | safe }}</style>{% endif %}
+</head>
+<body class="cms-checkout-page">
+  <main class="cms-checkout-box">
+    {% block checkout_content %}{% endblock %}
+  </main>
+</body>
+</html>

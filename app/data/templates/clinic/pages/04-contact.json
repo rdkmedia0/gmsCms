@@ -1,0 +1,26 @@
+{
+  "title": "Contact",
+  "slug_suffix": "contact",
+  "page_type": "standard",
+  "meta_description": "Booking an appointment.",
+  "sections": [
+    [
+      "text",
+      "Booking",
+      "<p>Ring reception or book online. If it is urgent, say so — we keep two slots a day back.</p>",
+      {}
+    ],
+    [
+      "text",
+      "Opening hours",
+      "<p>Monday to Friday, 7:30 till 7</p><p>Saturday mornings</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-contact-form-tool\"></div>",
+      {}
+    ]
+  ]
+}

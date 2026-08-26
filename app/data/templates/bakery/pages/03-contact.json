@@ -1,0 +1,26 @@
+{
+  "title": "Contact",
+  "slug_suffix": "contact",
+  "page_type": "standard",
+  "meta_description": "Where we are, and ordering ahead.",
+  "sections": [
+    [
+      "text",
+      "Ordering",
+      "<p>Ring or email by Thursday for weekend bread. For anything larger than six loaves give us a few days.</p>",
+      {}
+    ],
+    [
+      "text",
+      "Opening hours",
+      "<p>Wednesday to Sunday, 7 till sold out</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-contact-form-tool\"></div>",
+      {}
+    ]
+  ]
+}

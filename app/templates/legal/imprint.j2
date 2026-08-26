@@ -1,0 +1,17 @@
+<h2>Site details</h2>
+<p>This website is run by:</p>
+<p>
+  <strong>{{ business }}</strong><br>
+  {# One line at a time, so each is escaped on its own. `| safe` on
+     something typed into a form is a habit worth not having, even where
+     the person typing it is the site owner. #}
+  {% for line in address.split('\n') if line.strip() %}{{ line.strip() }}<br>
+  {% endfor %}
+  Email: <a href="mailto:{{ email }}">{{ email }}</a>
+  {%- if phone %}<br>Phone: {{ phone }}{% endif %}
+  {%- if vat_number %}<br>VAT number: {{ vat_number }}{% endif %}
+  {%- if company_number %}<br>Company number: {{ company_number }}{% endif %}
+</p>
+{% if responsible %}
+<p>Responsible for the content of this site: {{ responsible }}.</p>
+{% endif %}

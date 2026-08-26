@@ -1,0 +1,22 @@
+/* "Old Granary" — the most image-led of the ten. Type stays out of
+   the way entirely: a high-contrast serif at large sizes, wide letter
+   spacing on the small stuff, and photographs carrying the whole feeling
+   of the place. */
+:root {
+  --site-heading-font-family: "Cormorant Garamond", Georgia, serif;
+  --site-font-family: "Lato", -apple-system, "Segoe UI", sans-serif;
+  --site-heading-weight: 500;
+  --site-body-bg: var(--accent-50, #faf8f5);
+}
+body { background: var(--site-body-bg, #faf8f5); color: var(--secondary-900, #3a3730); }
+.site-header { background: rgba(250,248,245,.9); border-bottom: none; }
+.site-brand { font-family: "Cormorant Garamond", Georgia, serif; font-size: 1.55rem;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--primary-base, #42566b); }
+.site-nav a { color: var(--secondary-800, #5c5647); letter-spacing: .14em; text-transform: uppercase; font-size: .74rem; }
+.site-nav a:hover { color: var(--wp--preset--color--accent, #c98a3e); }
+.site-footer { background: var(--secondary-900, #3a3730); color: var(--accent-100, #e7e1d6); }
+.site-footer a { color: var(--accent-100, #e7e1d6); }
+h1, h2 { font-weight: 400; letter-spacing: .02em; }
+.cms-banner-overlay h2 { font-family: "Cormorant Garamond", Georgia, serif; font-weight: 300;
+  font-size: clamp(2.2rem, 6vw, 4rem); letter-spacing: .06em; }
+.cms-quote blockquote { font-family: "Cormorant Garamond", Georgia, serif; font-size: 1.5rem; }

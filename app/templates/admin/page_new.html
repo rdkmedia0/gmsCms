@@ -1,0 +1,32 @@
+{% extends "admin/base.html" %}
+{% block title %}Add Page — My Site Admin{% endblock %}
+{% block content %}
+<h1>Add a New Page</h1>
+<div class="card">
+  <form method="post">
+    <label for="title">Page Name</label>
+    <input type="text" id="title" name="title" placeholder="e.g. About Us" autofocus required>
+
+    <label for="page_layout">Start it as</label>
+    {# A starting point, not a kind of page. Every one of these makes an
+       ordinary page — the difference is only which tools are already on
+       it, and any of them can be changed afterwards. #}
+    <select id="page_layout" name="page_layout" title="Which tools this page starts with. You can change any of it afterwards.">
+      {% for value, label, blurb in page_layouts %}
+      <option value="{{ value }}" {{ 'selected' if value == 'standard' }}>{{ label }} &mdash; {{ blurb }}</option>
+      {% endfor %}
+    </select>
+    <p class="hint">These are starting points, not fixed kinds of page. A Blog page is
+      an ordinary page with a Blog tool already on it &mdash; you can add more tools, put a
+      second blog beside the first, or drop a Blog tool on any other page later.</p>
+
+    {#  The newsletter tick box that used to sit here is gone: it asked
+        the same question the starting point above already asks. Choosing
+        "Newsletter" there makes one, and the page's own settings can turn
+        it off again later. #}
+
+    <button type="submit" class="btn btn-primary">Create Page</button>
+    <a href="{{ url_for('admin.dashboard') }}" class="btn">Cancel</a>
+  </form>
+</div>
+{% endblock %}

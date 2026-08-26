@@ -1,0 +1,26 @@
+{
+  "title": "What we do",
+  "slug_suffix": "services",
+  "page_type": "standard",
+  "meta_description": "Plumbing, heating and bathrooms, with prices.",
+  "sections": [
+    [
+      "text",
+      "Prices",
+      "<p>Call-out includes the first half hour. Everything else is quoted before it starts.</p>",
+      {}
+    ],
+    [
+      "html",
+      "Common work",
+      "<table class=\"cms-table\"><thead><tr><th>Job</th><th>From</th><th>Notes</th></tr></thead><tbody><tr><td>Call-out and first 30 minutes</td><td>95</td><td>Same day where we can</td></tr><tr><td>Boiler service</td><td>140</td><td>About an hour</td></tr><tr><td>Boiler replacement</td><td>2,400</td><td>Quoted after a visit, never over the phone</td></tr><tr><td>Bathroom, fitted</td><td>4,500</td><td>Two to three weeks, depending on tiling</td></tr><tr><td>Radiator swap</td><td>180</td><td>Per radiator, same visit</td></tr><tr><td>Leak tracing</td><td>120</td><td>Before any wall comes down</td></tr></tbody></table>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-faq cms-faq-style-list\"><details class=\"cms-faq-item\" name=\"cms-faq-trades-services-2\"><summary class=\"cms-faq-q\">Do you charge for a quote?</summary><div class=\"cms-faq-a\">No. For anything bigger than a tap we come and look, and that visit costs nothing.</div></details><details class=\"cms-faq-item\" name=\"cms-faq-trades-services-2\"><summary class=\"cms-faq-q\">Are you insured?</summary><div class=\"cms-faq-a\">Public liability and Gas Safe registration, both current. Ask and we will send the certificates.</div></details><details class=\"cms-faq-item\" name=\"cms-faq-trades-services-2\"><summary class=\"cms-faq-q\">How soon can you come?</summary><div class=\"cms-faq-a\">Emergencies the same day, nearly always. Booked work is usually within the week.</div></details></div>",
+      {}
+    ]
+  ]
+}

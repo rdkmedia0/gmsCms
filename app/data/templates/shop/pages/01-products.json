@@ -1,0 +1,26 @@
+{
+  "title": "The shop",
+  "slug_suffix": "products",
+  "page_type": "standard",
+  "meta_description": "Everything currently in stock.",
+  "sections": [
+    [
+      "text",
+      "In stock now",
+      "<p>What is on the shelves today. Stock counts are real — when it says two left, there are two left.</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-shop\" data-columns=\"4\" data-description=\"0\"></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-faq cms-faq-style-cards\"><details class=\"cms-faq-item\" name=\"cms-faq-shop-products-2\"><summary class=\"cms-faq-q\">How quickly do you post?</summary><div class=\"cms-faq-a\">Same day if you order before two, otherwise the next working day. Everything goes in paper and cardboard, nothing in plastic.</div></details><details class=\"cms-faq-item\" name=\"cms-faq-shop-products-2\"><summary class=\"cms-faq-q\">Can I collect instead?</summary><div class=\"cms-faq-a\">Yes, and it is free. Choose collection at checkout and we will have it behind the counter with your name on it.</div></details><details class=\"cms-faq-item\" name=\"cms-faq-shop-products-2\"><summary class=\"cms-faq-q\">What if it arrives broken?</summary><div class=\"cms-faq-a\">Send us a photograph and we will replace it or refund you, whichever you prefer. No need to send the pieces back.</div></details></div>",
+      {}
+    ]
+  ]
+}

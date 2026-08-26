@@ -1,0 +1,19 @@
+{#  The one answer everything else uses: the browser tab, the heading of
+    every email, the name on the legal pages, and the name the site is
+    saved under. Asked first for that reason. #}
+<p class="hint">This is the name people see: in the browser tab, at the top of every email you
+  send, and on your legal pages. You can change it whenever you like.</p>
+
+<label for="site_title">What is the site called?</label>
+<input type="text" id="site_title" name="site_title" maxlength="120" required autofocus
+       value="{{ site.site_title if site.site_title != 'My Site' else '' }}"
+       placeholder="Flour &amp; Salt"
+       title="Your business or your own name — whatever people would call this site.">
+
+<label for="site_tagline">And a line about it (optional)</label>
+<input type="text" id="site_tagline" name="site_tagline" maxlength="200"
+       value="{{ site.site_tagline or '' }}"
+       placeholder="Sourdough and pastry, baked every morning"
+       title="One short line shown under the name in some layouts. Leave it blank if you would rather not.">
+<p class="hint">Once you have told this site its own name, choosing a different look can never
+  change it &mdash; a template brings a design and some example pages, not an identity.</p>

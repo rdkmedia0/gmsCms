@@ -1,0 +1,37 @@
+{
+  "name": "CV / Resume",
+  "icon": "📄",
+  "description": "A personal resume site — profile, experience and skills tables, an about/philosophy page, education, case-study posts, and a downloadable PDF.",
+  "google_fonts_url": "/static/fonts/grotesk-inter.css",
+  "palette": [
+    {
+      "slug": "primary",
+      "name": "Primary",
+      "color": "#1a1a1a"
+    },
+    {
+      "slug": "secondary",
+      "name": "Secondary",
+      "color": "#c81e3a"
+    },
+    {
+      "slug": "accent",
+      "name": "Accent",
+      "color": "#2f6fed"
+    }
+  ],
+  "nav_layout": "minimal",
+  "page_layout": "none",
+  "footer_layout": "simple",
+  "business_name": "Jordan Avery",
+  "footer_contact": {
+    "email": "jordan.avery@example.com",
+    "website": "https://linkedin.com/in/jordanavery"
+  },
+  "footer_blurb": "Thanks for stopping by — always open to a conversation about product and design.",
+  "slug": "cv",
+  "has_content": true,
+  "shape_override": "sharp",
+  "shadow_override": "none",
+  "tagline": "Engineer, team lead, occasional writer"
+}

@@ -1,0 +1,211 @@
+{% extends "admin/base.html" %}
+{% block title %}Newsletters — My Site Admin{% endblock %}
+{% block content %}
+<h1>Email</h1>
+{#  One section, three screens: writing, who it goes to, and how it
+    leaves the building. They are separate screens because they are used
+    at different moments -- but they all stand or fall on the same mail
+    setup, so they are reachable from each other. #}
+{% set tabs = [
+  ("Newsletters", url_for('admin.newsletters'), request.endpoint == 'admin.newsletters'),
+  ("Email list", url_for('admin.subscriber_list'), request.endpoint == 'admin.subscriber_list'),
+  ("Sending email", url_for('admin.settings_email'), request.endpoint == 'admin.settings_email'),
+] %}
+{% include "partials/tabs.html" %}
+
+<p class="hint">A newsletter is just a page. Write it in the normal editor with the same tools you use everywhere else, then send it to your list from here — and because it stays on the site, anyone can read it later without digging through their inbox.</p>
+
+{% if not email_ready %}
+<p class="flash flash-warning">Email isn't set up, so nothing can be sent yet. <a href="{{ url_for('admin.settings_email') }}">Set it up →</a></p>
+{% endif %}
+{% if not has_address %}
+<p class="flash flash-warning">Add your postal address on <a href="{{ url_for('admin.legal_pages') }}">Legal pages</a> before sending. An email to a list has to carry it — that's the rule in Europe, Switzerland and the US alike.</p>
+{% endif %}
+
+<div class="card">
+  <div class="integration-head">
+    <h2>{{ counts.active }} on the list, {{ counts.customers }} {{ 'customer' if counts.customers == 1 else 'customers' }}</h2>
+    <a class="btn btn-small" href="{{ url_for('admin.subscriber_list') }}" title="See who has signed up and what they agreed to">Manage the list</a>
+  </div>
+  <p class="hint">Sending goes one message at a time, each with its own unsubscribe link, so it takes a few seconds per person. Sent from: <code>{{ sender_line or 'not set yet' }}</code></p>
+</div>
+
+{#  The two pieces of writing that wrap every issue -- and, under them,
+    the two that are not the owner's to change. Showing those greyed out
+    rather than leaving them off the screen: an owner who cannot see the
+    unsubscribe line assumes it is missing, and the one who wants it gone
+    should be told plainly that it is not going. #}
+<div class="card">
+  <div class="card-header"><h2>How every email opens and closes</h2></div>
+  <p class="hint">Written once and used by every send &mdash; a page or a post. Plain writing, not code: leave a blank line to start a new paragraph. Two shortcuts you can type: <code>{{ '{{title}}' }}</code> becomes the subject line, and <code>{{ '{{link}}' }}</code> becomes the address of the online copy (nothing at all when the page is off the site).</p>
+  <form method="post" action="{{ url_for('admin.newsletter_wrapper') }}">
+    <label for="newsletter_intro">Before the letter</label>
+    <textarea id="newsletter_intro" name="newsletter_intro" rows="3"
+              placeholder="Hello — here is this month's letter."
+              title="Sits at the top of every newsletter, above whatever you are sending.">{{ wrapper.newsletter_intro }}</textarea>
+
+    <label for="newsletter_outro">After it</label>
+    <textarea id="newsletter_outro" name="newsletter_outro" rows="3"
+              placeholder="Thanks for reading. Reply to this if you want to tell us something."
+              title="Sits at the foot of every newsletter, above the address and unsubscribe line.">{{ wrapper.newsletter_outro }}</textarea>
+
+    <div class="cms-newsletter-fixed" title="Added to every message by this app. It cannot be edited or removed: an email to a list has to carry a postal address and a working unsubscribe link, and a template that could delete them would be a template that could break the law.">
+      <p class="hint"><strong>Always added, and not editable:</strong></p>
+      <p class="hint">{{ wrapper_sender_line or 'Your business name and postal address — set on the Legal pages screen' }}<br>
+      You are getting this because you asked us to. <u>Unsubscribe</u>.</p>
+    </div>
+
+    <button type="submit" class="btn btn-small btn-primary" title="Save the greeting and the sign-off">Save</button>
+  </form>
+</div>
+
+{% if not pages %}
+<div class="card">
+  <p>No newsletters yet. Make a new page and start it as a <strong>Newsletter</strong> — it arrives with something to type over, and everything else about it is an ordinary page. Any page you already have can become one from its own settings.</p>
+  <a class="btn btn-primary btn-small" href="{{ url_for('admin.page_new') }}" title="Create a newsletter page">Write one</a>
+</div>
+{% else %}
+{% for p in pages %}
+{% set last = sends.get(p.id) %}
+<div class="card">
+  <div class="integration-head">
+    <h2>{{ p.title }}</h2>
+    <span class="integration-badge {{ 'is-on' if last else 'is-off' }}">
+      {% if last %}sent {{ last.sent_at[:10] }} to {{ last.recipients }}{% else %}not sent yet{% endif %}
+    </span>
+  </div>
+  <div class="integration-actions">
+    <a class="btn btn-small" href="{{ url_for('public.page', slug=p.slug) }}" target="_blank" rel="noopener" title="Open the page itself — write it here, the same as any other page">{{ 'Read it' if p.is_public else 'Open it (off the site)' }}</a>
+    <a class="btn btn-small" href="{{ url_for('admin.newsletter_preview', page_id=p.id) }}" target="_blank" rel="noopener" title="See exactly what lands in an inbox — plainer than the page, on purpose">Preview the email</a>
+  </div>
+  <form method="post" action="{{ url_for('admin.newsletter_send', page_id=p.id) }}" class="inline-form">
+    <label for="subject-{{ p.id }}">Subject line</label>
+    <input type="text" id="subject-{{ p.id }}" name="subject" value="{{ p.title }}" maxlength="120"
+           title="What people see in their inbox. The page title is used if you leave it.">
+    {#  The same choice the page itself offers, so the two places cannot
+        disagree about what "send" means. #}
+    <label for="audience-{{ p.id }}">To</label>
+    <select id="audience-{{ p.id }}" name="audience"
+            title="Who this goes to. A customer is somebody on the list who has paid for something, or who you have flagged as one on the Email list screen.">
+      {% for key, label in audiences %}
+      <option value="{{ key }}">{{ label }} ({{ audience_counts[key] }})</option>
+      {% endfor %}
+    </select>
+    <label for="parts-{{ p.id }}">Send</label>
+    <select id="parts-{{ p.id }}" name="parts"
+            title="Which part of the page goes out. Sections are numbered from the top of the page.">
+      {% for value, label in send_choices.get(p.id, []) %}
+      <option value="{{ value }}">{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-primary btn-small"
+            {{ 'disabled' if not email_ready or not has_address or not counts.active }}
+            data-confirm="You are about to send &quot;{{ p.title }}&quot; to {{ counts.active }} {{ 'person' if counts.active == 1 else 'people' }}. This cannot be taken back."
+            data-confirm-danger="1"
+            title="Send this page to everyone on the list">
+      {{ 'Send again' if last else 'Send to the list' }}
+    </button>
+  </form>
+  {% if last %}
+  <p class="hint">Last sent {{ last.sent_at[:16] }} to {{ last.recipients }}{% if last.failed %}, {{ last.failed }} didn't go through{% endif %}. Sending again goes to everyone currently on the list, including anyone who joined since.</p>
+  {% endif %}
+</div>
+{% endfor %}
+{% endif %}
+
+{#  Posts. A blog post is already everything an issue needs -- a title,
+    a date, a permanent address that survives the site being rearranged,
+    and an online copy for the "read it online" link -- so sending one is
+    the common path, and a newsletter PAGE is for the note that should
+    not join the blog. #}
+{% for entry in blogs %}
+{% if entry.posts %}
+<div class="card">
+  <div class="integration-head">
+    <h2>{{ entry.blog.name }}</h2>
+    <span class="hint">{{ entry.posts | length }} most recent {{ 'post' if entry.posts | length == 1 else 'posts' }}</span>
+  </div>
+  <div class="table-scroll">
+    <table class="simple-table">
+      <thead><tr><th>Post</th><th>Sent</th><th>To</th><th>Subject</th><th class="col-icons">Action</th></tr></thead>
+      <tbody>
+        {% for post in entry.posts %}
+        {% set last = post_sends.get(post.id) %}
+        <tr>
+          <td>
+            {{ post.title }}
+            {% if not post.published_at %}<br><span class="hint" title="Written but not published. Sending publishes it first, so the link in the email works.">draft</span>{% endif %}
+          </td>
+          <td class="hint">{% if last %}{{ last.sent_at[:10] }}{% if last.audience == 'customers' %} · customers{% endif %}{% else %}&mdash;{% endif %}</td>
+          <td>
+            <form method="post" id="send-post-{{ post.id }}"
+                  action="{{ url_for('admin.newsletter_send_post', post_id=post.id) }}"></form>
+            <select name="audience" form="send-post-{{ post.id }}"
+                    title="Who this goes to. A customer is somebody on the list who has paid for something, or who you have flagged as one.">
+              {% for key, label in audiences %}
+              <option value="{{ key }}">{{ label }} ({{ audience_counts[key] }})</option>
+              {% endfor %}
+            </select>
+          </td>
+          <td>
+            <input type="text" name="subject" form="send-post-{{ post.id }}" value="{{ post.title }}"
+                   maxlength="120" title="What people see in their inbox. The post's title is used if you leave it.">
+          </td>
+          <td class="col-icons">
+            <span class="row-actions">
+              <a class="icon-btn" target="_blank" rel="noopener"
+                 href="{{ url_for('admin.newsletter_preview_post', post_id=post.id) }}"
+                 data-confirm="You are about to open a preview of the email this post would send — plainer than the page, on purpose. Nothing is sent."
+                 title="See exactly what lands in an inbox">👁</a>
+              <a class="icon-btn" href="{{ url_for('admin.blog_post_edit', blog_id=entry.blog.id, post_id=post.id) }}"
+                 data-confirm="You are about to open &quot;{{ post.title }}&quot; to edit it."
+                 title="Edit this post">✎</a>
+              <button type="submit" class="icon-btn" form="send-post-{{ post.id }}"
+                      {{ 'disabled' if not email_ready or not has_address or not counts.active }}
+                      data-confirm="You are about to email &quot;{{ post.title }}&quot; to the audience chosen beside it. It cannot be taken back.{% if not post.published_at %} This post is a draft, so it will be published first — otherwise the “read it online” link in the email would not work.{% endif %}"
+                      data-confirm-danger="1"
+                      title="{{ 'Publish this post and send it to the list' if not post.published_at else 'Send this post to the list' }}">✉</button>
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endfor %}
+
+{% if history %}
+<div class="card">
+  <h2>What has gone out</h2>
+  <div class="table-scroll">
+    <table class="simple-table">
+      <thead><tr><th>When</th><th>Subject</th><th>Sent to</th></tr></thead>
+      <tbody>
+        {% for h in history %}
+        <tr>
+          <td>{{ h.sent_at[:16] }}</td>
+          {#  A record outlives what it was sent from: the page or post
+              may have been deleted since, and forty emails having gone
+              out is still true. So the link is only offered when there
+              is somewhere to point it. #}
+          <td>
+            {% if h.target_kind == 'post' and h.blog_slug and h.post_published %}
+            <a href="{{ url_for('public.blog_post', slug=h.blog_slug, post_slug=h.post_slug) }}" target="_blank" rel="noopener">{{ h.subject or h.title }}</a>
+            {% elif h.target_kind == 'page' and h.page_slug and h.page_public %}
+            <a href="{{ url_for('public.page', slug=h.page_slug) }}" target="_blank" rel="noopener">{{ h.subject or h.title }}</a>
+            {% else %}
+            {{ h.subject or h.title }}
+            {% endif %}
+          </td>
+          <td>{{ h.recipients }}{% if h.audience == 'customers' %} <span class="hint">(customers)</span>{% endif %}{% if h.failed %} <span class="hint">({{ h.failed }} failed)</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

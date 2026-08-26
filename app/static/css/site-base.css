@@ -1,0 +1,2085 @@
+/*  Shades come from the ramp, never from a grey mix
+    ------------------------------------------------
+    Every palette colour publishes eleven shades (see services/palette.py's
+    ramp()), and the page painted with the primary ones and NONE of the
+    secondary or accent ones — zero uses of either. Where a rule wanted a
+    paler secondary for a border, or a tint of accent for a fill, it
+    hand-rolled one: color-mix(var(--accent) 18%, #eee).
+
+    That is worse than it looks. It ignores a shade that already exists,
+    and mixing toward a fixed grey desaturates the result — so the two
+    supporting colours of a three-colour palette showed up as neutrals
+    wearing a hint of the brand, and a site built from three colours read
+    as one colour plus two greys.
+
+    So: reach for var(--<role>-<step>). The old computed value stays as
+    the fallback, which is what a site with no palette at all still gets. */
+/* Base structural styles for public site — templates layer visual styling on top.
+   The --site-* typography scale here is the single source of truth for both
+   the public site and the admin backend (admin.css reads the same variables,
+   redefined identically in admin/base.html) so headers/nav/menus keep a
+   consistent size and feel across front and back end. A theme's own CSS can
+   override --site-font-family/--site-heading-font-family to swap fonts
+   without touching the size scale. */
+:root {
+  --site-font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --site-heading-font-family: var(--site-font-family);
+  --site-brand-size: 22px;
+  --site-nav-size: 16px;
+  --site-nav-weight: 600;
+  --site-heading-weight: 700;
+  --site-h1-size: 42px;
+  --site-h2-size: 32px;
+  --site-h3-size: 24px;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; font-family: var(--site-font-family); line-height: 1.6; border: var(--site-body-border, none); }
+/* Optional, independent of Body — unset (the default) means the footer
+   just inherits Body through normal cascade, exactly as it always has;
+   only set once an admin explicitly picks a distinct footer font (see
+   template_footer_font). */
+.site-footer { font-family: var(--site-footer-font-family, inherit); }
+img { max-width: 100%; height: auto; }
+
+.site-header { position: relative; }
+/* Both zones hold arbitrary tool sections (whatever the admin drops in —
+   Text, Image, Menu, a second Menu, ...) stacked top-to-bottom exactly
+   like the page body: full width, one per row, standard divider between
+   them. This is not optional/decorative — it's the same conventional
+   section structure every zone uses, so a section here behaves exactly
+   like a section anywhere else (same box, same divider, same tool
+   panel). Never give this flex-row/shrink-wrap/centering behavior again —
+   that breaks the box model (sections and controls render as floating,
+   disconnected pills instead of full-width stacked boxes). */
+.site-header-zone, .site-sidebar-zone {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 18px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+.site-header-zone .cms-menu, .site-sidebar-zone .cms-menu { margin: 0; }
+
+.site-content { max-width: 1000px; margin: 0 auto; padding: 24px; }
+
+/* ---------- Header arrangement (settings.nav_layout) ----------
+   This governs the header's own content ARRANGEMENT ONLY — never its
+   width or position. Width is exclusively the section width picker's
+   job (per-section Auto/Full/Custom, with the site-wide default from
+   the Dashboard) — the same control every other zone's sections use.
+   Header layout must never re-introduce a second, competing width
+   mechanism on top of that. It also must never make an individual
+   section shrink-wrap or sit side-by-side with another — that's the one
+   conventional-section rule every zone shares (a section is always full
+   width OF ITS ZONE, always stacked; a theme wanting side-by-side
+   content uses a Columns section, same as anywhere else on the page).
+   "topbar" (left-aligned) is the default and needs no override here. */
+.nav-layout-centered .site-header-zone { align-items: center; text-align: center; }
+.nav-layout-split .site-header-zone .cms-menu-links { justify-content: space-between; width: 100%; }
+
+/* minimal: the zone's content is hidden behind a ☰ toggle until clicked
+   (see site.js) — deliberately the smallest header footprint. Applies to
+   whatever's actually in the zone, not specifically a nav element. Still
+   full-width/stacked internally (align-items: stretch, inherited) once
+   open — only its own box is a floating overlay panel, not the sections
+   inside it. The toggle sits top-right and the panel drops from that
+   same corner — matching the header-layout picker's own diagram icon,
+   which is what sets the user's expectation for where this lands.
+   Editing renders this identically to a visitor (same corner, same
+   floating panel, same size) — only the section toolbar inside differs,
+   because edit mode needs it and a visitor doesn't. */
+.nav-layout-minimal .site-header { display: flex; justify-content: flex-end; }
+.nav-layout-minimal .site-header-zone {
+  display: none; position: absolute; top: 100%; right: 24px; z-index: 40;
+  width: 280px; max-width: calc(100vw - 48px); background: inherit;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12); border-radius: 0 0 8px 8px;
+}
+.nav-layout-minimal .site-header-zone.cms-nav-open { display: flex; }
+.nav-layout-minimal .cms-nav-toggle { display: inline-flex; }
+.cms-nav-toggle {
+  display: none; align-items: center; justify-content: center;
+  width: 36px; height: 36px; font-size: 18px; border: 1px solid currentColor;
+  background: none; color: inherit; border-radius: 6px; cursor: pointer; opacity: 0.85;
+  margin: 18px 24px;
+}
+.cms-nav-toggle:hover { opacity: 1; }
+
+/* ---------- Sidebar zone — a vertical rail, present whenever it has
+   content (or while editing, so there's something to add to). Not tied
+   to any "layout" choice; any theme/arrangement can have one. ---------- */
+body.has-sidebar {
+  display: flex;
+  flex-wrap: wrap;
+  min-height: 100vh;
+}
+body.has-sidebar > .cms-admin-bar { flex: 0 0 100%; order: 0; }
+body.has-sidebar > .site-header { flex: 0 0 100%; order: 1; }
+body.has-sidebar > .site-sidebar { flex: 0 0 var(--cms-sidebar-width, 240px); order: 2; }
+/* No theme gives the sidebar rail its own background by default (it just
+   shows the page background through) — these are purely additive, only
+   visible once a zone-level override is actually set (see
+   template_zone_style / _theme_override_css). */
+.site-sidebar:not(.site-sidebar-right) { background: var(--site-sidebar-bg, transparent); border-right: var(--site-sidebar-border, none); }
+.site-sidebar.site-sidebar-right { background: var(--site-sidebar-right-bg, transparent); border-left: var(--site-sidebar-right-border, none); }
+/* Reach is the sidebar section's own Height control (Auto/Full/Custom —
+   see the .cms-section[data-layout-width] rules further down), not a
+   separate setting: "Auto" (default) runs the rail only alongside
+   .site-content, between the header and footer — both stay full width.
+   "Full" instead runs it the entire height of the page, pushing the
+   header, body, and footer all over to share the remaining width — a
+   genuinely different outer layout, so it switches the whole body to a
+   2-column grid rather than the flex-wrap row above. The page template
+   stamps sidebar-reach-full on <body> only when the (single) sidebar
+   section's own layout_width is "full". .cms-admin-bar stays
+   position:fixed and is unaffected either way. */
+/* Either side going Full activates the SAME 3-column grid (left rail /
+   content / right rail) — not two independent layouts — because a grid
+   and a flex-wrap row can't coexist on one <body>. If only one side is
+   Full, the other's own column still exists but collapses to its normal
+   (possibly empty/28px) width via the same --cms-sidebar-width /
+   --cms-sidebar-right-width variables every other rail rule already
+   reads, so it renders correctly in place rather than disappearing (an
+   earlier version only added grid placement for the LEFT rail, silently
+   dropping the right one out of layout the moment grid mode activated
+   for either side). */
+body.has-sidebar.sidebar-reach-full,
+body.has-sidebar.sidebar-right-reach-full {
+  display: grid;
+  grid-template-columns: var(--cms-sidebar-width, 240px) 1fr var(--cms-sidebar-right-width, 240px);
+  min-height: 100vh;
+}
+body.has-sidebar.sidebar-reach-full:has(> .site-sidebar.site-sidebar-empty:not(.site-sidebar-right)),
+body.has-sidebar.sidebar-right-reach-full:has(> .site-sidebar.site-sidebar-empty:not(.site-sidebar-right)) {
+  grid-template-columns: 28px 1fr var(--cms-sidebar-right-width, 240px);
+}
+body.has-sidebar.sidebar-reach-full:has(> .site-sidebar-right.site-sidebar-empty),
+body.has-sidebar.sidebar-right-reach-full:has(> .site-sidebar-right.site-sidebar-empty) {
+  grid-template-columns: var(--cms-sidebar-width, 240px) 1fr 28px;
+}
+body.has-sidebar.sidebar-reach-full:has(> .site-sidebar.site-sidebar-empty:not(.site-sidebar-right)):has(> .site-sidebar-right.site-sidebar-empty),
+body.has-sidebar.sidebar-right-reach-full:has(> .site-sidebar.site-sidebar-empty:not(.site-sidebar-right)):has(> .site-sidebar-right.site-sidebar-empty) {
+  grid-template-columns: 28px 1fr 28px;
+}
+/* Explicit row numbers on header/content/footer, and an explicit span on
+   each sidebar to match (1 / 4, covering exactly those 3 rows) — NOT
+   auto-placement-derived spans like "1 / -1" or "1 / span 3". Both were
+   tried and both were unreliable: -1 doesn't reliably resolve to the
+   true last row without an explicit grid-template-rows, and a bare
+   "span 3" silently assumed header/content/footer were the only other
+   grid items — .cms-admin-bar (position:fixed, meant to be out of grid
+   flow entirely) was still consuming an auto-placed row in testing,
+   which pushed the footer into a 4th row the sidebar's span never
+   reached, leaving it short by exactly the footer's height. Pinning
+   header/content/footer to explicit lines sidesteps whatever else the
+   auto-placement algorithm decides to do with any other grid item. */
+/* .site-content always stays in the middle column alone (row 2), even
+   when only one side is Full — the OTHER side's Auto rail still needs to
+   sit beside it in that same row, so content can't expand into that
+   column. Header/footer are different: at rows 1/3 there's nothing else
+   in whichever column belongs to a non-Full side (that rail only
+   occupies row 2 there), so header/footer stretch into that empty column
+   instead of stopping at the middle one — otherwise that whole column's
+   rows 1/3 render as a visible empty gap the header/footer don't cover. */
+body.has-sidebar.sidebar-reach-full > .site-content,
+body.has-sidebar.sidebar-right-reach-full > .site-content { grid-column: 2; grid-row: 2; }
+body.sidebar-reach-full.sidebar-right-reach-full > .site-header,
+body.sidebar-reach-full.sidebar-right-reach-full > .site-footer { grid-column: 2; }
+body.sidebar-reach-full:not(.sidebar-right-reach-full) > .site-header,
+body.sidebar-reach-full:not(.sidebar-right-reach-full) > .site-footer { grid-column: 2 / 4; }
+body.sidebar-right-reach-full:not(.sidebar-reach-full) > .site-header,
+body.sidebar-right-reach-full:not(.sidebar-reach-full) > .site-footer { grid-column: 1 / 3; }
+body.has-sidebar.sidebar-reach-full > .site-header,
+body.has-sidebar.sidebar-right-reach-full > .site-header { grid-row: 1; }
+body.has-sidebar.sidebar-reach-full > .site-footer,
+body.has-sidebar.sidebar-right-reach-full > .site-footer { grid-row: 3; }
+/* Each rail's row-span depends on its OWN reach flag, not on whichever
+   side actually triggered grid mode — so if only the right rail is Full,
+   the left one (still Auto) sits in just the content row (matching
+   .site-content's own height) instead of also being stretched full page
+   height just because grid mode happens to be active. Independent per
+   side, exactly like their widths already are. */
+body.sidebar-reach-full > .site-sidebar:not(.site-sidebar-right) { grid-column: 1; grid-row: 1 / 4; }
+body.sidebar-right-reach-full:not(.sidebar-reach-full) > .site-sidebar:not(.site-sidebar-right) { grid-column: 1; grid-row: 2; }
+body.sidebar-right-reach-full > .site-sidebar-right { grid-column: 3; grid-row: 1 / 4; }
+body.sidebar-reach-full:not(.sidebar-right-reach-full) > .site-sidebar-right { grid-column: 3; grid-row: 2; }
+/* Zero sections = not activated yet — the rail shouldn't reserve its
+   full 240px (pushing real content over) just because edit mode is on.
+   Collapse to a thin strip at the page's true left edge holding only the
+   "+" hit target; the moment a section exists (user click, or a template
+   that ships with one) it snaps back to the normal full rail width. */
+body.has-sidebar > .site-sidebar.site-sidebar-empty { flex: 0 0 28px; }
+.site-sidebar-empty .site-sidebar-zone { padding-left: 4px; padding-right: 4px; }
+/* max-width intentionally NOT overridden here (it was, previously — that
+   was a real bug): .has-sidebar is present in edit mode on every page,
+   whether or not the sidebar actually holds anything, so an unconditional
+   max-width:none here made every ordinary body section stop respecting
+   Auto/Custom width sizing and stretch edge-to-edge the moment you were
+   just logged in and editing, sidebar content or not. .site-content keeps
+   its normal 1000px cap and self-centers within whatever space the flex
+   row actually gives it — a section explicitly set to Full still bleeds
+   to the true viewport edges via its own 100vw rule below, independent of
+   this. */
+body.has-sidebar > .site-content { flex: 1 1 0; min-width: 0; order: 3; }
+body.has-sidebar > .site-footer { flex: 0 0 100%; order: 4; }
+.site-sidebar-zone {
+  flex-direction: column;
+  /* stretch (the flex default we're restating, not overriding) — a
+     column flex container's cross-axis is width, and align-items:
+     flex-start (tried first) left every child, including the "+ Add
+     section" divider line, shrink-wrapped to its own content width
+     instead of spanning the rail — the divider's line only reached ~1/3
+     of the way across instead of edge to edge. */
+  align-items: stretch;
+  height: 100%; box-sizing: border-box;
+  /* Content reaches every true edge of the space the rail occupies —
+     left, top, and bottom — with zero gap; only the right side keeps
+     padding, for the vertical division line/icon cluster's own room.
+     Without this, the 18px top/bottom padding on the shared
+     .site-header-zone rule above left the section's actual box 36px
+     short of the zone's own top/bottom, even though the section itself
+     was already correctly filling 100% of its (padded) content box. */
+  padding-left: 0; padding-top: 0; padding-bottom: 0;
+}
+/* Direction is now a per-menu choice (see the Menu tool's Direction
+   field / data-menu-direction) rather than forced by whichever zone the
+   menu sits in — .cms-menu-direction-vertical applies regardless of
+   zone. The :not([data-menu-direction]) rule below is compat only, for
+   menus saved before this option existed, so an old sidebar menu doesn't
+   suddenly render horizontal. */
+.cms-menu-direction-vertical { flex-direction: column; align-items: stretch; }
+.cms-menu-direction-vertical .cms-menu-links { flex-direction: column; width: 100%; }
+/* Align (left/center/right) still means the same thing to the admin in
+   either direction, but which flex property expresses it flips once the
+   links stack vertically: justify-content (main axis) becomes the cross
+   axis's job, so it's align-items here instead — a plain
+   align-items:flex-start default (tried first) ignored the picked
+   alignment entirely regardless of which was chosen. */
+.cms-menu-direction-vertical.cms-menu-align-left .cms-menu-links { align-items: flex-start; }
+.cms-menu-direction-vertical.cms-menu-align-center .cms-menu-links { align-items: center; }
+.cms-menu-direction-vertical.cms-menu-align-right .cms-menu-links { align-items: flex-end; }
+.site-sidebar-zone .cms-menu-direction-vertical { width: 100%; }
+.site-sidebar-zone .cms-menu-direction-vertical a { margin-left: 0 !important; padding: 6px 0; }
+.site-sidebar-zone .cms-menu:not([data-menu-direction]) { display: flex; flex-direction: column; gap: 4px; align-items: stretch; width: 100%; }
+.site-sidebar-zone .cms-menu:not([data-menu-direction]) .cms-menu-links { flex-direction: column; }
+.site-sidebar-zone .cms-menu:not([data-menu-direction]).cms-menu-align-left .cms-menu-links { align-items: flex-start; }
+.site-sidebar-zone .cms-menu:not([data-menu-direction]).cms-menu-align-center .cms-menu-links { align-items: center; }
+.site-sidebar-zone .cms-menu:not([data-menu-direction]).cms-menu-align-right .cms-menu-links { align-items: flex-end; }
+.site-sidebar-zone .cms-menu:not([data-menu-direction]) a { margin-left: 0 !important; padding: 6px 0; }
+/* The add/edit/delete divider between sidebar sections is the exact same
+   .cms-section-divider used everywhere else (header/footer/body) — no
+   special vertical variant. Sections in every zone stack top-to-bottom,
+   sidebar included, so the standard horizontal divider (perpendicular to
+   the stacking direction) is already the correct orientation; it's just
+   pulled out to the rail's true left/right edges (canceling the zone's
+   own 24px side padding) so it reads as a real edge-to-edge frame
+   boundary instead of sitting inset like it does in the normal wide body
+   flow. Content itself keeps the normal padding — only this control line
+   bleeds to the edge. Do NOT reintroduce a separate "vertical divider":
+   that broke the standard section/divider box model (icons detached and
+   floating instead of sitting directly above/below their section). */
+/* The line is a single persistent mark on the zone itself, spanning the
+   whole rail top to bottom regardless of whether a section exists yet,
+   so it always reads as one continuous division running the full page
+   height. The icon cluster (edit/+/x) sits ON that line, vertically
+   centered along its full length — not pinned to wherever the section
+   happens to start — so it's taken out of the normal top-to-bottom flow
+   entirely (position: absolute, centered) and rendered as an overlay.
+   This is purely a VISUAL position: the divider's real <button>/<form>
+   elements are unchanged and still fully functional (add/edit/delete
+   still hit the right section), only where they're drawn moves; the
+   section itself is untouched by this and stays the sole normal-flow
+   child determining the zone's layout. */
+.site-sidebar-zone { position: relative; }
+.cms-editing .site-sidebar-zone::before {
+  content: ""; position: absolute; top: 0; bottom: 0; right: 24px; width: 0;
+  border-left: 1px dashed rgba(128, 128, 128, 0.35);
+}
+.site-sidebar-zone > .cms-section-divider {
+  position: absolute; top: 50%; right: 14px; left: auto; bottom: auto;
+  transform: translateY(-50%); z-index: 2;
+  flex-direction: column; align-items: center; justify-content: center;
+  height: auto; width: auto; margin: 0; padding: 0;
+}
+.site-sidebar-zone > .cms-section-divider::before { content: none; }
+.site-sidebar-zone > .cms-section-divider .cms-section-edit-icon { margin-right: 0; margin-bottom: 6px; }
+.site-sidebar-zone > .cms-section-divider .cms-section-divider-delete-btn { margin-left: 0; margin-top: 6px; }
+/* Auto height (the default): the section grows to fill whatever space
+   is actually available in the rail (which already stretches to match
+   .site-content's height) instead of shrinking to its own content — so
+   "Drop a tool here" (or any tool) visibly fills the section, not a
+   small box sitting above a lot of empty rail below it. Full/Custom
+   (below) set an explicit height instead, which naturally overrides
+   this growth. */
+.site-sidebar-zone > .cms-section { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.site-sidebar-zone > .cms-section > .block-blank,
+.site-sidebar-zone > .cms-section > .block-columns { flex: 1 1 auto; display: flex; min-height: 0; }
+.site-sidebar-zone > .cms-section .cms-cell-empty-hint {
+  flex: 1 1 auto; display: flex; align-items: center; justify-content: center; margin: 0;
+}
+.site-sidebar-zone > .cms-section .cms-columns { flex: 1 1 auto; min-height: 0; }
+/* A section "Divide"d while it lives in the sidebar splits into stacked
+   rows, not side-by-side columns — same Divide control, same
+   columns_list data, only the sidebar's own presentation differs. This
+   needs to behave exactly like a normal cell split does for width (2 =
+   two equal halves, 3 = three equal thirds, ...), just on the height
+   axis instead: one column track (rows stack, not sit side by side) and
+   N equal-height row tracks sharing the section's full available height
+   — not auto-sized rows that just shrink to whatever each cell's own
+   content needs, which left them uneven and not reaching the bottom. */
+.site-sidebar-zone .cms-columns {
+  grid-template-columns: 1fr !important;
+  grid-auto-rows: 1fr; height: 100%;
+}
+.site-sidebar-zone .cms-columns-1 { grid-template-rows: repeat(1, 1fr); }
+.site-sidebar-zone .cms-columns-2 { grid-template-rows: repeat(2, 1fr); }
+.site-sidebar-zone .cms-columns-3 { grid-template-rows: repeat(3, 1fr); }
+.site-sidebar-zone .cms-columns-4 { grid-template-rows: repeat(4, 1fr); }
+.site-sidebar-zone .cms-columns-5 { grid-template-rows: repeat(5, 1fr); }
+.site-sidebar-zone .cms-columns-6 { grid-template-rows: repeat(6, 1fr); }
+.site-sidebar-zone .cms-column { min-height: 0; }
+@media (max-width: 860px) {
+  /* A fixed-width rail stops making sense once it can't share the row
+     with real content — fall back to the normal stacked flow. */
+  body.has-sidebar, body.has-sidebar.sidebar-reach-full, body.has-sidebar.sidebar-right-reach-full { display: block; }
+  .site-sidebar-zone { flex-direction: row; flex-wrap: wrap; height: auto; padding-left: 24px; }
+  .cms-editing .site-sidebar-zone::before { content: none; }
+  .site-sidebar-zone > .cms-section-divider {
+    position: static; transform: none; flex-direction: row; align-items: center;
+    justify-content: center; width: 100%; min-height: 14px; padding: 0; margin: 2px 0;
+  }
+  .site-sidebar-zone > .cms-section-divider::before {
+    content: ""; position: absolute; left: 0; right: 0; top: 50%;
+    border-top: 1px dashed rgba(128, 128, 128, 0.35);
+  }
+  .site-sidebar-zone > .cms-section-divider .cms-section-edit-icon { margin-right: 6px; margin-bottom: 0; }
+  .site-sidebar-zone > .cms-section-divider .cms-section-divider-delete-btn { margin-left: 6px; margin-top: 0; }
+  .site-sidebar-zone > .cms-section { flex: 0 1 auto; }
+  .site-sidebar-zone .cms-columns { grid-template-columns: revert !important; }
+  .site-sidebar-zone .cms-menu { flex-direction: row; width: auto; }
+  .site-sidebar-zone .cms-menu .cms-menu-links { flex-direction: row; width: auto; }
+  .site-sidebar-zone .cms-menu a { padding: 0 0 0 20px; }
+}
+
+/* ---------- Right sidebar zone — same rail, mirrored ----------
+   Everything content-side (menu direction/align, the divider, Auto-fill
+   height, Divide-into-rows, drag-resize) is already generic to
+   .site-sidebar-zone and just works here too. Only the OUTER placement
+   (which side of the page, which edge is "true"/outer vs "inner"/facing
+   the center) needs its own rules — .site-sidebar-right is the second
+   class on the same <aside class="site-sidebar site-sidebar-right">, so
+   these need enough specificity to win over the left-rail rules above
+   rather than relying on source order. Full-height reach (pushing the
+   header/footer over) is a left-rail-only capability for now — the right
+   rail always uses the normal body-only row placement below. */
+body.has-sidebar-right > .site-sidebar.site-sidebar-right {
+  flex: 0 0 var(--cms-sidebar-right-width, 240px); order: 4;
+}
+body.has-sidebar-right > .site-sidebar.site-sidebar-right.site-sidebar-empty { flex: 0 0 28px; }
+.site-sidebar-right .site-sidebar-zone { padding-left: 24px; padding-right: 0; }
+.site-sidebar-right.site-sidebar-empty .site-sidebar-zone { padding-left: 4px; padding-right: 0; }
+.cms-editing .site-sidebar-right .site-sidebar-zone::before { left: 24px; right: auto; }
+.site-sidebar-right .site-sidebar-zone > .cms-section-divider { left: 14px; right: auto; }
+.cms-resize-handle-w-right { right: auto; left: -10px; }
+@media (max-width: 860px) {
+  .site-sidebar-right .site-sidebar-zone { padding-left: 24px; padding-right: 24px; }
+}
+
+/* A horizontal section's dragged/custom height (content_height_px) is
+   applied to its .block child, NOT to .cms-section itself — the section
+   stays overflow:visible so its own toolbar and resize handle (both
+   absolutely-positioned direct children sitting slightly outside the
+   box) are never clipped by the scroll container. */
+.cms-section.cms-has-custom-height > .block {
+  height: var(--cms-content-height-px);
+  overflow: auto;
+}
+
+/* "Full width" breaks a section out of .site-content's max-width to span
+   the full viewport, using the standard negative-margin full-bleed trick
+   (works regardless of how deep the section sits in the page, since it's
+   relative to the viewport, not the parent). */
+.cms-section[data-layout-width="full"] {
+  width: 100vw; max-width: 100vw;
+  margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw);
+}
+/* Custom %: same full-bleed trick as "full", scaled by --cms-width-pct
+   (set inline per section — see render_section) instead of the fixed
+   100vw — so it's relative to the viewport like Full is, not to
+   .site-content's already-capped width. That's what actually fixes
+   "Custom 100% doesn't look any different from Auto": before this, % was
+   of the parent (already maxed at 1000px), so 100% == no change at all;
+   now 100% == exactly Full, and smaller values shrink from the same
+   viewport-wide baseline instead of from an already-narrow parent. */
+.cms-section[data-layout-width="custom"] {
+  width: calc(var(--cms-width-pct, 100) * 1vw);
+  max-width: calc(var(--cms-width-pct, 100) * 1vw);
+  margin-left: calc(50% - (var(--cms-width-pct, 100) * 0.5vw));
+  margin-right: calc(50% - (var(--cms-width-pct, 100) * 0.5vw));
+}
+/* Same Width control, reinterpreted as HEIGHT/REACH inside the sidebar —
+   a sidebar section already always spans the rail's full (conventional)
+   width, so width isn't a free axis there. "Full" doesn't need its own
+   height override here: it already fills 100% of the rail exactly like
+   Auto does (via the flex:1 rule below), the only thing it actually
+   changes is REACH — page.html stamps body.sidebar-reach-full when this
+   is set, switching the whole page to the 2-column grid (see
+   body.has-sidebar.sidebar-reach-full above), and it's THAT grid's
+   natural stretch that makes the rail reach the full page height, not a
+   fixed vh pinned to the section. (An earlier version set height:100vh
+   here directly — that fought the grid's own row-driven sizing and
+   produced a rail taller or shorter than the actual page.) Cancel the
+   width-axis full-bleed rules for both, since they'd otherwise pull a
+   sidebar section out to 100vw, breaking the rail. Custom % is the one
+   genuine height override — a deliberate viewport-relative size,
+   independent of reach. */
+.site-sidebar-zone > .cms-section[data-layout-width="full"] {
+  width: auto; max-width: none; margin-left: 0; margin-right: 0;
+}
+.site-sidebar-zone > .cms-section[data-layout-width="custom"] {
+  width: auto; max-width: none; margin-left: 0; margin-right: 0;
+  height: calc(var(--cms-width-pct, 100) * 1vh);
+  min-height: calc(var(--cms-width-pct, 100) * 1vh);
+}
+.block { margin-bottom: 40px; }
+.block-header { text-align: center; padding: var(--site-radius-pad, var(--pad-hero, 40px 20px)); }
+.block-header h1 {
+  font-family: var(--site-heading-font-family);
+  font-weight: var(--site-heading-weight);
+  font-size: var(--site-h1-size);
+  margin-bottom: 12px;
+}
+.block-header .lead { font-size: 20px; }
+
+/* A hyperlink an admin writes inside ordinary body text (Text/Card/
+   Columns cell content) — unlike nav/menu links, which deliberately
+   inherit the surrounding text color (see .cms-menu a), this is real
+   inline body copy, so it should read as a link and follow the site's
+   own primary color instead of falling back to the browser's unbranded
+   default blue/purple. */
+/*  Ordinary links inside editable text.
+
+    :where(a) rather than a bare `a` on purpose. As a plain descendant
+    selector this outranked every component that styles its own links,
+    and each one lost its colour to the surface it was sitting on: three
+    pricing buttons rendered brown on brown, and the footer's email
+    address did the same, leaving a stray envelope emoji floating in a
+    row of invisible text. :where() contributes no specificity, so this
+    still beats a theme's bare `a` while any component class -- a button,
+    a contact detail, whatever gets built next -- wins on its own without
+    having to be named here. The previous fix listed four button classes
+    by hand and would have needed a fifth every time.
+
+    Components that want the surface's own colour just say
+    `color: inherit`, which is what .cms-contact-detail already said and
+    could not have. */
+.cms-wysiwyg-body :where(a),
+.cms-html-preview :where(a) {
+  color: var(--primary, #2563eb); text-decoration: underline;
+}
+.cms-wysiwyg-body :where(a):hover,
+.cms-html-preview :where(a):hover {
+  color: var(--primary-dark, #1d4ed8);
+}
+
+.site-footer { text-align: center; padding: 24px; color: #888; font-size: 14px; }
+
+/* Configurable image sizing — height:auto keeps the aspect ratio correct
+   (this is what fixes images rendering distorted/oversized) */
+.block-image { text-align: center; }
+.block-image .cms-managed-image, .block-image .cms-image-placeholder { height: auto; display: inline-block; }
+/*  A picture with a line under it saying what it is — the Image tool's
+    Caption field. The width classes above target a DESCENDANT
+    .cms-managed-image, so the figure can sit between them and the picture
+    without changing how big it is. */
+.cms-image-figure { margin: 0; display: flex; flex-direction: column; gap: 8px; align-items: inherit; }
+.cms-image-figure figcaption {
+  font-size: 0.9rem; line-height: 1.4; opacity: 0.75;
+}
+.cms-img-small .cms-managed-image, .cms-img-small .cms-image-placeholder { width: 25%; min-width: 160px; }
+.cms-img-medium .cms-managed-image, .cms-img-medium .cms-image-placeholder { width: 50%; min-width: 220px; }
+.cms-img-large .cms-managed-image, .cms-img-large .cms-image-placeholder { width: 75%; }
+.cms-img-full .cms-managed-image, .cms-img-full .cms-image-placeholder,
+.cms-img-normal .cms-managed-image, .cms-img-normal .cms-image-placeholder { width: 100%; }
+.cms-image-placeholder {
+  width: 100%; padding: 60px 20px;
+  background: var(--secondary-50, #f0f1f3); color: #888;
+  border: 2px dashed var(--accent-300, #ccc);
+  border-radius: 8px; box-sizing: border-box;
+}
+.site-nav .cms-nav-item { display: inline-flex; align-items: center; margin-left: 20px; }
+.site-nav .cms-nav-item a { margin-left: 0; }
+
+/* Blog listing + post detail */
+.cms-blog-grid { display: grid; gap: 24px; margin: 20px 0 40px; }
+.cms-blog-grid.cms-blog-grid-3 { grid-template-columns: repeat(3, 1fr); }
+.cms-blog-grid.cms-blog-grid-2 { grid-template-columns: repeat(2, 1fr); }
+.cms-blog-grid.cms-blog-list { grid-template-columns: 1fr; }
+@media (max-width: 700px) {
+  .cms-blog-grid.cms-blog-grid-3, .cms-blog-grid.cms-blog-grid-2 { grid-template-columns: 1fr; }
+}
+.cms-blog-card {
+  display: block; text-decoration: none; color: inherit;
+  border: 1px solid var(--secondary-200, #e2e4e9);
+  overflow: hidden;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+.cms-blog-card:hover {
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--primary-700, #2563eb) 24%, transparent);
+  transform: translateY(-2px);
+}
+.cms-blog-grid.cms-blog-list .cms-blog-card { display: flex; align-items: stretch; }
+.cms-blog-card-image {
+  height: 180px; background-size: cover; background-position: center; background-color: #f0f1f3;
+}
+.cms-blog-grid.cms-blog-list .cms-blog-card-image { width: 220px; height: auto; min-height: 140px; flex-shrink: 0; }
+.cms-blog-card-body { padding: 16px 18px; }
+.cms-blog-card-body h3 { margin: 0 0 6px; font-family: var(--site-heading-font-family); }
+.cms-blog-date { font-size: 13px; color: #888; }
+.cms-blog-post-image { width: 100%; max-height: 420px; object-fit: cover; border-radius: var(--site-radius, 10px); margin-bottom: 20px; }
+.cms-blog-post-body { margin-top: 16px; line-height: 1.7; }
+/* Semantic status colors (draft/sent/error below) are deliberately NOT
+   palette-tinted — amber/green/red carry a fixed, conventional meaning
+   (draft, success, error) that has to stay recognizable regardless of
+   the site's brand colors, the same reason a red error toast doesn't
+   turn into your accent purple just because that's your brand. */
+.cms-blog-draft-badge {
+  display: inline-block; background: #fef3c7; color: #92400e;
+  padding: 4px 10px; border-radius: 6px; font-size: 13px; font-weight: 600;
+}
+
+/* Header tools: breadcrumb + banner */
+/* A breadcrumb is thin wayfinding chrome, not a content block — the flat
+   40px .block margin (meant for spacing between actual content) reads as
+   a large, disconnected gap here. Give it a tight margin on its own, and
+   when it directly follows a Menu section specifically (whether that
+   Menu is a body section, or — the common case — the site's header nav,
+   a completely different zone/container from the breadcrumb's) also
+   tighten THAT section's trailing margin so the two read as one
+   connected nav cluster instead of two floating cards with the page
+   background showing through the gap between them. */
+.block-breadcrumb { margin-bottom: 8px; }
+.cms-section:has(> .block-html .cms-menu):has(+ .cms-section .cms-breadcrumb) > .block {
+  margin-bottom: 8px;
+}
+/* Header-zone content (nav, or whatever else lives there) is chrome, not
+   stacked page content — it never needs the same-page inter-section
+   breathing room .block normally provides, and leaving it in place is
+   exactly what created the large blank gap above a breadcrumb. `~` (not
+   `+`) because a sidebar's <aside> can sit between .site-header and
+   .site-content in the DOM. */
+.site-header-zone .block { margin-bottom: 0; }
+.site-header:has(.cms-menu) ~ .site-content > #cms-sections-list > .cms-section:first-child:has(.cms-breadcrumb) {
+  margin-top: -16px;
+}
+/* currentColor as the color-mix base (not a fixed gray/white) so this
+   reads correctly against any theme's own text color, including a dark
+   theme's light-on-black body text — a fixed #666 was unreadable there. */
+.cms-breadcrumb { padding: 8px 24px; color: color-mix(in srgb, var(--secondary, #666) 55%, currentColor); }
+.cms-breadcrumb a { color: inherit; text-decoration: none; }
+.cms-breadcrumb a:hover { text-decoration: underline; }
+.cms-breadcrumb-sep { margin: 0 8px; opacity: 0.5; }
+.cms-breadcrumb-small { font-size: 12px; }
+.cms-breadcrumb-medium { font-size: 14px; }
+.cms-breadcrumb-large { font-size: 16px; }
+.cms-breadcrumb-style-uppercase { text-transform: uppercase; letter-spacing: 0.05em; }
+.cms-breadcrumb-style-pill .cms-breadcrumb-current {
+  background: var(--accent-100, #eee); padding: 2px 10px; border-radius: 999px;
+}
+
+.cms-banner {
+  position: relative; background-size: cover; background-position: center;
+  min-height: 280px; display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+/* The Banner tool's starter background before an admin uploads/generates
+   a real image (see db.py's BANNER_TOOL_STARTER) — a fixed asset, not
+   per-request data, so it's a class instead of an inline style. */
+.cms-banner-placeholder { background-image: url('/static/img/placeholder.svg'); }
+/* Banner shape masks apply directly to the banner itself (it's a background-
+   image div, not an <img>) — separate from the image-section mask rules
+   above, which target a descendant .cms-managed-image instead. */
+/* Circle/square/diamond/star all force a 1:1 aspect ratio — left at the
+   banner's full (often 100%-of-content-width) width, that ratio makes
+   these enormous rather than a normal banner-sized shape (e.g. a 1200px-
+   wide section would render a 1200x1200 diamond). Cap them to the same
+   fixed width circle already used, so every non-rectangular shape reads
+   as a reasonably-sized emblem, not a giant. Hexagon keeps the banner's
+   normal width/height since it isn't 1:1 (a wide hexagon still looks like
+   a banner), but still gets the same height cap so it can't sprawl either. */
+.cms-banner.cms-mask-circle,
+.cms-banner.cms-mask-diamond,
+.cms-banner.cms-mask-star {
+  aspect-ratio: 1 / 1; min-height: 0; width: 280px; margin: 0 auto;
+}
+.cms-banner.cms-mask-circle { border-radius: 50%; }
+.cms-banner.cms-mask-diamond { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.cms-banner.cms-mask-hexagon {
+  clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
+  max-height: 320px;
+}
+.cms-banner.cms-mask-star {
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+.cms-banner-overlay {
+  /* A real `width` (not just a max-width cap) — .cms-banner is a flex
+     container and a flex item with no explicit width always shrink-wraps
+     to its longest line, which silently made both "Box width" and "Align"
+     look broken (no actual box to resize or align text within). */
+  background: rgba(0, 0, 0, 0.45); color: #fff; padding: 24px 32px;
+  border-radius: var(--site-radius, 8px); text-align: center; width: 80%; box-sizing: border-box;
+}
+.cms-banner-overlay h2 { margin: 0 0 8px; }
+.cms-banner-overlay p { margin: 0; }
+/*  The overlay is a dark scrim and sets its own light text — but a
+    heading with a colour of ITS own never inherits that, so a theme that
+    colours headings (most of them do, from --primary-900) put near-black
+    words on a 45%-black scrim over a photograph, which is three dark
+    layers and no reading. Same treatment .cms-bg-dark already gives a
+    dimmed section band: everything inside comes along, or half of it goes
+    invisible. Safe across all sixteen, none of which touches the scrim's
+    own background or colour — they restyle its typography only. */
+.cms-banner-overlay h1, .cms-banner-overlay h2, .cms-banner-overlay h3,
+.cms-banner-overlay h4, .cms-banner-overlay p, .cms-banner-overlay li,
+.cms-banner-overlay .lead { color: inherit; }
+
+/*  The footer falls into the same trap, and worse. Every theme declares
+    what colour its footer's text is — and most also colour p/li and
+    h1-h3 globally. Those are element selectors, and an element selector
+    beats a colour merely INHERITED from the zone, so a dark footer
+    rendered near-black paragraphs on near-black: Bakery's body copy came
+    out at 1.4:1 against its own background, and its copyright line was
+    invisible.
+
+    Anything inside the footer follows the footer. Links are deliberately
+    not in the list: every theme states .site-footer a for itself, and
+    that is a real choice rather than a leak. */
+.site-footer h1, .site-footer h2, .site-footer h3, .site-footer h4,
+.site-footer p, .site-footer li { color: inherit; }
+.cms-banner-fixed { background-attachment: fixed; }
+@media (max-width: 700px) {
+  /* background-attachment:fixed is unreliable/janky on mobile Safari & most
+     touch browsers — fall back to scroll rather than a broken parallax. */
+  .cms-banner-fixed { background-attachment: scroll; }
+}
+
+/* Footer tool: contact details (phone/email/address, as readable text —
+   an icon alone tells a visitor nothing) plus social brand icons. */
+.cms-contact-tool { display: flex; flex-direction: column; gap: 10px; align-items: center; padding: 4px 0; }
+.cms-contact-details { display: flex; gap: 8px 22px; justify-content: center; flex-wrap: wrap; }
+.cms-contact-detail {
+  /*  The mark and its words are one thing, so they sit like one thing.
+      7px read as an icon and a separate label. */
+  display: inline-flex; align-items: center; gap: 4px;
+  color: inherit; text-decoration: none; font-size: 14px; opacity: 0.9;
+}
+/*  The icon's size, and only the icon's: the words beside it keep the size
+    the zone gives them. --cms-contact-icon is written onto the block when
+    the owner sets one; with nothing written the fallback is relative, so
+    the marks follow their own line the way they always did. The brand
+    SVGs come along because they are sized in em rather than in the 16px
+    their own width/height attributes ask for. */
+.cms-contact-detail .cms-icon { font-size: var(--cms-contact-icon, 1.25em); }
+/*  One size means one size, whichever kind of mark it is. Measured at
+    24px: an emoji draws 33px, a brand SVG 24px and © 17px — three
+    settings of "the same size". These bring all three to the square the
+    size asks for, so a row of mixed marks lines up. */
+/*  Each kind of mark is drawn at the size it needs to LOOK like the size
+    that was asked for, and then given a box that undoes that adjustment —
+    so every box comes out the same absolute square and a row of mixed
+    marks shares one baseline.
+        emoji  0.74 × size, box 1.35em  →  1.00 × size
+        text   1.38 × size, box 0.72em  →  0.99 × size
+        drawn  1.00 × size, box 1.00em  →  1.00 × size
+    The box has to be in the icon's OWN em: a custom property carrying
+    "1.25em" is substituted where it is USED, so a box expressed that way
+    resolved against whatever font-size each kind had just been given, and
+    the © ended up in a box twice the size of an emoji's. */
+.cms-contact-detail .cms-icon { justify-content: center; flex: 0 0 auto; }
+.cms-contact-detail .cms-icon-emoji {
+  font-size: calc(var(--cms-contact-icon, 1.25em) * 0.74); width: 1.35em; height: 1.35em;
+}
+.cms-contact-detail .cms-icon-glyph {
+  font-size: calc(var(--cms-contact-icon, 1.25em) * 1.38); width: 0.72em; height: 0.72em;
+}
+.cms-contact-detail .cms-icon-drawn {
+  font-size: var(--cms-contact-icon, 1.25em); width: 1em; height: 1em;
+}
+.cms-contact-detail .cms-icon { display: inline-flex; align-items: center; line-height: 1; }
+.cms-contact-detail .cms-icon svg { width: 1em; height: 1em; }
+.cms-contact-detail span[aria-hidden] { font-size: 14px; }
+a.cms-contact-detail:hover { opacity: 1; text-decoration: underline; }
+.cms-contact-socials { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.cms-contact-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; border-radius: 50%;
+  /* A translucent-white fill (the old rgba(255,255,255,.12)) only reads
+     as a visible circle against a dark surface — on a light footer
+     (most themes' default) it's white-on-near-white and nearly
+     disappears. Neutral gray plus a currentColor border works against
+     either, since currentColor always matches whatever text color this
+     footer/section actually uses. */
+  background: rgba(128, 128, 128, 0.14); border: 1px solid currentColor; color: inherit; opacity: 0.85;
+  text-decoration: none;
+}
+.cms-contact-icon:hover { background: rgba(128, 128, 128, 0.26); opacity: 1; }
+.cms-contact-empty { text-align: center; font-size: 13px; opacity: 0.7; padding: 8px 0; }
+
+/* Menu tool output: plain (default), buttons, and dropdown-with-submenu.
+   Every menu is <nav class="cms-menu">[toggle button][.cms-menu-links] —
+   the toggle is a no-op on desktop (hidden) and becomes a hamburger button
+   under the mobile breakpoint, collapsing .cms-menu-links. */
+.cms-menu { padding: 8px 24px; display: flex; align-items: center; }
+.cms-menu a { color: inherit; text-decoration: none; }
+.cms-menu a:hover { text-decoration: underline; }
+.cms-menu-small { font-size: 13px; padding: 4px 16px; }
+.cms-menu-medium { font-size: 15px; }
+.cms-menu-large { font-size: 18px; padding: 12px 32px; }
+.cms-menu-style-bold a { font-weight: 700; }
+.cms-menu-style-uppercase a { text-transform: uppercase; letter-spacing: 0.04em; }
+.cms-menu a.cms-menu-current { font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+
+.cms-menu-toggle {
+  display: none; margin-left: auto; background: none; border: none; cursor: pointer;
+  font-size: 20px; line-height: 1; padding: 4px 8px; color: inherit;
+}
+
+.cms-menu-links { display: flex; flex-wrap: wrap; gap: 4px 20px; align-items: center; flex: 1; }
+.cms-menu-align-left .cms-menu-links { justify-content: flex-start; }
+.cms-menu-align-center .cms-menu-links { justify-content: center; }
+.cms-menu-align-right .cms-menu-links { justify-content: flex-end; }
+.cms-menu-small .cms-menu-links { gap: 4px 14px; }
+.cms-menu-large .cms-menu-links { gap: 6px 28px; }
+
+.cms-menu-icon { margin-right: 4px; } /* legacy: menus saved before icons.py existed */
+
+/* Menu/text icons: a plain emoji glyph — see icons.py. No color/style
+   treatment needed (emoji already render in full color everywhere). */
+.cms-icon { margin-right: 4px; font-size: 1.05em; line-height: 1; vertical-align: -0.1em; }
+/* Plain/Buttons style: an inline bar between links. Dropdown style
+   overrides this to a horizontal rule between <li> rows instead (see
+   li.cms-menu-divider below), since its items stack instead of flowing. */
+.cms-menu-divider {
+  display: inline-block; width: 1px; align-self: stretch; margin: 0 6px;
+  background: rgba(0,0,0,0.15);
+}
+li.cms-menu-divider { display: block; width: auto; height: 1px; margin: 4px 8px; background: rgba(0,0,0,0.15); }
+
+/* Buttons style: --menu-btn-color/--menu-btn-text are set inline on the
+   <nav> only when the admin picked a custom color (see
+   _build_menu_links_html); otherwise they fall back to the theme accent /
+   white here, same as the original hardcoded look. Every button-style
+   variant reads from these two vars so the one color picker in the config
+   bar ("button color", not "text color" when style=buttons) drives all of
+   them the same way. */
+.cms-menu-buttons { --menu-btn-color: var(--primary, #2563eb); --menu-btn-text: #fff; }
+.cms-menu-buttons .cms-menu-links { gap: 8px; }
+.cms-menu-buttons a.cms-menu-btn {
+  padding: 8px 16px; border-radius: var(--site-radius, 6px); background: var(--menu-btn-color); color: var(--menu-btn-text);
+  text-decoration: none; font-weight: 600; font-size: 14px; border: 2px solid transparent;
+  transition: opacity 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+.cms-menu-buttons a.cms-menu-btn:hover { opacity: 0.85; text-decoration: none; }
+
+/* Outline: border only, transparent fill, text takes the button color. */
+.cms-menu-btnstyle-outline a.cms-menu-btn {
+  background: transparent; color: var(--menu-btn-color); border-color: var(--menu-btn-color);
+}
+.cms-menu-btnstyle-outline a.cms-menu-btn:hover { background: var(--menu-btn-color); color: var(--menu-btn-text); opacity: 1; }
+
+/* Soft: a light tint of the color instead of a solid fill. */
+.cms-menu-btnstyle-soft a.cms-menu-btn {
+  background: color-mix(in srgb, var(--menu-btn-color) 15%, #fff); color: var(--menu-btn-color);
+}
+.cms-menu-btnstyle-soft a.cms-menu-btn:hover { background: color-mix(in srgb, var(--menu-btn-color) 28%, #fff); opacity: 1; }
+
+/* Floating: pill shape, raised off the page with a shadow that grows on hover. */
+.cms-menu-btnstyle-floating a.cms-menu-btn {
+  border-radius: 999px; box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+}
+.cms-menu-btnstyle-floating a.cms-menu-btn:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.24); transform: translateY(-1px); opacity: 1; }
+
+/* Tabs: flat, no fill — reads as a bottom-border underline instead of a button. */
+.cms-menu-btnstyle-tabs a.cms-menu-btn {
+  background: transparent; color: inherit; border-radius: 0; padding: 8px 4px;
+  border-width: 0 0 2px 0; border-color: transparent;
+}
+.cms-menu-btnstyle-tabs a.cms-menu-btn:hover { border-color: var(--menu-btn-color); opacity: 1; }
+
+/* Fade: gradient fill from the chosen color into a lighter shade of itself. */
+.cms-menu-btnstyle-fade a.cms-menu-btn {
+  background: linear-gradient(135deg, var(--menu-btn-color), color-mix(in srgb, var(--menu-btn-color) 55%, #fff));
+  color: var(--menu-btn-text);
+}
+
+.cms-menu-dropdown .cms-menu-links > ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 20px; }
+.cms-menu-dropdown .cms-menu-links > ul > li { position: relative; }
+/* Card is the default/original look; the other variants below override
+   whichever pieces they change (see .cms-menu-submenustyle-* rules). */
+.cms-menu-dropdown .cms-submenu {
+  display: none; position: absolute; top: 100%; left: 0; z-index: 100;
+  flex-direction: column; gap: 0; min-width: 160px;
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--secondary-100, #e2e4e9);
+  border-radius: var(--site-radius, 8px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); padding: 6px 0;
+}
+.cms-menu-dropdown li.cms-menu-has-submenu:hover > .cms-submenu,
+.cms-menu-dropdown li.cms-menu-has-submenu:focus-within > .cms-submenu { display: flex; }
+.cms-menu-dropdown .cms-submenu li { padding: 0; }
+.cms-menu-dropdown .cms-submenu a { display: block; padding: 8px 16px; white-space: nowrap; }
+.cms-menu-dropdown .cms-submenu a:hover { background: var(--bg, #f5f6f8); text-decoration: none; }
+.cms-menu-has-submenu > a::after { content: " \25BE"; font-size: 10px; }
+
+/* Minimal: no border/shadow, just a flat panel — reads as part of the page. */
+.cms-menu-submenustyle-minimal .cms-submenu { border: none; box-shadow: none; border-radius: 0; }
+
+/* Dark: fixed dark panel regardless of the page's own theme/colors. */
+.cms-menu-submenustyle-dark .cms-submenu { background: #1f2430; border-color: #1f2430; }
+.cms-menu-submenustyle-dark .cms-submenu a { color: #fff; }
+.cms-menu-submenustyle-dark .cms-submenu a:hover { background: rgba(255,255,255,0.1); }
+
+/* Bordered: thicker border, square corners, no shadow — a crisper edge than Card. */
+.cms-menu-submenustyle-bordered .cms-submenu { border: 2px solid #1f2430; border-radius: 0; box-shadow: none; }
+
+/* Pill: each item is its own rounded pill button with a gap around it,
+   instead of a flush list of full-width rows. */
+.cms-menu-submenustyle-pill .cms-submenu { padding: 8px; gap: 4px; }
+.cms-menu-submenustyle-pill .cms-submenu a { border-radius: 999px; padding: 6px 14px; }
+.cms-menu-submenustyle-pill .cms-submenu a:hover { background: var(--primary, #2563eb); color: #fff; }
+
+/* Divider tool output: a plain <hr> with style/width/spacing classes and
+   an optional inline border-color — see _divider_starter_html. Border
+   (not background) carries the color/style so dashed/dotted/double render
+   using the browser's native border-style rendering instead of faking it. */
+/* ---- Elevation (templates.shadow_override -> --site-shadow, and the
+   per-section sections.shadow_style below) ----------------------------
+
+   One variable does all of it: the site-wide preset defines --site-shadow
+   in the page's :root override (see public.py's _theme_override_css), a
+   per-section choice REDEFINES it on that section, and every element that
+   can be raised just reads var(--site-shadow, <its own default>). No
+   per-target rules per preset, and a template that never opts in keeps
+   exactly the shadow it always had.
+
+   Shadows are tinted from the palette rather than black — see
+   SHADOW_PRESETS for why (a black shadow is invisible on a dark theme,
+   and reads as generic on a light one). */
+/* The elements that can be raised, reading the site-wide variable. A
+   theme.css that hard-codes its own shadow on one of these still wins
+   here by source order, which is why _theme_override_css re-emits this
+   same rule inline (after the theme's stylesheet) whenever a site-wide
+   Depth is actually chosen. */
+.cms-card-shape { box-shadow: var(--site-shadow, var(--shadow-card, none)); }
+.cms-banner { box-shadow: var(--site-shadow, none); }
+.block-image .cms-managed-image { box-shadow: var(--site-shadow, none); }
+.cms-file-card { box-shadow: var(--site-shadow, none); }
+
+/*  Depth: the same three tiers as Corners, and for the same reason.
+    ----------------------------------------------------------------
+    This used to be sixteen rules — four settings times four target
+    classes — with literal values behind an attribute selector, because a
+    theme that hardcoded its own box-shadow would otherwise beat a bare
+    .cms-card-shape rule on source order. That worked, but it meant Depth
+    could only ever reach the four boxes somebody remembered to list, and
+    it gave Depth two levels where Corners has three.
+
+    Same fix as the radii: a theme states its shadow as a default
+    (--shadow-card and friends, see coffee-shop's :root) and never as the
+    property, so the only place a shadow is drawn is here. The setting is
+    then just an inherited variable, which means it reaches every box
+    that reads it, and the level that wins is simply the closest one —
+    the site, the section, or the tool. */
+[data-shadow-style="none"] { --site-shadow: none; }
+[data-shadow-style="subtle"] {
+  --site-shadow: 0 1px 3px color-mix(in srgb, var(--primary, #1f2937) 18%, transparent);
+}
+[data-shadow-style="raised"] {
+  --site-shadow: 0 4px 14px color-mix(in srgb, var(--primary, #1f2937) 22%, transparent);
+}
+[data-shadow-style="floating"] {
+  --site-shadow: 0 14px 34px color-mix(in srgb, var(--primary, #1f2937) 28%, transparent);
+}
+
+/* A full-bleed element must not float: a shadow says "this sits above a
+   surface", but a full-width hero IS the surface, and the effect reads as
+   a mistake rather than a choice. Elevation is silently dropped there
+   instead of being offered and always looking wrong. */
+.cms-section[data-layout-width="full"] .cms-banner,
+.cms-section[data-layout-width="full"] .block-image .cms-managed-image { box-shadow: none; }
+
+/*  Corners: one setting, one variable, three tiers.
+    ----------------------------------------------------------------
+    There used to be three separate mechanisms deciding a corner — the
+    site-wide Shape preset, a per-section override, and each tool's own
+    "Shape / cutout" — with no declared precedence between them, so which
+    won fell out of selector specificity and surprised people. Worse, the
+    site-wide setting only reached boxes whose CSS had opted in with
+    var(--site-radius, ...), and ten of the sixteen built-in themes never
+    opted in for banners: picking a corner style did nothing to them.
+
+    Now every corner in the app is drawn in exactly one place — here —
+    from one inherited variable, and the tiers are the cascade rather than
+    a specificity accident:
+
+      --corner-<type>   a theme's own default for that KIND of box, so a
+                        template that shapes its hero, cards and banners
+                        differently keeps doing that. Set in the theme's
+                        :root; the lowest tier, because it is a default.
+      --site-radius     on :root — the admin's site-wide Corners choice.
+                        Emitted after the theme stylesheet and read ahead
+                        of the theme's default, so it always wins.
+      --site-radius     again, on a section — that section's own override.
+                        The SAME variable: custom properties inherit, so
+                        the nearest ancestor that sets one wins for
+                        everything inside it, which is exactly what
+                        "change all, or one, or many" means.
+
+    --site-radius-pad rides along because the strongly-curved shapes have
+    to inset their content to clear the curve (see SHAPE_PRESETS), and a
+    local override needs that as much as a global one does. */
+/*  `initial`, not empty. A custom property set to nothing is set to the
+    EMPTY value, which var() happily substitutes — `padding: ;` — and the
+    declaration is then dropped rather than falling back. `initial` makes
+    the variable behave as though it were never set, which is what these
+    four want: a gentle corner needs no inset, so the box keeps its own
+    padding. */
+[data-corner-style="sharp"] { --site-radius: 0px; --site-radius-pad: initial; }
+[data-corner-style="soft"] { --site-radius: 10px; --site-radius-pad: initial; }
+[data-corner-style="rounded"] { --site-radius: 22px; --site-radius-pad: initial; }
+[data-corner-style="cut-corner"] { --site-radius: 0 32px 0 32px; --site-radius-pad: initial; }
+[data-corner-style="pill"] {
+  --site-radius: 999px;
+  --site-radius-pad: min(24%, 88px) min(9%, 36px);
+}
+[data-corner-style="lens"] {
+  --site-radius: 50% / 30%;
+  --site-radius-pad: min(30%, 96px) min(9%, 36px);
+}
+[data-corner-style="organic"] {
+  --site-radius: 60% 40% 55% 45% / 45% 55% 40% 60%;
+  --site-radius-pad: min(34%, 104px) min(14%, 52px);
+}
+[data-corner-style="organic-alt"] {
+  --site-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+  --site-radius-pad: min(34%, 104px) min(14%, 52px);
+}
+
+/*  The five kinds of box a theme shapes independently. Each reads the
+    cascade above and falls back to that theme's own default for its kind,
+    then to the app's. A theme sets only the variable now — never the
+    property — so nothing it declares can outrank the admin's choice on
+    source order, which is what used to silently break this. */
+.block-header { border-radius: var(--site-radius, var(--corner-hero, 0)); }
+.block-html {
+  box-shadow: var(--site-shadow, var(--shadow-panel, none));
+  border-radius: var(--site-radius, var(--corner-panel, 0));
+  padding: var(--site-radius-pad, var(--pad-panel, 0));
+}
+.cms-card-shape { border-radius: var(--site-radius, var(--corner-card, 0)); }
+.cms-banner { border-radius: var(--site-radius, var(--corner-banner, 0)); }
+.cms-blog-card { border-radius: var(--site-radius, var(--corner-post, 10px)); }
+
+/*  A section's own box: the band its background colour or picture paints.
+    It reads the same cascade as everything else, the site-wide level
+    included — "global sets all sections" has to mean the bands too, and
+    it did not while this only applied to sections carrying an explicit
+    override of their own. A section with no background is transparent, so
+    a radius on it shows nothing and costs nothing.
+
+    No overflow:hidden needed, and deliberately so: an element's own
+    background — colour and picture alike — is already painted inside its
+    border box, so the radius curves it. Clipping the whole box would take
+    a Menu's dropdown and a tool's panel with it. The dim overlay is a
+    ::before and inherits the radius (see .cms-section-bg::before). */
+.cms-section { border-radius: var(--site-radius, 0); }
+
+.cms-content-divider {
+  border: none; border-top-width: 1px;
+  border-top-color: var(--secondary-200, #e2e4e9);
+  border-top-style: solid;
+  margin-left: auto; margin-right: auto;
+}
+.cms-divider-solid { border-top-style: solid; }
+.cms-divider-dashed { border-top-style: dashed; }
+.cms-divider-dotted { border-top-style: dotted; }
+.cms-divider-double { border-top-style: double; border-top-width: 3px; }
+.cms-divider-narrow { width: 25%; }
+.cms-divider-medium { width: 50%; }
+.cms-divider-full { width: 100%; }
+.cms-divider-spacing-small { margin-top: 8px; margin-bottom: 8px; }
+.cms-divider-spacing-medium { margin-top: 24px; margin-bottom: 24px; }
+.cms-divider-spacing-large { margin-top: 48px; margin-bottom: 48px; }
+
+/* Mobile: collapse the link list behind a hamburger toggle instead of
+   letting a long nav wrap into several cramped rows on a phone screen. */
+@media (max-width: 700px) {
+  .cms-menu-toggle { display: block; }
+  .cms-menu-links { display: none; flex-basis: 100%; flex-direction: column; align-items: flex-start; gap: 2px; }
+  .cms-menu.cms-menu-open .cms-menu-links { display: flex; }
+  .cms-menu-dropdown .cms-menu-links > ul { flex-direction: column; gap: 0; width: 100%; }
+  .cms-menu-dropdown .cms-submenu { position: static; box-shadow: none; border: none; padding-left: 16px; }
+  .cms-menu-dropdown li.cms-menu-has-submenu > .cms-submenu { display: none; }
+  .cms-menu-dropdown li.cms-menu-has-submenu.cms-submenu-open > .cms-submenu { display: flex; }
+  /* A Menu tool sitting inside a "minimal" header is already behind the
+     header's own ☰ toggle (site-header-zone collapses/expands as a
+     whole) — collapsing it a second time behind its own separate
+     hamburger means two stacked toggles and two clicks just to reach the
+     links. The header's toggle alone should own show/hide here, so the
+     menu always renders its links open once that outer panel is open. */
+  .nav-layout-minimal .site-header-zone .cms-menu-toggle { display: none; }
+  .nav-layout-minimal .site-header-zone .cms-menu-links { display: flex; }
+}
+
+/* Contact page form */
+.cms-contact-form-wrap { max-width: 500px; margin: 0 auto 40px; }
+.cms-contact-form { display: flex; flex-direction: column; gap: 10px; }
+.cms-contact-form label { font-weight: 600; }
+.cms-contact-form input, .cms-contact-form textarea {
+  padding: 10px 12px; border: 1px solid #ccc; border-radius: var(--site-radius, 6px); font-family: inherit; font-size: 15px;
+}
+.cms-contact-submit {
+  align-self: flex-start; display: inline-block; background: var(--primary, #2563eb); color: #fff;
+  font-weight: 700; font-family: inherit; font-size: 15px; padding: 12px 28px;
+  border: none; border-radius: var(--site-radius, 8px); cursor: pointer;
+}
+.cms-contact-submit:hover { background: var(--primary-dark, #1d4ed8); }
+.cms-contact-sent { background: #dcfce7; color: #166534; padding: 12px 16px; border-radius: 8px; }
+.cms-contact-error { background: #fee2e2; color: #991b1b; padding: 12px 16px; border-radius: 8px; }
+
+/* Image animation presets */
+.cms-anim-fade-in { animation: cms-fade-in 0.8s ease both; }
+@keyframes cms-fade-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.cms-anim-zoom-hover .cms-managed-image { transition: transform 0.35s ease; }
+.cms-anim-zoom-hover:hover .cms-managed-image { transform: scale(1.06); }
+.block-image.cms-anim-zoom-hover { overflow: hidden; }
+
+/* Starter block library — table, card rows. Generic enough to look
+   reasonable regardless of the active template. */
+
+/* Excel-style (default): a real bordered data table, plus color variants.
+   Scrolling on mobile is handled by wrapping the table in a
+   .cms-table-scroll div at runtime (see site.js) rather than a CSS-only
+   trick on the table itself — display:block on <table> with thead/tbody
+   forced back to display:table breaks column alignment between the
+   header and body (each becomes an independently-sized table), which a
+   wrapper div avoids entirely since the table's own layout never changes. */
+/* The Table tool's style control SWAPS one of these four classes for
+   another rather than layering a modifier on top of a base class, so
+   every style has to carry the shared geometry itself. Without this,
+   picking "Striped rows" or "Colored header" dropped the table's width,
+   cell padding and grid along with the class, leaving a bare unstyled
+   HTML table with nothing but a stripe. */
+.cms-table, .cms-table-striped, .cms-table-colored, .cms-table-plain {
+  width: 100%; border-collapse: collapse; margin: 0;
+}
+.cms-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.cms-table th, .cms-table td,
+.cms-table-striped th, .cms-table-striped td,
+.cms-table-colored th, .cms-table-colored td {
+  text-align: left; padding: 10px 14px; border: 1px solid rgba(0,0,0,0.12);
+}
+.cms-table thead, .cms-table-striped thead, .cms-table-colored thead { font-weight: 700; }
+.cms-table thead, .cms-table-striped thead { background: color-mix(in srgb, var(--secondary, #1e40af) 8%, transparent); }
+.cms-table-striped tbody tr:nth-child(even) { background: color-mix(in srgb, var(--secondary, #1e40af) 4%, transparent); }
+.cms-table-colored thead { background: var(--wp--preset--color--primary, var(--primary, #2563eb)); color: #fff; }
+
+/* Old-style layout table: no visible grid, just cells side by side —
+   useful for lining up an image next to text the way pre-CSS pages did. */
+.cms-table-plain, .cms-table-plain th, .cms-table-plain td {
+  border: none; background: none; padding: 8px; vertical-align: middle;
+}
+
+.cms-card-row { display: grid; gap: 20px; }
+.cms-card-row-2 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.cms-card-row-3 { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.cms-card {
+  background: color-mix(in srgb, var(--primary, #2563eb) 6%, transparent);
+  border-radius: var(--site-radius, 12px); padding: 20px;
+  border: 1px solid color-mix(in srgb, var(--primary, #2563eb) 15%, transparent);
+}
+.cms-card h3 { margin: 0 0 8px; }
+.cms-card p { margin: 0; }
+
+/* Generic 1-4 column layout — any content: text, images, embeds */
+.cms-columns { display: grid; gap: 24px; }
+.cms-columns-1 { grid-template-columns: 1fr; }
+.cms-columns-2 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.cms-columns-3 { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+.cms-columns-4 { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.cms-columns-5 { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+.cms-columns-6 { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); }
+/* Centered by default (the align buttons in the WYSIWYG toolbar override
+   this per-column, same as any other text alignment). */
+.cms-column { display: flex; flex-direction: column; min-width: 0; align-items: center; text-align: center; }
+.cms-column-body { min-height: 1em; width: 100%; }
+.cms-column-body img { max-width: 100%; height: auto; }
+
+/* Card tool: a background shape that fills its cell; text is written
+   directly inside it (still just the column's own editable content). */
+.cms-card-shape {
+  /* flex-direction: column — without it, a card holding more than one
+     text element (e.g. a generated <h3> title + <p> body) lays them out
+     as flex-row siblings by default: title and body side by side instead
+     of stacked, with no visual separation between them. */
+  width: 100%; height: 100%; min-height: 160px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 8px; text-align: center;
+  padding: var(--site-radius-pad, 20px); box-sizing: border-box;
+  background: var(--accent-50, #f0f1f3);
+  color: inherit;
+  background-size: cover; background-position: center;
+}
+.cms-card-shape h1, .cms-card-shape h2, .cms-card-shape h3,
+.cms-card-shape h4, .cms-card-shape h5, .cms-card-shape h6,
+.cms-card-shape p { margin: 0; }
+/* Card fills its whole cell, not just its own content's height — the cell
+   (a column, itself flex-direction:column) needs to hand its full height
+   down through .cms-column-body before height:100% on the card means
+   anything, so only the cell that actually holds a card grows to fill it. */
+.cms-column-body:has(> .cms-card-shape) { flex: 1; display: flex; }
+.cms-row-cell { min-height: 1em; padding: 8px 0; }
+.cms-row-cell + .cms-row-cell { border-top: 1px dashed rgba(128, 128, 128, 0.3); }
+
+/* Image shape masks */
+.cms-mask-circle .cms-managed-image { border-radius: 50%; aspect-ratio: 1 / 1; object-fit: cover; }
+.cms-mask-diamond .cms-managed-image { aspect-ratio: 1 / 1; object-fit: cover; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.cms-mask-hexagon .cms-managed-image { aspect-ratio: 1 / 1; object-fit: cover; clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%); }
+.cms-mask-star .cms-managed-image {
+  aspect-ratio: 1 / 1; object-fit: cover;
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+
+/* File / download section */
+.block-file { display: flex; justify-content: center; }
+.cms-file-card {
+  display: flex; align-items: center; gap: 14px; padding: 16px 20px;
+  border: 1px solid rgba(0,0,0,0.12); border-radius: var(--site-radius, 12px); max-width: 420px; width: 100%;
+}
+.cms-file-icon { font-size: 28px; }
+.cms-file-info { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.cms-file-name { font-weight: 700; }
+.cms-file-size { font-size: 13px; color: #888; }
+.cms-file-download {
+  background: var(--primary, #2563eb); color: #fff; text-decoration: none; font-weight: 600;
+  padding: 8px 16px; border-radius: var(--site-radius, 8px); white-space: nowrap;
+}
+.cms-file-placeholder { color: #888; font-size: 14px; }
+
+/* File display variants: button, plain text link, icon-only */
+.cms-file-btn {
+  display: inline-block; background: var(--primary, #2563eb); color: #fff; text-decoration: none;
+  font-weight: 700; padding: 12px 28px; border-radius: var(--site-radius, 8px);
+}
+.cms-file-btn:hover { background: var(--primary-dark, #1d4ed8); }
+.cms-file-textlink {
+  color: var(--primary, #2563eb); text-decoration: underline; font-size: 15px; word-break: break-all;
+}
+.cms-file-icon-only { font-size: 36px; text-decoration: none; display: inline-block; }
+
+/* Media player: YouTube embed, uploaded video, uploaded audio.
+   Sized/resizable the same way images are (small/medium/large/full); at
+   small/medium sizes players sit inline so several can go side by side. */
+.cms-media-responsive { position: relative; padding-top: 56.25%; height: 0; border-radius: var(--site-radius, 8px); overflow: hidden; }
+.cms-media-responsive iframe {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;
+}
+.block-media video { width: 100%; border-radius: var(--site-radius, 8px); display: block; }
+.block-media audio { width: 100%; }
+.block-media.cms-img-small, .block-media.cms-img-medium {
+  display: inline-block; vertical-align: top; margin-right: 16px;
+}
+.block-media.cms-img-small { width: 30%; min-width: 220px; }
+.block-media.cms-img-medium { width: 46%; min-width: 260px; }
+.block-media.cms-img-large { width: 75%; }
+.block-media.cms-img-full, .block-media.cms-img-normal { width: 100%; }
+
+/* FAQ — native <details>, so open/close, keyboard and screen-reader
+   behaviour are the browser's. The marker is drawn with a rotating chevron
+   rather than the default triangle, and list-style:none removes that
+   default in every engine. */
+.cms-faq { display: block; }
+.cms-faq-item { border-color: var(--rule, rgba(0,0,0,0.12)); }
+.cms-faq-q {
+  display: flex; align-items: center; gap: 12px; cursor: pointer;
+  padding: 16px 4px; font-weight: 600; font-size: 1.02rem;
+  list-style: none; position: relative; padding-right: 34px;
+}
+.cms-faq-q::-webkit-details-marker { display: none; }
+.cms-faq-q::after {
+  content: ""; position: absolute; right: 8px; top: 50%;
+  width: 9px; height: 9px; margin-top: -6px;
+  border-right: 2px solid var(--primary, #2563eb);
+  border-bottom: 2px solid var(--primary, #2563eb);
+  transform: rotate(45deg); transition: transform .2s ease;
+}
+.cms-faq-item[open] .cms-faq-q::after { transform: rotate(-135deg); margin-top: -2px; }
+.cms-faq-q:focus-visible { outline: 2px solid var(--primary, #2563eb); outline-offset: 2px; border-radius: 4px; }
+.cms-faq-a { padding: 0 34px 18px 4px; line-height: 1.65; opacity: .92; }
+
+.cms-faq-style-list .cms-faq-item { border-bottom: 1px solid rgba(0,0,0,0.12); }
+.cms-faq-style-list .cms-faq-item:first-child { border-top: 1px solid rgba(0,0,0,0.12); }
+
+.cms-faq-style-cards { display: flex; flex-direction: column; gap: 10px; }
+.cms-faq-style-cards .cms-faq-item {
+  border: 1px solid rgba(0,0,0,0.12); border-radius: var(--site-radius, 10px);
+  padding: 0 14px; background: color-mix(in srgb, var(--primary, #2563eb) 4%, transparent);
+  box-shadow: var(--site-shadow, none);
+}
+.cms-faq-style-cards .cms-faq-a { padding-bottom: 16px; }
+
+.cms-faq-style-plain .cms-faq-item + .cms-faq-item { margin-top: 4px; }
+
+/* Video gallery + popup player (works for every visitor, not just editing) */
+.cms-video-gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+.cms-video-thumb {
+  position: relative; cursor: pointer; border-radius: var(--site-radius, 8px); overflow: hidden;
+  aspect-ratio: 16 / 9; background: #000;
+}
+.cms-video-thumb img,
+.cms-video-thumb > video { width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0.9; transition: opacity .2s; }
+/* The thumbnail video is a still frame, never a player: pointer-events
+   off so the click always reaches the tile (which opens the popup),
+   never the video element underneath. */
+.cms-video-thumb > video { pointer-events: none; }
+.cms-video-thumb:hover img, .cms-video-thumb:hover > video { opacity: 1; }
+/* Fixed-column layouts, chosen in the tool's own config (the default
+   stays the auto-fit grid above). */
+.cms-video-gallery-2 { grid-template-columns: repeat(2, 1fr); }
+.cms-video-gallery-3 { grid-template-columns: repeat(3, 1fr); }
+.cms-video-gallery-4 { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 700px) {
+  .cms-video-gallery-2, .cms-video-gallery-3, .cms-video-gallery-4 { grid-template-columns: 1fr; }
+}
+.cms-video-caption {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 8px 10px;
+  background: linear-gradient(transparent, rgba(0,0,0,0.75));
+  color: #fff; font-size: 14px; line-height: 1.3;
+}
+/* A clip with no link yet is a slot the admin still has to fill — shown
+   while editing (so it can be clicked and filled in), never to a real
+   visitor. */
+.cms-video-thumb-empty { display: none; }
+body.cms-editing .cms-video-thumb-empty {
+  display: flex; align-items: center; justify-content: center;
+  background: #1f2430; border: 1px dashed rgba(255,255,255,0.35);
+}
+body.cms-editing .cms-video-thumb-empty .cms-play-icon { display: none; }
+body.cms-editing .cms-video-thumb-empty::after {
+  content: "Add a YouTube link above";
+  color: rgba(255,255,255,0.75); font-size: 13px; text-align: center; padding: 0 12px;
+}
+.cms-play-icon {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 56px; height: 56px; background: rgba(0,0,0,0.6); color: #fff;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 20px; pointer-events: none;
+}
+/*  White on its own black, rather than the site's text colour. This is a
+    surface with a background of its own, and it was taking whatever the
+    template or the owner's palette said — the bakery's dark brown on 85%
+    black. Nothing showed it, because the only text in here is the close
+    button and that pins white. The case that would have shown it is an
+    image that fails to load: the browser then draws its alt text, in the
+    inherited colour, on black. */
+.cms-lightbox {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.85); color: #fff; z-index: 3000;
+  display: flex; align-items: center; justify-content: center; padding: 40px;
+}
+.cms-lightbox[hidden] { display: none; }
+.cms-lightbox iframe {
+  width: min(90vw, 960px); height: min(80vh, 540px); border: 0; border-radius: 8px; background: #000;
+}
+.cms-lightbox-image {
+  max-width: min(92vw, 1400px); max-height: 88vh; width: auto; height: auto;
+  border-radius: 8px; box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.cms-lightbox-video {
+  width: min(90vw, 960px); max-height: 85vh; border-radius: 8px; background: #000;
+}
+.cms-lightbox iframe[hidden], .cms-lightbox-image[hidden], .cms-lightbox-video[hidden] { display: none; }
+.cms-lightbox-close {
+  position: absolute; top: 20px; right: 24px; background: none; border: none;
+  color: #fff; font-size: 36px; cursor: pointer; line-height: 1;
+}
+
+/* Image Accordion: a row of panels sharing the available width equally
+   until one is hovered/focused, which claims most of the row — the
+   classic fashion/portfolio-site image accordion. Pure CSS (:hover +
+   :focus-within, no JS) — the same reasoning as the Menu dropdown's own
+   hover behavior elsewhere in this file, just applied to a whole panel
+   instead of a submenu. :focus-within (via the panel's own tabindex)
+   covers keyboard nav; touch devices get the stacked mobile fallback
+   below instead of relying on a hover that doesn't exist there. */
+.cms-image-accordion { display: flex; gap: 6px; height: 380px; overflow: hidden; border-radius: var(--site-radius, 10px); }
+.cms-accordion-panel {
+  position: relative; flex: 1; min-width: 0; background-size: cover; background-position: center;
+  cursor: pointer; overflow: hidden; transition: flex 0.5s ease;
+  outline: none;
+}
+/* The hover-expand effect belongs to the default "panels" display only —
+   every other display reuses the very same panels (identical markup, only
+   the container's class differs) and lays them out its own way.
+
+   Gated on "has no style class at all" rather than by naming each style
+   that is not this one. The negative form was three selectors listing
+   :not(carousel):not(masonry), which meant adding a fourth display meant
+   remembering to extend all three — and forgetting would leave the new
+   display fighting the hover rules. [class*=] asks the question once, and
+   still keeps content saved before any of this existed, which carries no
+   style class, behaving exactly as it always did. */
+.cms-image-accordion:not([class*="cms-accordion-style-"]):hover .cms-accordion-panel { flex: 1; }
+.cms-image-accordion:not([class*="cms-accordion-style-"]) .cms-accordion-panel:hover,
+.cms-image-accordion:not([class*="cms-accordion-style-"]) .cms-accordion-panel:focus-within { flex: 4; }
+.cms-image-accordion.cms-accordion-style-panels:hover .cms-accordion-panel { flex: 1; }
+.cms-image-accordion.cms-accordion-style-panels .cms-accordion-panel:hover,
+.cms-image-accordion.cms-accordion-style-panels .cms-accordion-panel:focus-within { flex: 4; }
+.cms-accordion-caption {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 16px;
+  color: #fff; font-weight: 600; font-size: 14px;
+  background: linear-gradient(to top, rgba(0,0,0,0.65), transparent);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transform: translateY(4px); opacity: 0; transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.cms-accordion-panel:hover .cms-accordion-caption,
+.cms-accordion-panel:focus-within .cms-accordion-caption { opacity: 1; transform: translateY(0); }
+/* A soft accent-tinted ring on the expanded panel ties it back to the
+   site's own palette instead of the effect reading as purely generic. */
+.cms-accordion-panel:hover, .cms-accordion-panel:focus-within {
+  box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--accent, #f97316) 70%, transparent);
+}
+/* --- Carousel: the same panels as equal slides on a snap track. The
+   prev/next buttons are injected at runtime by site.js (the same approach
+   the mobile table wrapper uses) rather than saved into the section's
+   content, so the stored markup is identical whichever display is chosen
+   and switching back and forth can't leave stray controls behind. Touch
+   devices get native swiping from the scroll container for free. --- */
+.cms-image-accordion.cms-accordion-style-carousel {
+  display: flex; gap: 12px; height: 380px; overflow-x: auto; overflow-y: hidden;
+  scroll-snap-type: x mandatory; scroll-behavior: smooth; -webkit-overflow-scrolling: touch;
+}
+.cms-accordion-style-carousel .cms-accordion-panel {
+  flex: 0 0 min(78%, 460px); scroll-snap-align: start; border-radius: var(--site-radius, 10px); transition: none;
+  /* start, not center: the prev/next buttons scroll by exactly one panel
+     width plus the gap, which only lands on a snap point cleanly when the
+     snap points are the panel edges. With center alignment each click
+     overshot to the next-but-one. */
+}
+.cms-accordion-style-carousel .cms-accordion-panel:hover,
+.cms-accordion-style-carousel .cms-accordion-panel:focus-within { box-shadow: none; }
+.cms-accordion-style-carousel .cms-accordion-caption { opacity: 1; transform: none; }
+.cms-accordion-carousel-wrap { position: relative; }
+.cms-accordion-carousel-btn {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
+  width: 40px; height: 40px; border-radius: 50%; cursor: pointer;
+  border: none; background: rgba(0,0,0,0.55); color: #fff; font-size: 20px; line-height: 1;
+  display: flex; align-items: center; justify-content: center; transition: background .2s;
+}
+.cms-accordion-carousel-btn:hover { background: var(--primary, #2563eb); }
+.cms-accordion-carousel-btn[disabled] { opacity: 0.3; cursor: default; }
+.cms-accordion-carousel-btn-prev { left: 10px; }
+.cms-accordion-carousel-btn-next { right: 10px; }
+
+/* --- Masonry: a staggered column grid. Heights repeat on a 3-step cycle
+   so the stagger reads as deliberate rather than random, and every panel
+   keeps its caption visible since there is no hover state to reveal it. --- */
+.cms-image-accordion.cms-accordion-style-masonry {
+  display: block; columns: 3; column-gap: 12px; height: auto; overflow: visible;
+}
+.cms-accordion-style-masonry .cms-accordion-panel {
+  break-inside: avoid; margin: 0 0 12px; border-radius: var(--site-radius, 10px); height: 260px;
+  transition: transform 0.3s ease;
+}
+.cms-accordion-style-masonry .cms-accordion-panel:nth-child(3n + 1) { height: 320px; }
+.cms-accordion-style-masonry .cms-accordion-panel:nth-child(3n + 2) { height: 210px; }
+.cms-accordion-style-masonry .cms-accordion-caption { opacity: 1; transform: none; }
+.cms-accordion-style-masonry .cms-accordion-panel:hover { transform: translateY(-3px); }
+.cms-accordion-style-masonry .cms-accordion-panel:hover,
+.cms-accordion-style-masonry .cms-accordion-panel:focus-within { box-shadow: none; }
+
+/* --- Cover flow: one picture held at the centre, its neighbours angled
+   away behind it. The angle cannot be written in CSS alone, because CSS
+   cannot ask "how far is this panel from the middle of the strip" — so
+   site.js sets one custom property per panel as the strip scrolls, and
+   every rule below is ordinary CSS reading that number. The strip is a
+   snap track like the carousel, so a phone swipes it natively and a
+   keyboard scrolls it. --- */
+.cms-image-accordion.cms-accordion-style-coverflow {
+  display: flex; gap: 0; height: 400px; overflow-x: auto; overflow-y: hidden;
+  scroll-snap-type: x mandatory; scroll-behavior: smooth; -webkit-overflow-scrolling: touch;
+  perspective: 1200px; padding: 20px 0 30px;
+  /* Room to hold the first and last panel in the MIDDLE rather than
+     against an edge, which is the whole point of the display. */
+  scroll-padding: 0 50%;
+}
+.cms-accordion-style-coverflow .cms-accordion-panel {
+  flex: 0 0 min(62%, 340px); scroll-snap-align: center; border-radius: var(--site-radius, 10px);
+  /* --cms-flow is 0 at the centre and ±1 at the edges (see site.js). */
+  transform: rotateY(calc(var(--cms-flow, 0) * -38deg))
+             scale(calc(1 - (abs(var(--cms-flow, 0)) * 0.22)))
+             translateX(calc(var(--cms-flow, 0) * -14%));
+  opacity: calc(1 - (abs(var(--cms-flow, 0)) * 0.35));
+  transition: transform .18s linear, opacity .18s linear;
+  z-index: calc(10 - abs(var(--cms-flow, 0)) * 10);
+}
+/* Browsers without abs() in CSS get the flat strip rather than a broken
+   one: the transform above is simply not applied, and the panels sit
+   side by side as a plain snap track. */
+@supports not (width: abs(1px)) {
+  .cms-accordion-style-coverflow .cms-accordion-panel { transform: none; opacity: 1; }
+}
+.cms-accordion-style-coverflow .cms-accordion-panel:hover,
+.cms-accordion-style-coverflow .cms-accordion-panel:focus-within { box-shadow: none; }
+.cms-accordion-style-coverflow .cms-accordion-caption { opacity: 1; transform: none; }
+.cms-accordion-style-coverflow .cms-accordion-carousel-btn { top: 45%; }
+
+/* --- Deck: a stack of cards, the top one clicked away to reveal the
+   next. Depth is real overlap rather than a grid, so it reads as a pile
+   of photographs on a table. Position in the pile comes from --cms-deck,
+   set by site.js, since the pile reorders as it is clicked through. --- */
+.cms-image-accordion.cms-accordion-style-deck {
+  display: grid; height: 420px; place-items: center; overflow: visible;
+  perspective: 1000px;
+}
+.cms-accordion-style-deck .cms-accordion-panel {
+  grid-area: 1 / 1; width: min(70%, 420px); height: 340px;
+  border-radius: var(--site-radius, 10px); cursor: pointer;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
+  transform: translate(calc(var(--cms-deck, 0) * 26px), calc(var(--cms-deck, 0) * 14px))
+             rotate(calc(var(--cms-deck, 0) * 2.4deg))
+             scale(calc(1 - (var(--cms-deck, 0) * 0.05)));
+  z-index: calc(20 - var(--cms-deck, 0));
+  opacity: calc(1 - (var(--cms-deck, 0) * 0.18));
+  transition: transform .35s ease, opacity .35s ease;
+}
+.cms-accordion-style-deck .cms-accordion-panel:hover,
+.cms-accordion-style-deck .cms-accordion-panel:focus-within { box-shadow: 0 12px 30px rgba(0,0,0,0.22); }
+.cms-accordion-style-deck .cms-accordion-caption { opacity: 1; transform: none; }
+/* Only the front card says so, or five captions stack up on each other.
+   Keyed on a class the script sets rather than on the inline custom
+   property: [style*="--cms-deck: 0"] worked, but only because Chrome
+   happens to serialise a custom property with a space after the colon --
+   a browser that did not would silently show all five captions at once. */
+.cms-accordion-style-deck .cms-accordion-panel:not(.cms-accordion-front) .cms-accordion-caption { opacity: 0; }
+.cms-accordion-deck-hint {
+  grid-area: 1 / 1; align-self: end; justify-self: center; z-index: 30;
+  margin-bottom: -26px; font-size: 13px; color: var(--muted, #6b7480);
+}
+
+@media (max-width: 700px) {
+  /* A fixed-height hover row doesn't make sense without hover — stack
+     panels as normal full-width images instead of forcing the effect
+     through touch/tap heuristics. Carousel is exempt: swiping a snap
+     track is exactly the right touch behavior, so it keeps its layout. */
+  .cms-image-accordion:not(.cms-accordion-style-carousel):not(.cms-accordion-style-coverflow):not(.cms-accordion-style-deck) { flex-direction: column; height: auto; }
+  .cms-image-accordion:not(.cms-accordion-style-carousel):not(.cms-accordion-style-coverflow):not(.cms-accordion-style-deck) .cms-accordion-panel {
+    flex: none !important; height: 220px;
+  }
+  /*  Both new displays are touch behaviours already -- one is a swipe,
+      the other a tap -- so they keep their shape and only lose height. */
+  .cms-image-accordion.cms-accordion-style-coverflow { height: 300px; }
+  .cms-accordion-style-coverflow .cms-accordion-panel { flex-basis: 74%; }
+  .cms-image-accordion.cms-accordion-style-deck { height: 320px; }
+  .cms-accordion-style-deck .cms-accordion-panel { width: 84%; height: 250px; }
+  .cms-accordion-caption { opacity: 1; transform: none; }
+  .cms-image-accordion.cms-accordion-style-masonry { columns: 1; }
+  .cms-accordion-style-carousel .cms-accordion-panel { flex: 0 0 86% !important; }
+}
+
+/* Buy button + the checkout return page. The return page is deliberately
+   plain: a buyer arriving back from Stripe wants one clear answer about
+   their money, not the site's full navigation. */
+.cms-buy { display: inline-block; margin: 0; }
+/*  The site's primary action button, wherever it appears: Buy now, Sign
+    up, and anything later that means "this is the thing to press". Named
+    for what it IS rather than for the first tool that needed it -- the
+    Email sign-up used to render `cms-buy-btn`, so a newsletter's button
+    was styled by the shop's rule and the word "buy" sat in its markup.
+    `.cms-buy-btn` stays in the selector because pages saved before this
+    still hold it. */
+.cms-action-btn, .cms-buy-btn {
+  font: inherit; font-weight: 600; cursor: pointer; padding: 12px 22px;
+  border: none; border-radius: var(--site-radius, 8px);
+  background: var(--primary, #2563eb); color: #fff;
+  box-shadow: var(--site-shadow, none); transition: filter .15s ease;
+}
+.cms-action-btn:hover, .cms-buy-btn:hover { filter: brightness(1.08); }
+.cms-action-btn:focus-visible,
+.cms-buy-btn:focus-visible { outline: 3px solid var(--accent, #f97316); outline-offset: 2px; }
+.cms-buy-style-card { display: block; }
+.cms-buy-card {
+  border: 1px solid color-mix(in srgb, var(--primary, #2563eb) 20%, transparent);
+  border-radius: var(--site-radius, 10px); padding: 22px; text-align: center;
+  background: color-mix(in srgb, var(--primary, #2563eb) 4%, transparent);
+  box-shadow: var(--site-shadow, none);
+}
+.cms-buy-name { margin: 0 0 6px; }
+.cms-buy-price { margin: 0 0 16px; font-size: 1.3rem; font-weight: 600; }
+.cms-checkout-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+.cms-checkout-box { max-width: 34rem; padding: 40px 28px; text-align: center; }
+
+/* The buyer's own page. Reached by a link from their email, so it is
+   read once, quickly, often on a phone — plain blocks, generous type,
+   no navigation to get lost in. */
+.cms-account-sub { opacity: .8; }
+.cms-account-block { text-align: left; margin: 28px 0; padding: 20px 22px;
+  border-radius: var(--site-radius, 10px); box-shadow: var(--site-shadow, none);
+  background: color-mix(in srgb, var(--primary, #2563eb) 5%, transparent); }
+.cms-account-block h2 { margin-top: 0; }
+.cms-account-list { margin: 0; padding-left: 1.2rem; line-height: 1.8; }
+
+.cms-thanks-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 22px 0; }
+.cms-thanks-actions .cms-action-btn,
+.cms-thanks-actions .cms-buy-btn { text-decoration: none; display: inline-block; }
+.cms-thanks-link { font-size: .9rem; opacity: .85; word-break: break-all; }
+
+/* Slot picker on the buyer's page. Times are the only thing that
+   matters here, so they are big, tappable and evenly sized — this is
+   read on a phone more often than not. */
+.cms-slot-day { margin-top: 18px; }
+.cms-slot-day h3 { margin: 0 0 8px; font-size: 1rem; opacity: .75; }
+.cms-slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
+.cms-slot-form { margin: 0; }
+.cms-slot-btn {
+  width: 100%; font: inherit; font-weight: 600; padding: 12px 6px; cursor: pointer;
+  border-radius: var(--site-radius, 8px);
+  border: 1px solid color-mix(in srgb, var(--primary, #2563eb) 35%, transparent);
+  background: color-mix(in srgb, var(--primary, #2563eb) 8%, transparent);
+  color: inherit; transition: background .15s ease;
+}
+.cms-slot-btn:hover { background: var(--primary, #2563eb); color: #fff; }
+.cms-slot-btn:focus-visible { outline: 3px solid var(--accent, #f97316); outline-offset: 2px; }
+.cms-account-flash { padding: 12px 16px; border-radius: var(--site-radius, 8px); font-weight: 600; }
+.cms-account-flash.ok { background: #e3efe7; color: #2f6647; }
+.cms-account-flash.bad { background: #fde8e6; color: #a3271b; }
+
+/* Booking calendar on the buyer's own page. A grid people already know
+   how to read, rather than a long list of every free time at once. */
+.cms-cal { margin: 16px 0 22px; }
+.cms-cal-head, .cms-cal-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.cms-cal-head { margin-bottom: 6px; font-size: .78rem; letter-spacing: .04em;
+  text-transform: uppercase; opacity: .6; text-align: center; }
+.cms-cal-week { margin-bottom: 6px; }
+.cms-cal-day { display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; min-height: 52px; border-radius: var(--site-radius, 8px);
+  font-weight: 600; text-decoration: none; }
+.cms-cal-day.is-out { opacity: .25; }
+.cms-cal-day.is-empty { opacity: .45; }
+.cms-cal-day.is-free { border: 2px solid var(--primary, #2563eb); color: var(--primary, #2563eb);
+  cursor: pointer; transition: background .15s, color .15s; }
+.cms-cal-day.is-free:hover, .cms-cal-day.is-chosen {
+  background: var(--primary, #2563eb); color: #fff; }
+.cms-cal-count { font-size: .68rem; font-weight: 500; opacity: .8; }
+.cms-day-panel h3 { margin: 0 0 8px; font-size: 1rem; opacity: .75; }
+.cms-confirm-when { font-size: 1.35rem; font-weight: 700; margin: 4px 0 10px; }
+.cms-confirm-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 14px; }
+.cms-confirm-back { font-size: .92rem; }
+a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+
+.cms-booking-list { list-style: none; margin: 0; padding: 0; }
+.cms-booking-list li { display: flex; align-items: center; justify-content: space-between;
+  gap: 14px; flex-wrap: wrap; padding: 10px 0; border-bottom: 1px solid rgba(128,128,128,.22); }
+.cms-booking-list li:last-child { border-bottom: 0; }
+.cms-booking-cancel { font-size: .9rem; }
+
+/* Basket. One row per thing, the way a receipt reads. */
+.cms-cart-list { list-style: none; margin: 18px 0; padding: 0; }
+.cms-cart-line { display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 14px 0; border-bottom: 1px solid rgba(128,128,128,.22); }
+.cms-cart-thumb { width: 64px; height: 64px; object-fit: cover; border-radius: var(--site-radius, 8px); }
+.cms-cart-detail { display: flex; flex-direction: column; gap: 2px; flex: 1 1 40%; text-align: left; }
+.cms-cart-qty { display: flex; align-items: center; gap: 6px; margin: 0; }
+.cms-cart-qty input { width: 68px; padding: 6px 8px; }
+.cms-cart-update { padding: 6px 10px; border-radius: var(--site-radius, 8px);
+  border: 1px solid var(--primary, #2563eb); background: transparent;
+  color: var(--primary, #2563eb); cursor: pointer; font-size: .85rem; }
+.cms-cart-update:hover { background: var(--primary, #2563eb); color: #fff; }
+.cms-cart-total { min-width: 96px; text-align: right; font-weight: 700;
+  font-variant-numeric: tabular-nums; }
+.cms-cart-sums { display: grid; grid-template-columns: 1fr auto; gap: 6px 18px;
+  margin: 18px 0; text-align: left; }
+.cms-cart-sums dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.cms-cart-sums .is-total { font-size: 1.15rem; font-weight: 700; padding-top: 8px;
+  border-top: 1px solid rgba(128,128,128,.3); }
+.cms-cart-checkout { margin: 18px 0; }
+.cms-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Storefront grid. Cards, because a shopper scans pictures and prices
+   rather than reading rows. */
+.cms-shop-grid { display: grid; gap: 20px; margin: 18px 0;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.cms-shop-grid[data-columns="2"] { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+.cms-shop-grid[data-columns="4"] { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+.cms-shop-item { display: flex; flex-direction: column; gap: 8px; padding: 16px;
+  border: 1px solid rgba(128,128,128,.25); border-radius: var(--site-radius, 8px);
+  text-align: left; }
+.cms-shop-item.is-sold-out { opacity: .6; }
+.cms-shop-image { width: 100%; aspect-ratio: 4 / 3; object-fit: cover;
+  border-radius: var(--site-radius, 8px); }
+.cms-shop-name { margin: 0; font-size: 1.05rem; }
+.cms-shop-desc { margin: 0; font-size: .9rem; opacity: .8; }
+.cms-shop-price { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+.cms-shop-stock { margin: 0; font-size: .82rem; color: var(--primary-dark, #1d4ed8); }
+.cms-shop-item .cms-action-btn,
+.cms-shop-item .cms-buy-btn { width: 100%; margin-top: auto; }
+.cms-shop-basket { margin: 8px 0 0; }
+
+/* The honeypot. Off-screen rather than display:none — some bots skip
+   anything explicitly hidden, and this reads as a normal field to them
+   while never being seen or focusable by a person. */
+.cms-contact-hp { position: absolute; left: -9999px; top: auto;
+  width: 1px; height: 1px; overflow: hidden; }
+
+
+/* =====================================================================
+   Declared content blocks (services/blocks.py).
+   Every one draws from the role colour ramps rather than fixed hexes, so
+   a block takes on whatever palette the template uses and one colour
+   change moves all of them together.
+   ===================================================================== */
+
+.cms-block { margin: 8px 0; }
+
+/* --- Pricing ------------------------------------------------------- */
+.cms-price-grid { display: grid; gap: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); align-items: stretch; }
+.cms-price-tier { display: flex; flex-direction: column; gap: 12px; padding: var(--site-radius-pad, 26px 22px);
+  border: 1px solid var(--primary-200, rgba(128,128,128,.28));
+  border-radius: var(--site-radius, 10px); background: var(--primary-50, #fff); }
+.cms-price-tier.is-featured { border-color: var(--primary, #2563eb); border-width: 2px;
+  box-shadow: 0 12px 32px -18px var(--primary-700, rgba(0,0,0,.4)); }
+.cms-price-name { margin: 0; font-size: 1.05rem; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--primary-700, #1d4ed8); }
+.cms-price-amount { margin: 0; font-size: 2.4rem; font-weight: 700; line-height: 1;
+  color: var(--primary-900, #111); font-variant-numeric: tabular-nums; }
+.cms-price-amount small { display: block; margin-top: 6px; font-size: .85rem; font-weight: 500;
+  letter-spacing: .02em; opacity: .7; }
+.cms-price-features { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: .95rem; }
+.cms-price-features li { padding-left: 22px; position: relative; }
+.cms-price-features li::before { content: ""; position: absolute; left: 0; top: .45em;
+  width: 10px; height: 6px; border-left: 2px solid var(--primary, #2563eb);
+  border-bottom: 2px solid var(--primary, #2563eb); transform: rotate(-45deg); }
+.cms-price-btn { margin-top: auto; display: inline-block; text-align: center; padding: 12px 18px;
+  border-radius: var(--site-radius, 8px); background: var(--primary, #2563eb);
+  color: var(--primary-on, #fff); text-decoration: none; font-weight: 600; }
+.cms-price-btn:hover { background: var(--primary-700, #1d4ed8); color: #fff; }
+
+/* --- Testimonial --------------------------------------------------- */
+.cms-quote { margin: 0; padding: var(--site-radius-pad, 26px); border-radius: var(--site-radius, 10px); display: grid; gap: 14px; }
+.cms-quote-card { background: var(--primary-50, #f8fafc);
+  border: 1px solid var(--primary-100, rgba(128,128,128,.2)); }
+.cms-quote-large { text-align: center; padding: 40px 24px; }
+.cms-quote blockquote { margin: 0; font-size: 1.15rem; line-height: 1.6; }
+.cms-quote-large blockquote { font-size: 1.6rem; line-height: 1.45; }
+.cms-quote blockquote::before { content: "\201C"; color: var(--primary-300, #93c5fd);
+  font-size: 2.4em; line-height: 0; vertical-align: -.35em; margin-right: .08em; }
+.cms-quote figcaption { display: flex; flex-direction: column; gap: 2px; font-size: .92rem; }
+.cms-quote-large figcaption { align-items: center; }
+.cms-quote-name { font-weight: 700; }
+.cms-quote-role { opacity: .72; }
+.cms-quote-photo { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; }
+.cms-quote-large .cms-quote-photo { margin: 0 auto; }
+
+/* --- Numbers ------------------------------------------------------- */
+.cms-stat-row { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  text-align: center; }
+.cms-stat { display: grid; gap: 4px; padding: var(--site-radius-pad, 20px 12px); border-radius: var(--site-radius, 10px);
+  background: var(--primary-50, transparent); }
+.cms-stat-value { font-size: 2.6rem; font-weight: 700; line-height: 1;
+  color: var(--primary-700, #1d4ed8); font-variant-numeric: tabular-nums; }
+.cms-stat-label { font-size: .9rem; opacity: .8; }
+
+/* --- Logo row ------------------------------------------------------ */
+.cms-logo-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+  gap: 28px 40px; padding: 8px 0; }
+.cms-logo img { max-height: 44px; max-width: 150px; object-fit: contain; display: block; }
+.cms-logo-row.is-muted img { filter: grayscale(1); opacity: .65; transition: opacity .2s, filter .2s; }
+.cms-logo-row.is-muted img:hover { filter: none; opacity: 1; }
+
+/* --- Team ---------------------------------------------------------- */
+.cms-team-grid { display: grid; gap: 24px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.cms-person { display: grid; gap: 6px; }
+.cms-person-photo { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--site-radius, 10px); }
+.cms-person-name { margin: 6px 0 0; font-size: 1.05rem; }
+.cms-person-role { margin: 0; font-size: .88rem; font-weight: 600; color: var(--primary-700, #1d4ed8); }
+.cms-person-bio { margin: 0; font-size: .92rem; opacity: .82; line-height: 1.55; }
+
+/* --- Timeline ------------------------------------------------------ */
+.cms-timeline { list-style: none; margin: 0; padding: 0; display: grid; }
+.cms-timeline-item { display: grid; grid-template-columns: auto 1fr; gap: 18px;
+  padding: 0 0 26px; position: relative; }
+.cms-timeline-vertical .cms-timeline-item::before { content: ""; position: absolute;
+  left: 7px; top: 22px; bottom: -4px; width: 2px; background: var(--primary-200, #dbeafe); }
+.cms-timeline-vertical .cms-timeline-item:last-child::before { display: none; }
+.cms-timeline-when { position: relative; padding-left: 26px; font-size: .82rem; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase; color: var(--primary-700, #1d4ed8); white-space: nowrap; }
+.cms-timeline-when::before { content: ""; position: absolute; left: 0; top: .25em;
+  width: 16px; height: 16px; border-radius: 50%; background: var(--primary, #2563eb);
+  box-shadow: 0 0 0 4px var(--primary-100, #dbeafe); }
+.cms-timeline-body h3 { margin: 0 0 4px; font-size: 1.05rem; }
+.cms-timeline-body p { margin: 0; opacity: .85; line-height: 1.6; }
+.cms-timeline-horizontal { grid-auto-flow: column; grid-auto-columns: minmax(190px, 1fr);
+  overflow-x: auto; gap: 20px; }
+.cms-timeline-horizontal .cms-timeline-item { grid-template-columns: 1fr; gap: 8px; }
+
+/* --- Call to action ------------------------------------------------ */
+.cms-cta { display: grid; gap: 12px; justify-items: center; text-align: center;
+  padding: var(--site-radius-pad, 44px 28px); border-radius: var(--site-radius, 12px); }
+.cms-cta h2 { margin: 0; font-size: 1.9rem; }
+.cms-cta p { margin: 0; max-width: 52ch; opacity: .9; }
+.cms-cta-solid { background: var(--primary, #2563eb); color: var(--primary-on, #fff); }
+.cms-cta-solid .cms-cta-btn { background: var(--primary-on, #fff); color: var(--primary-800, #1e3a8a); }
+.cms-cta-soft { background: var(--primary-50, #eff6ff); color: var(--primary-950, #0f172a);
+  border: 1px solid var(--primary-100, #dbeafe); }
+.cms-cta-outline { border: 2px solid var(--primary, #2563eb); }
+.cms-cta-btn { display: inline-block; margin-top: 6px; padding: 13px 26px; font-weight: 600;
+  text-decoration: none; border-radius: var(--site-radius, 8px);
+  background: var(--primary, #2563eb); color: var(--primary-on, #fff); }
+.cms-cta-btn:hover { filter: brightness(1.08); }
+
+/* --- Email sign-up ------------------------------------------------- */
+.cms-newsletter { display: grid; gap: 10px; padding: var(--site-radius-pad, 30px 24px); border-radius: var(--site-radius, 12px);
+  background: var(--primary-50, #f8fafc); border: 1px solid var(--primary-100, rgba(128,128,128,.2)); }
+.cms-newsletter h2 { margin: 0; font-size: 1.4rem; }
+.cms-newsletter p { margin: 0; opacity: .85; }
+.cms-newsletter-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 6px; }
+.cms-newsletter-form input[type=email] { flex: 1 1 220px; padding: 12px 14px;
+  border: 1px solid var(--primary-200, #cbd5e1); border-radius: var(--site-radius, 8px); }
+/*  A line under the form saying what somebody is agreeing to. It used to
+    be a label laying a tick box out beside that text, hence the flex and
+    the gap; the box is gone (see build_newsletter) and this is now one
+    paragraph, so it wants its own margin rather than a row layout. */
+/*  The answer to a sign-up, at the top of the page it was made from.
+    Quiet by default and only loud when something went wrong, because the
+    usual case -- "go and look in your inbox" -- is an instruction, not an
+    alarm. */
+.cms-subscribe-note {
+  margin: 0 0 20px; padding: 12px 16px;
+  border-radius: var(--site-radius, 8px);
+  background: color-mix(in srgb, var(--primary, #2563eb) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary, #2563eb) 30%, transparent);
+}
+.cms-subscribe-note.is-bad {
+  background: #fef2f2; border-color: #fecaca; color: #7f1d1d;
+}
+
+/*  How the sign-up actually works, said before it is used rather than
+    after. Quieter than the consent line above it -- it is a note about
+    the mechanism, not part of what is being agreed to. */
+.cms-newsletter-howitworks { flex: 1 1 100%; margin: 2px 0 0; font-size: .82rem; opacity: .7; }
+/*  The answer appears here, inside the form. Hidden until there is one --
+    `hidden` alone loses to the display above, so it is spelled out. */
+.cms-newsletter-form .cms-subscribe-note { flex: 1 1 100%; margin: 6px 0 0; }
+.cms-newsletter-form .cms-subscribe-note[hidden] { display: none; }
+.cms-newsletter-consent { flex: 1 1 100%; margin: 4px 0 0;
+  font-size: .85rem; opacity: .85; }
+
+@media (max-width: 640px) {
+  .cms-price-amount { font-size: 2rem; }
+  .cms-stat-value { font-size: 2.1rem; }
+  .cms-cta { padding: 32px 20px; }
+  .cms-cta h2 { font-size: 1.5rem; }
+}
+
+
+/* =====================================================================
+   Sections with a picture behind them.
+   A whole aesthetic can be built this way — bands of imagery alternating
+   with quiet ones — which is why the overlay is not optional decoration:
+   text over an unmodified photograph is legible about half the time, and
+   half is not something a design can rely on. Each level is a class so
+   the same picture can sit under dark text on one page and light on
+   another.
+   ===================================================================== */
+.cms-section-bg { position: relative; background-size: cover; background-repeat: no-repeat; }
+.cms-bg-pos-center { background-position: center; }
+.cms-bg-pos-top { background-position: center top; }
+.cms-bg-pos-bottom { background-position: center bottom; }
+/*  Fixed gives a parallax feel on a desktop; it is switched off on touch
+    below, where iOS renders it as a jarring jump rather than a drift. */
+.cms-bg-pos-fixed { background-position: center; background-attachment: fixed; }
+
+.cms-section-bg::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  border-radius: inherit;
+}
+.cms-bg-light::before { background: rgba(255,255,255,.72); }
+.cms-bg-medium::before { background: rgba(12,14,18,.48); }
+.cms-bg-dark::before { background: rgba(9,11,15,.72); }
+/*  A tint takes the site's own primary rather than grey, so an image band
+    still reads as part of the palette instead of a photograph dropped in
+    from somewhere else. */
+.cms-bg-tint::before { background: var(--primary-900, #10233f); opacity: .78; }
+
+/*  Content sits above the overlay. */
+.cms-section-bg > * { position: relative; z-index: 1; }
+
+/*  On a dimmed background the text has to flip, and everything inside it
+    — headings, body, links, block copy — has to come along or half the
+    section goes invisible. */
+.cms-bg-medium, .cms-bg-dark, .cms-bg-tint,
+.cms-bg-medium h1, .cms-bg-medium h2, .cms-bg-medium h3, .cms-bg-medium p, .cms-bg-medium li,
+.cms-bg-dark h1, .cms-bg-dark h2, .cms-bg-dark h3, .cms-bg-dark p, .cms-bg-dark li,
+.cms-bg-tint h1, .cms-bg-tint h2, .cms-bg-tint h3, .cms-bg-tint p, .cms-bg-tint li,
+.cms-bg-medium .cms-stat-value, .cms-bg-dark .cms-stat-value, .cms-bg-tint .cms-stat-value,
+.cms-bg-medium .cms-stat-label, .cms-bg-dark .cms-stat-label, .cms-bg-tint .cms-stat-label,
+.cms-bg-medium .cms-timeline-when, .cms-bg-dark .cms-timeline-when, .cms-bg-tint .cms-timeline-when,
+.cms-bg-medium .cms-person-role, .cms-bg-dark .cms-person-role, .cms-bg-tint .cms-person-role {
+  color: #fff;
+}
+.cms-bg-medium .cms-stat, .cms-bg-dark .cms-stat, .cms-bg-tint .cms-stat,
+.cms-bg-medium .cms-quote-card, .cms-bg-dark .cms-quote-card, .cms-bg-tint .cms-quote-card {
+  background: rgba(255,255,255,.08);
+}
+.cms-bg-medium .cms-price-tier, .cms-bg-dark .cms-price-tier, .cms-bg-tint .cms-price-tier {
+  background: rgba(255,255,255,.94); color: #15181c;
+}
+
+/*  Image-backed bands want room around them or the picture is just a
+    stripe behind a paragraph. */
+.cms-section-bg { padding: 56px 28px; }
+
+@media (max-width: 720px) {
+  .cms-section-bg { padding: 36px 18px; }
+  /*  background-attachment: fixed is broken or juddering on most touch
+      browsers; a centred cover is the honest fallback. */
+  .cms-bg-pos-fixed { background-attachment: scroll; }
+}
+
+
+/* =====================================================================
+   A picture behind the whole page.
+   The interesting choice is not the image, it is what the content does
+   on top of it. "Panels" is the one that makes a backdrop genuinely
+   usable: each section gets its own surface, so the picture FRAMES the
+   page's structure instead of showing through the words — which is the
+   difference between a designed page and an unreadable one.
+   ===================================================================== */
+.cms-page-bg { background-repeat: no-repeat; }
+
+/*  The dimming sits between the picture and everything else. Fixed, so it
+    covers the viewport whether the image is still or travelling. */
+.cms-page-bg::before {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+}
+.cms-page-veil-none::before { display: none; }
+.cms-page-veil-light::before { background: rgba(255,255,255,.78); }
+.cms-page-veil-medium::before { background: rgba(12,14,18,.5); }
+.cms-page-veil-dark::before { background: rgba(9,11,15,.74); }
+.cms-page-veil-tint::before { background: var(--primary-900, #10233f); opacity: .8; }
+
+/*  Everything the site renders sits above the veil. */
+.cms-page-bg > * { position: relative; z-index: 1; }
+
+/*  Each section on its own panel — the picture becomes a frame around the
+    content rather than a texture under it. */
+.cms-page-surface-panels .block,
+.cms-page-surface-panels .cms-section > .block {
+  background: var(--site-panel-bg, rgba(255,255,255,.94));
+  border-radius: var(--site-radius, 10px);
+  padding: 28px 26px;
+  box-shadow: 0 18px 40px -28px rgba(9,11,15,.55);
+}
+/*  A section that already carries its own picture is a band in its own
+    right and must not be boxed inside a panel as well. */
+.cms-page-surface-panels .cms-section-bg > .block { background: none; box-shadow: none; padding: 0; }
+
+/*  One soft column behind all the content instead of a panel each: for a
+    backdrop that should read as continuous. */
+.cms-page-surface-veil main {
+  background: var(--site-panel-bg, rgba(255,255,255,.9));
+  border-radius: var(--site-radius, 12px);
+  padding: 8px 22px;
+}
+
+/*  Dark veils flip the text, the same way an image band does. */
+.cms-page-veil-medium, .cms-page-veil-dark, .cms-page-veil-tint,
+.cms-page-veil-medium h1, .cms-page-veil-medium h2, .cms-page-veil-medium h3, .cms-page-veil-medium p,
+.cms-page-veil-dark h1, .cms-page-veil-dark h2, .cms-page-veil-dark h3, .cms-page-veil-dark p,
+.cms-page-veil-tint h1, .cms-page-veil-tint h2, .cms-page-veil-tint h3, .cms-page-veil-tint p {
+  color: #fff;
+}
+/*  …except where a panel has restored a pale surface underneath, in which
+    case the text has to come back. */
+.cms-page-surface-panels .block h1, .cms-page-surface-panels .block h2,
+.cms-page-surface-panels .block h3, .cms-page-surface-panels .block p,
+.cms-page-surface-panels .block li,
+.cms-page-surface-veil main h1, .cms-page-surface-veil main h2,
+.cms-page-surface-veil main h3, .cms-page-surface-veil main p,
+.cms-page-surface-veil main li {
+  /*  The darkest step of the site's own colour rather than a neutral
+      grey: a panel should still look like it belongs to the palette, and
+      950 is dark enough to read on a pale surface whatever the hue. */
+  color: var(--primary-950, #22262b);
+}
+
+@media (max-width: 720px) {
+  /*  Fixed attachment is broken or juddery on most touch browsers, and a
+      full-page one is the most obvious place it shows. */
+  .cms-page-bg { background-attachment: scroll !important; }
+  .cms-page-surface-panels .block { padding: 20px 16px; }
+}
+
+/* The button primitive.
+
+   Three tools had grown their own before this existed -- the pricing
+   tier's, the call to action's and the file tool's -- which is why a card
+   could not have one without inventing a fourth. This is the shared one,
+   coloured from the palette like everything else, so a card with a button
+   is a card with a button rather than a reason for another tool. */
+.cms-btn {
+  display: inline-block; text-align: center; padding: 12px 18px;
+  border-radius: var(--site-radius, 8px);
+  background: var(--primary, #2563eb);
+  text-decoration: none; font-weight: 600; line-height: 1.2;
+}
+.cms-btn { color: var(--primary-on, #fff); }
+.cms-btn:hover { background: var(--primary-700, #1d4ed8); color: var(--primary-on, #fff); }
+/*  margin-top: auto pins it to the bottom of the card, which is what makes
+    a row of cards line their buttons up however much text each one holds
+    -- the thing that used to be the pricing grid's alone. */
+.cms-card-btn { margin-top: auto; align-self: center; }
+
+/*  Tables while editing.
+
+    A table gets a scrolling wrapper at runtime (see site.js), but only on
+    the published page: inside a contenteditable region that wrapper would
+    be typed into and saved, so the editor deliberately skips it. The
+    result was a table with nothing to scroll inside, pushing the whole
+    page sideways on a phone whenever the site was being edited.
+
+    Same containment, without touching the markup: the editable box that
+    holds a table scrolls instead. :has() keeps it to exactly those boxes,
+    so no other tool's preview has its overflow clipped. */
+.cms-html-preview:has(table) { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/*  A mirroring FAQ with nothing to show. Same treatment as the Contact
+    tool's empty state: quiet, centred, and saying what to do about it. */
+.cms-faq-empty {
+  text-align: center; font-size: 13px; opacity: 0.7; padding: 12px 0;
+}
+
+/*  The Search tool, in three styles. The control is the box; the field
+    inside carries no border of its own, since two nested outlines read as
+    a mistake rather than as emphasis. */
+.cms-search-tool { margin: 0 0 20px; }
+.cms-search-box { display: flex; align-items: center; gap: 8px; }
+.cms-search-icon { opacity: .6; flex: none; }
+.cms-search-box input {
+  flex: 1; min-width: 0; border: none; background: none; outline: none;
+  font: inherit; color: inherit; padding: 0;
+}
+.cms-search-style-bar .cms-search-box {
+  border: 1px solid color-mix(in srgb, var(--primary, #2563eb) 24%, transparent);
+  border-radius: var(--site-radius, 10px); padding: 10px 14px;
+  background: color-mix(in srgb, var(--primary, #2563eb) 4%, transparent);
+}
+.cms-search-style-pill .cms-search-box {
+  border: 1px solid color-mix(in srgb, var(--primary, #2563eb) 30%, transparent);
+  border-radius: 999px; padding: 10px 18px;
+}
+.cms-search-style-plain .cms-search-box {
+  border-bottom: 2px solid color-mix(in srgb, var(--primary, #2563eb) 35%, transparent);
+  padding: 6px 2px;
+}
+.cms-search-box:focus-within { border-color: var(--primary, #2563eb); }
+.cms-search-count { margin: 8px 2px 0; font-size: .9rem; opacity: .75; }
+
+/*  A contents list — the FAQ Reader's own display option. */
+.cms-faq-contents { margin: 0 0 18px; padding-left: 20px; display: grid; gap: 6px; font-size: .95rem; }
+.cms-faq-contents li[hidden] { display: none; }
+.cms-faq-item[hidden] { display: none; }
+/*  An answer's own formatting: the small vocabulary faq_markdown allows,
+    kept to the surrounding text's size so an answer never shouts. */
+.cms-faq-a p { margin: 0 0 8px; }
+.cms-faq-a p:last-child { margin-bottom: 0; }
+.cms-faq-a ul { margin: 6px 0 0; padding-left: 20px; }
+
+/*  The document view: a FAQ read straight through, not folded away. Sized
+    like ordinary prose because that is what it is. */
+.cms-faq-style-document .cms-faq-item { margin: 0 0 22px; }
+.cms-faq-style-document .cms-faq-q { margin: 0 0 6px; font-size: 1.15rem; }
+.cms-faq-style-document .cms-faq-a { opacity: .92; }
+.cms-faq-intro { margin: 0 0 22px; }
+
+/*  The hidden attribute means hidden.
+    It is only `display: none` from the browser's own stylesheet, which
+    any class setting a display beats — so an element written as hidden
+    can sit there in plain view because something two hundred lines away
+    made labels flex. That is how the FAQ tool came to show two editing
+    boxes at once, and the same trap is set for every element in this app
+    that is toggled by that attribute. Stated once, with the !important
+    that a browser default cannot otherwise win, rather than guarding each
+    rule that might one day collide with it. */
+[hidden] { display: none !important; }
+
+/*  A logo row entry with no picture: the name, set as a wordmark. Sized
+    and spaced like the images beside it so a row can honestly mix the
+    two — an accreditation with a logo next to one without. */
+.cms-logo-name {
+  font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  font-size: .95rem; white-space: nowrap;
+}
+
+/*  An example product. Marked plainly rather than styled to look real —
+    the point is that it is NOT for sale, and a badge somebody has to
+    squint at would be worse than none. */
+.cms-shop-item.is-example { position: relative; opacity: .92; }
+.cms-shop-example {
+  display: inline-block; margin-bottom: 6px; padding: 2px 8px;
+  border-radius: 999px; font-size: .72rem; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase;
+  background: color-mix(in srgb, var(--primary, #2563eb) 14%, transparent);
+  color: var(--primary-900, #1f2937);
+}
+
+/*  The basket.
+
+    Sized and spaced to sit in a header beside the navigation, which is
+    where a shopper looks for it. It is a link, not a button, because it
+    goes to a page — and it carries its count as a badge so the number is
+    readable at a glance rather than parsed out of a sentence. */
+.cms-basket { display: inline-flex; }
+.cms-basket-link {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 6px 10px; border-radius: 999px; text-decoration: none;
+  color: inherit; line-height: 1;
+}
+.cms-basket-link:hover { background: color-mix(in srgb, currentColor 10%, transparent); }
+.cms-basket-word { font-size: .95rem; }
+.cms-basket-count {
+  min-width: 1.35em; padding: 1px 6px; border-radius: 999px;
+  background: var(--primary, #2563eb); color: var(--primary-on, #fff);
+  font-size: .78rem; font-weight: 700; text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+/*  An empty basket still shows its zero — a badge that disappears makes
+    the header jump about as things are added and removed — but it stops
+    shouting for attention it has not earned. */
+.cms-basket-count[data-empty="1"] {
+  background: color-mix(in srgb, currentColor 16%, transparent);
+  color: inherit; font-weight: 600;
+}
+/*  Where in the row it sits — right, center or left, the admin's choice.
+    The class is repeated onto the rendered <a> itself (see render_basket
+    in services/cart.py) because the div carrying it in the stored markup
+    is never what a visitor sees.
+
+    The margin goes on the SECTION, not the basket: a header zone is a
+    flex row of sections, so a basket pushed inside its own section moves
+    nothing — the section is what has a sibling to be pushed away from.
+    :has() is what lets the section be picked out by what it contains,
+    since nothing on the section itself says a basket is inside it.
+    Right is auto-margin-left only (pushed to the end); left is the mirror
+    of that; center gets auto on both sides, which centers a flex child
+    regardless of the row's own justify-content. */
+.site-header-zone > .cms-section:has(.cms-basket-align-right) { margin-left: auto; }
+.site-header-zone > .cms-section:has(.cms-basket-align-left) { margin-right: auto; }
+.site-header-zone > .cms-section:has(.cms-basket-align-center) { margin-left: auto; margin-right: auto; }
+
+/*  A Contacts block sits its lines side by side (a footer strip) or one
+    per line (a sidebar, a contact page). Side by side is the default and
+    is what every block written before the choice existed does, so nothing
+    moves on an existing site. */
+.cms-contact-column .cms-contact-details { flex-direction: column; align-items: center; gap: 8px; }

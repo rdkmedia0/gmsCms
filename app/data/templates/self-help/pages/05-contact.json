@@ -1,0 +1,35 @@
+{
+  "title": "Contact",
+  "slug_suffix": "contact",
+  "page_type": "standard",
+  "meta_description": "Get the free starter workbook.",
+  "sections": [
+    [
+      "text",
+      "Start Today",
+      "<p>Grab the free workbook below, or reach out with any questions.</p>",
+      {}
+    ],
+    [
+      "file",
+      "Free Starter Workbook.pdf",
+      "/static/demo/sample-download.pdf",
+      {
+        "file_display": "card",
+        "file_size": 2400000
+      }
+    ],
+    [
+      "card",
+      "",
+      "<div class=\"cms-card-shape\"><h3>Questions?</h3><p>hello@yourwellness.example</p></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-contact-form-tool\"></div>",
+      {}
+    ]
+  ]
+}

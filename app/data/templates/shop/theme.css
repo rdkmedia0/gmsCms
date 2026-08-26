@@ -1,0 +1,19 @@
+/* "Foxglove" — retail wants the products loud and everything else
+   quiet: near-white ground, one soft sage, generous air, and type that
+   gets out of the way. */
+:root {
+  --site-heading-font-family: "Outfit", -apple-system, "Segoe UI", sans-serif;
+  --site-font-family: "Inter", -apple-system, "Segoe UI", sans-serif;
+  --site-heading-weight: 600;
+  --site-body-bg: var(--secondary-50, #fcfcfa);
+}
+body { background: var(--site-body-bg, #fcfcfa); color: var(--accent-base, #2f3733); }
+.site-header { background: rgba(252,252,250,.94); border-bottom: 1px solid var(--secondary-100, #e8e8e2); }
+.site-brand { letter-spacing: -.02em; color: var(--accent-base, #2f3733); }
+.site-nav a { color: var(--accent-400, #4a544d); }
+.site-nav a:hover { color: var(--wp--preset--color--primary, #5a6b57); }
+.site-footer { background: var(--accent-base, #2f3733); color: var(--neutral-200, #e9ece8); }
+.site-footer a { color: var(--neutral-200, #e9ece8); }
+h1, h2 { letter-spacing: -.02em; }
+.cms-shop-item { border-color: var(--secondary-100, #e8e8e2); }
+.cms-shop-name { font-weight: 600; }

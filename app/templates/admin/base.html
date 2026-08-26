@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}My Site — Admin{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+</head>
+<body {% if session.get('user_id') %}data-save-template-url="{{ url_for('admin.template_save_current') }}"{% endif %}>
+  {% if session.get('user_id') %}
+  <header class="admin-header">
+    {#  The site's own name, not a fixed one. Somebody who has just told
+        this app their business is called Ridgeway Bakehouse should not
+        then be looking at a bar that says "My Site". #}
+    <a class="brand" href="{{ url_for('admin.dashboard') }}" title="Back to the Dashboard">🛠️ {{ site_settings.site_title or 'My Site' }} &mdash; Admin</a>
+    <nav>
+      <a href="{{ url_for('admin.dashboard') }}">Dashboard</a>
+      <a href="{{ url_for('auth.account') }}">Account</a>
+      <a href="{{ url_for('admin.image_library') }}">Media Library</a>
+      <a href="{{ url_for('admin.help') }}">Help</a>
+      <a href="{{ url_for('public.home') }}" target="_blank">View Site ↗</a>
+      <a href="{{ url_for('auth.logout') }}">Log out</a>
+    </nav>
+  </header>
+  {% include "partials/assistant_panel.html" %}
+  {% include "partials/cms_modal.html" %}
+  {% endif %}
+
+  <main class="admin-main">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-list">
+        {% for category, message in messages %}
+          <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    {#  Everything from here to the end of this block is addressed to the
+        OWNER: what they have not finished, what their site is still
+        called, which password they are still using. A visitor at the
+        login screen is not the owner, so none of it is rendered for
+        them -- said here as well as in the context processor that
+        supplies it, because this is where somebody adds the next one. #}
+    {% if session.get('user_id') %}
+    {#  The walk-through, offered until it has been finished once. It is
+        the first thing a new owner should see, and the only thing on this
+        bar that is about what to DO next rather than what is wrong. #}
+    {% if setup_offer and not request.endpoint.startswith('admin.setup') %}
+  <p class="flash flash-success">New here? <a href="{{ url_for('admin.setup') }}" title="Six short steps: the site's name, its look, your details, and what you have not set up yet">Let me walk you through setting this up</a> &mdash; six short steps, and you can leave at any point.</p>
+  {% endif %}
+    {% if borrowed_site_name and not request.endpoint.startswith('admin.setup') %}
+  <p class="flash flash-warning">Your site is still called <strong>{{ borrowed_site_name }}</strong> &mdash; the example name from the look it started with. <a href="{{ url_for('admin.dashboard') }}#site-name" title="The site's name is on the Dashboard, under Site Settings">Give it your own</a>.</p>
+  {% endif %}
+    {% if using_generated_password and request.endpoint != 'auth.account' %}
+  <p class="flash flash-warning">You're still using the password this site generated. It is written in plain text in the container log and in <code>data/initial-admin-password.txt</code> &mdash; <a href="{{ url_for('auth.account') }}">set your own</a>, then delete that file.</p>
+  {% endif %}
+  {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+  {#  Loaded here rather than per-screen so that an action added to any
+      admin page is asked about without having to remember to bring its
+      own dialog. Both are safe to load twice -- a screen that pulls
+      modal.js in for its own use is not broken by this. #}
+  {% if session.get('user_id') %}
+  <script src="{{ static_url('js/admin/confirm.js') }}"></script>
+  {% endif %}
+</body>
+</html>

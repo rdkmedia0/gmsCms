@@ -1,0 +1,62 @@
+{
+  "title": "Home",
+  "slug_suffix": "home",
+  "page_type": "standard",
+  "meta_description": "Family-run lawn care and landscaping, serving the neighborhood since 1985.",
+  "sections": [
+    [
+      "banner",
+      "",
+      "<div class=\"cms-banner\" style=\"background-image:url('media/business-banner.png')\"><div class=\"cms-banner-overlay\"><h2>Your Yard, Cared for Like Family</h2><p>Lawn care & landscaping, proudly serving the neighborhood since 1985.</p></div></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-stats\" data-count=\"3\"><div class=\"cms-stat-row\"><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat1_value\">1985</span><span class=\"cms-stat-label\" data-field=\"stat1_label\">Looking after this town since</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat2_value\">3</span><span class=\"cms-stat-label\" data-field=\"stat2_label\">Generations of Millers</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat3_value\">600+</span><span class=\"cms-stat-label\" data-field=\"stat3_label\">Gardens on the round</span></div></div></div>",
+      {
+        "bg_color": "#dbaf9a"
+      }
+    ],
+    [
+      "text",
+      "Hey There! 👋",
+      "<p>We're the Millers — three generations of us — and we've been keeping this town's lawns green and gardens blooming for almost 40 years. No call centers, no subcontractors: if you call, one of us actually picks up.</p>",
+      {}
+    ],
+    [
+      "columns",
+      "",
+      "{\"columns\": [{\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>\\ud83c\\udf31 Lawn Care</h3><p>Mowing, feeding, and weed control that actually sticks.</p></div>\", \"tool_name\": \"Card\"}, {\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>\\ud83c\\udf33 Landscaping</h3><p>From a new flower bed to a full yard makeover.</p></div>\", \"tool_name\": \"Card\"}, {\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>\\ud83c\\udf42 Seasonal Cleanup</h3><p>Spring and fall, so you never have to.</p></div>\", \"tool_name\": \"Card\"}]}",
+      {}
+    ],
+    [
+      "media",
+      "A Day With the Crew",
+      "/static/video/templates/business-home.mp4",
+      {
+        "media_type": "video"
+      }
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-pricing\" data-columns=\"3\"><div class=\"cms-price-grid\"><div class=\"cms-price-tier\"><h3 class=\"cms-price-name\" data-field=\"tier1_name\">Just the lawn</h3><p class=\"cms-price-amount\"><span data-field=\"tier1_price\">45</span><small data-field=\"tier1_period\">per visit</small></p><ul class=\"cms-price-features\" data-field=\"tier1_features\"><li>Cut, edged and cleared</li><li>Every fortnight, April to October</li><li>Same crew each time</li></ul><a class=\"cms-price-btn\" href=\"/contact\" data-href-field=\"tier1_link\"><span data-field=\"tier1_cta\">Get a price</span></a></div><div class=\"cms-price-tier is-featured\" data-flag=\"tier2_featured\"><h3 class=\"cms-price-name\" data-field=\"tier2_name\">Whole garden</h3><p class=\"cms-price-amount\"><span data-field=\"tier2_price\">140</span><small data-field=\"tier2_period\">per month</small></p><ul class=\"cms-price-features\" data-field=\"tier2_features\"><li>Lawn, beds and hedges</li><li>Seasonal planting</li><li>Leaves cleared in autumn</li><li>We just turn up — no chasing</li></ul><a class=\"cms-price-btn\" href=\"/contact\" data-href-field=\"tier2_link\"><span data-field=\"tier2_cta\">Get a price</span></a></div><div class=\"cms-price-tier\"><h3 class=\"cms-price-name\" data-field=\"tier3_name\">One-off tidy</h3><p class=\"cms-price-amount\"><span data-field=\"tier3_price\">From 220</span><small data-field=\"tier3_period\"></small></p><ul class=\"cms-price-features\" data-field=\"tier3_features\"><li>For a garden that has got away from you</li><li>Green waste taken away</li><li>No obligation afterwards</li></ul><a class=\"cms-price-btn\" href=\"/contact\" data-href-field=\"tier3_link\"><span data-field=\"tier3_cta\">Book a tidy</span></a></div></div></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-testimonial\" data-style=\"card\"><figure class=\"cms-quote cms-quote-card\"><img class=\"cms-quote-photo\" src=\"media/business-quote-helen.png\" alt=\"\" data-field=\"photo\"><blockquote data-field=\"quote\">They have cut our grass since my mother lived here. Same family, same day of the week, thirty years.</blockquote><figcaption><span class=\"cms-quote-name\" data-field=\"name\">Helen Roth</span><span class=\"cms-quote-role\" data-field=\"role\">Ostring, two streets over</span></figcaption></figure></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-cta\" data-tone=\"solid\"><div class=\"cms-cta cms-cta-solid\"><h2 data-field=\"heading\">Get a price for your garden</h2><p data-field=\"text\">Tell us roughly the size and we will come and look. No charge, and no pressure afterwards.</p><a class=\"cms-cta-btn\" href=\"/contact\" data-href-field=\"link\"><span data-field=\"cta\">Ask for a quote</span></a></div></div>",
+      {
+        "bg_color": "#efddb4"
+      }
+    ]
+  ]
+}

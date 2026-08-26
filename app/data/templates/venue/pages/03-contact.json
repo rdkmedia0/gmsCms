@@ -1,0 +1,26 @@
+{
+  "title": "Contact",
+  "slug_suffix": "contact",
+  "page_type": "standard",
+  "meta_description": "Arranging a viewing.",
+  "sections": [
+    [
+      "text",
+      "Come and stand in it",
+      "<p>Photographs do not tell you how big a room is or how the light moves through it. Come on a Wednesday.</p>",
+      {}
+    ],
+    [
+      "text",
+      "Opening hours",
+      "<p>Viewings Wednesdays, 1 till 5</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-contact-form-tool\"></div>",
+      {}
+    ]
+  ]
+}

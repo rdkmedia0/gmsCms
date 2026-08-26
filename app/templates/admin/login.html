@@ -1,0 +1,41 @@
+{% extends "admin/base.html" %}
+{% block title %}Log in — My Site Admin{% endblock %}
+{% block content %}
+<div class="login-box">
+  <h1>Welcome back</h1>
+  <p class="muted">Log in to manage your website.</p>
+
+  {% if google_oauth_configured %}
+  <a href="{{ url_for('auth.google_login') }}" class="btn btn-block btn-google">
+    <svg width="18" height="18" viewBox="0 0 18 18" style="vertical-align:-3px;margin-right:8px;"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.97 10.72A5.4 5.4 0 0 1 3.68 9c0-.6.1-1.18.29-1.72V4.95H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.05l3.01-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.59-2.59C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>
+    Sign in with Google
+  </a>
+  {% endif %}
+
+  {% if password_login_disabled %}
+  {# Google is the only way in, so the one thing this page must handle is
+     Google not working. The app checks that itself rather than taking
+     anyone's word for it — pressing this proves nothing on its own. #}
+  <form method="post" action="{{ url_for('auth.google_check') }}" class="login-fallback">
+    <button type="submit" class="btn btn-block" title="Checks whether Google is actually responding. If it isn't, password sign-in is switched back on for an hour.">Google sign-in not working?</button>
+    <p class="muted">We'll check whether Google is responding. If it isn't, you can sign in with your password instead.</p>
+  </form>
+  {% endif %}
+
+  {% if not password_login_disabled %}
+  {% if fallback_open %}
+  <p class="flash flash-warning">Google isn't responding, so password sign-in is temporarily available.</p>
+  {% endif %}
+  {% if google_oauth_configured %}<div class="login-divider"><span>or</span></div>{% endif %}
+  <form method="post">
+    <label for="username">Username</label>
+    <input type="text" id="username" name="username" autofocus required>
+
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password" required>
+
+    <button type="submit" class="btn btn-primary btn-block">Log In</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

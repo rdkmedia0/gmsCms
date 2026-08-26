@@ -1,0 +1,32 @@
+{
+  "title": "Questions",
+  "slug_suffix": "questions",
+  "page_type": "standard",
+  "meta_description": "Referrals, costs, insurance, cancellations and what to bring.",
+  "sections": [
+    [
+      "text",
+      "",
+      "<h2>Questions</h2>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-search-tool cms-search-style-bar\" data-search-tool data-show-count=\"1\"><label class=\"cms-search-box\"><span class=\"cms-search-icon\" aria-hidden=\"true\">&#128269;</span><input type=\"search\" placeholder=\"Search the questions\" aria-label=\"Search the questions\"></label><p class=\"cms-search-count\" hidden></p></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-faq cms-faq-style-list\" data-faq-name=\"Patient questions\" data-faq-md=\"Everything we are asked most often. If your question is not here, call the\nfront desk on the number at the bottom of any page — someone will answer.\n\nQ. Do I need a referral?\n\nNo. You can book directly with any of our practitioners. If you are claiming\non insurance, your insurer may want a referral letter, so it is worth\nchecking with them first.\n\nQ. How much does an appointment cost?\n\nA first appointment is 60 minutes and £75. Follow-ups are 30 minutes and £48.\nThere is no charge for the initial phone conversation.\n\nQ. What should I bring?\n\nAnything that helps us understand the history: scan results, a letter from\nyour GP, or a list of what you are taking. Wear something you can move in.\n\nQ. How long until I feel a difference?\n\nMost people notice something within three sessions. If you do not, we will\nsay so and talk about what else might help rather than booking a fourth.\n\nQ. What is your cancellation policy?\n\nTwenty-four hours notice and there is no charge. Less than that and we ask\nfor half the fee, because the slot cannot usually be filled.\n\nQ. Can I claim on insurance?\n\nYes, with all the major providers. We give you an itemised receipt after\neach appointment; most claims are settled directly by you with your insurer.\n\nQ. Do you treat children?\n\nFrom twelve upward, with a parent or guardian present for the first\nappointment.\n\nQ. Is there parking?\n\nTwo spaces behind the building, and free on-street parking after ten on\nweekdays. The entrance is step-free from the car park side.\n\"><div class=\"cms-faq-intro\"><p>Everything we are asked most often. If your question is not here, call the</p><p>front desk on the number at the bottom of any page — someone will answer.</p></div><details class=\"cms-faq-item\" id=\"faq-do-i-need-a-referral\" data-faq-id=\"do-i-need-a-referral\" name=\"cms-faq-a8eb6d34\"><summary class=\"cms-faq-q\">Do I need a referral?</summary><div class=\"cms-faq-a\"><p>No. You can book directly with any of our practitioners. If you are claiming</p><p>on insurance, your insurer may want a referral letter, so it is worth</p><p>checking with them first.</p></div></details><details class=\"cms-faq-item\" id=\"faq-how-much-does-an-appointment-cost\" data-faq-id=\"how-much-does-an-appointment-cost\" name=\"cms-faq-a8eb6d34\"><summary class=\"cms-faq-q\">How much does an appointment cost?</summary><div class=\"cms-faq-a\"><p>A first appointment is 60 minutes and £75. Follow-ups are 30 minutes and £48.</p><p>There is no charge for the initial phone conversation.</p></div></details><details class=\"cms-faq-item\" id=\"faq-what-should-i-bring\" data-faq-id=\"what-should-i-bring\" name=\"cms-faq-a8eb6d34\"><summary class=\"cms-faq-q\">What should I bring?</summary><div class=\"cms-faq-a\"><p>Anything that helps us understand the history: scan results, a letter from</p><p>your GP, or a list of what you are taking. Wear something you can move in.</p></div></details><details class=\"cms-faq-item\" id=\"faq-how-long-until-i-feel-a-difference\" data-faq-id=\"how-long-until-i-feel-a-difference\" name=\"cms-faq-a8eb6d34\"><summary class=\"cms-faq-q\">How long until I feel a difference?</summary><div class=\"cms-faq-a\"><p>Most people notice something within three sessions. If you do not, we will</p><p>say so and talk about what else might help rather than booking a fourth.</p></div></details><details class=\"cms-faq-item\" id=\"faq-what-is-your-cancellation-policy\" data-faq-id=\"what-is-your-cancellation-policy\" name=\"cms-faq-a8eb6d34\"><summary class=\"cms-faq-q\">What is your cancellation policy?</summary><div class=\"cms-faq-a\"><p>Twenty-four hours notice and there is no charge. Less than that and we ask</p><p>for half the fee, because the slot cannot usually be filled.</p></div></details><details class=\"cms-faq-item\" id=\"faq-can-i-claim-on-insurance\" data-faq-id=\"can-i-claim-on-insurance\" name=\"cms-faq-a8eb6d34\"><summary class=\"cms-faq-q\">Can I claim on insurance?</summary><div class=\"cms-faq-a\"><p>Yes, with all the major providers. We give you an itemised receipt after</p><p>each appointment; most claims are settled directly by you with your insurer.</p></div></details><details class=\"cms-faq-item\" id=\"faq-do-you-treat-children\" data-faq-id=\"do-you-treat-children\" name=\"cms-faq-a8eb6d34\"><summary class=\"cms-faq-q\">Do you treat children?</summary><div class=\"cms-faq-a\"><p>From twelve upward, with a parent or guardian present for the first</p><p>appointment.</p></div></details><details class=\"cms-faq-item\" id=\"faq-is-there-parking\" data-faq-id=\"is-there-parking\" name=\"cms-faq-a8eb6d34\"><summary class=\"cms-faq-q\">Is there parking?</summary><div class=\"cms-faq-a\"><p>Two spaces behind the building, and free on-street parking after ten on</p><p>weekdays. The entrance is step-free from the car park side.</p></div></details></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-cta\" data-tone=\"soft\"><div class=\"cms-cta cms-cta-soft\"><h2 data-field=\"heading\">Still not sure?</h2><p data-field=\"text\">Ring the front desk. A first conversation costs nothing and takes five minutes.</p><a class=\"cms-cta-btn\" href=\"/contact\" data-href-field=\"link\"><span data-field=\"cta\">Get in touch</span></a></div></div>",
+      {}
+    ]
+  ]
+}

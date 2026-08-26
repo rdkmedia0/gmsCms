@@ -1,0 +1,28 @@
+{# The generic confirm/prompt modal — see static/js/admin/modal.js. #}
+<link rel="stylesheet" href="{{ static_url('css/cms-modal.css') }}">
+<div id="cms-modal-backdrop" class="cms-modal-backdrop" hidden>
+  <div class="cms-modal">
+    <p id="cms-modal-message"></p>
+    <input type="text" id="cms-modal-input" hidden>
+    <label id="cms-modal-count-label" class="cms-modal-count-label" hidden>How many to generate?
+      <select id="cms-modal-count">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+      </select>
+    </label>
+    <label id="cms-modal-snapshot-label" class="cms-modal-count-label" hidden>
+      <input type="checkbox" id="cms-modal-snapshot"> Save the current setup as a new template first
+    </label>
+    <div class="cms-modal-actions">
+      <button type="button" id="cms-modal-cancel">Cancel</button>
+      {# A third answer, for the questions that genuinely have one — see
+         modal.js's altLabel. Hidden unless the caller asks for it, so
+         every existing confirm still reads as yes-or-no. #}
+      <button type="button" id="cms-modal-alt" hidden></button>
+      <button type="button" id="cms-modal-confirm" class="cms-danger">Confirm</button>
+    </div>
+  </div>
+</div>
+<script src="{{ static_url('js/admin/modal.js') }}"></script>

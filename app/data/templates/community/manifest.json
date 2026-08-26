@@ -1,0 +1,44 @@
+{
+  "name": "Community Group",
+  "icon": "🌻",
+  "slug": "community",
+  "description": "A club, charity or community project: what you do, who does it, and how to join in.",
+  "google_fonts_url": "/static/fonts/choices.css",
+  "palette": [
+    {
+      "slug": "primary",
+      "name": "Leaf",
+      "color": "#4a7c3f"
+    },
+    {
+      "slug": "secondary",
+      "name": "Earth",
+      "color": "#8a6b4a"
+    },
+    {
+      "slug": "accent",
+      "name": "Sunflower",
+      "color": "#d9a520"
+    }
+  ],
+  "nav_layout": "split",
+  "page_layout": "sidebar-blog",
+  "footer_layout": "columns",
+  "shape_override": "rounded",
+  "shadow_override": "subtle",
+  "business_name": "Meadowbank Community Garden",
+  "tagline": "Anyone can turn up on a Saturday",
+  "footer_blurb": "A community garden run by whoever shows up. Founded 2011, still going.",
+  "footer_contact": {
+    "address": "Meadowbank Community Garden, behind the leisure centre",
+    "email": "hello@meadowbank.example",
+    "facebook": "https://facebook.com/meadowbankgarden"
+  },
+  "has_content": true,
+  "pages": [
+    "home",
+    "involved",
+    "people",
+    "contact"
+  ]
+}

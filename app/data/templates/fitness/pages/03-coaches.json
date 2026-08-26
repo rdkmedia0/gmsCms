@@ -1,0 +1,26 @@
+{
+  "title": "Coaches",
+  "slug_suffix": "coaches",
+  "page_type": "standard",
+  "meta_description": "Who will be coaching you.",
+  "sections": [
+    [
+      "text",
+      "Three of us",
+      "<p>All here every week, all coaching the classes themselves.</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-team\" data-count=\"2\"><div class=\"cms-team-grid\"><div class=\"cms-person\"><img class=\"cms-person-photo\" src=\"media/fitness-team-1.png\" alt=\"\" loading=\"lazy\" data-field=\"person1_photo\"><h3 class=\"cms-person-name\" data-field=\"person1_name\">Nora</h3><p class=\"cms-person-role\" data-field=\"person1_role\">Head coach</p><p class=\"cms-person-bio\" data-field=\"person1_bio\">Came to this late after years of being told she was not sporty. Coaches beginners better than anyone.</p></div><div class=\"cms-person\"><img class=\"cms-person-photo\" src=\"media/fitness-team-2.png\" alt=\"\" loading=\"lazy\" data-field=\"person2_photo\"><h3 class=\"cms-person-name\" data-field=\"person2_name\">Ben</h3><p class=\"cms-person-role\" data-field=\"person2_role\">Coach</p><p class=\"cms-person-bio\" data-field=\"person2_bio\">Powerlifting background, rehab qualified, endlessly patient about technique.</p></div></div></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-testimonial\" data-style=\"card\"><figure class=\"cms-quote cms-quote-card\"><img class=\"cms-quote-photo\" src=\"media/fitness-quote.png\" alt=\"\" data-field=\"photo\"><blockquote data-field=\"quote\">I joined at fifty-two having never been in a gym. Nobody looked at me twice and I can carry the shopping in one trip now.</blockquote><figcaption><span class=\"cms-quote-name\" data-field=\"name\">Ruth Bieri</span><span class=\"cms-quote-role\" data-field=\"role\">Two years in</span></figcaption></figure></div>",
+      {}
+    ]
+  ]
+}

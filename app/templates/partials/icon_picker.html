@@ -1,0 +1,23 @@
+{# A scrollable dropdown of real icon buttons — never a typed code. Shared
+   by every "choose/insert icon" trigger on a page (Menu tool item rows, the
+   WYSIWYG toolbar's Insert Icon button, the blog post editor): clicking a
+   trigger opens it right below that button (a plain dropdown, not a
+   separate "mode" anything else disappears into); clicking an icon (or "No
+   icon", where relevant) applies it and closes the dropdown — see the
+   icon-grid JS wiring in inline-editor.js. Needs `icon_choices` in scope
+   (see inject_admin_theme / the public page routes' render_template
+   calls) and the `include_none`
+   parameter set for pickers that support clearing (Menu items) vs. not
+   (inserting into text, where there's nothing to "clear"). #}
+{% macro icon_picker_grid(include_none=true) %}
+  <div class="cms-icon-grid-view" hidden>
+    <div class="cms-icon-grid">
+      {% if include_none %}
+      <button type="button" class="cms-icon-grid-btn cms-icon-grid-none" data-icon-key="" title="No icon">∅</button>
+      {% endif %}
+      {% for key, label in icon_choices %}
+      <button type="button" class="cms-icon-grid-btn" data-icon-key="{{ key }}" title="{{ label }}">{{ icon_svg(key) | safe }}</button>
+      {% endfor %}
+    </div>
+  </div>
+{% endmacro %}

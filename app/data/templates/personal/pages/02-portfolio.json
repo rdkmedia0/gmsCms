@@ -1,0 +1,55 @@
+{
+  "title": "Portfolio",
+  "slug_suffix": "portfolio",
+  "page_type": "standard",
+  "meta_description": "Selected work.",
+  "sections": [
+    [
+      "text",
+      "Selected Work",
+      "<p>A few recent favorites — coastline, high desert, and the odd alpine detour. Most of them started as a wrong turn on the way somewhere else.</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-image-accordion cms-accordion-style-carousel cms-accordion-lightbox\"><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/personal-work-1.png')\"><span class=\"cms-accordion-caption\">Seasonal menu, Hirschen</span></div><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/personal-work-2.png')\"><span class=\"cms-accordion-caption\">The room before service</span></div><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/personal-work-3.png')\"><span class=\"cms-accordion-caption\">Mid-service, kitchen pass</span></div><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/personal-work-4.png')\"><span class=\"cms-accordion-caption\">Bread, morning light</span></div><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/personal-work-5.png')\"><span class=\"cms-accordion-caption\">Market, Tuesday</span></div></div>",
+      {}
+    ],
+    [
+      "image",
+      "Coastal morning",
+      "media/personal-work-3.png",
+      {
+        "width": "medium",
+        "corner_style": "rounded"
+      }
+    ],
+    [
+      "image",
+      "Canyon at sunset",
+      "media/personal-work-4.png",
+      {
+        "width": "medium",
+        "corner_style": "rounded"
+      }
+    ],
+    [
+      "image",
+      "Alpine lake",
+      "media/personal-work-5.png",
+      {
+        "width": "medium",
+        "corner_style": "rounded"
+      }
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-cta\" data-tone=\"soft\"><div class=\"cms-cta cms-cta-soft\"><h2 data-field=\"heading\">Commissions</h2><p data-field=\"text\">Editorial, food and interiors. Half-day and full-day rates, and I travel.</p><a class=\"cms-cta-btn\" href=\"/contact\" data-href-field=\"link\"><span data-field=\"cta\">Ask about a shoot</span></a></div></div>",
+      {
+        "bg_color": "#c91207"
+      }
+    ]
+  ]
+}

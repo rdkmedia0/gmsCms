@@ -1,0 +1,38 @@
+{
+  "title": "About",
+  "slug_suffix": "about",
+  "page_type": "standard",
+  "meta_description": "Our family's story, three generations in.",
+  "sections": [
+    [
+      "banner",
+      "",
+      "<div class=\"cms-banner\" style=\"background-image:url('media/business-team-bill.png')\"><div class=\"cms-banner-overlay\"><h2>Three Generations, One Family Business</h2><p>Started by Grandpa Joe in 1985 with a single lawnmower and a pickup truck.</p></div></div>",
+      {}
+    ],
+    [
+      "text",
+      "How We Got Started",
+      "<p>Grandpa Joe started mowing lawns in the neighborhood as a teenager, just to earn some extra money. Forty years, one pickup truck, and a whole lot of grass clippings later, it's still a family thing — his son runs the crews now, and his granddaughter handles the design side.</p><p>We treat every yard like it's our own — because around here, it kind of is. There's a good chance we've already done your neighbor's.</p>",
+      {}
+    ],
+    [
+      "columns",
+      "",
+      "{\"columns\": [{\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>\\ud83e\\udd1d Still Family-Run</h3><p>You'll talk to a real Miller, every time.</p></div>\", \"tool_name\": \"Card\"}, {\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>\\ud83c\\udfe1 Local & Loyal</h3><p>Some of our clients go back three generations too.</p></div>\", \"tool_name\": \"Card\"}, {\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>\\u2764\\ufe0f We Actually Care</h3><p>It's not just a job \\u2014 it's the family name on the truck.</p></div>\", \"tool_name\": \"Card\"}]}",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-timeline\" data-style=\"vertical\"><ol class=\"cms-timeline cms-timeline-vertical\"><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step1_when\">1985</span><div class=\"cms-timeline-body\"><h3 data-field=\"step1_title\">One mower, one trailer</h3><p data-field=\"step1_text\">Bill Miller started with a mower in the back of an estate car and eleven regular gardens.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step2_when\">1998</span><div class=\"cms-timeline-body\"><h3 data-field=\"step2_title\">The second generation</h3><p data-field=\"step2_text\">Bill&#x27;s daughter Katrin joined and brought the planting side, which is now half the work.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step3_when\">2014</span><div class=\"cms-timeline-body\"><h3 data-field=\"step3_title\">A proper yard</h3><p data-field=\"step3_text\">We finally stopped storing everything at home and took the yard on Feldweg.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step4_when\">Today</span><div class=\"cms-timeline-body\"><h3 data-field=\"step4_title\">Still the same round</h3><p data-field=\"step4_text\">Three generations, six of us, and a lot of gardens we have cut for longer than the people living in them.</p></div></li></ol></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-team\" data-count=\"3\"><div class=\"cms-team-grid\"><div class=\"cms-person\"><img class=\"cms-person-photo\" src=\"media/business-team-katrin.png\" alt=\"\" loading=\"lazy\" data-field=\"person1_photo\"><h3 class=\"cms-person-name\" data-field=\"person1_name\">Katrin Miller</h3><p class=\"cms-person-role\" data-field=\"person1_role\">Planting and design</p><p class=\"cms-person-bio\" data-field=\"person1_bio\">Joined in 1998 and has planted most of the front gardens on this side of town.</p></div><div class=\"cms-person\"><img class=\"cms-person-photo\" src=\"media/business-team-tobias.png\" alt=\"\" loading=\"lazy\" data-field=\"person2_photo\"><h3 class=\"cms-person-name\" data-field=\"person2_name\">Tobias Miller</h3><p class=\"cms-person-role\" data-field=\"person2_role\">Grounds</p><p class=\"cms-person-bio\" data-field=\"person2_bio\">Runs the round. Knows which gate sticks and which dog to watch out for.</p></div><div class=\"cms-person\"><img class=\"cms-person-photo\" src=\"media/business-team-bill.png\" alt=\"\" loading=\"lazy\" data-field=\"person3_photo\"><h3 class=\"cms-person-name\" data-field=\"person3_name\">Bill Miller</h3><p class=\"cms-person-role\" data-field=\"person3_role\">Founder, mostly retired</p><p class=\"cms-person-bio\" data-field=\"person3_bio\">Started it in 1985 and still turns up on Thursdays whatever anyone says.</p></div></div></div>",
+      {}
+    ]
+  ]
+}

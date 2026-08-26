@@ -1,0 +1,44 @@
+{
+  "name": "Clinic / Practice",
+  "icon": "🩺",
+  "slug": "clinic",
+  "description": "A physiotherapist, dentist or therapist: what you treat, who you are, and how to book.",
+  "google_fonts_url": "/static/fonts/choices.css",
+  "palette": [
+    {
+      "slug": "primary",
+      "name": "Teal",
+      "color": "#2c6e6b"
+    },
+    {
+      "slug": "secondary",
+      "name": "Mist",
+      "color": "#7fa6a4"
+    },
+    {
+      "slug": "accent",
+      "name": "Sand",
+      "color": "#c8a97e"
+    }
+  ],
+  "nav_layout": "minimal",
+  "page_layout": "none",
+  "footer_layout": "simple",
+  "shape_override": "pill",
+  "shadow_override": "none",
+  "business_name": "Lindenpark Physiotherapy",
+  "tagline": "Getting you back to what you were doing",
+  "footer_blurb": "Musculoskeletal physiotherapy. Forty-minute appointments, no conveyor belt.",
+  "footer_contact": {
+    "address": "Lindenpark Physiotherapy, Lindenweg 18",
+    "email": "reception@lindenpark.example",
+    "phone": "+41 44 555 0143"
+  },
+  "has_content": true,
+  "pages": [
+    "home",
+    "treatments",
+    "practice",
+    "contact"
+  ]
+}

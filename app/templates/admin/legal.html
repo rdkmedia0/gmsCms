@@ -1,0 +1,107 @@
+{% extends "admin/base.html" %}
+{% block title %}Legal pages — My Site Admin{% endblock %}
+{% block content %}
+<h1>Legal pages</h1>
+<p class="hint">Selling to people in Europe means telling them a few things in writing before they pay: who you are, what happens if they change their mind, and what you do with their details. Answer the questions below and these pages get written for you.</p>
+<p class="hint"><strong>A starting point, not legal advice.</strong> The wording follows the European rules that apply to selling at a distance, which is the strictest version most small sellers meet. Read it through and change anything that isn't how you actually work — once written, they're ordinary pages you can edit like any other.</p>
+
+<div class="card">
+  <h2>Your details</h2>
+  <form method="post" action="{{ url_for('admin.legal_save') }}" class="fulfilment-form">
+    <label for="business">The name you trade under</label>
+    <input type="text" id="business" name="business" value="{{ settings.business }}" maxlength="120"
+           placeholder="{{ site_name or 'Your business name' }}"
+           title="Shown on every legal page and on every newsletter as who is writing. Leave it blank to use your site's own name.">
+    <p class="hint">Leave this blank and your site's name is used. Fill it in only when the legal entity differs from the name on the site &mdash; &ldquo;Flour &amp; Salt&rdquo; on the door, &ldquo;Flour &amp; Salt GmbH&rdquo; on the paperwork.</p>
+    {% if site_name and settings.business and settings.business != site_name %}
+    {#  Said rather than merged: two names that disagree is sometimes
+        right and sometimes a leftover, and only the owner knows which. #}
+    <p class="flash flash-warning">Your site is called <strong>{{ site_name }}</strong> but these pages say <strong>{{ settings.business }}</strong>. That is fine if the legal entity really is different &mdash; otherwise clear this box, or <a href="{{ url_for('admin.settings_site') }}">change the site's name</a>.</p>
+    {% endif %}
+
+    <label for="address">Postal address</label>
+    <textarea id="address" name="address" rows="3"
+              title="Required by law in Germany, Austria and Switzerland. One line per line.">{{ settings.address }}</textarea>
+
+    <label for="email">Email customers can use</label>
+    <input type="email" id="email" name="email" value="{{ settings.email }}" maxlength="120"
+           title="Where cancellations and questions should go">
+
+    <label for="phone">Phone (optional)</label>
+    <input type="text" id="phone" name="phone" value="{{ settings.phone }}" maxlength="60">
+
+    <label for="country">Where you're based</label>
+    <select id="country" name="country" title="Decides which rules the wording follows">
+      {% for code, label in countries.items() %}
+      <option value="{{ code }}" {{ 'selected' if settings.country == code }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="vat_number">VAT number (optional)</label>
+    <input type="text" id="vat_number" name="vat_number" value="{{ settings.vat_number }}" maxlength="60">
+
+    <label for="company_number">Company number (optional)</label>
+    <input type="text" id="company_number" name="company_number" value="{{ settings.company_number }}" maxlength="60">
+
+    <label for="withdrawal_days">Days to change their mind</label>
+    <input type="number" id="withdrawal_days" name="withdrawal_days" min="14" max="365"
+           value="{{ settings.withdrawal_days }}"
+           title="14 days is the legal minimum in the EU — you can offer more, but not less.">
+    <p class="hint">Fourteen days is the legal minimum in Europe. You can be more generous; you can't be less.</p>
+
+    <label for="booking_notice_hours">Hours' notice to cancel a booking</label>
+    <input type="number" id="booking_notice_hours" name="booking_notice_hours" min="0" max="336"
+           value="{{ settings.booking_notice_hours }}"
+           title="Cancel later than this and the session counts as used">
+
+    <label for="governing_law">Whose law applies (optional)</label>
+    <input type="text" id="governing_law" name="governing_law" value="{{ settings.governing_law }}"
+           maxlength="80" placeholder="Switzerland"
+           title="Leave blank if you'd rather not say. A consumer keeps the protection of their own country's law either way.">
+
+    <button type="submit" class="btn btn-primary btn-small">Save details</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Write the pages</h2>
+  {% if missing %}
+  <p class="flash flash-warning">Fill in {{ missing | join(', ') }} above first — otherwise the pages name nobody.</p>
+  {% endif %}
+  <p class="hint">
+    What gets written depends on what you sell, which is taken from "What products deliver":
+    {% if sells.sells_services %}sessions{% endif %}{% if sells.sells_digital %}{{ ', ' if sells.sells_services }}downloads{% endif %}{% if sells.sells_physical %}{{ ', ' if sells.sells_services or sells.sells_digital }}posted items{% endif %}{% if not (sells.sells_services or sells.sells_digital or sells.sells_physical) %}nothing yet, so only the general wording appears{% endif %}.
+  </p>
+  <form method="post" action="{{ url_for('admin.legal_write') }}" class="fulfilment-form">
+    {% for slug, doc in documents.items() %}
+    <label class="checkbox-row" title="{{ doc[2] }}">
+      <input type="checkbox" name="documents" value="{{ slug }}"
+             {{ 'checked' if slug in existing or slug in ('refunds', 'terms', 'privacy') }}>
+      <strong>{{ doc[0] }}</strong> — <span class="hint">{{ doc[2] }}</span>
+      {%- if slug in existing %} <span class="badge">on your site{% if existing[slug].written %}, written {{ existing[slug].written }}{% endif %}</span>{% endif %}
+    </label>
+    {% endfor %}
+    <fieldset class="legal-layout">
+      <legend>Where to put them</legend>
+      <label class="checkbox-row" title="One page called Terms &amp; Conditions, with each document under its own heading">
+        <input type="radio" name="layout" value="combined" checked>
+        <strong>One page called Terms &amp; Conditions</strong>
+        &mdash; <span class="hint">each document under its own heading, one entry in your menu</span>
+      </label>
+      <label class="checkbox-row" title="A separate page for each document, each with its own address">
+        <input type="radio" name="layout" value="separate">
+        <strong>A page for each</strong>
+        &mdash; <span class="hint">choose this if you need an Impressum under its own clearly labelled link, which Germany and Austria expect</span>
+      </label>
+    </fieldset>
+    <p class="hint">Writing again refreshes the wording with your current details and what you now sell. Anything you added to those pages yourself is left alone &mdash; and moving to one page removes the old separate ones only if you never added anything to them.</p>
+    <button type="submit" class="btn btn-primary btn-small">Write these pages</button>
+  </form>
+  {% if existing %}
+  <p class="hint">On your site now:
+    {% for slug, info in existing.items() %}<a href="{{ url_for('public.page', slug=slug) }}" target="_blank" rel="noopener">{{ documents[slug][0] }}</a>{{ ', ' if not loop.last }}{% endfor %}.
+    Link them from your footer so people can find them before they buy.
+  </p>
+  {% endif %}
+</div>
+{% endblock %}

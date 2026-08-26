@@ -1,0 +1,45 @@
+{
+  "name": "Restaurant",
+  "icon": "🍽️",
+  "slug": "restaurant",
+  "description": "A sit-down restaurant: the menu, the room, and a table booking.",
+  "google_fonts_url": "/static/fonts/choices.css",
+  "palette": [
+    {
+      "slug": "primary",
+      "name": "Ember",
+      "color": "#a8562f"
+    },
+    {
+      "slug": "secondary",
+      "name": "Char",
+      "color": "#2b2724"
+    },
+    {
+      "slug": "accent",
+      "name": "Bone",
+      "color": "#d8c9b4"
+    }
+  ],
+  "nav_layout": "centered",
+  "page_layout": "none",
+  "footer_layout": "centered",
+  "shape_override": "sharp",
+  "shadow_override": "none",
+  "business_name": "Saltbeam",
+  "tagline": "Dinner, Wednesday to Saturday",
+  "footer_blurb": "Twenty-six covers, one sitting, whatever the market had that morning.",
+  "footer_contact": {
+    "address": "Saltbeam, 8 Ironmonger Lane",
+    "email": "table@saltbeam.example",
+    "phone": "+41 44 555 0164",
+    "instagram": "https://instagram.com/saltbeam"
+  },
+  "has_content": true,
+  "pages": [
+    "home",
+    "menu",
+    "room",
+    "contact"
+  ]
+}

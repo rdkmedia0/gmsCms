@@ -1,0 +1,55 @@
+/* "Quiet Practice" — soft, unhurried wellness look distinct from the
+   Life Coaching template's vibrant bohemian energy: muted dusty sage +
+   warm blush + soft clay, generous whitespace, gentle asymmetric "worn
+   pebble" shapes, whisper-thin hairline dividers, a quiet humanist serif
+   over a light sans body. */
+:root {
+  --site-heading-font-family: "Marcellus", Georgia, serif;
+  --site-font-family: "Karla", -apple-system, "Segoe UI", sans-serif;
+  --site-heading-weight: 400;
+  --site-h1-size: 46px;
+}
+
+/*  This theme's own shaping, stated as defaults rather than as
+    border-radius declarations. site-base.css draws every corner from
+    --site-radius and falls back to these, so the hero, cards and
+    banners keep being shaped differently here, while the admin's
+    site-wide Corners choice (and a single section's own override)
+    still reach them. */
+:root {
+  --corner-banner: 40px;
+  --corner-card: 40% 60% 55% 45% / 55% 40% 60% 45%;
+  --corner-hero: 60% 40% 55% 45% / 45% 55% 40% 60%;
+  --corner-panel: 24px;
+  --corner-post: 18px;
+  --pad-hero: 80px 48px;
+  --pad-panel: 30px;
+}
+body { background: var(--site-body-bg, #f6f4f0); color: var(--primary-800, #4a463f); }
+.site-header { background: var(--site-header-bg, #f6f4f0); border-bottom: var(--site-header-border, 1px solid var(--accent-100, #e4e0d8)); }
+.site-footer { background: var(--site-footer-bg, #eeece5); border-top: var(--site-footer-border, 1px solid var(--accent-100, #e4e0d8)); }
+.site-brand { color: var(--wp--preset--color--primary, #7c8c74); letter-spacing: 0.03em; }
+.site-nav a { color: #7a7568; font-weight: 400; }
+.site-nav a:hover { color: var(--wp--preset--color--primary, #7c8c74); }
+
+.block-header {
+  background: var(--wp--preset--color--primary, #7c8c74); color: var(--accent-50, #fbfaf7);
+}
+.block-header h1 { color: var(--accent-50, #fbfaf7); }
+.block-header .lead { color: var(--secondary-100, #e7ecdf); }
+
+h2, .block-text h2, .block-image h2, .block-html h2 {
+  border-left: none; padding-left: 0; color: var(--wp--preset--color--primary, #7c8c74);
+  font-weight: 400;
+}
+
+.block-html { background: var(--accent-50, #fbfaf7); border: none; }
+
+.cms-card-shape {
+  border: none; background: var(--accent-50, #fbfaf7);
+}
+
+.cms-blog-card { border-color: var(--accent-100, #e4e0d8); background: var(--accent-50, #fbfaf7); }
+.cms-blog-date { color: var(--wp--preset--color--secondary, #c9a89a); }
+
+a { color: var(--wp--preset--color--accent, #a56b4b); }

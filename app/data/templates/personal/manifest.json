@@ -1,0 +1,38 @@
+{
+  "name": "Personal / Portfolio",
+  "icon": "🎨",
+  "description": "A personal site — intro, an about/bio page, a simple image portfolio, a media page, blog posts, and a contact page.",
+  "google_fonts_url": "/static/fonts/bebas-archivo.css",
+  "palette": [
+    {
+      "slug": "primary",
+      "name": "Primary",
+      "color": "#0d0d0d"
+    },
+    {
+      "slug": "secondary",
+      "name": "Secondary",
+      "color": "#8a8a8a"
+    },
+    {
+      "slug": "accent",
+      "name": "Accent",
+      "color": "#ff3b30"
+    }
+  ],
+  "nav_layout": "centered",
+  "page_layout": "app-shell",
+  "footer_layout": "centered",
+  "business_name": "Sam Torres Photography",
+  "footer_contact": {
+    "email": "sam@example.com",
+    "instagram": "https://instagram.com/sam.shoots"
+  },
+  "footer_blurb": "Available for weddings, portraits, and travel commissions worldwide.",
+  "header_menu": false,
+  "slug": "personal",
+  "has_content": true,
+  "shape_override": "rounded",
+  "shadow_override": "subtle",
+  "tagline": "Photography for food, interiors and editorial"
+}

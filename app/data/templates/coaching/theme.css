@@ -1,0 +1,66 @@
+/* "Free Spirit" — bohemian, earthy, spiritual coaching look. Burnt
+   terracotta + deep sage + warm gold, soft organic shapes throughout
+   (no sharp corporate edges), an elegant serif for a calm, grounded
+   voice against a clean geometric sans body. */
+:root {
+  --site-heading-font-family: "Cormorant Garamond", Georgia, serif;
+  --site-font-family: "Jost", -apple-system, "Segoe UI", sans-serif;
+  --site-heading-weight: 600;
+  --site-h1-size: 52px;
+}
+
+/*  This theme's own shaping, stated as defaults rather than as
+    border-radius declarations. site-base.css draws every corner from
+    --site-radius and falls back to these, so the hero, cards and
+    banners keep being shaped differently here, while the admin's
+    site-wide Corners choice (and a single section's own override)
+    still reach them. */
+:root {
+  --corner-banner: 40px;
+  --corner-card: 28px;
+  --corner-hero: 40px;
+  --corner-panel: 28px;
+  --corner-post: 24px;
+  --pad-hero: 72px 32px;
+  --pad-panel: 28px;
+}
+body { background: var(--site-body-bg, #faf3e8); color: #3d3226; }
+.site-header { background: var(--site-header-bg, #faf3e8); border-bottom: var(--site-header-border, 1px solid var(--primary-100, #e8d9c3)); }
+.site-footer { background: var(--site-footer-bg, #f3e8d7); border-top: var(--site-footer-border, 1px solid var(--primary-100, #e8d9c3)); }
+.site-brand {
+  color: var(--wp--preset--color--primary, #b5541e); font-family: var(--site-heading-font-family);
+  font-style: italic; letter-spacing: 0.02em;
+}
+.site-nav a { color: #6b5c48; text-transform: lowercase; letter-spacing: 0.03em; }
+.site-nav a:hover { color: var(--wp--preset--color--primary, #b5541e); }
+
+.block-header {
+  background:
+    radial-gradient(circle at 15% 25%, rgba(212, 160, 23, 0.35), transparent 45%),
+    radial-gradient(circle at 85% 75%, rgba(74, 93, 58, 0.3), transparent 50%),
+    linear-gradient(135deg, var(--wp--preset--color--primary, #b5541e), #8a3f16);
+  color: var(--primary-50, #fff9ef); }
+.block-header h1 { color: var(--primary-50, #fff9ef); font-style: italic; }
+.block-header .lead { color: var(--primary-100, #f3ddc2); }
+
+h2, .block-text h2, .block-image h2, .block-html h2 {
+  font-family: var(--site-heading-font-family); font-style: italic; color: var(--wp--preset--color--primary, #b5541e);
+  border-left: none; padding-left: 0; position: relative;
+}
+h2::after {
+  content: ""; display: block; width: 48px; height: 2px; margin-top: 10px;
+  background: var(--wp--preset--color--accent, #d4a017); border-radius: 2px;
+}
+
+.block-html {
+  background: var(--accent-50, #fffbf3); border: 1px solid var(--primary-100, #ecdec5);
+}
+
+.cms-card-shape {
+  border: 1px solid var(--primary-100, #ecdec5); background: var(--accent-50, #fffbf3);
+}
+
+.cms-blog-card { border-color: var(--primary-100, #ecdec5); background: var(--accent-50, #fffbf3); }
+.cms-blog-date { color: var(--wp--preset--color--secondary, #4a5d3a); font-style: italic; }
+
+a { color: var(--wp--preset--color--primary, #b5541e); }

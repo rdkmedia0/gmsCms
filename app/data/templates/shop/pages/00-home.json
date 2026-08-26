@@ -1,0 +1,45 @@
+{
+  "title": "Home",
+  "slug_suffix": "home",
+  "page_type": "standard",
+  "meta_description": "A small shop of useful homeware, most of it made nearby.",
+  "sections": [
+    [
+      "banner",
+      "",
+      "<div class=\"cms-banner\" style=\"background-image:url('media/shop-banner.png')\"><div class=\"cms-banner-overlay\"><h2>Useful things, made nearby</h2><p>Ceramics, linen and plants. Most of it made within a hundred miles of the shop.</p></div></div>",
+      {}
+    ],
+    [
+      "text",
+      "What we stock",
+      "<p>We buy from about thirty makers, most of them one or two people in a workshop. If something sells out it is usually because whoever makes it is busy, and it comes back when it comes back.</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-shop\" data-columns=\"3\" data-description=\"1\"></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-stats\" data-count=\"3\"><div class=\"cms-stat-row\"><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat1_value\">30</span><span class=\"cms-stat-label\" data-field=\"stat1_label\">Makers we buy from</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat2_value\">100mi</span><span class=\"cms-stat-label\" data-field=\"stat2_label\">Most of it made within</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat3_value\">2018</span><span class=\"cms-stat-label\" data-field=\"stat3_label\">On the high street since</span></div></div></div>",
+      {
+        "bg_image": "media/shop-band.png",
+        "bg_overlay": "light",
+        "bg_position": "center",
+        "bg_color": "#d9cabe"
+      }
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-cta\" data-tone=\"soft\"><div class=\"cms-cta cms-cta-soft\"><h2 data-field=\"heading\">Come and pick it up</h2><p data-field=\"text\">Order online and collect from the shop, or we will post it — usually the next day.</p><a class=\"cms-cta-btn\" href=\"/contact\" data-href-field=\"link\"><span data-field=\"cta\">Visit the shop</span></a></div></div>",
+      {
+        "bg_color": "#9eaaa4"
+      }
+    ]
+  ]
+}

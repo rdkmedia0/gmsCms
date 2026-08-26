@@ -1,0 +1,38 @@
+{
+  "name": "Life Coaching",
+  "icon": "🎯",
+  "description": "Coach landing page, package pricing table, an about/credentials page, a media page, blog posts, and an intake-form contact page.",
+  "google_fonts_url": "/static/fonts/cormorant-jost.css",
+  "palette": [
+    {
+      "slug": "primary",
+      "name": "Primary",
+      "color": "#b5541e"
+    },
+    {
+      "slug": "secondary",
+      "name": "Secondary",
+      "color": "#4a5d3a"
+    },
+    {
+      "slug": "accent",
+      "name": "Accent",
+      "color": "#d4a017"
+    }
+  ],
+  "nav_layout": "centered",
+  "page_layout": "none",
+  "footer_layout": "centered",
+  "business_name": "Morgan Coaching",
+  "footer_contact": {
+    "email": "hello@morgancoaching.example",
+    "instagram": "https://instagram.com/morgancoaching",
+    "x": "https://x.com/morgancoaching"
+  },
+  "footer_blurb": "Gentle, grounded guidance for people ready to live a little closer to who they actually are.",
+  "slug": "coaching",
+  "has_content": true,
+  "shape_override": "pill",
+  "shadow_override": "none",
+  "tagline": "Coaching, one conversation at a time"
+}

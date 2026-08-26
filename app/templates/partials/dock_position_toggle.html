@@ -1,0 +1,11 @@
+{# Moves the whole dock — every panel and every tab — between the side of
+   the screen and a bar along the bottom. Included in each panel's header
+   so the control is wherever the admin already is, rather than only in
+   one panel they might not have open; side-panels.js wires up all of
+   them at once and keeps their labels in step. The label names the
+   action, not the current state. #}
+<button type="button" class="cms-dock-position-toggle"
+        title="Move these panels to the bottom of the screen — handy for editing on a phone">
+  <span class="cms-dock-position-icon" aria-hidden="true">⬓</span>
+  <span class="cms-dock-position-label">Bottom</span>
+</button>

@@ -1,0 +1,41 @@
+{#  The last screen is the introduction the whole walk exists to be: what
+    is set, what is not, and where the things nobody would find on their
+    own actually live. #}
+<p>Your site is ready to work on. Here is where everything stands, and each line goes to the
+  screen that owns it. <strong>Amber</strong> is something you have not set up, which is often
+  the right answer. <strong>Red</strong> is something your site is already using and does not
+  have.</p>
+
+<ul class="wizard-summary">
+  {% for item in summary %}
+  {% set critical = not item.set and item.needed %}
+  <li>
+    <span class="badge {{ 'is-on' if item.set else ('is-critical' if critical else 'is-off') }}"
+          title="{{ 'Set up' if item.set else ('Your site needs this and does not have it' if critical else 'Not set up — you may never need it') }}">{{ '✔' if item.set else ('!' if critical else '—') }}</span>
+    <strong>{{ item.what }}</strong>
+    {% if item.set and item.value %}<code>{{ item.value }}</code>{% endif %}
+    <p class="hint">{{ item.why }}</p>
+    {% if critical %}<p class="needed-because">{{ item.because }}</p>{% endif %}
+    {% if not item.set %}
+    <a class="btn btn-small" href="{{ url_for(item.where) }}"
+       title="{{ 'Set this up now — your site is using it already' if critical else 'Set this up now' }}">Set it up</a>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+
+<div class="card">
+  <h2>Two things worth knowing before you start</h2>
+  <p class="hint"><strong>You edit the site on the site.</strong> Open your own pages with
+    <em>View Site</em>, and everything on them can be clicked and typed into &mdash; headings, text,
+    pictures. There is no separate editor to learn.</p>
+  <p class="hint"><strong>The panels down the right-hand edge</strong> are where the rest lives: the
+    toolbox adds a tool to a page, the palette changes colours, the ruler changes fonts and corners,
+    and the speech bubble is the assistant.</p>
+</div>
+
+<form method="post" action="{{ url_for('admin.setup_finish') }}" class="wizard-actions">
+  <a class="btn" href="{{ url_for('public.home') }}" target="_blank" rel="noopener"
+     title="Open your site in a new tab and start editing it">View my site</a>
+  <button type="submit" class="btn btn-primary" title="Finish — the Dashboard is where everything is managed from">Finish</button>
+</form>

@@ -1,0 +1,14 @@
+{#  A row of tabs for a section that holds more than one screen.
+    Takes `tabs` -- a list of (label, url, is_active) -- and nothing else.
+
+    They are LINKS, deliberately. A tab that is a real address can be
+    bookmarked, opened in a new window, linked to from the setup
+    walk-through, and found again by the back button; a tab that is a
+    script is none of those and stops working when the script does. #}
+<nav class="tabs" aria-label="Sections">
+  {% for label, url, active in tabs %}
+  <a href="{{ url }}" class="tab{{ ' is-here' if active }}"
+     {% if active %}aria-current="page"{% endif %}
+     title="{{ label }}">{{ label }}</a>
+  {% endfor %}
+</nav>

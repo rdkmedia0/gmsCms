@@ -1,0 +1,36 @@
+{
+  "title": "Our story",
+  "slug_suffix": "story",
+  "page_type": "standard",
+  "meta_description": "How a home oven turned into a bakery.",
+  "sections": [
+    [
+      "text",
+      "It started badly",
+      "<p>The first hundred loaves were not good. We kept the photographs to stay humble about it.</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-timeline\" data-style=\"vertical\"><ol class=\"cms-timeline cms-timeline-vertical\"><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step1_when\">2016</span><div class=\"cms-timeline-body\"><h3 data-field=\"step1_title\">A home oven and a market stall</h3><p data-field=\"step1_text\">Twenty loaves on a Saturday, sold from a trestle table, gone by nine and not enough to live on.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step2_when\">2019</span><div class=\"cms-timeline-body\"><h3 data-field=\"step2_title\">The shop on Lindenweg</h3><p data-field=\"step2_text\">A deck oven bought second-hand from a bakery that was closing, and a lot of learning to use it.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step3_when\">Now</span><div class=\"cms-timeline-body\"><h3 data-field=\"step3_title\">Two bakers, one oven</h3><p data-field=\"step3_text\">Still the same oven. We have turned down two offers to open a second shop.</p></div></li></ol></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-team\" data-count=\"2\"><div class=\"cms-team-grid\"><div class=\"cms-person\"><img class=\"cms-person-photo\" src=\"media/bakery-team-1.png\" alt=\"\" loading=\"lazy\" data-field=\"person1_photo\"><h3 class=\"cms-person-name\" data-field=\"person1_name\">Elif</h3><p class=\"cms-person-role\" data-field=\"person1_role\">Bread</p><p class=\"cms-person-bio\" data-field=\"person1_bio\">Runs the sourdough and the overnight shift. Will talk about hydration for longer than you want.</p></div><div class=\"cms-person\"><img class=\"cms-person-photo\" src=\"media/bakery-team-2.png\" alt=\"\" loading=\"lazy\" data-field=\"person2_photo\"><h3 class=\"cms-person-name\" data-field=\"person2_name\">Georg</h3><p class=\"cms-person-role\" data-field=\"person2_role\">Pastry</p><p class=\"cms-person-bio\" data-field=\"person2_bio\">Laminates everything by hand. Claims the cinnamon buns are not the best thing here and is wrong.</p></div></div></div>",
+      {
+        "bg_image": "media/bakery-band-2.png",
+        "bg_overlay": "medium",
+        "bg_position": "bottom"
+      }
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-testimonial\" data-style=\"large\"><figure class=\"cms-quote cms-quote-large\"><blockquote data-field=\"quote\">I have driven past three supermarkets to get here every Saturday for four years, which either says something about the bread or about me.</blockquote><figcaption><span class=\"cms-quote-name\" data-field=\"name\">Andrea Wyss</span><span class=\"cms-quote-role\" data-field=\"role\">Saturday regular</span></figcaption></figure></div>",
+      {}
+    ]
+  ]
+}

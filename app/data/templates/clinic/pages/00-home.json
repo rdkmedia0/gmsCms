@@ -1,0 +1,42 @@
+{
+  "title": "Home",
+  "slug_suffix": "home",
+  "page_type": "standard",
+  "meta_description": "Musculoskeletal physiotherapy. Forty-minute appointments.",
+  "sections": [
+    [
+      "banner",
+      "",
+      "<div class=\"cms-banner\" style=\"background-image:url('media/clinic-banner.png')\"><div class=\"cms-banner-overlay\"><h2>Back to what you were doing</h2><p>Musculoskeletal physiotherapy in Lindenpark. Forty minutes, one to one, every time.</p></div></div>",
+      {}
+    ],
+    [
+      "text",
+      "How we work",
+      "<p>Appointments are forty minutes and you see the same physiotherapist each time. Nobody is passed to an assistant halfway through, and nobody is put on a machine and left.</p><p>Most people need between three and six appointments. If you need more we will say so, and if you need fewer we will say that too.</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-stats\" data-count=\"3\"><div class=\"cms-stat-row\"><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat1_value\">40 min</span><span class=\"cms-stat-label\" data-field=\"stat1_label\">Every appointment</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat2_value\">3–6</span><span class=\"cms-stat-label\" data-field=\"stat2_label\">Appointments, typically</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat3_value\">48h</span><span class=\"cms-stat-label\" data-field=\"stat3_label\">Usual wait for a first visit</span></div></div></div>",
+      {
+        "bg_color": "#c7d6d5"
+      }
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-timeline\" data-style=\"vertical\"><ol class=\"cms-timeline cms-timeline-vertical\"><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step1_when\">First visit</span><div class=\"cms-timeline-body\"><h3 data-field=\"step1_title\">Assessment</h3><p data-field=\"step1_text\">Forty minutes of questions and movement. You will leave with an explanation and something to do.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step2_when\">After</span><div class=\"cms-timeline-body\"><h3 data-field=\"step2_title\">Treatment and exercises</h3><p data-field=\"step2_text\">Hands-on work where it helps, and a programme that fits the week you actually have.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step3_when\">Discharge</span><div class=\"cms-timeline-body\"><h3 data-field=\"step3_title\">You stop coming</h3><p data-field=\"step3_text\">The aim from the first visit. We will tell you when, rather than waiting for you to drift away.</p></div></li></ol></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-cta\" data-tone=\"soft\"><div class=\"cms-cta cms-cta-soft\"><h2 data-field=\"heading\">Book a first appointment</h2><p data-field=\"text\">No referral needed. Most first appointments are available within two days.</p><a class=\"cms-cta-btn\" href=\"/contact\" data-href-field=\"link\"><span data-field=\"cta\">Book</span></a></div></div>",
+      {
+        "bg_color": "#e4d8c8"
+      }
+    ]
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "title": "Contact",
+  "slug_suffix": "contact",
+  "page_type": "standard",
+  "meta_description": "Where the workshop is and how to book a car in.",
+  "sections": [
+    [
+      "text",
+      "Booking a car in",
+      "<p>Ring, or send the registration and what it is doing. We usually have something within the week, sooner for anything unsafe.</p>",
+      {}
+    ],
+    [
+      "text",
+      "Opening hours",
+      "<p>Monday to Friday, 7:30 till 6</p><p>Saturday mornings by arrangement</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-contact-form-tool\"></div>",
+      {}
+    ]
+  ]
+}

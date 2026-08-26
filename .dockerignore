@@ -1,0 +1,62 @@
+venv/
+__pycache__/
+*.pyc
+cms.db
+.secret_key
+app/static/uploads/*
+app/static/themes/*
+!app/static/uploads/.gitkeep
+!app/static/themes/.gitkeep
+.git/
+.claude/
+data/
+uploads/
+themes/
+
+# EVERY credential this machine holds, and the reason this block exists:
+# .env was NOT excluded, so `COPY . .` in the packager stage swept it into
+# the image and `COPY --from=packager /app /app` carried it into the
+# runtime one. Eight live values -- a Google client secret, an Open WebUI
+# key, a Cal.com key, a Stripe key -- shipped inside every published
+# image, readable by anyone who could pull it: `cat /app/.env`.
+#
+# Nothing at runtime reads that file. The container takes its environment
+# from compose, so this was pure leakage -- and silent, because an image
+# carrying an extra file behaves exactly like one that does not.
+#
+# By PATTERN rather than by name, so the next one is caught too.
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+*password*
+*passwd*
+# "initpwd.txt" matches neither of the two patterns above, which is how it
+# ended up inside an image built one minute after they were written. A
+# pattern that only catches the spellings you thought of is a pattern that
+# catches the ones you were never going to leak.
+*pwd*
+*.key
+*token*
+.githooks/
+
+# Development material, not product -- same reason as CLAUDE.md and tools/
+# below. The workflow that builds this image does not need to be in it,
+# and a compose file for somebody else's deployment is not either.
+.github/
+deploy/
+
+# Development material, not product. Nothing at runtime reads any of it —
+# the code only mentions CLAUDE.md inside comments — and a distributed
+# image should carry the app, not the notes about how it was built.
+CLAUDE.md
+BOW.md
+tools/
+
+# Built by the packager stage from app/data/templates — never carried in
+# from a developer's machine, where it may be stale.
+app/data/template-packages/

@@ -1,0 +1,93 @@
+{% from "partials/panel_help.html" import panel_help, panel_section with context %}
+{# Font pairing controls for the currently ACTIVE template — same reasoning
+   as colors_panel.html: these paint the page you're looking at right now,
+   so they live on the live-page edit dock rather than a Dashboard table
+   row. Preset-only (FONT_PAIRINGS in routes/admin/__init__.py) — no
+   free-form font name to type — so there's no "advanced" section the way
+   Colors has one for raw hex input, aside from the individual-font picker
+   below. Corner Style lives in the Colors panel instead (see
+   colors_panel.html) — it shapes Banner/Card/section boxes, not text, so
+   grouping it under a text/font icon was the wrong home for it. #}
+<button type="button" class="cms-dock-tab-btn cms-dock-tab-style" id="cms-style-tab" data-panel="style" title="Fonts">🔤</button>
+
+<div class="cms-dock-panel" id="cms-style-panel" data-panel="style">
+  <div class="cms-dock-resize-handle" title="Drag to resize"></div>
+  <div class="cms-dock-resize-edge" title="Drag to resize width"></div>
+  <div class="cms-dock-header">
+    <span class="cms-dock-title">🔤 Fonts</span>
+    <span class="cms-dock-header-actions">
+      {% include "partials/dock_position_toggle.html" %}
+      <button type="button" class="cms-assistant-close" id="cms-style-close">&times;</button>
+    </span>
+    <div class="cms-dock-header-filters">
+      {% include "partials/dock_tool_search.html" %}
+      {% include "partials/dock_grouped_toggle.html" %}
+    </div>
+  </div>
+  <div class="cms-dock-content">
+    {% if not template %}
+    <p class="hint">No active theme to style.</p>
+    {% else %}
+    <p class="hint">Fonts for "{{ template.name }}" — your site's current look.</p>
+
+    <h4 class="cms-tpl-section-label">Fonts</h4>
+    <div class="cms-font-preset-gallery">
+      {% for key, preset in font_pairings.items() %}
+      <form method="post" action="{{ url_for('admin.template_fonts_preset', template_id=template.id) }}">
+        <input type="hidden" name="next" value="{{ current_path }}">
+        <input type="hidden" name="preset" value="{{ key }}">
+        <button type="submit" class="cms-font-preset-btn" title="Use {{ preset.name }}">{{ preset.name }}</button>
+      </form>
+      {% endfor %}
+    </div>
+    {% if template.font_overrides %}
+    <form method="post" action="{{ url_for('admin.template_fonts_reset', template_id=template.id) }}">
+      <input type="hidden" name="next" value="{{ current_path }}">
+      <button type="submit" class="btn btn-small">Reset Fonts to Theme Default</button>
+    </form>
+    {% endif %}
+
+    {% set font_overrides_dict = (template.font_overrides | from_json) if template.font_overrides else {} %}
+    <details class="cms-color-advanced">
+      <summary>Advanced{{ panel_help("Browse ~50 popular Google Fonts, each shown in its own typeface, then apply it to whichever role you want.") }}</summary>
+      <select id="cms-font-individual-select" class="cms-font-individual-select">
+        {% for name, fallback in google_font_choices %}
+        <option value="{{ name }}" style="font-family: '{{ name }}', {{ fallback }};">{{ name }}</option>
+        {% endfor %}
+      </select>
+      <div class="cms-font-role-btns">
+        <form method="post" action="{{ url_for('admin.template_heading_font', template_id=template.id) }}" class="cms-font-role-form">
+          <input type="hidden" name="next" value="{{ current_path }}">
+          <input type="hidden" name="font_name" class="cms-font-role-input">
+          <button type="submit" class="btn btn-small" title="Apply the selected font as the Heading font">Heading</button>
+        </form>
+        <form method="post" action="{{ url_for('admin.template_body_font', template_id=template.id) }}" class="cms-font-role-form">
+          <input type="hidden" name="next" value="{{ current_path }}">
+          <input type="hidden" name="font_name" class="cms-font-role-input">
+          <button type="submit" class="btn btn-small" title="Apply the selected font as the Body font">Body</button>
+        </form>
+        <form method="post" action="{{ url_for('admin.template_footer_font', template_id=template.id) }}" class="cms-font-role-form">
+          <input type="hidden" name="next" value="{{ current_path }}">
+          <input type="hidden" name="font_name" class="cms-font-role-input">
+          <button type="submit" class="btn btn-small" title="Apply the selected font as the Footer font (optional — footer follows Body until set)">Footer</button>
+        </form>
+      </div>
+      {# What each role is currently set to. A real list of role/value
+         pairs rather than three lines separated by <br>: the roles line up
+         under each other, so it reads as a table of what is assigned
+         rather than a sentence that happens to wrap. #}
+      <dl class="cms-font-assigned">
+        <dt>Heading</dt><dd>{{ font_overrides_dict.get('heading_font_family', 'theme default') }}</dd>
+        <dt>Body</dt><dd>{{ font_overrides_dict.get('body_font_family', 'theme default') }}</dd>
+        <dt>Footer</dt><dd>{{ font_overrides_dict.get('footer_font_family') or 'follows Body' }}</dd>
+      </dl>
+      {% if font_overrides_dict.get('footer_font_family') %}
+      <form method="post" action="{{ url_for('admin.template_footer_font_reset', template_id=template.id) }}">
+        <input type="hidden" name="next" value="{{ current_path }}">
+        <button type="submit" class="btn btn-small">Reset Footer to Match Body</button>
+      </form>
+      {% endif %}
+    </details>
+    {% endif %}
+  </div>
+</div>

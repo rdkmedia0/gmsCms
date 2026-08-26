@@ -1,0 +1,42 @@
+{
+  "title": "Home",
+  "slug_suffix": "home",
+  "page_type": "standard",
+  "meta_description": "Independent garage since 1994 — servicing, repairs and straight answers.",
+  "sections": [
+    [
+      "banner",
+      "",
+      "<div class=\"cms-banner\" style=\"background-image:url('media/garage-banner.png')\"><div class=\"cms-banner-overlay\"><h2>Fixed properly, explained plainly</h2><p>Independent garage, all makes, since 1994. We show you the old part.</p></div></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-stats\" data-count=\"3\"><div class=\"cms-stat-row\"><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat1_value\">1994</span><span class=\"cms-stat-label\" data-field=\"stat1_label\">Same workshop since</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat2_value\">2</span><span class=\"cms-stat-label\" data-field=\"stat2_label\">Ramps, both busy</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat3_value\">0</span><span class=\"cms-stat-label\" data-field=\"stat3_label\">Jobs started without a price</span></div></div></div>",
+      {
+        "bg_color": "#b0bac1"
+      }
+    ],
+    [
+      "text",
+      "How we work",
+      "<p>You get a price before we start. If we find something else, the car stops and you get a phone call &mdash; not a bigger bill at the end.</p><p>We keep the parts we replace and we will show them to you. Nobody has ever objected to that, and it saves a lot of arguments.</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-testimonial\" data-style=\"card\"><figure class=\"cms-quote cms-quote-card\"><img class=\"cms-quote-photo\" src=\"media/garage-quote.png\" alt=\"\" data-field=\"photo\"><blockquote data-field=\"quote\">Rang me to say the noise was a loose heat shield, not the exhaust, and charged me twenty for the clip.</blockquote><figcaption><span class=\"cms-quote-name\" data-field=\"name\">Andreas Lang</span><span class=\"cms-quote-role\" data-field=\"role\">Customer since 2016</span></figcaption></figure></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-cta\" data-tone=\"solid\"><div class=\"cms-cta cms-cta-solid\"><h2 data-field=\"heading\">Book it in</h2><p data-field=\"text\">Tell us the make, the year and what it is doing. We will tell you what it is likely to be.</p><a class=\"cms-cta-btn\" href=\"/contact\" data-href-field=\"link\"><span data-field=\"cta\">Book a service</span></a></div></div>",
+      {
+        "bg_color": "#e6bca5"
+      }
+    ]
+  ]
+}

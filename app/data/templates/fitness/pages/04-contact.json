@@ -1,0 +1,26 @@
+{
+  "title": "Contact",
+  "slug_suffix": "contact",
+  "page_type": "standard",
+  "meta_description": "Where the gym is and how to start.",
+  "sections": [
+    [
+      "text",
+      "Getting started",
+      "<p>Book the free first hour and we will take it from there. Wear whatever you can move in.</p>",
+      {}
+    ],
+    [
+      "text",
+      "Opening hours",
+      "<p>Weekdays 6 till 8, Saturdays 8 till 12</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-contact-form-tool\"></div>",
+      {}
+    ]
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "title": "Home",
+  "slug_suffix": "home",
+  "page_type": "standard",
+  "meta_description": "Weddings and gatherings in a restored stone granary.",
+  "sections": [
+    [
+      "banner",
+      "",
+      "<div class=\"cms-banner\" style=\"background-image:url('media/venue-banner.png')\"><div class=\"cms-banner-overlay\"><h2>One a weekend, never two</h2><p>A restored stone granary, a walled courtyard, and a table that seats ninety.</p></div></div>",
+      {}
+    ],
+    [
+      "text",
+      "The place",
+      "<p>The granary was built in 1804 and spent forty years holding nothing but pigeons. We spent three restoring it and have been careful not to over-restore it since.</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-stats\" data-count=\"3\"><div class=\"cms-stat-row\"><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat1_value\">90</span><span class=\"cms-stat-label\" data-field=\"stat1_label\">Seated in the barn</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat2_value\">140</span><span class=\"cms-stat-label\" data-field=\"stat2_label\">Standing, with the courtyard</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat3_value\">1</span><span class=\"cms-stat-label\" data-field=\"stat3_label\">Wedding a weekend</span></div></div></div>",
+      {
+        "bg_image": "media/venue-band.png",
+        "bg_overlay": "dark",
+        "bg_position": "fixed",
+        "bg_color": "#d7d4cf"
+      }
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-image-accordion cms-accordion-style-panels cms-accordion-lightbox\"><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/venue-space-1.png')\"><span class=\"cms-accordion-caption\">The barn, set for dinner</span></div><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/venue-space-2.png')\"><span class=\"cms-accordion-caption\">The courtyard at dusk</span></div><div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('media/venue-space-3.png')\"><span class=\"cms-accordion-caption\">The chapel</span></div></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-cta\" data-tone=\"soft\"><div class=\"cms-cta cms-cta-soft\"><h2 data-field=\"heading\">Come and see it</h2><p data-field=\"text\">Viewings on Wednesday afternoons and the odd Saturday morning. It is worth standing in it before deciding.</p><a class=\"cms-cta-btn\" href=\"/contact\" data-href-field=\"link\"><span data-field=\"cta\">Arrange a viewing</span></a></div></div>",
+      {
+        "bg_color": "#e2caad"
+      }
+    ]
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "title": "Home",
+  "slug_suffix": "home",
+  "page_type": "standard",
+  "meta_description": "Simple, sustainable tools for a calmer, more intentional life.",
+  "sections": [
+    [
+      "banner",
+      "",
+      "<div class=\"cms-banner\" style=\"background-image:url('media/self-help-banner.png')\"><div class=\"cms-banner-overlay\"><h2>Begin Your Journey</h2><p>Simple, sustainable tools for a calmer, more intentional life.</p></div></div>",
+      {}
+    ],
+    [
+      "text",
+      "Why This Matters",
+      "<p>Real change doesn't come from one big leap — it comes from small, repeatable habits. This space is built around practical mindfulness, honest reflection, and a community that keeps you accountable.</p>",
+      {}
+    ],
+    [
+      "columns",
+      "",
+      "{\"columns\": [{\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>Mindfulness</h3><p>Short daily practices that actually fit your schedule.</p></div>\", \"tool_name\": \"Card\"}, {\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>Journaling</h3><p>Guided prompts to help you process, not just vent.</p></div>\", \"tool_name\": \"Card\"}, {\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>Community</h3><p>A supportive group, not a comment section.</p></div>\", \"tool_name\": \"Card\"}]}",
+      {}
+    ],
+    [
+      "media",
+      "A 5-Minute Practice",
+      "/static/video/templates/self-help-home.mp4",
+      {
+        "media_type": "video"
+      }
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-pricing\" data-columns=\"3\"><div class=\"cms-price-grid\"><div class=\"cms-price-tier\"><h3 class=\"cms-price-name\" data-field=\"tier1_name\">The book</h3><p class=\"cms-price-amount\"><span data-field=\"tier1_price\">18</span><small data-field=\"tier1_period\"></small></p><ul class=\"cms-price-features\" data-field=\"tier1_features\"><li>240 pages</li><li>The whole method, start to finish</li><li>Read it and never speak to me again</li></ul><a class=\"cms-price-btn\" href=\"/programs\" data-href-field=\"tier1_link\"><span data-field=\"tier1_cta\">Get the book</span></a></div><div class=\"cms-price-tier is-featured\" data-flag=\"tier2_featured\"><h3 class=\"cms-price-name\" data-field=\"tier2_name\">Eight weeks</h3><p class=\"cms-price-amount\"><span data-field=\"tier2_price\">390</span><small data-field=\"tier2_period\">the programme</small></p><ul class=\"cms-price-features\" data-field=\"tier2_features\"><li>Eight weekly sessions, in a group of six</li><li>Workbook and recordings</li><li>A private thread between sessions</li><li>Starts four times a year</li></ul><a class=\"cms-price-btn\" href=\"/programs\" data-href-field=\"tier2_link\"><span data-field=\"tier2_cta\">Join the next one</span></a></div><div class=\"cms-price-tier\"><h3 class=\"cms-price-name\" data-field=\"tier3_name\">One to one</h3><p class=\"cms-price-amount\"><span data-field=\"tier3_price\">1,100</span><small data-field=\"tier3_period\">six sessions</small></p><ul class=\"cms-price-features\" data-field=\"tier3_features\"><li>Six hours, just you</li><li>Between-session support</li><li>For when the group format will not fit</li></ul><a class=\"cms-price-btn\" href=\"/contact\" data-href-field=\"tier3_link\"><span data-field=\"tier3_cta\">Enquire</span></a></div></div></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-testimonial\" data-style=\"card\"><figure class=\"cms-quote cms-quote-card\"><img class=\"cms-quote-photo\" src=\"media/self-help-quote-marta.png\" alt=\"\" data-field=\"photo\"><blockquote data-field=\"quote\">I have read a shelf of these books. This is the first one that asked me to do something on page four.</blockquote><figcaption><span class=\"cms-quote-name\" data-field=\"name\">Marta Nowak</span><span class=\"cms-quote-role\" data-field=\"role\">Read it twice</span></figcaption></figure></div>",
+      {
+        "bg_color": "#e5d9d3"
+      }
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-faq cms-faq-style-plain\"><details class=\"cms-faq-item\" name=\"cms-faq-self-help-home-6\"><summary class=\"cms-faq-q\">Is this therapy?</summary><div class=\"cms-faq-a\">No, and it is not a substitute for it. If what you are carrying needs a therapist, I will say so — several people each year hear exactly that from me.</div></details><details class=\"cms-faq-item\" name=\"cms-faq-self-help-home-6\"><summary class=\"cms-faq-q\">What if I miss a week?</summary><div class=\"cms-faq-a\">Sessions are recorded and the thread stays open. People miss weeks; the programme is built assuming they will.</div></details><details class=\"cms-faq-item\" name=\"cms-faq-self-help-home-6\"><summary class=\"cms-faq-q\">Do I have to do the exercises?</summary><div class=\"cms-faq-a\">Nothing happens if you do not. That is the honest answer — the reading is the easy half and it is not the half that changes anything.</div></details></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-newsletter\" ><div class=\"cms-newsletter\"><h2 data-field=\"heading\">A letter every other Sunday</h2><p data-field=\"text\">Short, practical, and free. It is the same voice as the book.</p><form class=\"cms-newsletter-form\" method=\"post\" action=\"/subscribe\"><label class=\"cms-visually-hidden\" for=\"cms-sub-email\">Email address</label><input type=\"email\" id=\"cms-sub-email\" name=\"email\" required placeholder=\"you@example.com\" data-attr-field=\"placeholder\"><button type=\"submit\" class=\"cms-action-btn\"><span data-field=\"cta\">Sign me up</span></button><input type=\"hidden\" name=\"consent_text\" value=\"Yes, send me the letter. Unsubscribe any time.\"><p class=\"cms-newsletter-consent\" data-field=\"consent\">Yes, send me the letter. Unsubscribe any time.</p><p class=\"cms-newsletter-howitworks\">We&rsquo;ll email you a link to confirm. Nothing else is sent until you follow it.</p><p class=\"cms-subscribe-note\" data-subscribe-note role=\"status\" hidden></p></form></div></div>",
+      {}
+    ]
+  ]
+}

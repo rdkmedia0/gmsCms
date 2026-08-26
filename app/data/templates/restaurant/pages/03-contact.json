@@ -1,0 +1,26 @@
+{
+  "title": "Contact",
+  "slug_suffix": "contact",
+  "page_type": "standard",
+  "meta_description": "Booking a table.",
+  "sections": [
+    [
+      "text",
+      "Booking",
+      "<p>Tables open on the first of each month for the month after. Cancellations go on the board and we ring people in order.</p>",
+      {}
+    ],
+    [
+      "text",
+      "Opening hours",
+      "<p>Wednesday to Saturday, one sitting at 7:30</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-contact-form-tool\"></div>",
+      {}
+    ]
+  ]
+}

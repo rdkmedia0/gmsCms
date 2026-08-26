@@ -1,0 +1,79 @@
+/* "ARTHOUSE" — bold editorial/gallery portfolio look: true-black ground,
+   oversized condensed poster type, high-contrast monochrome punctuated by
+   one vivid accent, thin hairline rules instead of boxed cards. The dark
+   ground itself is `primary` (not a fixed black) and all the muted
+   secondary text reads off `secondary`, so a re-color in the Colors panel
+   actually moves this theme, not just its accent. */
+:root {
+  --site-heading-font-family: "Bebas Neue", "Arial Narrow", sans-serif;
+  --site-font-family: "Archivo", -apple-system, "Segoe UI", sans-serif;
+  --site-heading-weight: 400;
+  --site-h1-size: 64px;
+}
+
+/*  This theme's own shaping, stated as defaults rather than as
+    border-radius declarations. site-base.css draws every corner from
+    --site-radius and falls back to these, so the hero, cards and
+    banners keep being shaped differently here, while the admin's
+    site-wide Corners choice (and a single section's own override)
+    still reach them. */
+:root {
+  --corner-banner: 0;
+  --corner-card: 0;
+  --corner-hero: 0;
+  --corner-panel: 0;
+  --corner-post: 0;
+  --pad-hero: 80px 24px 48px;
+  --pad-panel: 24px;
+}
+body { background: var(--site-body-bg, var(--wp--preset--color--primary, #0d0d0d)); color: var(--primary-50, #ededed); }
+.site-header { background: var(--site-header-bg, var(--wp--preset--color--primary, #0d0d0d)); border-bottom: var(--site-header-border, 1px solid var(--primary-400, #2a2a2a)); }
+.site-brand {
+  color: var(--secondary-50, #ffffff); font-family: var(--site-heading-font-family);
+  font-size: 22px; letter-spacing: 0.08em; text-transform: uppercase;
+}
+.site-nav a {
+  color: var(--wp--preset--color--secondary, #8a8a8a); text-transform: uppercase;
+  font-size: 13px; letter-spacing: 0.08em;
+}
+.site-nav a:hover { color: var(--wp--preset--color--accent, #ff3b30); }
+.site-footer {
+  background: var(--site-footer-bg, var(--wp--preset--color--primary, #0d0d0d)); border-top: var(--site-footer-border, 1px solid var(--primary-400, #2a2a2a));
+  color: var(--wp--preset--color--secondary, #8a8a8a);
+}
+.site-footer a { color: var(--wp--preset--color--secondary, #8a8a8a); }
+
+.block-header {
+  background: var(--wp--preset--color--primary, #0d0d0d); color: var(--secondary-50, #ffffff);
+}
+.block-header h1 {
+  color: var(--secondary-50, #ffffff); text-transform: uppercase; letter-spacing: 0.02em; line-height: 0.95;
+}
+.block-header .lead { color: var(--wp--preset--color--secondary, #8a8a8a); font-family: var(--site-font-family); }
+
+h2, .block-text h2, .block-image h2, .block-html h2 {
+  font-family: var(--site-heading-font-family); text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--secondary-50, #ffffff); border-left: none; padding-left: 0; border-bottom: 1px solid var(--primary-400, #2a2a2a); padding-bottom: 10px;
+}
+
+.block-html {
+  background: color-mix(in srgb, var(--wp--preset--color--primary, #0d0d0d) 92%, white);
+  border: 1px solid var(--primary-400, #2a2a2a); color: var(--primary-50, #ededed);
+}
+
+.cms-card-shape {
+  background: color-mix(in srgb, var(--wp--preset--color--primary, #0d0d0d) 92%, white);
+  border: 1px solid var(--primary-400, #2a2a2a); color: var(--primary-50, #ededed);
+}
+
+.cms-blog-card {
+  background: color-mix(in srgb, var(--wp--preset--color--primary, #0d0d0d) 92%, white);
+  border-color: var(--primary-400, #2a2a2a); color: var(--primary-50, #ededed);
+}
+.cms-blog-date { color: var(--wp--preset--color--secondary, #8a8a8a); }
+.cms-image-placeholder {
+  background: color-mix(in srgb, var(--wp--preset--color--primary, #0d0d0d) 92%, white);
+  border-color: var(--primary-400, #2a2a2a);
+}
+
+a { color: var(--wp--preset--color--accent, #ff3b30); }

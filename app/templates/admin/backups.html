@@ -1,0 +1,111 @@
+{% extends "admin/base.html" %}
+{% block title %}Backups — My Site Admin{% endblock %}
+{% block content %}
+<h1>Backups</h1>
+<p class="hint">A copy of everything: your pages, orders, customers, bookings, uploaded pictures and the files people have paid for. This is the only thing that helps if the site is deleted or damaged — nothing else here recovers from that.</p>
+
+<div class="card">
+  <h2>Back up now</h2>
+  <form method="post" action="{{ url_for('admin.backup_create') }}" class="fulfilment-form">
+    <label class="checkbox-row" title="Pictures, video and the files buyers download. Leave off for a small, quick backup of just your data.">
+      <input type="checkbox" name="include_media" value="1" checked> Include pictures and download files
+    </label>
+    <label class="checkbox-row" title="Only tick this to move the site to a different machine. It puts your Stripe, Cal.com and email credentials in the file itself.">
+      <input type="checkbox" name="include_key" value="1"> Include the encryption key <span class="hint">(only for moving to a new machine)</span>
+    </label>
+    <p class="hint">Without the key, your saved Stripe and Cal.com credentials can't be read from the backup &mdash; on this machine they still work as normal, and restoring somewhere else just means typing those few keys in again. That's on purpose: it means a backup that goes astray can't be used to spend your money.</p>
+    <button type="submit" class="btn btn-primary btn-small" title="Take a backup now">Back up now</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Automatic backups</h2>
+  <form method="post" action="{{ url_for('admin.backup_settings') }}" class="fulfilment-form">
+    <label for="schedule">How often</label>
+    <select id="schedule" name="schedule" title="Automatic backups are written to this machine. Download copies elsewhere too.">
+      {% for value, label in schedules %}
+      <option value="{{ value }}" {{ 'selected' if settings.schedule == value }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="keep">How many to keep</label>
+    <input type="number" id="keep" name="keep" min="1" max="60" value="{{ settings.keep }}"
+           title="Older backups beyond this number are deleted automatically.">
+
+    <label class="checkbox-row" title="Including media makes each backup much larger.">
+      <input type="checkbox" name="include_media" value="1" {{ 'checked' if settings.include_media }}> Include pictures and download files
+    </label>
+
+    <button type="submit" class="btn btn-primary btn-small">Save</button>
+  </form>
+  <p class="hint">
+    {% if settings.last_run %}Last automatic backup: {{ settings.last_run.replace('T', ' ')[:16] }}.{% else %}No automatic backup has run yet.{% endif %}
+    They're saved in <code>{{ backup_dir }}</code>, which is on the same volume as the site &mdash; good for undoing a mistake, no help if the machine itself is lost. Download the ones that matter.
+  </p>
+</div>
+
+<div class="card">
+  <h2>Restore</h2>
+  <p class="hint">Restoring replaces what's on the site now. Your current state is saved as a backup first, so a restore can itself be undone.</p>
+  <form method="post" action="{{ url_for('admin.backup_restore') }}" enctype="multipart/form-data" class="fulfilment-form cms-restore-form">
+    <label for="archive">Upload a backup file</label>
+    <input type="file" id="archive" name="archive" accept=".zip" title="A backup .zip taken from this site, on this machine or another one">
+    <label class="checkbox-row" title="Also restore pictures and download files from the archive.">
+      <input type="checkbox" name="restore_media" value="1" checked> Restore pictures and download files too
+    </label>
+    <button type="submit" class="btn btn-danger btn-small"
+            data-confirm="You are about to restore the site from this file. Everything on the site now is replaced. A backup of the current state is taken first."
+            data-confirm-danger="1"
+            title="Replace the current site with the contents of this file">Restore from file</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Backups on this machine</h2>
+  {% if not backups %}
+  <p class="hint">None yet.</p>
+  {% else %}
+  <ul class="cms-backup-list">
+    {% for b in backups %}
+    <li>
+      <div>
+        <strong>{{ b.created_at.replace('T', ' ')[:16] }}</strong>
+        <span class="hint">
+          {{ (b.size / 1048576) | round(1) }} MB
+          {%- if b.manifest %}
+            · {{ b.manifest.counts.pages or 0 }} page{{ 's' if (b.manifest.counts.pages or 0) != 1 }},
+            {{ b.manifest.counts.orders or 0 }} order{{ 's' if (b.manifest.counts.orders or 0) != 1 }},
+            {#  Said out loud, because the email list is the one thing in
+                here that cannot be typed again if it is lost. #}
+            {{ b.manifest.counts.subscribers or 0 }} on the email list
+            {%- if b.manifest.label == 'before-restore' %} · taken before a restore{% endif %}
+            {%- if b.manifest.label == 'scheduled' %} · automatic{% endif %}
+            {%- if b.manifest.includes_encryption_key %} · <strong>contains your credentials</strong>{% endif %}
+          {%- elif b.broken %} · <em>unreadable</em>{% endif %}
+        </span>
+      </div>
+      <div class="cms-backup-actions">
+        <a class="btn btn-small" href="{{ url_for('admin.backup_download', name=b.name) }}"
+           title="Download this backup to your own computer">Download</a>
+        <form method="post" action="{{ url_for('admin.backup_restore') }}" class="is-inline">
+          <input type="hidden" name="name" value="{{ b.name }}">
+          <input type="hidden" name="restore_media" value="1">
+          <button type="submit" class="btn btn-small"
+                  data-confirm="You are about to restore the site to how it was on {{ b.created_at.replace('T', ' ')[:16] }}. Everything on the site now is replaced. A backup of the current state is taken first."
+                  data-confirm-danger="1"
+                  title="Put the site back to how it was at this point">Restore</button>
+        </form>
+        <form method="post" action="{{ url_for('admin.backup_delete', name=b.name) }}" class="is-inline">
+          <button type="submit" class="btn btn-small"
+                  data-confirm="You are about to delete this backup. It cannot be recovered."
+                  data-confirm-danger="1"
+                  title="Delete this backup file">Delete</button>
+        </form>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</div>
+
+{% endblock %}

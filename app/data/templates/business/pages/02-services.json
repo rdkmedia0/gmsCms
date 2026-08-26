@@ -1,0 +1,26 @@
+{
+  "title": "Services",
+  "slug_suffix": "services",
+  "page_type": "standard",
+  "meta_description": "What we offer and what it costs.",
+  "sections": [
+    [
+      "text",
+      "What We Offer",
+      "<p>Simple, honest pricing — no surprise fees. Ask about a season-long package and save.</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<table class=\"cms-table\"><thead><tr><th>Service</th><th>What's Included</th><th>Starting At</th></tr></thead><tbody><tr><td>Weekly Mowing</td><td>Mow, edge, and blow — every week, rain or shine</td><td>$45/visit</td></tr><tr><td>Garden Design</td><td>New flower beds, mulching, and planting</td><td>$350</td></tr><tr><td>Seasonal Cleanup</td><td>Leaf removal, gutter clearing, bed tidy-up</td><td>$120</td></tr></tbody></table>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-faq cms-faq-style-list\"><details class=\"cms-faq-item\" name=\"cms-faq-business-services-2\"><summary class=\"cms-faq-q\">Do I have to sign anything?</summary><div class=\"cms-faq-a\">No. It is month to month, and if you want to stop you tell us and we stop. Nobody has ever had to argue their way out of it.</div></details><details class=\"cms-faq-item\" name=\"cms-faq-business-services-2\"><summary class=\"cms-faq-q\">What happens over winter?</summary><div class=\"cms-faq-a\">The grass stops needing us around late October. Whole-garden customers keep the leaves, pruning and tidying through winter; lawn-only customers pause and we come back in April without you having to ring.</div></details><details class=\"cms-faq-item\" name=\"cms-faq-business-services-2\"><summary class=\"cms-faq-q\">Will it be the same people each time?</summary><div class=\"cms-faq-a\">Yes. There are six of us and you will get to know whoever has your street. It is the part customers mention most.</div></details></div>",
+      {}
+    ]
+  ]
+}

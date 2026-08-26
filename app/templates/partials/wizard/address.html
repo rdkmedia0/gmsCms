@@ -1,0 +1,18 @@
+{#  services/site.py is the single authority for every URL that leaves
+    this app. Unset, all of them are built from whatever host the admin
+    happened to be typing, which is usually localhost -- so a wizard that
+    sets up Stripe and not this has set up a Stripe that cannot come back. #}
+<p class="hint">The address people type to reach your site. Everything this app sends out is built
+  from it: the link in a newsletter, the page Stripe returns a customer to after they pay, the
+  picture shown on the payment page.</p>
+
+<label for="site_base">Your site's web address</label>
+<input type="text" id="site_base" name="site_base" maxlength="200"
+       value="{{ site_address or detected_address or '' }}"
+       placeholder="https://example.com"
+       title="With https:// at the front. If you are still setting things up locally, skip this and come back when you have a real address.">
+{% if detected_address and not address_is_set %}
+<p class="hint">You are reading this at <code>{{ detected_address }}</code>. If that is the address
+  your visitors use, it is already filled in above &mdash; if it says localhost, skip this step and
+  come back once the site has a real home.</p>
+{% endif %}

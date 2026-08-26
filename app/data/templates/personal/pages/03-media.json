@@ -1,0 +1,26 @@
+{
+  "title": "Media",
+  "slug_suffix": "media",
+  "page_type": "standard",
+  "meta_description": "Short films and behind-the-scenes clips.",
+  "sections": [
+    [
+      "text",
+      "",
+      "<h2>Moving pictures</h2><p>Short clips from recent trips — mostly handheld, mostly at the wrong time of day. They are here because some things do not survive being a photograph.</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-video-gallery cms-video-gallery-3\">\n<div class=\"cms-video-thumb\" data-video-src=\"/static/video/templates/personal-media-1.mp4\"><video src=\"/static/video/templates/personal-media-1.mp4#t=0.1\" preload=\"metadata\" muted playsinline></video><span class=\"cms-play-icon\">&#9658;</span><span class=\"cms-video-caption\">Coastline at dawn</span></div>\n<div class=\"cms-video-thumb\" data-video-src=\"/static/video/templates/personal-media-2.mp4\"><video src=\"/static/video/templates/personal-media-2.mp4#t=0.1\" preload=\"metadata\" muted playsinline></video><span class=\"cms-play-icon\">&#9658;</span><span class=\"cms-video-caption\">On the trail</span></div>\n<div class=\"cms-video-thumb\" data-video-src=\"/static/video/templates/personal-media-3.mp4\"><video src=\"/static/video/templates/personal-media-3.mp4#t=0.1\" preload=\"metadata\" muted playsinline></video><span class=\"cms-play-icon\">&#9658;</span><span class=\"cms-video-caption\">Waiting out the rain</span></div>\n</div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-newsletter\" ><div class=\"cms-newsletter\"><h2 data-field=\"heading\">Occasional letters</h2><p data-field=\"text\">One email when there is something worth sending — a trip, a set of pictures, a print run. Never more than monthly.</p><form class=\"cms-newsletter-form\" method=\"post\" action=\"/subscribe\"><label class=\"cms-visually-hidden\" for=\"cms-sub-email\">Email address</label><input type=\"email\" id=\"cms-sub-email\" name=\"email\" required placeholder=\"you@example.com\" data-attr-field=\"placeholder\"><button type=\"submit\" class=\"cms-action-btn\"><span data-field=\"cta\">Sign up</span></button><input type=\"hidden\" name=\"consent_text\" value=\"Yes, email me occasional updates. Unsubscribe any time.\"><p class=\"cms-newsletter-consent\" data-field=\"consent\">Yes, email me occasional updates. Unsubscribe any time.</p><p class=\"cms-newsletter-howitworks\">We&rsquo;ll email you a link to confirm. Nothing else is sent until you follow it.</p><p class=\"cms-subscribe-note\" data-subscribe-note role=\"status\" hidden></p></form></div></div>",
+      {}
+    ]
+  ]
+}

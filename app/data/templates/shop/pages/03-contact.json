@@ -1,0 +1,26 @@
+{
+  "title": "Contact",
+  "slug_suffix": "contact",
+  "page_type": "standard",
+  "meta_description": "Where the shop is and when it is open.",
+  "sections": [
+    [
+      "text",
+      "Come in",
+      "<p>We are on the high street between the bakery and the bank. Closed Mondays.</p>",
+      {}
+    ],
+    [
+      "text",
+      "Opening hours",
+      "<p>Tuesday to Saturday, 10 till 5:30</p><p>Sunday 11 till 4</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-contact-form-tool\"></div>",
+      {}
+    ]
+  ]
+}

@@ -1,0 +1,59 @@
+{% extends "admin/base.html" %}
+{% block title %}Orders — My Site Admin{% endblock %}
+{% block content %}
+<h1>Orders</h1>
+<p class="hint">Every sale, who made it, and what they're still owed. Buyers don't have accounts — they reach their purchases through a link we email them — so if someone says they never got theirs, resend it from here.</p>
+
+{% if not email_ready %}
+<p class="flash flash-warning">Email isn't set up, so order emails aren't being sent and Resend won't work. <a href="{{ url_for('admin.settings_email') }}">Set it up →</a></p>
+{% endif %}
+
+{% if not orders %}
+<div class="card"><p>No orders yet. When someone buys something, it appears here within seconds.</p></div>
+{% else %}
+{% for order in orders %}
+<div class="card">
+  <div class="integration-head">
+    <h2>{{ '%.2f'|format((order.amount_total or 0) / 100) }} {{ (order.currency or '').upper() }}</h2>
+    <span class="integration-badge {{ 'is-on' if order.status == 'paid' else 'is-off' }}">{{ order.status }}</span>
+    <span class="hint">{{ order.created_at[:16] }}</span>
+  </div>
+  <p class="hint">
+    {% if order.email %}<strong>{{ order.email }}</strong>{% if order.name %} · {{ order.name }}{% endif %}
+    {% else %}<em>no email recorded</em>{% endif %}
+    · <code>{{ order.provider_ref[:28] }}…</code>
+  </p>
+
+  {% set ents = entitlements.get(order.id) or [] %}
+  {% if ents %}
+  <ul class="hint order-entitlements">
+    {% for e in ents %}
+    <li>
+      {% if e.kind == 'credit' %}
+        {{ e.granted - e.used }} of {{ e.granted }} session{{ 's' if e.granted != 1 }} left
+      {% else %}
+        {{ e.granted - e.used }} of {{ e.granted }} download{{ 's' if e.granted != 1 }} left
+      {% endif %}
+      {%- if e.revoked_at %} — <em>revoked</em>{% endif %}
+      {%- if e.expires_at %} — expires {{ e.expires_at[:10] }}{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="hint">Nothing to unlock — this was payment only.</p>
+  {% endif %}
+
+  {% if order.email %}
+  <div class="integration-actions">
+    <button type="button" class="btn btn-small cms-resend-order"
+            data-url="{{ url_for('admin.commerce_order_resend', order_id=order.id) }}"
+            title="Email this buyer a fresh link to their purchases">Resend their link</button>
+  </div>
+  <p class="integration-result" hidden></p>
+  {% endif %}
+</div>
+{% endfor %}
+{% endif %}
+
+<script src="{{ static_url('js/admin/orders.js') }}"></script>
+{% endblock %}

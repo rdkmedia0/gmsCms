@@ -1,0 +1,1242 @@
+/* Edit-mode-only chrome. Only loaded when a logged-in admin views the site. */
+
+/*  The editor's own typeface, and the reason it needs a name of its own.
+    This stylesheet never set a font at all, so every label, hint and
+    builder on a tool panel inherited the SITE's font — Mukta on the
+    bakery, Inter on the CV — while the selects and buttons beside them,
+    which inherit nothing by default, fell back to the browser's Arial.
+    Two typefaces inside one panel, and a different pair on every
+    template.
+
+    Not --site-font-family: on a live page that variable IS the theme's
+    font, which is the thing being escaped. The stack is the one
+    admin.css and cms-sidepanel.css already use, so the editor, the admin
+    screens and the dock finally say the same thing. */
+:root { --cms-ui-font: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+
+/*  One corner scale for everything this app draws, and the reason there
+    is only one. The chrome had seven values -- 4, 5, 6, 8, 10, 12 and a
+    pill -- with no rule about which was which, and the same ROLE differed
+    by file: a button was 4px in the editor's toolbar and 8px on the admin
+    screens. Nothing looked wrong; the next control simply had nothing to
+    follow.
+
+    Two values, chosen as the editor's own, since that is where most of
+    the app's controls live:
+
+      control  a thing you click or type into -- button, select, input,
+               textarea, chip, swatch, colour well, or a badge the size of
+               one.
+      surface  a plate something else sits on -- panel, toolbar, menu,
+               dropdown, dialog, card, log, preview, thumbnail.
+
+    A pill (999px) is its own shape and stays. When adding a control or a
+    surface, take the token; do not type a number. */
+:root { --cms-ui-radius-control: 4px; --cms-ui-radius-surface: 8px; }
+
+/*  A tool telling its owner it cannot work yet. Loud enough to be read
+    before somebody tests the thing and finds out from a visitor's error
+    message, quiet enough not to look like a crash. */
+.cms-tool-warning {
+  background: #fef3c7; border: 1px solid #fcd34d; color: #78350f;
+  padding: 8px 10px; border-radius: var(--cms-ui-radius-surface);
+}
+.cms-tool-warning a { color: inherit; font-weight: 600; }
+
+/*  A block's own controls stop swallowing clicks while editing.
+
+    Moving a button's label into a <span data-field> was necessary and not
+    sufficient: a <button> intercepts the click for its own activation, so
+    the caret never reached the span inside it and the label still could
+    not be typed into. Same for a link, which would follow itself instead.
+
+    So while editing, a block's buttons and links are inert and the
+    elements holding words are not. Nothing is lost: following a link or
+    submitting a sign-up form is not what an admin is doing on their own
+    page. In the visitor's view none of this applies and both work
+    normally. */
+.cms-editing .cms-block a,
+.cms-editing .cms-block button { pointer-events: none; }
+.cms-editing .cms-block [data-field] { pointer-events: auto; }
+
+/*  The editor's own text colour, and the same argument as the font above.
+    A chrome surface that paints its own background but never says what
+    colour text on it should be gets the SITE's colour by inheritance —
+    the bakery's brown, or whatever an owner sets the palette to. Nothing
+    looked wrong, because every label and button inside these panels
+    happens to pin its own colour; the inheritance was simply waiting for
+    the next control that did not. That is exactly how the Numbers panel
+    became unreadable.
+
+    So: a chrome surface states its own text colour. #111827 is not a new
+    value — it is what this app's inputs, selects and panel text already
+    use, so applying it changes nothing on screen and closes the path. */
+:root { --cms-ui-text: #111827; }
+
+/* The admin bar is fixed-position and shows in both Editing and Viewing
+   mode (anything logged_in) — so the top-padding compensation must key off
+   the same condition, not just "editing", or Viewing mode's page content
+   starts underneath the bar instead of below it. */
+body.cms-logged-in { padding-top: 40px; }
+
+/* Fixed-height single line, always — this bar's height is what body's
+   padding-top compensates for (see the rule above). Letting its contents
+   wrap onto extra lines at narrow widths would silently grow the bar
+   taller than that padding accounts for, so real page content (including
+   a "minimal" header's own ☰ toggle, positioned right under it) ends up
+   hidden underneath. Overflow scrolls horizontally instead of wrapping. */
+.cms-admin-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+  background: #1f2430; color: #fff;
+  display: flex; align-items: center; gap: 20px; flex-wrap: nowrap;
+  overflow-x: auto; white-space: nowrap;
+  padding: 10px 20px; font-size: 14px; font-family: var(--cms-ui-font);
+}
+.cms-admin-bar a { color: #93c5fd; text-decoration: none; font-weight: 600; flex: 0 0 auto; }
+.cms-admin-bar a:hover { text-decoration: underline; }
+.cms-admin-bar span { font-weight: 700; margin-right: auto; flex: 0 0 auto; }
+.cms-admin-bar select { flex: 0 0 auto; }
+.cms-mode-select {
+  background: #333a48; color: #fff; border: 1px solid #4b5563; border-radius: var(--cms-ui-radius-control);
+  padding: 4px 8px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+
+/* Section hover/edit affordances — scoped to .cms-editing so "Viewing" mode
+   (still logged in, but not editing) renders exactly like a real visitor
+   would see, with no edit highlights. */
+/*  Reads the corner cascade rather than pinning 8px. This rule outranks
+    site-base's .cms-section on specificity, so a hardcoded value here
+    meant every section showed the editor's corner instead of its own for
+    as long as you were editing — the same way the buttons did before
+    [contenteditable]'s radius came off. 8px stays as the fallback, so a
+    section with no corner set keeps the soft outline this is for. */
+.cms-editing .cms-section { position: relative; border: 2px dashed transparent; border-radius: var(--site-radius, 8px); transition: border-color .15s; }
+.cms-editing .cms-section:hover { border-color: #93c5fd; }
+.cms-editing .cms-section.cms-tool-drop-target {
+  border-color: #059669; border-style: solid; background: rgba(5, 150, 105, 0.06);
+}
+.cms-editing .cms-column { border: 2px dashed transparent; border-radius: var(--cms-ui-radius-surface); transition: border-color .15s; }
+.cms-editing .cms-column:hover { border-color: #93c5fd; }
+.cms-editing .cms-column.cms-tool-drop-target {
+  border-color: #059669; border-style: solid; background: rgba(5, 150, 105, 0.06);
+}
+.cms-editing .cms-row-cell { border: 2px dashed transparent; border-radius: var(--cms-ui-radius-surface); transition: border-color .15s; }
+.cms-editing .cms-row-cell:hover { border-color: #93c5fd; }
+.cms-editing .cms-row-cell.cms-tool-drop-target {
+  border-color: #059669; border-style: solid; background: rgba(5, 150, 105, 0.06);
+}
+/* Drag-to-resize handles — a sidebar section's own inner (right) edge for
+   width, or a horizontal section's bottom edge for height. Purely a
+   bigger, easier-to-grab hit target than the 1-2px border itself; the
+   visible line only appears on hover so it doesn't clutter the page.
+   Sits entirely OUTSIDE the section's own box (no negative-offset overlap
+   with it) so its hit area never competes with real tool content —
+   hovering near the edge of a Menu's links, for instance, used to
+   sometimes grab the resize handle instead of the link underneath it. */
+.cms-resize-handle { position: absolute; z-index: 1; }
+.cms-resize-handle-w {
+  top: 0; bottom: 0; right: -10px; width: 10px; cursor: ew-resize;
+}
+.cms-resize-handle-h {
+  left: 0; right: 0; bottom: -10px; height: 10px; cursor: ns-resize;
+}
+.cms-resize-handle::after {
+  content: ""; position: absolute; background: #2563eb; opacity: 0; transition: opacity .15s;
+}
+.cms-resize-handle-w::after { top: 0; bottom: 0; left: 8px; width: 2px; }
+.cms-resize-handle-h::after { left: 0; right: 0; top: 8px; height: 2px; }
+.cms-resize-handle:hover::after, .cms-resizing .cms-resize-handle::after { opacity: 1; }
+/* While actively dragging, disable transitions/selection and force the
+   resize cursor everywhere so fast mouse movement doesn't lose the drag
+   over some other element with its own cursor style. */
+body.cms-resizing { cursor: inherit; user-select: none; }
+body.cms-resizing-w, body.cms-resizing-w * { cursor: ew-resize !important; }
+body.cms-resizing-h, body.cms-resizing-h * { cursor: ns-resize !important; }
+
+.cms-cell-empty-hint {
+  color: #9ca3af; font-size: 13px; font-style: italic; padding: 16px 8px; text-align: center;
+  border: 1px dashed #d1d5db; border-radius: var(--cms-ui-radius-surface); width: 100%; box-sizing: border-box;
+}
+.cms-tool-chip.cms-tool-armed {
+  outline: 2px solid #2563eb; background: #dbeafe;
+}
+body.cms-placing-tool .cms-editing .cms-cell-empty-hint,
+body.cms-placing-tool .cms-editing .cms-section,
+body.cms-placing-tool .cms-editing .cms-column {
+  cursor: copy;
+}
+body.cms-placing-tool .cms-editing .cms-section:hover,
+body.cms-placing-tool .cms-editing .cms-column:hover {
+  border-color: #2563eb; border-style: solid; background: rgba(37,99,235,0.06);
+}
+
+.cms-section-toolbar {
+  /* Anchored just to the right of the divider's icon cluster (pencil / +
+     / ×), not centered on top of it and not pinned to the section's far
+     right edge either. Centering the toolbar used to put it directly on
+     top of those same three icons — once open, it covered the very
+     controls (+, delete) sitting right next to the pencil that opened it.
+     Starting from the horizontal center plus the icon cluster's own
+     half-width clears all three without needing to measure anything at
+     runtime. */
+  position: absolute; top: -14px; left: calc(50% + 40px);
+  z-index: 10; max-width: max-content;
+  display: none; flex-wrap: wrap; gap: 4px 6px; align-items: center;
+  background: #1f2430; color: #e5e7eb; border-radius: var(--cms-ui-radius-surface); padding: 6px 10px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+}
+/*  The bar paints itself dark, so it says what colour its own writing is.
+    It did not, and the labels on it — "Divide", and anything else without
+    a colour of its own — inherited the SITE's text colour instead: near
+    black on a dark navy bar, on any template with dark body text. Same
+    inheritance that made the Numbers panel unreadable; see CLAUDE.md's
+    rule about the app's controls being the app's. */
+.cms-section-toolbar label, .cms-section-toolbar span,
+.cms-section-toolbar .cms-inline-form label, .cms-section-toolbar .cms-stepper {
+  color: #e5e7eb;
+}
+/* Opened via the edit-section icon next to this section's own "+" divider
+   (see .cms-section-edit-icon in JS) — not hover. Hover would put it in
+   competition with the tool menu below, which is what this whole redesign
+   is trying to avoid. */
+.cms-section.cms-section-menu-open .cms-section-toolbar { display: flex; }
+.cms-section-toolbar button, .cms-section-toolbar select {
+  background: #fff; border: none; border-radius: var(--cms-ui-radius-control); padding: 4px 8px;
+  font-size: 13px; cursor: pointer; font-weight: 600; line-height: 1.4;
+}
+.cms-section-toolbar button.cms-danger { background: #fca5a5; color: #7f1d1d; }
+/* Everything else in this toolbar (the "Divide" label text, the
+   background-color swatch's "▧" glyph) is plain unstyled text sitting
+   directly on the toolbar's dark background — without an explicit color
+   it inherits the page's near-black body text color, rendering as
+   barely-visible dark-on-dark. */
+.cms-section-toolbar,
+.cms-section-toolbar label,
+.cms-section-toolbar .cms-color-label { color: #e5e7eb; font-size: 12px; }
+.cms-section-toolbar label { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.cms-section-toolbar .cms-color-label input[type="color"] { vertical-align: middle; }
+/* A hairline separator between the identity group (drag handle + label)
+   and the actual controls, so the row doesn't read as one undifferentiated
+   strip of buttons. */
+.cms-section-label { padding-right: 6px; border-right: 1px solid rgba(255,255,255,0.15); margin-right: 2px; }
+.cms-inline-form { display: inline; }
+.cms-section-move-arrows { display: inline-flex; gap: 2px; }
+.cms-section-move-arrows .cms-move-btn { padding: 2px 6px; font-size: 10px; line-height: 1; }
+
+.cms-section-label {
+  color: #93c5fd; font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.04em; white-space: nowrap; padding: 0 2px;
+}
+/* Delete sits apart from the rest of the toolbar's controls, in its own
+   fixed corner spot, so it isn't just another button in the row — a
+   deliberate, well-separated target instead of something easy to mis-click
+   next to Clear/Save/etc. */
+.cms-section-delete-form { margin-left: 6px; }
+.cms-section-delete-btn {
+  width: 20px; height: 20px; padding: 0 !important; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  background: #fca5a5 !important; color: #7f1d1d; border-radius: 50% !important;
+  font-size: 15px; font-weight: 700;
+}
+.cms-section-delete-btn:hover { background: #f87171 !important; }
+/*  A round × has to stay round wherever it is. The panel sizes its
+    controls to a common 28px row height, which is right for a select and
+    wrong for this: at 20 wide and 28 tall a circle becomes an egg, and
+    only the buttons that happened to sit outside a panel looked correct.
+    Named here rather than by adding another exception up there, because
+    this is a property of the button, not of the row it stands in. */
+.cms-tool-panel .cms-section-delete-btn,
+.cms-tool-header .cms-section-delete-btn { width: 20px; height: 20px; }
+
+/*  No border-radius here, deliberately. Both this and .cms-block-editable
+    below used to round themselves off — 4px and 3px — to soften their own
+    hover tint and focus ring. But the radius lands on the CONTENT, not on
+    the affordance, and it wins: every pill button on a template like
+    Self-Help rendered as a near-square rectangle for as long as you were
+    editing the page, so the site did not look like itself in the one view
+    where you are deciding how it looks. Left alone, the outline and the
+    tint take the shape of whatever they are drawn on, which is both more
+    honest and better-looking — a pill button gets a pill-shaped ring. */
+[contenteditable="true"] { outline: 2px solid transparent; transition: outline-color .15s; cursor: text; }
+[contenteditable="true"]:hover { outline-color: #bfdbfe; }
+[contenteditable="true"]:focus { outline-color: #2563eb; background: rgba(37,99,235,0.04); }
+
+.cms-wysiwyg-toolbar {
+  display: none; gap: 4px; margin-bottom: 8px; padding: 6px;
+  background: #f5f6f8; color: var(--cms-ui-text); border-radius: var(--cms-ui-radius-surface); border: 1px solid #e2e4e9;
+  align-items: center; flex-wrap: wrap;
+}
+/* A plain (non-columns) Text section has no click-to-reveal tool panel —
+   its ribbon is the section's only control, so it shows whenever its own
+   contenteditable body has focus. Scoped to .block-text/.block-html (the
+   content wrapper the toolbar and its contenteditable body both live
+   inside), NOT the outer .cms-section — that would show this
+   text-formatting toolbar whenever ANY control in the section's own
+   layout toolbar got focus (Divide, bg color, a Menu/Banner select, ...),
+   none of which have anything to format. */
+.block-text:focus-within .cms-wysiwyg-toolbar { display: flex; }
+/* Everywhere else (a Columns/Rows cell, or a top-level html/image/file/...
+   section) the ribbon lives inside .cms-tool_header, alongside that tool's
+   own controls — so it shows exactly when the header itself is shown: once
+   moved into the shared slot (Columns/Rows), or once the section's own
+   tool panel is opened (plain sections) — not on text focus, which is
+   exactly what made a Columns cell's ribbon appear pinned inside the cell
+   instead of following the header to the shared slot. */
+.cms-active-tool-header-slot .cms-wysiwyg-toolbar,
+.cms-tool-panel .cms-wysiwyg-toolbar { display: flex; }
+/*  And in the tool's own panel, wherever that panel is standing. Without
+    this a Text tool in a Columns cell — a footer column, say — opened to
+    show its name and a remove button and nothing else: the ribbon was in
+    the markup but revealed only once the header had been moved to the
+    shared slot, so the same tool offered no formatting in one place and
+    the full ribbon in another. A tool's controls belong to the tool, not
+    to the container it happens to be sitting in. */
+.cms-tool-header.cms-tool-header-open .cms-wysiwyg-toolbar { display: flex; }
+.cms-wysiwyg-toolbar button {
+  border: 1px solid #e2e4e9; background: #fff; border-radius: var(--cms-ui-radius-control);
+  padding: 4px 10px; cursor: pointer; font-size: 14px;
+}
+.cms-wysiwyg-toolbar button:hover { border-color: #2563eb; }
+.cms-toolbar-select {
+  border: 1px solid #e2e4e9; background: #fff; border-radius: var(--cms-ui-radius-control);
+  padding: 4px 8px; font-size: 13px; cursor: pointer;
+}
+.cms-color-label {
+  display: inline-flex; align-items: center; gap: 3px; font-size: 13px;
+  font-weight: 700; cursor: pointer; padding: 2px 4px; border-radius: var(--cms-ui-radius-control);
+}
+.cms-color-label-bg { background: linear-gradient(transparent 60%, #ffff00 60%); }
+
+/*  Chrome takes the editor's font; user content is left alone, which is
+    the whole distinction — a tool's PANEL is this app talking, the words
+    inside the tool are the site's. Controls are listed separately
+    because a select or a button inherits no font from its parent: left
+    out, they are the ones that came out in Arial. */
+.cms-tool-header, .cms-active-tool-header-slot, .cms-wysiwyg-toolbar,
+.cms-section-toolbar, .cms-add-section-bar, .cms-block-config-form,
+.cms-config-form, .cms-menu-builder, .cms-inline-form {
+  font-family: var(--cms-ui-font);
+}
+/*  .cms-inline-form is in that list because a control does not stop being
+    a control when it is standing somewhere else: the Rows stepper on a
+    Columns cell sits in a bare inline form rather than in a tool header,
+    and was reading in the site's own typeface while the identical
+    stepper inside a panel read in the editor's. Every form with that
+    class is this app asking the admin a question — never a form a
+    visitor fills in, which is why the newsletter sign-up and the contact
+    form are untouched and still follow the site. */
+.cms-tool-header select, .cms-tool-header input, .cms-tool-header button,
+.cms-tool-header textarea, .cms-wysiwyg-toolbar select, .cms-wysiwyg-toolbar input,
+.cms-wysiwyg-toolbar button, .cms-section-toolbar select, .cms-section-toolbar button,
+.cms-section-toolbar input, .cms-section-toolbar textarea,
+.cms-add-section-bar select, .cms-add-section-bar button,
+.cms-add-section-bar input, .cms-add-section-bar textarea,
+.cms-inline-form select, .cms-inline-form input, .cms-inline-form textarea,
+.cms-inline-form button, .cms-inline-form label {
+  font-family: inherit;
+}
+/*  And the writing in a field the admin types into. Left to inherit, a
+    file input picked up the site's text colour — invisible today because
+    those inputs are hidden behind a button, but the same inheritance is
+    what put white-on-white writing in the Numbers panel. Fields only:
+    buttons carry their own colours (the red delete, the blue primary)
+    and must keep them. */
+.cms-tool-header :is(input, select, textarea),
+.cms-wysiwyg-toolbar :is(input, select, textarea),
+.cms-section-toolbar :is(input, select, textarea),
+.cms-inline-form :is(input, select, textarea) {
+  color: #111827;
+}
+.cms-inline-form label, .cms-inline-form .cms-stepper { color: #374151; }
+
+.cms-tool-header {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  background: #f5f6f8; border: 1px solid #e2e4e9; border-radius: var(--cms-ui-radius-surface);
+  padding: 6px 8px; margin-bottom: 8px; font-size: 12px;
+}
+/* Inside a Columns section, only one tool's header is shown at a time —
+   JS moves whichever cell/row was last clicked into the shared slot at the
+   top of the section, so there's a single, consistent place the controls
+   live instead of every populated cell showing its own header at once. */
+.cms-active-tool-header-slot:empty { display: none; }
+.cms-active-tool-header-slot .cms-tool-header { margin: 0 0 8px; }
+/*  A cell's bar shows for the same reason a section's does: in a Columns
+    section every cell holds a different tool, so this is precisely where
+    "what is assigned where" is hardest to see. They stay collapsed until
+    one is clicked, which is what keeps a six-cell row readable. */
+.block-columns .cms-column > .cms-tool-header,
+.block-columns .cms-row-cell > .cms-tool-header {
+  display: flex; margin-bottom: 6px;
+}
+.cms-editing .cms-column.cms-tool-header-active,
+.cms-editing .cms-row-cell.cms-tool-header-active {
+  border-color: #2563eb;
+}
+.cms-tool-header-label {
+  font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  /*  Follows whatever zone it is standing in rather than pinning a grey.
+      Idle, this header is transparent by design — it only becomes a panel
+      once the tool is opened — so the label is read directly against the
+      site. A fixed #6b7280 was 4.6:1 on a light page and 3.8:1 on a dark
+      footer, which is where "that Text tool has no tools" came from: the
+      tools were there, the label naming them was not legible. The header
+      itself already inherits the zone's colour, so the label follows it
+      and is held back by opacity instead of by a colour of its own. */
+  color: inherit; opacity: 0.72; white-space: nowrap;
+  /*  Always its own line, so every tool is titled the same way.
+      The header is one wrapping row of two items — the name and the
+      controls — so where the name sat used to depend on whether the
+      controls happened to fit beside it: the SAME Accordion bar put its
+      name on the left at 400px and on top at 360px, and a tool changed
+      shape when its column was resized. Left could never be the
+      convention anyway, since a panel with four caption rows in a narrow
+      column has no room beside a label; top always has room, and reads
+      as a heading for the controls under it. */
+  flex: 0 0 100%;
+}
+.cms-tool-header-controls {
+  display: none; align-items: center; gap: 6px; flex-wrap: wrap; flex: 1;
+  font-size: 12px;
+}
+/*  Open state, by either route: a plain section marked open by its own
+    click handler, a Columns cell marked open by the cell handler, or a
+    header sitting in the shared slot at the top of a Columns section. */
+.cms-section.cms-tool-panel-open .cms-tool-header-controls,
+.cms-tool-header.cms-tool-header-open .cms-tool-header-controls,
+.cms-active-tool-header-slot .cms-tool-header-controls { display: flex; }
+/*  Removing a tool is a control, not a label -- it belongs with the rest
+    of the toolset, not on a bar that is only telling you what this is. */
+.cms-tool-header .cms-tool-remove-form { display: none; }
+.cms-section.cms-tool-panel-open .cms-tool-header .cms-tool-remove-form,
+.cms-tool-header.cms-tool-header-open .cms-tool-remove-form,
+.cms-active-tool-header-slot .cms-tool-header .cms-tool-remove-form { display: inline; }
+/*  Remove sits in the panel's top right corner, on every tool. It used to
+    be the last item in a wrapping row, so where it landed depended on how
+    many controls the tool had and how wide the column was: top right on a
+    Divider, bottom left under two selects on Contacts. A control that
+    deletes the thing you are looking at should be in the same place every
+    time, and the corner opposite the name is where a person looks for it. */
+.cms-tool-header { position: relative; }
+.cms-tool-header .cms-tool-remove-form {
+  position: absolute; top: 2px; right: 4px; margin: 0; line-height: 1;
+}
+/*  ...so the name never runs under it. */
+.cms-tool-header .cms-tool-header-label { padding-right: 26px; }
+/*  Collapsed, the bar is a caption rather than a panel: quieter ground,
+    no border, and tight enough that a page of them still reads as the
+    page rather than as a stack of toolbars. */
+.cms-tool-header { background: transparent; border-color: transparent; padding: 2px 4px; }
+.cms-section.cms-tool-panel-open .cms-tool-panel > .cms-tool-header,
+.cms-tool-header.cms-tool-header-open,
+.cms-active-tool-header-slot .cms-tool-header {
+  background: #f5f6f8; border-color: #e2e4e9; padding: 6px 8px;
+}
+/*  Opened, the bar is a panel of this editor's own — a fixed light grey,
+    the same one on every site — so the writing on it is fixed too.
+    Without this the site's own colour rules reach in and paint it: a
+    section dimmed for a photograph sets `p { color: #fff }` for the text
+    standing on the photograph, the tool's hint is a `p` inside that same
+    section, and so the Numbers panel explained itself in white on light
+    grey at 1.08:1 — the words were there, rendered invisible by a rule
+    that had nothing to do with them. Idle the bar is transparent and
+    genuinely is standing on the site, which is why the collapsed state
+    above still inherits: the two states are read against different
+    grounds, so they take their colour from different places. */
+:is(.cms-section.cms-tool-panel-open .cms-tool-panel > .cms-tool-header,
+    .cms-tool-header.cms-tool-header-open,
+    .cms-active-tool-header-slot .cms-tool-header) :is(p, li, span, label, h1, h2, h3, h4,
+    .hint, .cms-config-label, .cms-block-label, .cms-block-check, .cms-stepper) {
+  color: #374151;
+}
+/*  A link on a tool panel is the editor's own link, so it gets the
+    editor's own blue — the one already used for the focused-cell border
+    — rather than the browser's default #0000ee, which is what an
+    unstyled <a> falls back to and the only colour on these panels that
+    belonged to nobody. */
+:is(.cms-section.cms-tool-panel-open .cms-tool-panel > .cms-tool-header,
+    .cms-tool-header.cms-tool-header-open,
+    .cms-active-tool-header-slot .cms-tool-header) a {
+  color: #2563eb;
+}
+/*  The tool's name, held back from its controls by weight and colour
+    rather than by the transparency the collapsed bar uses — on a panel
+    with a ground of its own, a solid grey is steadier than a washed-out
+    one. */
+:is(.cms-section.cms-tool-panel-open .cms-tool-panel > .cms-tool-header,
+    .cms-tool-header.cms-tool-header-open,
+    .cms-active-tool-header-slot .cms-tool-header) .cms-tool-header-label {
+  color: #4b5563; opacity: 1;
+}
+.cms-tool-header-controls select, .cms-tool-header-controls input[type="text"] {
+  font-size: 12px; padding: 3px 6px;
+}
+.cms-tool-header-controls button { font-size: 12px; padding: 3px 8px; cursor: pointer; }
+/* Menu tool builder — one compact row of selects/toggles plus a page
+   picker popover, so it reads like every other tool's single-row panel
+   instead of sprawling into a checkbox list + a select per page. */
+.cms-menu-builder { width: 100%; }
+.cms-menu-builder-row {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px;
+}
+.cms-menu-builder-row select, .cms-menu-builder-row input[type="text"] {
+  font-size: 12px; padding: 3px 6px;
+}
+.cms-menu-align-label { display: inline-flex; align-items: center; gap: 4px; font-weight: normal; white-space: nowrap; }
+.cms-menu-align-label input[type="checkbox"] { width: auto; }
+.cms-menu-builder-row input[type="color"] { width: 22px; height: 22px; padding: 0; border: none; border-radius: var(--cms-ui-radius-control); cursor: pointer; }
+
+/* Image Accordion config — one compact row per panel (caption + its own
+   upload/generate buttons), same density as the Menu builder's rows. */
+.cms-accordion-config-form { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+.cms-accordion-style-row { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.cms-accordion-style-label { display: inline-flex; align-items: center; gap: 4px; font-weight: normal; }
+.cms-accordion-style-row select { font-size: 12px; padding: 3px 6px; }
+.cms-accordion-panel-config { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.cms-accordion-panel-config-label { white-space: nowrap; color: #6b7280; min-width: 46px; }
+.cms-accordion-panel-config input[type="text"] { flex: 1; font-size: 12px; padding: 3px 6px; min-width: 0; }
+.cms-accordion-panel-config button { font-size: 12px; padding: 3px 6px; cursor: pointer; }
+
+/* Table config — one compact row of real controls (style, header row,
+   row/column steppers), same density as the Menu builder's row. Replaces
+   the single "cycle the style" button this tool used to be limited to. */
+.cms-table-config {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12px;
+}
+.cms-table-config select { font-size: 12px; padding: 3px 6px; }
+.cms-table-config-check { display: inline-flex; align-items: center; gap: 4px; font-weight: normal; white-space: nowrap; }
+.cms-table-config-check input[type="checkbox"] { width: auto; }
+/* A -/+ stepper with a live count. Shared: the Table tool uses it for
+   rows and columns, the Image Accordion for its panel count. Named for
+   what it is rather than where it first appeared. */
+.cms-stepper { display: inline-flex; align-items: center; gap: 4px; color: #6b7280; white-space: nowrap; }
+.cms-stepper button {
+  font-size: 12px; line-height: 1; padding: 3px 7px; cursor: pointer;
+  border: 1px solid #d5d8de; border-radius: var(--cms-ui-radius-control); background: #fff;
+}
+.cms-stepper-count { min-width: 14px; text-align: center; color: #111827; }
+
+/* FAQ config — one row per question: a short question field above a
+   two-line answer box, so the shape of the form matches the shape of the
+   content it produces. */
+.cms-faq-config-form { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+.cms-faq-config-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 12px; }
+.cms-faq-config-label { display: inline-flex; align-items: center; gap: 4px; font-weight: normal; white-space: nowrap; }
+.cms-faq-config-row select { font-size: 12px; padding: 3px 6px; }
+.cms-faq-config-row input[type="checkbox"] { width: auto; }
+.cms-faq-item-config { display: flex; align-items: flex-start; gap: 6px; font-size: 12px; }
+.cms-faq-item-label { color: #6b7280; min-width: 14px; padding-top: 6px; }
+.cms-faq-item-fields { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.cms-faq-item-fields input[type="text"],
+.cms-faq-item-fields textarea {
+  width: 100%; font-size: 12px; padding: 4px 6px; font-family: inherit; resize: vertical;
+}
+.cms-faq-item-config > button { font-size: 12px; padding: 3px 7px; cursor: pointer; margin-top: 3px; }
+
+/* Video Gallery config — one row per clip (link + caption + remove), plus
+   a layout select and an "add" button. The gallery markup itself is
+   rebuilt server-side from these fields on every submit. */
+.cms-video-gallery-config-form { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+.cms-video-config-row { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.cms-video-config-label { display: inline-flex; align-items: center; gap: 4px; font-weight: normal; }
+.cms-video-config-row select { font-size: 12px; padding: 3px 6px; }
+.cms-video-clip-config { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.cms-video-clip-label { white-space: nowrap; color: #6b7280; min-width: 14px; }
+.cms-video-clip-config input[type="text"] { flex: 1; font-size: 12px; padding: 3px 6px; min-width: 0; }
+.cms-video-clip-config button { font-size: 12px; padding: 3px 7px; cursor: pointer; }
+.cms-video-clip-add { align-self: flex-start; font-size: 12px; padding: 3px 8px; cursor: pointer; }
+
+.cms-menu-pages-picker { position: relative; }
+.cms-menu-pages-btn {
+  font-size: 12px; padding: 3px 8px; cursor: pointer;
+  border: 1px solid #d5d8de; border-radius: var(--cms-ui-radius-control); background: #fff;
+}
+.cms-menu-pages-dropdown {
+  position: absolute; top: calc(100% + 4px); left: 0; z-index: 5;
+  background: #fff; color: var(--cms-ui-text); border: 1px solid #d5d8de; border-radius: var(--cms-ui-radius-surface);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+  padding: 8px 10px; min-width: 200px; max-height: 280px; overflow-y: auto;
+  /*  Never wider than the screen it is on. On a phone the panel itself is
+      only a little narrower than that, so a fixed 200px popover hanging
+      off a button near the right edge went straight past the edge --
+      leaving a column of tick boxes with the page names cut off, which is
+      the one part you need to read. */
+  max-width: calc(100vw - 16px);
+}
+/*  On a phone it stops hanging off the side altogether and takes a line
+    of its own in the panel, full width, with long page names wrapping
+    instead of being clipped. There is nowhere sensible for a 200px
+    floating panel to hang on a 390px screen. */
+@media (max-width: 700px) {
+  .cms-menu-pages-picker { position: static; flex: 1 1 100%; }
+  .cms-menu-pages-btn { width: 100%; text-align: left; }
+  .cms-menu-pages-dropdown {
+    position: static; width: 100%; min-width: 0; max-width: none;
+    margin-top: 6px; max-height: 60vh;
+  }
+  .cms-menu-pages-add .cms-menu-page-check { white-space: normal; }
+  .cms-menu-page-title { min-width: 0; overflow-wrap: anywhere; }
+  /*  The icon grid is positioned in script, relative to the picker. With
+      the picker no longer a positioning root, those coordinates would
+      place it somewhere arbitrary -- so it flows here as well. Static
+      wins over the inline top/left the script sets, which is why nothing
+      in the script needs to know about this. */
+  .cms-menu-pages-picker .cms-icon-grid-view {
+    position: static; width: 100%; margin-top: 6px;
+  }
+  /*  And then the panel itself has to be able to shrink to hold it.
+      Measured rather than guessed: with the list open, the whole chain
+      from .cms-tool-header-controls down came out 431px wide on a 375px
+      screen, so the panel scrolled sideways and the tick boxes went off
+      one edge while "+ Page" went off the other. Two things did it, and
+      neither is the list:
+
+      the picker is a flex item, and a flex item will not shrink below
+      its own content unless told to (min-width: auto is the default);
+
+      and the two "add" rows inside it -- new page, and custom link --
+      are single-line flex rows whose text inputs carry a browser's
+      default 20-character width. Wrapping them and letting each input
+      take a line of its own is what actually fits: 409px of demand
+      becomes a column. */
+  .cms-menu-pages-picker { min-width: 0; }
+  .cms-menu-newpage-add, .cms-menu-custom-add { flex-wrap: wrap; }
+  .cms-menu-newpage-title, .cms-menu-custom-label, .cms-menu-custom-url {
+    flex: 1 1 100%; width: 100%; min-width: 0;
+  }
+  .cms-menu-pages-dropdown select { max-width: 100%; }
+  .cms-menu-newpage-btn, .cms-menu-custom-add-btn { flex: 0 0 auto; }
+}
+/* The popover is selection only — check a page (with an optional icon),
+   add a custom link, or add a divider. Order, nesting, and removing a
+   custom link/divider all happen on the live rendered menu itself — see
+   the live-menu-drag/remove rules below. */
+.cms-menu-pages-add { display: flex; flex-direction: column; gap: 4px; }
+.cms-menu-pages-add .cms-menu-page-check { font-size: 12px; font-weight: normal; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.cms-menu-pages-add .cms-menu-page-check input[type="checkbox"] { width: auto; }
+/* "Choose icon" trigger — shows the currently-picked icon (or nothing) and
+   opens the shared grid below. Never a typed code: this and the grid are
+   the whole icon-selection UI. */
+.cms-menu-icon-pick {
+  margin-left: auto; flex-shrink: 0; width: 24px; height: 24px; padding: 0;
+  border: 1px solid #d5d8de; border-radius: var(--cms-ui-radius-control); background: #fff; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.cms-menu-icon-pick:hover { border-color: #2563eb; }
+.cms-icon-pick-preview { display: inline-flex; }
+.cms-menu-page-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.cms-menu-page-rename, .cms-menu-page-delete {
+  flex-shrink: 0; width: 22px; height: 22px; padding: 0; font-size: 12px;
+  border: 1px solid #d5d8de; border-radius: var(--cms-ui-radius-control); background: #fff; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.cms-menu-page-rename:hover { border-color: #2563eb; }
+.cms-menu-page-delete:hover { border-color: #dc2626; }
+.cms-icon-pick-preview:empty::before { content: "+"; color: #9ca3af; font-size: 13px; }
+.cms-menu-pages-divider-rule { border-top: 1px solid #eceef2; margin: 8px 0; }
+.cms-menu-newpage-add { display: flex; gap: 4px; margin-bottom: 6px; align-items: center; }
+.cms-menu-newpage-title { font-size: 12px; padding: 3px 6px; border: 1px solid #d5d8de; border-radius: var(--cms-ui-radius-control); flex: 1; min-width: 0; }
+.cms-menu-newpage-btn {
+  font-size: 12px; padding: 3px 8px; cursor: pointer;
+  border: 1px solid #d5d8de; border-radius: var(--cms-ui-radius-control); background: #fff; white-space: nowrap;
+}
+.cms-menu-custom-add { display: flex; gap: 4px; margin-bottom: 6px; align-items: center; }
+.cms-menu-custom-label, .cms-menu-custom-url { font-size: 12px; padding: 3px 6px; border: 1px solid #d5d8de; border-radius: var(--cms-ui-radius-control); min-width: 0; }
+.cms-menu-custom-label { flex: 1; }
+.cms-menu-custom-url { flex: 2; }
+.cms-menu-custom-add-btn, .cms-menu-divider-add-btn {
+  font-size: 12px; padding: 3px 8px; cursor: pointer;
+  border: 1px solid #d5d8de; border-radius: var(--cms-ui-radius-control); background: #fff; white-space: nowrap;
+}
+.cms-menu-divider-add-btn { width: 100%; }
+
+/* The icon picker — a plain dropdown (like a native <select>) that opens
+   right below whichever "choose icon" button was clicked (see
+   openIconGrid in inline-editor.js), scrolls if the list is long, and
+   closes on picking an icon or clicking away. Positioned in JS since its
+   trigger can be any one of several rows. */
+.cms-icon-grid-view {
+  position: absolute; z-index: 20; background: #fff; color: var(--cms-ui-text); border: 1px solid #d5d8de;
+  border-radius: var(--cms-ui-radius-surface); box-shadow: 0 4px 14px rgba(0,0,0,0.14); padding: 6px;
+  width: 220px;
+}
+.cms-icon-grid {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px;
+  max-height: 180px; overflow-y: auto;
+}
+.cms-icon-grid-btn {
+  width: 36px; height: 36px; border: 1px solid #d5d8de; border-radius: var(--cms-ui-radius-control);
+  background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  padding: 0;
+}
+.cms-icon-grid-btn:hover { border-color: #2563eb; background: #eff6ff; }
+.cms-icon-grid-none { font-size: 14px; color: #9ca3af; }
+
+/* The Menu tool's own rendered links are the management UI while editing:
+   drag to reorder, drop onto another item (Dropdown style) to nest under
+   it or into empty space to un-nest, click × to remove. */
+.cms-editing .cms-menu-links [data-menu-key] { cursor: grab; position: relative; }
+.cms-editing .cms-menu-links [data-menu-key]:active { cursor: grabbing; }
+.cms-editing .cms-menu-nest-target { outline: 2px dashed #2563eb; outline-offset: 2px; border-radius: var(--cms-ui-radius-surface); }
+.cms-menu-remove {
+  position: absolute; top: -8px; right: -8px; width: 16px; height: 16px;
+  border-radius: 50%; border: none; background: #dc2626; color: #fff;
+  font-size: 11px; line-height: 1; cursor: pointer; display: flex;
+  align-items: center; justify-content: center; padding: 0; z-index: 1;
+  opacity: 0; transition: opacity 0.1s;
+}
+.cms-editing .cms-menu-links [data-menu-key]:hover .cms-menu-remove { opacity: 1; }
+
+.cms-column-tools {
+  display: none; font-size: 11px; color: #6b7280; margin-bottom: 4px;
+  justify-content: flex-end;
+}
+.cms-editing .cms-column:hover .cms-column-tools,
+.cms-editing .cms-column:focus-within .cms-column-tools { display: flex; }
+.cms-column-tools select { font-size: 11px; padding: 1px 3px; }
+.cms-color-label input[type="color"] {
+  width: 20px; height: 20px; padding: 0; border: none; border-radius: var(--cms-ui-radius-control); cursor: pointer;
+}
+
+.cms-html-preview { position: relative; }
+.cms-editing .cms-html-preview { outline: 1px dashed #ccc; border-radius: var(--cms-ui-radius-surface); }
+.cms-html-editor { margin-top: 10px; }
+.cms-html-editor textarea {
+  width: 100%; min-height: 160px; font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 14px; padding: 10px; border-radius: var(--cms-ui-radius-control); border: 2px solid #2563eb; box-sizing: border-box;
+}
+.cms-save-html-btn {
+  margin-top: 8px; background: #2563eb; color: #fff; border: none;
+  padding: 8px 16px; border-radius: var(--cms-ui-radius-control); cursor: pointer; font-weight: 600;
+}
+
+.cms-section-divider {
+  position: relative; height: 14px; margin: 2px 0;
+  display: flex; align-items: center; justify-content: center;
+}
+/* The +/x icons are each wrapped in their own <form> (so submitting them
+   doesn't need JS); the edit icon isn't. That extra form box — even at
+   content-box size with zero padding/border — measurably shifted it ~2px
+   off from the bare edit button once actually measured in a real browser
+   (headless computed-style checks didn't catch it). display:contents drops
+   the form's own box entirely so all three icons are true flex siblings of
+   .cms-section-divider, guaranteeing identical centering. */
+.cms-section-divider > form.cms-inline-form { display: contents; }
+.cms-section-divider::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 50%;
+  border-top: 1px dashed rgba(128, 128, 128, 0.35);
+}
+/* One shared base for all three divider icons — every geometric property
+   (size, line-height, font-size, margins aside) lives here ONCE, so the +,
+   the edit pencil, and the delete × are structurally guaranteed to render
+   at the same size and baseline instead of three near-duplicate rules
+   that can drift out of sync with each other. Only color/background and
+   the tiny left/right margin that separates them differ per icon. */
+.cms-section-divider-btn,
+.cms-section-edit-icon,
+.cms-section-divider-delete-btn {
+  position: relative; z-index: 1;
+  box-sizing: border-box; width: 20px; height: 20px; padding: 0; margin: 0;
+  border-radius: 50%; border: none; cursor: pointer; opacity: 0.35;
+  display: inline-flex; align-items: center; justify-content: center;
+  vertical-align: middle; flex-shrink: 0;
+  transition: opacity .15s, background-color .15s, transform .15s;
+}
+/* SVG icons (not font glyphs) so all three render at pixel-identical size —
+   Unicode glyphs like pencil-emoji vs plain +/x differ in width/baseline
+   per font/OS, which is what made these look mismatched no matter how the
+   surrounding box CSS was tuned. */
+.cms-section-divider-btn svg,
+.cms-section-edit-icon svg,
+.cms-section-divider-delete-btn svg { display: block; }
+.cms-section-divider-btn { background: #e2e4e9; color: #1f2430; }
+.cms-section-edit-icon { background: #e2e4e9; color: #1f2430; margin-right: 6px; }
+.cms-section-divider-delete-btn { background: #fca5a5; color: #7f1d1d; margin-left: 6px; }
+
+/* Hovering anywhere on the line just reveals all three icons (opacity);
+   only hovering a specific icon gives it the "active" scale/color response
+   — otherwise an icon looked visually "pressed" the whole time the mouse
+   was anywhere on the line, not actually tracking the cursor. */
+.cms-section-divider:hover .cms-section-divider-btn,
+.cms-section-divider:hover .cms-section-edit-icon,
+.cms-section-divider:hover .cms-section-divider-delete-btn { opacity: 1; }
+.cms-section-divider-btn:hover { background: #2563eb; color: #fff; transform: scale(1.15); }
+.cms-section-edit-icon:hover { background: #2563eb; color: #fff; transform: scale(1.15); }
+.cms-section-divider-delete-btn:hover { background: #f87171; transform: scale(1.15); }
+/* The tool panel — a full-width bar atop the section's content, holding
+   that tool's own settings (Image's Change button, Menu's pages, ...).
+   Separate from .cms-section-toolbar (hover-triggered, top-right, layout-
+   only: Divide/background/width/Clear/Delete) — this is about editing the
+   TOOL, not the section. Shown only once the section is "selected"
+   (clicked into), not permanently and not behind a dedicated pill. */
+/*  A tool's bar is always on the page; what changes is how much of it
+    there is. Collapsed it is just the tool's name, so an admin can read
+    off what is assigned where without touching anything -- a tool placed
+    in a section IS that section's purpose, and having to click each block
+    to find out what it was made the page unreadable while editing.
+    Clicking into the tool expands the same bar into its full toolset. */
+.cms-tool-panel { display: block; margin-bottom: 8px; }
+.cms-tool-panel .cms-tool-header { margin-bottom: 0; }
+
+/* One consistent control height/box-sizing across every tool's config
+   area (Banner, Card, Menu, Divider, Breadcrumb, Accordion, ...) — native
+   <select>/<button>/<input> default to slightly different intrinsic
+   heights even at matching font-size/padding, which is what actually
+   read as "odd sizes" (a row of controls that don't line up), not any
+   one tool's fields individually. Text/number/range/color inputs each
+   need their own width rule (a color swatch and a line of typed text
+   can't share one), but height/alignment/border/radius stay identical
+   everywhere so a config row always reads as one coherent control strip
+   regardless of which tool built it. */
+.cms-tool-panel select,
+.cms-tool-panel button,
+.cms-tool-panel input[type="text"],
+.cms-tool-panel input[type="number"] {
+  box-sizing: border-box; height: 28px; font-size: 12px; line-height: 1;
+  padding: 0 8px; border: 1px solid #d5d8de; border-radius: var(--cms-ui-radius-control); background: #fff; vertical-align: middle;
+}
+.cms-tool-panel input[type="color"] {
+  box-sizing: border-box; width: 28px; height: 28px; padding: 2px;
+  border: 1px solid #d5d8de; border-radius: var(--cms-ui-radius-control); vertical-align: middle; cursor: pointer;
+}
+.cms-tool-panel input[type="range"] { height: 28px; vertical-align: middle; }
+.cms-tool-panel button { cursor: pointer; padding: 0 10px; }
+.cms-tool-panel label { display: inline-flex; align-items: center; gap: 4px; }
+
+/*  This bar holds <button>s in some places and <a>s in others (the
+    Journal's "Add Post" / "Manage Posts"). An inline anchor takes the
+    padding but not the height that goes with it, so on a narrow screen
+    the two pills wrapped through each other -- one label crossing the
+    other's border, both underlined like ordinary links. Laying the bar
+    out as a wrapping flex row, and making the control itself a flex box,
+    means an anchor and a button occupy space identically. */
+.cms-add-section-bar {
+  display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
+  padding: 20px 12px 60px;
+}
+.cms-add-section-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  text-align: center; text-decoration: none; max-width: 100%;
+  background: #fff; border: 2px dashed #2563eb; color: #2563eb; font-weight: 700;
+  padding: 12px 28px; border-radius: 999px; cursor: pointer; font-size: 15px;
+}
+a.cms-add-section-btn:hover { color: #2563eb; text-decoration: none; }
+.cms-add-section-btn:hover { background: #eff6ff; }
+.cms-add-chunk-btn {
+  background: #fff; border: 2px dashed currentColor; color: inherit; font-weight: 700;
+  padding: 8px 20px; border-radius: 999px; cursor: pointer; font-size: 13px; opacity: 0.7;
+  margin: 8px auto; display: block;
+}
+.cms-add-chunk-btn:hover { opacity: 1; }
+.cms-banner-text-config { display: block; margin-top: 8px; width: 100%; }
+.cms-banner-text-config-label {
+  display: block; font-size: 12px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.04em; color: #6b7280; margin-bottom: 4px;
+}
+.cms-banner-text-config-grid {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px;
+  padding: 8px 10px; border: 1px solid rgba(128,128,128,0.3); border-radius: var(--cms-ui-radius-surface);
+  background: rgba(255,255,255,0.06); color: var(--cms-ui-text);
+}
+.cms-banner-text-config-grid label {
+  display: flex; flex-direction: column; gap: 2px; font-size: 11px; font-weight: 600;
+}
+.cms-banner-text-config-grid input[type="number"] { width: 64px; }
+.cms-banner-text-config-grid input[type="range"] { width: 80px; padding: 0; }
+.cms-chunk-tools { text-align: center; margin: 8px 0; }
+.cms-chunk-tools summary { list-style: none; cursor: pointer; }
+.cms-chunk-tools summary::-webkit-details-marker { display: none; }
+.cms-chunk-tools-menu {
+  display: flex; flex-direction: column; gap: 10px; align-items: center;
+  max-width: 480px; margin: 10px auto 0; padding: 14px; border: 1px solid rgba(128,128,128,0.3);
+  border-radius: var(--cms-ui-radius-surface); background: rgba(255,255,255,0.06);
+}
+.cms-chunk-tools-menu form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; }
+.cms-contact-tool-form input { min-width: 0; }
+.cms-contact-tool-form, .cms-menu-tool-form { flex-direction: column; align-items: stretch; }
+.cms-menu-style-label { font-size: 13px; font-weight: 600; }
+.cms-menu-page-row { display: flex; flex-direction: column; gap: 2px; padding: 2px 0; }
+.cms-menu-page-check { display: flex; align-items: center; gap: 6px; font-weight: normal; font-size: 13px; }
+.cms-menu-page-check input { width: auto; }
+.cms-menu-parent-row { font-size: 12px; color: #aab; padding-left: 22px; display: flex; align-items: center; gap: 6px; }
+.cms-add-section-menu {
+  display: flex; gap: 10px; justify-content: center; margin-top: 12px; flex-wrap: wrap;
+}
+.cms-add-section-menu[hidden] { display: none; }
+.cms-add-section-menu button {
+  background: #1f2430; color: #fff; border: none; padding: 10px 18px;
+  border-radius: var(--cms-ui-radius-control); cursor: pointer; font-weight: 600;
+}
+.cms-add-section-group {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 4px 16px;
+}
+.cms-add-section-label {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
+  color: #9ca3af; font-weight: 700;
+}
+.cms-add-section-group form { display: contents; }
+
+/* Drag-and-drop reordering */
+.cms-drag-handle {
+  cursor: grab; font-size: 16px; color: #fff; padding: 2px 4px;
+  user-select: none;
+}
+.cms-drag-handle:active { cursor: grabbing; }
+.cms-dragging { opacity: 0.35; }
+.cms-link-input, .cms-caption-input {
+  font-size: 13px; padding: 4px 8px; border: 1px solid #e2e4e9; border-radius: var(--cms-ui-radius-control);
+  width: 140px;
+}
+/*  A caption is a sentence, not a URL, so it gets more room than the
+    link field it sits beside. */
+.cms-caption-input { width: 190px; }
+
+/* File / download section */
+.cms-change-file-btn { white-space: nowrap; }
+
+/* Nav +/- controls */
+.cms-nav-del {
+  border: none; background: #fca5a5; color: #7f1d1d; border-radius: 50%;
+  width: 18px; height: 18px; line-height: 16px; text-align: center; padding: 0;
+  margin-left: 4px; cursor: pointer; font-size: 13px;
+}
+.cms-nav-add {
+  border: 2px dashed currentColor; background: transparent; color: inherit;
+  border-radius: 50%; width: 24px; height: 24px; margin-left: 16px;
+  cursor: pointer; font-weight: 700; line-height: 1;
+}
+
+/* Image controls */
+.cms-change-image-btn { white-space: nowrap; }
+
+/* Confirm modal — see static/css/cms-modal.css (linked separately from
+   partials/cms_modal.html) for its styles; kept out of this file since the
+   modal is shared with plain admin pages that don't load inline-editor.css
+   at all. */
+
+.cms-image-picker { max-width: 640px; }
+/*  The pictures scroll, not the dialog, so Cancel stays where it was put.
+    A library of 144 images is a normal size once a site has been through
+    a few templates — see _pickable_images. */
+.cms-image-picker-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-bottom: 16px;
+  max-height: 60vh; max-height: 60dvh; overflow-y: auto; overscroll-behavior: contain;
+}
+/*  Smaller tiles on a phone: four across at 140px each is wider than the
+    screen, which is what made the grid feel stuck as well as clipped. */
+@media (max-width: 560px) {
+  .cms-image-picker-grid { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+}
+.cms-image-picker-grid button {
+  padding: 0; border: 3px solid transparent; border-radius: var(--cms-ui-radius-control); overflow: hidden; cursor: pointer;
+  background: none; aspect-ratio: 1; line-height: 0;
+}
+.cms-image-picker-grid button:hover { border-color: #4f7cff; }
+.cms-image-picker-grid img { width: 100%; height: 100%; object-fit: cover; }
+
+/*  The newsletter bar: subject, what to send, preview, send -- standing
+    on the page it will post.
+
+    Chrome, entirely. It takes the editor's own typeface, accent, text
+    colour and corners, and none of the site's, because this page can
+    carry any theme at all and a Send button must not become unreadable
+    because somebody chose a pale brand colour. It also states its own
+    text colour rather than inheriting: a newsletter written on a dimmed
+    photograph would otherwise hand it white on white. */
+.cms-newsletter-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin: 0 0 12px; padding: 8px 10px;
+  background: #f5f6f8; border: 1px solid #e2e4e9;
+  border-radius: var(--cms-ui-radius-surface);
+  font-family: var(--cms-ui-font); font-size: 12px; color: var(--cms-ui-text);
+}
+.cms-newsletter-bar-label { font-weight: 600; white-space: nowrap; }
+.cms-newsletter-bar-field {
+  display: inline-flex; align-items: center; gap: 5px; color: var(--cms-ui-text);
+  font-weight: normal; min-width: 0;
+}
+.cms-newsletter-bar-field input[type="text"] { min-width: 0; flex: 1 1 140px; }
+.cms-newsletter-bar :is(input, select) {
+  font-family: inherit; font-size: 12px; padding: 3px 6px; color: #111827;
+  border: 1px solid #d5d8de; border-radius: var(--cms-ui-radius-control); background: #fff;
+}
+.cms-newsletter-preview, .cms-newsletter-send {
+  font-family: inherit; font-size: 12px; padding: 4px 10px; cursor: pointer;
+  border-radius: var(--cms-ui-radius-control); border: 1px solid #d5d8de;
+  background: #fff; color: var(--cms-ui-text); text-decoration: none; white-space: nowrap;
+}
+.cms-newsletter-preview:hover, .cms-newsletter-send:hover:not(:disabled) {
+  border-color: var(--cms-ui-accent);
+}
+/*  Sending cannot be taken back, so the button says so -- and goes quiet
+    entirely when there is nothing to send with, rather than failing at
+    the last step. */
+.cms-newsletter-send { background: var(--cms-ui-accent); border-color: var(--cms-ui-accent); color: #fff; font-weight: 600; }
+.cms-newsletter-send:disabled { background: #e9ecf1; border-color: #dfe3e9; color: #8b929c; cursor: not-allowed; }
+.cms-newsletter-bar-note { flex: 1 1 100%; color: #5b6470; }
+/*  On a phone each control takes its own line rather than the bar
+    scrolling sideways -- the same lesson the Menu panel taught. */
+@media (max-width: 700px) {
+  .cms-newsletter-bar-field { flex: 1 1 100%; }
+  .cms-newsletter-bar-field :is(input, select) { flex: 1 1 auto; width: 100%; min-width: 0; }
+  .cms-newsletter-preview, .cms-newsletter-send { flex: 1 1 auto; text-align: center; }
+}
+
+/* Toast */
+.cms-toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: #1f2430; color: #fff; padding: 10px 20px; border-radius: 999px;
+  font-size: 14px; z-index: 2000; font-family: -apple-system, sans-serif;
+}
+
+
+/* =====================================================================
+   Tool config bars — ONE presentation for all of them.
+
+   Every tool grew its own set of these — .cms-faq-config-row,
+   .cms-video-config-row, .cms-buy-config-row, .cms-accordion-style-row,
+   .cms-table-config — each redefining the same three ideas slightly
+   differently, and the blocks added later broke the pattern outright with
+   stacked bold labels at a different size. The result was that two tools
+   opened next to each other did not look like the same product.
+
+   So the presentation is defined once here and every tool's own class
+   name is aliased onto it. Tools still differ in WHAT they put in the bar
+   — a gallery needs a clip list, a divider needs three selects — but a
+   label, a select and a stepper look and sit the same way wherever they
+   appear.
+   ===================================================================== */
+
+.cms-config-form,
+.cms-faq-config-form, .cms-video-gallery-config-form, .cms-buy-config-form,
+.cms-block-config-form, .cms-menu-config-form, .cms-banner-config-form,
+.cms-card-config-form, .cms-divider-config-form, .cms-breadcrumb-config-form,
+.cms-accordion-config-form {
+  display: flex; flex-direction: column; gap: 6px; width: 100%;
+}
+
+.cms-config-row,
+.cms-faq-config-row, .cms-video-config-row, .cms-buy-config-row,
+.cms-accordion-style-row, .cms-table-config, .cms-block-fields {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px;
+  font-size: 12px; margin: 0;
+}
+
+.cms-config-label,
+.cms-faq-config-label, .cms-video-config-label, .cms-buy-config-label,
+.cms-accordion-style-label, .cms-block-label, .cms-block-check {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; font-weight: normal; white-space: nowrap; color: #374151;
+}
+
+/*  Controls: one size everywhere, including the tools that emit a bare
+    select with no row around it (banner, card, divider). */
+.cms-config-row select, .cms-config-row input, .cms-config-row textarea,
+.cms-faq-config-row select, .cms-video-config-row select, .cms-buy-config-row select,
+.cms-accordion-style-row select, .cms-table-config select, .cms-block-fields select,
+.cms-block-fields input, .cms-block-fields textarea,
+.cms-inline-form > select, .cms-inline-form > input[type="text"],
+.cms-inline-form > input[type="number"], .cms-inline-form > input[type="url"] {
+  font-size: 12px; padding: 3px 6px; font-family: inherit;
+  border: 1px solid #d5d8de; border-radius: var(--cms-ui-radius-control); background: #fff; color: #111827;
+  max-width: 100%; min-width: 0;
+}
+.cms-config-row input[type="checkbox"],
+.cms-faq-config-row input[type="checkbox"], .cms-block-fields input[type="checkbox"] {
+  width: auto; margin: 0;
+}
+.cms-block-fields textarea { min-height: 42px; resize: vertical; flex: 1 1 220px; }
+.cms-block-fields input[type="text"] { flex: 1 1 150px; }
+
+/*  A field that needs a whole line gets one, rather than a different
+    label style. */
+.cms-block-label.is-wide { flex: 1 1 100%; align-items: flex-start; flex-direction: column; gap: 3px; }
+.cms-block-label > .hint { font-size: 11px; color: #6b7280; white-space: normal; }
+
+/*  Repeated groups (plans, people, steps) collapse, so a form with six of
+    them is still a toolbar rather than a wall. */
+.cms-block-group {
+  border: 1px solid #e5e7eb; border-radius: var(--cms-ui-radius-surface); background: #fbfbfc;
+  padding: 4px 8px; font-size: 12px;
+}
+.cms-block-group > summary {
+  cursor: pointer; font-size: 12px; font-weight: 600; color: #374151; padding: 2px 0;
+}
+.cms-block-group[open] > summary { margin-bottom: 4px; }
+
+/*  Buttons in a config bar match the stepper buttons that were already
+    there, rather than importing the admin screens' larger ones. */
+.cms-config-form .btn, .cms-block-config-form .btn,
+.cms-config-row button[type="submit"], .cms-block-config-form button[type="submit"] {
+  font-size: 12px; line-height: 1; padding: 4px 10px; border-radius: var(--cms-ui-radius-control);
+  border: 1px solid #d5d8de; background: #fff; cursor: pointer; min-height: 0;
+  align-self: flex-start;
+}
+.cms-block-config-form button[type="submit"].btn-primary {
+  background: #2563eb; border-color: #2563eb; color: #fff;
+}
+
+
+/*  Two containers were setting control sizing differently — a bar inside
+    a tool PANEL got 28px-tall controls with a 6px radius, the same bar in
+    a tool HEADER got compact ones with a 4px radius — so the same tool
+    changed shape depending on where it was opened. One size wins, and it
+    is the compact one, because these bars sit over the page being edited
+    and should take as little of it as possible. */
+.cms-tool-panel select,
+.cms-tool-panel input[type="text"], .cms-tool-panel input[type="number"],
+.cms-tool-panel input[type="url"], .cms-tool-panel input[type="email"] {
+  padding: 3px 6px; border-radius: var(--cms-ui-radius-control);
+}
+
+/*  The banner's text fields were the last outlier: 11px, semi-bold and
+    stacked, against 12px normal and inline everywhere else. Stacking is
+    right for a full-width text field; the size and weight were not. */
+.cms-banner-text-config-grid label { font-size: 12px; font-weight: normal; gap: 3px; color: #374151; }
+
+
+/*  The side panels park off-screen with a transform, and a transform
+    still counts toward the page's scrollable width — so the live editor
+    scrolled sideways by exactly the width the panels stick out. The same
+    rule exists in admin.css for the admin screens; the public page in
+    edit mode loads this file instead, which is why it was still doing it
+    here. `clip` rather than `hidden` so the body does not become a scroll
+    container and sticky headers keep working. */
+html:has(.cms-dock-panel), body:has(.cms-dock-panel) { overflow-x: clip; }
+
+/*  Editable words inside a block. Deliberately faint: this is the page as
+    it will be published, and a dashed box around every heading turns the
+    preview into a form — which is the thing this change exists to undo. */
+.cms-block-editable { outline: none; transition: background .12s; }
+.cms-block-editable:hover { background: rgba(37, 99, 235, .07); }
+.cms-block-editable:focus { background: rgba(37, 99, 235, .12);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, .35); }
+.cms-block-host ul.cms-block-editable { padding-left: 22px; }
+
+/*  A stepper button at its limit. Dimmed and unclickable rather than live
+    and inert -- a control that accepts a click and does nothing is read as
+    a bug, which is how the four-plan cap was first reported. */
+.cms-stepper button[disabled] { opacity: .4; cursor: not-allowed; }
+
+/*  Picture fields in a block's toolbar. A thumbnail and three short
+    buttons, rather than a dropdown of filenames -- which is both how you
+    recognise your own photograph and why this bar used to run off the
+    side of a phone: a filename has no maximum width, a thumbnail does. */
+.cms-block-image-field {
+  display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  max-width: 100%; min-width: 0;
+}
+.cms-block-image-name { font-size: 12px; color: #6b7280; }
+.cms-block-image-thumb {
+  width: 30px; height: 30px; object-fit: cover; border-radius: var(--cms-ui-radius-surface);
+  border: 1px solid #e2e4e9; flex: none;
+}
+.cms-block-image-none { font-size: 11px; color: #9ca3af; font-style: italic; }
+.cms-block-image-clear { line-height: 1; }
+/*  Nothing in a tool bar may set its own width past the screen; every
+    child that can hold arbitrary text needs to be allowed to shrink. */
+.cms-config-row { flex-wrap: wrap; max-width: 100%; }
+.cms-config-row > *, .cms-block-label, .cms-block-label select,
+.cms-block-label input, .cms-link-other { min-width: 0; max-width: 100%; }
+
+/*  The list of questions a mirroring FAQ can show. One per line, because
+    a question is a sentence and sentences do not sit side by side. */
+.cms-faq-pick {
+  display: flex; align-items: flex-start; gap: 6px; font-size: 12px;
+  padding: 3px 4px; line-height: 1.35; max-width: 100%;
+}
+.cms-faq-pick input { margin-top: 2px; flex: none; }
+
+/*  The bar on a post's own page. Same treatment as a tool's bar, because
+    that is what it is — a post is written on the page it is read on, and
+    only what cannot be typed there (when it goes live, its picture,
+    deleting it) belongs up here. */
+.cms-post-bar { margin-bottom: 14px; }
+.cms-post-bar input[type="date"] { font: inherit; font-size: 12px; padding: 2px 4px; }
+/*  An empty excerpt would otherwise be an invisible target — nothing to
+    click on, on a line with no height. */
+.cms-blog-post-excerpt:empty::before {
+  content: attr(data-placeholder);
+  opacity: .5; font-style: italic;
+}
+
+/*  The FAQ document box. Wide and tall on purpose — this is where a whole
+    FAQ is pasted, and a two-line box would make that feel like the wrong
+    place to put it. */
+/*  See site-base.css's [hidden] rule for why this can simply say block. */
+.cms-faq-doc-label { display: block; margin: 8px 0; }
+.cms-faq-doc {
+  display: block; width: 100%; box-sizing: border-box; min-height: 220px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px; line-height: 1.5; padding: 10px 12px;
+  border: 1px solid #e2e4e9; border-radius: var(--cms-ui-radius-surface); resize: vertical;
+}
+.cms-faq-count { font-size: 12px; color: #6b7280; white-space: nowrap; }
+
+/*  The blog tool's post list. A row per post: what it is called, whether
+    anyone can see it, and the two things you do to it. */
+.cms-blog-posts { display: grid; gap: 4px; margin: 8px 0; }
+.cms-blog-post-row {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 4px 6px; border-radius: var(--cms-ui-radius-surface); background: #f5f6f8; font-size: 12px;
+}
+/*  The title takes the slack and truncates, so a long headline cannot
+    push the buttons off the side of a phone. */
+.cms-blog-post-title { flex: 1 1 8rem; min-width: 0; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.cms-blog-post-state { color: #6b7280; white-space: nowrap; }
+.cms-blog-post-state.is-draft { font-style: italic; }
+
+/*  What is wrong with an FAQ document, said next to the document. Errors
+    refuse the save and read as such; warnings saved anyway and are only
+    worth a glance, so they are quieter rather than a second alarm. */
+.cms-faq-report {
+  margin: 8px 0; padding: 10px 12px; border-radius: var(--cms-ui-radius-surface);
+  background: #fff7ed; border: 1px solid #fed7aa; font-size: 12px;
+}
+.cms-faq-problems { margin: 0; padding-left: 18px; display: grid; gap: 5px; }
+.cms-faq-problems .is-error strong { color: #b91c1c; }
+.cms-faq-problems .is-warning strong { color: #92400e; }
+.cms-faq-rules-title { margin: 10px 0 4px; font-weight: 700; }
+.cms-faq-rules { margin: 0; padding-left: 18px; display: grid; gap: 4px; opacity: .85; }
+
+/*  The FAQ's editor: the document as it will read, written on the page.
+    Questions look like questions, so the structure is visible while it is
+    being written rather than inferred from punctuation. */
+.cms-faq-editor-bar {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 8px 0 0;
+}
+.cms-faq-editor-bar button { font-size: 12px; padding: 3px 8px; cursor: pointer; }
+.cms-faq-source-toggle { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; margin-left: auto; }
+.cms-faq-editor {
+  border: 1px solid #e2e4e9; border-radius: var(--cms-ui-radius-surface); padding: 12px 14px;
+  min-height: 200px; max-height: 460px; overflow-y: auto; background: #fff;
+  font-size: 13.5px; line-height: 1.55;
+}
+.cms-faq-editor:focus { outline: none; border-color: #2563eb; }
+.cms-faq-editor h3 {
+  margin: 14px 0 4px; font-size: 14px; font-weight: 700; color: #1f2430;
+}
+.cms-faq-editor h3:first-child { margin-top: 0; }
+/*  The Q. is drawn rather than typed, so the marker is visible without
+    being part of the text somebody has to maintain. */
+.cms-faq-editor h3::before { content: "Q. "; color: #6b7280; }
+.cms-faq-editor p { margin: 0 0 8px; }
+.cms-faq-editor ul { margin: 0 0 8px; padding-left: 20px; }
+
+/*  A Contacts line is one row: what it is, its icon, what it says,
+    whether to print it, and the + / - that act on this line. Everything
+    is labelled by its tooltip, so the row stays a row rather than
+    becoming a paragraph of field names. */
+.cms-contact-row { flex-wrap: nowrap; gap: 4px; }
+.cms-contact-row .cms-contact-value { flex: 1; min-width: 90px; }
+.cms-contact-icon-pick {
+  font-size: 15px; line-height: 1; padding: 3px 6px; cursor: pointer;
+  background: #fff; border: 1px solid #d5d8de; border-radius: var(--cms-ui-radius-control);
+}
+/*  The picker hangs under the row that opened it rather than pushing the
+    rest of the form down the page. */
+.cms-contact-tool-form { position: relative; }
+.cms-contact-tool-form .cms-icon-grid-view {
+  position: absolute; z-index: 40; right: 0; max-width: 100%;
+}

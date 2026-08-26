@@ -1,0 +1,44 @@
+{
+  "name": "Events Venue",
+  "icon": "🎪",
+  "slug": "venue",
+  "description": "A wedding or events venue: the spaces, what they hold, and how to see them.",
+  "google_fonts_url": "/static/fonts/choices.css",
+  "palette": [
+    {
+      "slug": "primary",
+      "name": "Slate blue",
+      "color": "#42566b"
+    },
+    {
+      "slug": "secondary",
+      "name": "Stone",
+      "color": "#a8a093"
+    },
+    {
+      "slug": "accent",
+      "name": "Amber",
+      "color": "#c98a3e"
+    }
+  ],
+  "nav_layout": "centered",
+  "page_layout": "none",
+  "footer_layout": "centered",
+  "shape_override": "rounded",
+  "shadow_override": "raised",
+  "business_name": "The Old Granary",
+  "tagline": "A barn, a courtyard, and a very long table",
+  "footer_blurb": "Weddings and gatherings in a restored stone granary. One a weekend, never two.",
+  "footer_contact": {
+    "address": "The Old Granary, Mühleweg 4",
+    "email": "hello@oldgranary.example",
+    "instagram": "https://instagram.com/theoldgranary"
+  },
+  "has_content": true,
+  "pages": [
+    "home",
+    "spaces",
+    "reviews",
+    "contact"
+  ]
+}

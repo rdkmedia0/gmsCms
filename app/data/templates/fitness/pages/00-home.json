@@ -1,0 +1,42 @@
+{
+  "title": "Home",
+  "slug_suffix": "home",
+  "page_type": "standard",
+  "meta_description": "A strength gym for people who were not athletes. Classes capped at eight.",
+  "sections": [
+    [
+      "banner",
+      "",
+      "<div class=\"cms-banner\" style=\"background-image:url('media/fitness-banner.png')\"><div class=\"cms-banner-overlay\"><h2>Start where you are</h2><p>Coached strength training in groups of eight. No mirrors, no music you have to shout over.</p></div></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-stats\" data-count=\"3\"><div class=\"cms-stat-row\"><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat1_value\">8</span><span class=\"cms-stat-label\" data-field=\"stat1_label\">People in a class, maximum</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat2_value\">3</span><span class=\"cms-stat-label\" data-field=\"stat2_label\">Coaches, all here every week</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat3_value\">0</span><span class=\"cms-stat-label\" data-field=\"stat3_label\">Joining fees</span></div></div></div>",
+      {
+        "bg_color": "#a3abb4"
+      }
+    ],
+    [
+      "text",
+      "Who this is for",
+      "<p>Most people who train here had not lifted anything heavier than shopping when they started. That is the normal case, not the exception, and the first month is built around it.</p><p>Classes are capped at eight because past that nobody gets corrected, and being corrected is the entire point of paying for coaching.</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-timeline\" data-style=\"horizontal\"><ol class=\"cms-timeline cms-timeline-horizontal\"><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step1_when\">Week 1</span><div class=\"cms-timeline-body\"><h3 data-field=\"step1_title\">An hour, one to one</h3><p data-field=\"step1_text\">Before any class. We find out what moves badly and what hurts, and write the first month around it.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step2_when\">Weeks 2–4</span><div class=\"cms-timeline-body\"><h3 data-field=\"step2_title\">Twice a week</h3><p data-field=\"step2_text\">Same two slots each week. Same coach. Boring on purpose &amp;mdash; boring is what works.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step3_when\">After</span><div class=\"cms-timeline-body\"><h3 data-field=\"step3_title\">You pick the pace</h3><p data-field=\"step3_text\">Two or three sessions, classes or open gym. Most people settle at two and stay for years.</p></div></li></ol></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-cta\" data-tone=\"solid\"><div class=\"cms-cta cms-cta-solid\"><h2 data-field=\"heading\">First session is free</h2><p data-field=\"text\">An hour with a coach, no obligation and no sales pitch at the end of it.</p><a class=\"cms-cta-btn\" href=\"/contact\" data-href-field=\"link\"><span data-field=\"cta\">Book the first hour</span></a></div></div>",
+      {
+        "bg_color": "#e1e8a6"
+      }
+    ]
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "title": "What we treat",
+  "slug_suffix": "treatments",
+  "page_type": "standard",
+  "meta_description": "Conditions, appointments and prices.",
+  "sections": [
+    [
+      "text",
+      "Common reasons people come",
+      "<p>Back and neck pain, shoulders, knees, running injuries, post-operative rehabilitation, and the stiffness that arrives in your forties and is not actually inevitable.</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-pricing\" data-columns=\"3\"><div class=\"cms-price-grid\"><div class=\"cms-price-tier\"><h3 class=\"cms-price-name\" data-field=\"tier1_name\">First appointment</h3><p class=\"cms-price-amount\"><span data-field=\"tier1_price\">140</span><small data-field=\"tier1_period\">40 minutes</small></p><ul class=\"cms-price-features\" data-field=\"tier1_features\"><li>Full assessment</li><li>Treatment on the day</li><li>A written plan</li><li>No referral needed</li></ul><a class=\"cms-price-btn\" href=\"/contact\" data-href-field=\"tier1_link\"><span data-field=\"tier1_cta\">Book</span></a></div><div class=\"cms-price-tier is-featured\" data-flag=\"tier2_featured\"><h3 class=\"cms-price-name\" data-field=\"tier2_name\">Follow-up</h3><p class=\"cms-price-amount\"><span data-field=\"tier2_price\">110</span><small data-field=\"tier2_period\">40 minutes</small></p><ul class=\"cms-price-features\" data-field=\"tier2_features\"><li>Same physiotherapist</li><li>Progress reviewed each time</li><li>Programme adjusted as you go</li></ul><a class=\"cms-price-btn\" href=\"/contact\" data-href-field=\"tier2_link\"><span data-field=\"tier2_cta\">Book</span></a></div><div class=\"cms-price-tier\"><h3 class=\"cms-price-name\" data-field=\"tier3_name\">Rehabilitation block</h3><p class=\"cms-price-amount\"><span data-field=\"tier3_price\">590</span><small data-field=\"tier3_period\">six sessions</small></p><ul class=\"cms-price-features\" data-field=\"tier3_features\"><li>For post-operative or long-standing problems</li><li>Booked as a course</li><li>Valid for six months</li></ul><a class=\"cms-price-btn\" href=\"/contact\" data-href-field=\"tier3_link\"><span data-field=\"tier3_cta\">Ask about a block</span></a></div></div></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-faq cms-faq-style-plain\"><details class=\"cms-faq-item\" name=\"cms-faq-clinic-treatments-2\"><summary class=\"cms-faq-q\">Do I need a doctor's referral?</summary><div class=\"cms-faq-a\">No. You can book directly. If we think you need a scan or a doctor, we will say so and write to them.</div></details><details class=\"cms-faq-item\" name=\"cms-faq-clinic-treatments-2\"><summary class=\"cms-faq-q\">Will it hurt?</summary><div class=\"cms-faq-a\">Sometimes a little during, rarely much after. Nothing happens that you have not agreed to first.</div></details><details class=\"cms-faq-item\" name=\"cms-faq-clinic-treatments-2\"><summary class=\"cms-faq-q\">Can I claim it back?</summary><div class=\"cms-faq-a\">Most supplementary insurance covers physiotherapy. We give you an itemised receipt for the claim.</div></details></div>",
+      {}
+    ]
+  ]
+}

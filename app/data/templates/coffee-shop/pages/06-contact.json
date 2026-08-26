@@ -1,0 +1,35 @@
+{
+  "title": "Contact",
+  "slug_suffix": "contact",
+  "page_type": "standard",
+  "meta_description": "Visit us or get in touch.",
+  "sections": [
+    [
+      "text",
+      "Visit Us",
+      "<p>Open daily, 7am–6pm. Stop in, or reach out below.</p>",
+      {}
+    ],
+    [
+      "file",
+      "Catering Menu.pdf",
+      "/static/demo/sample-download.pdf",
+      {
+        "file_display": "card",
+        "file_size": 2400000
+      }
+    ],
+    [
+      "card",
+      "",
+      "<div class=\"cms-card-shape\"><h3>123 Main Street</h3><p>Open daily · 7am–6pm<br>hello@riversideroasters.example</p></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-contact-form-tool\"></div>",
+      {}
+    ]
+  ]
+}

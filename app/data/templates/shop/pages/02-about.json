@@ -1,0 +1,26 @@
+{
+  "title": "About",
+  "slug_suffix": "about",
+  "page_type": "standard",
+  "meta_description": "Who we are and how we choose what to sell.",
+  "sections": [
+    [
+      "text",
+      "A small shop",
+      "<p>We opened in 2018 in a unit that had been empty for two years. The rule then was that we would only sell things we would have in our own house, and it has held up.</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-testimonial\" data-style=\"large\"><figure class=\"cms-quote cms-quote-large\"><blockquote data-field=\"quote\">The only shop where I have been talked out of buying the expensive one because the cheaper one was better.</blockquote><figcaption><span class=\"cms-quote-name\" data-field=\"name\">Priya Raman</span><span class=\"cms-quote-role\" data-field=\"role\">Regular</span></figcaption></figure></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-newsletter\" ><div class=\"cms-newsletter\"><h2 data-field=\"heading\">When something new arrives</h2><p data-field=\"text\">Once a month, and only when there is genuinely something new. Usually with a photograph.</p><form class=\"cms-newsletter-form\" method=\"post\" action=\"/subscribe\"><label class=\"cms-visually-hidden\" for=\"cms-sub-email\">Email address</label><input type=\"email\" id=\"cms-sub-email\" name=\"email\" required placeholder=\"you@example.com\" data-attr-field=\"placeholder\"><button type=\"submit\" class=\"cms-action-btn\"><span data-field=\"cta\">Keep me posted</span></button><input type=\"hidden\" name=\"consent_text\" value=\"Yes, email me when new stock arrives. Unsubscribe any time.\"><p class=\"cms-newsletter-consent\" data-field=\"consent\">Yes, email me when new stock arrives. Unsubscribe any time.</p><p class=\"cms-newsletter-howitworks\">We&rsquo;ll email you a link to confirm. Nothing else is sent until you follow it.</p><p class=\"cms-subscribe-note\" data-subscribe-note role=\"status\" hidden></p></form></div></div>",
+      {}
+    ]
+  ]
+}

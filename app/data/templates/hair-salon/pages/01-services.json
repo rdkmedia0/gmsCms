@@ -1,0 +1,36 @@
+{
+  "title": "Services",
+  "slug_suffix": "services",
+  "page_type": "standard",
+  "meta_description": "Cuts, colour and treatments, with prices.",
+  "sections": [
+    [
+      "text",
+      "What things cost",
+      "<p>Prices are for the time the work takes, so long or very thick hair may sit at the higher end. We will tell you before we start, never after.</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-pricing\" data-columns=\"3\"><div class=\"cms-price-grid\"><div class=\"cms-price-tier\"><h3 class=\"cms-price-name\" data-field=\"tier1_name\">Cut</h3><p class=\"cms-price-amount\"><span data-field=\"tier1_price\">55</span><small data-field=\"tier1_period\">60 minutes</small></p><ul class=\"cms-price-features\" data-field=\"tier1_features\"><li>Consultation</li><li>Wash and cut</li><li>Finish and advice</li></ul><a class=\"cms-price-btn\" href=\"/contact\" data-href-field=\"tier1_link\"><span data-field=\"tier1_cta\">Book a cut</span></a></div><div class=\"cms-price-tier is-featured\" data-flag=\"tier2_featured\"><h3 class=\"cms-price-name\" data-field=\"tier2_name\">Cut and colour</h3><p class=\"cms-price-amount\"><span data-field=\"tier2_price\">140</span><small data-field=\"tier2_period\">from, 2–3 hours</small></p><ul class=\"cms-price-features\" data-field=\"tier2_features\"><li>Full consultation and patch test</li><li>Root colour or balayage</li><li>Toner and gloss</li><li>Cut and finish</li></ul><a class=\"cms-price-btn\" href=\"/contact\" data-href-field=\"tier2_link\"><span data-field=\"tier2_cta\">Book colour</span></a></div><div class=\"cms-price-tier\"><h3 class=\"cms-price-name\" data-field=\"tier3_name\">Fringe or tidy</h3><p class=\"cms-price-amount\"><span data-field=\"tier3_price\">20</span><small data-field=\"tier3_period\">15 minutes</small></p><ul class=\"cms-price-features\" data-field=\"tier3_features\"><li>Between appointments</li><li>Free for regulars</li><li>No need to book far ahead</li></ul><a class=\"cms-price-btn\" href=\"/contact\" data-href-field=\"tier3_link\"><span data-field=\"tier3_cta\">Just call in</span></a></div></div></div>",
+      {}
+    ],
+    [
+      "html",
+      "Also on the price list",
+      "<table class=\"cms-table\"><thead><tr><th></th><th></th><th></th></tr></thead><tbody><tr><td>Root touch-up</td><td>Regrowth only, no toner</td><td>85</td></tr><tr><td>Full head foils</td><td>Two to three hours</td><td>175</td></tr><tr><td>Toner or gloss</td><td>Between colours, keeps it honest</td><td>45</td></tr><tr><td>Treatment</td><td>Added to any appointment</td><td>25</td></tr><tr><td>Blow-dry</td><td>45 minutes</td><td>38</td></tr></tbody></table>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-faq cms-faq-style-cards\"><details class=\"cms-faq-item\" name=\"cms-faq-hair-salon-services-3\"><summary class=\"cms-faq-q\">Do I need a patch test?</summary><div class=\"cms-faq-a\">For any colour, yes, and at least 48 hours before. It takes two minutes and we cannot colour without it.</div></details><details class=\"cms-faq-item\" name=\"cms-faq-hair-salon-services-3\"><summary class=\"cms-faq-q\">What if I do not like it?</summary><div class=\"cms-faq-a\">Tell us while you are still in the chair, or ring within a week. We will put it right and there is no charge for that.</div></details><details class=\"cms-faq-item\" name=\"cms-faq-hair-salon-services-3\"><summary class=\"cms-faq-q\">Do you do men's cuts?</summary><div class=\"cms-faq-a\">Yes, at the same prices — the time it takes is the time it takes.</div></details></div>",
+      {}
+    ]
+  ],
+  "bg_image": "media/hair-salon-backdrop.png",
+  "bg_attach": "scroll",
+  "bg_overlay": "light",
+  "bg_surface": "panels"
+}

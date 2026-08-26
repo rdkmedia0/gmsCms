@@ -1,0 +1,59 @@
+/* "Artisan Roastery" — warm, industrial-craft coffee-culture look.
+   Espresso brown + copper + a coffee-cherry red-orange pop, cream paper
+   background, a bold display serif for a stamped/roaster-label feel with
+   a clean grotesque body. */
+:root {
+  --site-heading-font-family: "DM Serif Display", Georgia, serif;
+  --site-font-family: "Work Sans", -apple-system, "Segoe UI", sans-serif;
+  --site-heading-weight: 400;
+}
+
+/*  This theme's own shaping, stated as defaults rather than as
+    border-radius declarations. site-base.css draws every corner from
+    --site-radius and falls back to these, so the hero, cards and
+    banners keep being shaped differently here, while the admin's
+    site-wide Corners choice (and a single section's own override)
+    still reach them. */
+:root {
+  --corner-banner: 22px;
+  --corner-card: 18px;
+  --corner-hero: 22px;
+  --corner-panel: 18px;
+  --corner-post: 16px;
+  --pad-panel: 26px;
+  --shadow-panel: 0 3px 12px rgba(74, 50, 34, 0.08);
+  --shadow-card: 0 3px 12px rgba(74, 50, 34, 0.06);
+}
+body { background: var(--site-body-bg, #fbf6ee); color: var(--primary-600, #3a2a1e); }
+.site-header { background: var(--site-header-bg, var(--wp--preset--color--primary, #4a3222)); border-bottom: var(--site-header-border, none); }
+.site-brand { color: var(--primary-50, #fbf6ee); letter-spacing: 0.03em; }
+.site-nav a { color: var(--secondary-100, #e4d4c2); }
+.site-nav a:hover { color: var(--secondary-50, #ffffff); }
+.site-footer { background: var(--site-footer-bg, var(--wp--preset--color--primary, #4a3222)); border-top: var(--site-footer-border, none); color: var(--secondary-100, #e4d4c2); }
+.site-footer a { color: var(--secondary-100, #e4d4c2); }
+
+.block-header {
+  background: linear-gradient(160deg, var(--wp--preset--color--primary, #4a3222), var(--primary-400, #6b4a34));
+  color: var(--primary-50, #fbf6ee); }
+.block-header h1 { color: var(--primary-50, #fbf6ee); }
+.block-header .lead { color: var(--secondary-100, #e4d4c2); }
+
+h2, .block-text h2, .block-image h2, .block-html h2 {
+  border-left: 4px solid var(--wp--preset--color--accent, #c1440e); padding-left: 12px;
+  color: var(--wp--preset--color--secondary, #b5651d);
+}
+
+.block-html {
+  background: var(--secondary-50, #ffffff); border: 1px solid var(--secondary-100, #ecdfcc);
+}
+
+.cms-card-shape {
+  border: 1px solid var(--secondary-100, #ecdfcc); background: var(--secondary-50, #ffffff);
+}
+
+.cms-blog-card { border-color: var(--secondary-100, #ecdfcc); }
+
+/* roaster-label style badge feel on the price table header */
+.cms-table thead { background: var(--wp--preset--color--primary, #4a3222); color: var(--primary-50, #fbf6ee); }
+
+a { color: var(--wp--preset--color--accent, #c1440e); }

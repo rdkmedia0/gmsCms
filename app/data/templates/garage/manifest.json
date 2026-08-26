@@ -1,0 +1,44 @@
+{
+  "name": "Garage / Mechanic",
+  "icon": "🔧",
+  "slug": "garage",
+  "description": "An independent garage: what you fix, what it costs, and why people trust you.",
+  "google_fonts_url": "/static/fonts/choices.css",
+  "palette": [
+    {
+      "slug": "primary",
+      "name": "Steel",
+      "color": "#26333f"
+    },
+    {
+      "slug": "secondary",
+      "name": "Slate",
+      "color": "#54646f"
+    },
+    {
+      "slug": "accent",
+      "name": "Signal",
+      "color": "#d4652a"
+    }
+  ],
+  "nav_layout": "topbar",
+  "page_layout": "publisher",
+  "footer_layout": "columns",
+  "shape_override": "sharp",
+  "shadow_override": "none",
+  "business_name": "Kessler Motors",
+  "tagline": "Servicing, repairs and straight answers",
+  "footer_blurb": "Independent garage since 1994. All makes, no upselling.",
+  "footer_contact": {
+    "address": "Kessler Motors, Industriestrasse 7",
+    "email": "workshop@kesslermotors.example",
+    "phone": "+41 44 555 0188"
+  },
+  "has_content": true,
+  "pages": [
+    "home",
+    "services",
+    "workshop",
+    "contact"
+  ]
+}

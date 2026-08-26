@@ -1,0 +1,62 @@
+{
+  "title": "Home",
+  "slug_suffix": "home",
+  "page_type": "standard",
+  "meta_description": "Small-batch coffee, roasted daily, in the heart of downtown.",
+  "sections": [
+    [
+      "banner",
+      "",
+      "<div class=\"cms-banner\" style=\"background-image:url('media/coffee-shop-banner.png')\"><div class=\"cms-banner-overlay\"><h2>Riverside Roasters</h2><p>Small-batch coffee, roasted daily — right in the heart of downtown.</p></div></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-stats\" data-count=\"3\"><div class=\"cms-stat-row\"><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat1_value\">6am</span><span class=\"cms-stat-label\" data-field=\"stat1_label\">Doors open, every day</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat2_value\">3</span><span class=\"cms-stat-label\" data-field=\"stat2_label\">Farms we buy from directly</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat3_value\">48h</span><span class=\"cms-stat-label\" data-field=\"stat3_label\">From roast to cup</span></div></div></div>",
+      {
+        "bg_color": "#e5ba93"
+      }
+    ],
+    [
+      "text",
+      "Welcome",
+      "<p>We're a neighborhood coffeehouse focused on ethically sourced beans, careful roasting, and a warm place to sit down. Every cup is pulled to order by baristas who know their craft.</p>",
+      {}
+    ],
+    [
+      "columns",
+      "",
+      "{\"columns\": [{\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>Ethically Sourced</h3><p>Direct relationships with farms across three continents.</p></div>\", \"tool_name\": \"Card\"}, {\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>Roasted Daily</h3><p>Small batches, roasted fresh in-house every morning.</p></div>\", \"tool_name\": \"Card\"}, {\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>Cozy Seating</h3><p>Free wifi, comfy chairs, and plenty of natural light.</p></div>\", \"tool_name\": \"Card\"}]}",
+      {}
+    ],
+    [
+      "media",
+      "How We Roast",
+      "/static/video/templates/coffee-shop-home.mp4",
+      {
+        "media_type": "video"
+      }
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-team\" data-count=\"3\"><div class=\"cms-team-grid\"><div class=\"cms-person\"><img class=\"cms-person-photo\" src=\"media/coffee-shop-team-ilona.png\" alt=\"\" loading=\"lazy\" data-field=\"person1_photo\"><h3 class=\"cms-person-name\" data-field=\"person1_name\">Ilona</h3><p class=\"cms-person-role\" data-field=\"person1_role\">Head roaster</p><p class=\"cms-person-bio\" data-field=\"person1_bio\">Roasts on Tuesdays and Fridays and will talk you through every batch if you let her.</p></div><div class=\"cms-person\"><img class=\"cms-person-photo\" src=\"media/coffee-shop-team-sam.png\" alt=\"\" loading=\"lazy\" data-field=\"person2_photo\"><h3 class=\"cms-person-name\" data-field=\"person2_name\">Sam</h3><p class=\"cms-person-role\" data-field=\"person2_role\">Behind the bar</p><p class=\"cms-person-bio\" data-field=\"person2_bio\">Knows your order by the second visit. Sorry in advance about the playlist.</p></div><div class=\"cms-person\"><img class=\"cms-person-photo\" src=\"media/coffee-shop-team-yusuf.png\" alt=\"\" loading=\"lazy\" data-field=\"person3_photo\"><h3 class=\"cms-person-name\" data-field=\"person3_name\">Yusuf</h3><p class=\"cms-person-role\" data-field=\"person3_role\">Kitchen</p><p class=\"cms-person-bio\" data-field=\"person3_bio\">Bakes the pastries at four in the morning, which is why they are gone by two.</p></div></div></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<hr class=\"cms-content-divider cms-divider-solid cms-divider-medium cms-divider-spacing-medium\">",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-cta\" data-tone=\"soft\"><div class=\"cms-cta cms-cta-soft\"><h2 data-field=\"heading\">We are open from six</h2><p data-field=\"text\">No booking, no minimum. Bring a laptop or do not — both are fine before eleven.</p><a class=\"cms-cta-btn\" href=\"/contact\" data-href-field=\"link\"><span data-field=\"cta\">Find us</span></a></div></div>",
+      {
+        "bg_color": "#eda78a"
+      }
+    ]
+  ]
+}

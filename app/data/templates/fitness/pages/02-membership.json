@@ -1,0 +1,20 @@
+{
+  "title": "Membership",
+  "slug_suffix": "membership",
+  "page_type": "standard",
+  "meta_description": "What it costs to train here.",
+  "sections": [
+    [
+      "text",
+      "No joining fee, no contract",
+      "<p>Monthly, cancel whenever. If you are away for a month, pause it and pay nothing.</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-pricing\" data-columns=\"3\"><div class=\"cms-price-grid\"><div class=\"cms-price-tier\"><h3 class=\"cms-price-name\" data-field=\"tier1_name\">Once a week</h3><p class=\"cms-price-amount\"><span data-field=\"tier1_price\">89</span><small data-field=\"tier1_period\">per month</small></p><ul class=\"cms-price-features\" data-field=\"tier1_features\"><li>One class a week</li><li>Open gym on Fridays</li><li>Pause any time</li></ul><a class=\"cms-price-btn\" href=\"/contact\" data-href-field=\"tier1_link\"><span data-field=\"tier1_cta\">Start</span></a></div><div class=\"cms-price-tier is-featured\" data-flag=\"tier2_featured\"><h3 class=\"cms-price-name\" data-field=\"tier2_name\">Twice a week</h3><p class=\"cms-price-amount\"><span data-field=\"tier2_price\">139</span><small data-field=\"tier2_period\">per month</small></p><ul class=\"cms-price-features\" data-field=\"tier2_features\"><li>Two classes a week</li><li>Open gym whenever</li><li>Programme reviewed every eight weeks</li><li>What most people do</li></ul><a class=\"cms-price-btn\" href=\"/contact\" data-href-field=\"tier2_link\"><span data-field=\"tier2_cta\">Start</span></a></div><div class=\"cms-price-tier\"><h3 class=\"cms-price-name\" data-field=\"tier3_name\">One to one</h3><p class=\"cms-price-amount\"><span data-field=\"tier3_price\">70</span><small data-field=\"tier3_period\">per session</small></p><ul class=\"cms-price-features\" data-field=\"tier3_features\"><li>Just you and a coach</li><li>For competing, rehab, or coming back from injury</li><li>Blocks of six</li></ul><a class=\"cms-price-btn\" href=\"/contact\" data-href-field=\"tier3_link\"><span data-field=\"tier3_cta\">Ask about it</span></a></div></div></div>",
+      {}
+    ]
+  ]
+}

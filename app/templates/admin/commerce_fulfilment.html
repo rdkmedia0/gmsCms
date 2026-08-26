@@ -1,0 +1,280 @@
+{% extends "admin/base.html" %}
+{% block title %}What your products deliver — My Site Admin{% endblock %}
+{% block content %}
+<h1>Products</h1>
+<p class="hint">Everything you sell, managed from here — add it, price it, photograph it, and say what a sale should actually deliver. Changes are pushed straight to Stripe, so there is no second place to keep up to date. Stripe knows what each product costs and takes the money. It has no idea that "10 Coaching Sessions" should become ten bookings someone can claim, or that you only have three of something in a cupboard. Say it here once, and every future sale of that product is handled for you.</p>
+
+{% if not stripe_ready %}
+<div class="card">
+  <p>Connect Stripe first and your products will appear here. <a href="{{ url_for('admin.settings_integrations') }}">Open Integrations →</a></p>
+</div>
+{% elif catalogue_error %}
+<div class="card">
+  <p class="flash flash-error">Couldn't read your products from Stripe — {{ catalogue_error }}</p>
+</div>
+{% elif not catalogue %}
+<div class="card">
+  <p>Stripe is connected, but this account has no active products yet. Add one in Stripe and it will show up here.</p>
+</div>
+{% else %}
+
+<div class="card">
+  <h2>Files you sell</h2>
+  <p class="hint">Upload anything you sell as a download — an ebook, a set of photos, an audio track, a template. These are kept private: they have no web address of their own, and a buyer only ever gets one by having paid for it.</p>
+  <form method="post" action="{{ url_for('admin.commerce_file_upload') }}" enctype="multipart/form-data" class="inline-form">
+    <input type="file" name="file" required title="The file your buyer downloads — up to 250 MB">
+    <button type="submit" class="btn btn-small btn-primary" title="Add this file so a product can send it">Add file</button>
+  </form>
+  {% if files %}
+  <ul class="hint order-entitlements">
+    {% for f in files %}
+    <li>
+      <strong>{{ f.original_name }}</strong>
+      {%- if f.size %} · {{ (f.size / 1048576) | round(1) }} MB{% endif %}
+      · <form method="post" action="{{ url_for('admin.commerce_file_delete', file_id=f.id) }}" class="inline-form is-inline">
+          <button type="submit" class="btn btn-small" title="Delete this file — blocked while anyone can still download it">Delete</button>
+        </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="hint">Nothing uploaded yet.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Add something to sell</h2>
+  <p class="hint">This creates the product in Stripe for you. You never need to open the Stripe dashboard to put something on sale.</p>
+  <form method="post" action="{{ url_for('admin.commerce_product_add') }}" enctype="multipart/form-data" class="fulfilment-form">
+    <label for="new_name">What is it called</label>
+    <input type="text" id="new_name" name="name" required maxlength="250"
+           placeholder="Deep Tissue Massage" title="The name buyers see, on your shop and on the payment page">
+
+    <label for="new_description">Short description</label>
+    <input type="text" id="new_description" name="description" maxlength="500"
+           placeholder="60 minutes, by appointment" title="One line under the name. Optional.">
+
+    <label for="new_amount">Price</label>
+    <div class="product-price-row">
+      <input type="number" id="new_amount" name="amount" step="0.01" min="0" required
+             placeholder="0.00" title="What it costs. Tax is added by Stripe if you have Stripe Tax switched on.">
+      <select name="currency" title="The currency you charge in">
+        {% for code, label in currencies %}<option value="{{ code }}">{{ label }}</option>{% endfor %}
+      </select>
+      <select name="interval" title="A one-off sale, or something they pay for again each month or year">
+        {% for value, label in intervals %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+      </select>
+    </div>
+
+    <label for="new_image">Picture</label>
+    <input type="file" id="new_image" name="image" accept="image/*"
+           title="Shown on your shop page. Optional.">
+    {% if not public_url %}
+    <p class="hint">Your picture will show on this site. Stripe's own payment page can only show it once this site has a public web address &mdash; set one under Email settings and it will be sent along from then on.</p>
+    {% endif %}
+
+    <button type="submit" class="btn btn-primary btn-small">Create product</button>
+  </form>
+</div>
+
+{% if retired_count %}
+<p class="hint">
+  {% if show_all %}
+  Showing {{ retired_count }} item{{ 's' if retired_count != 1 }} you've taken off sale.
+  <a href="{{ url_for('admin.commerce_fulfilment') }}" title="Show only what's currently on sale">Hide them</a>
+  {% else %}
+  {{ retired_count }} item{{ 's' if retired_count != 1 }} taken off sale {{ 'are' if retired_count != 1 else 'is' }} hidden.
+  <a href="{{ url_for('admin.commerce_fulfilment', show='all') }}" title="Stripe never deletes a product that has been sold, so they stay here — this shows them">Show them</a>
+  {% endif %}
+</p>
+{% endif %}
+
+{% if product_error %}
+<div class="card"><p class="flash flash-error">Couldn't read your products from Stripe &mdash; {{ product_error }}</p></div>
+{% elif products %}
+{% for p in products %}
+<div class="card">
+  <div class="integration-head">
+    <h2>{{ p.name }}</h2>
+    <span class="integration-badge {{ 'is-on' if p.active else 'is-off' }}">{{ 'on sale' if p.active else 'off sale' }}</span>
+  </div>
+  <form method="post" action="{{ url_for('admin.commerce_product_save', product_id=p.product_id) }}" enctype="multipart/form-data" class="fulfilment-form">
+    <input type="hidden" name="price_id" value="{{ p.price_id }}">
+    <input type="hidden" name="current_amount" value="{{ p.amount if p.amount is not none else 0 }}">
+    <input type="hidden" name="current_interval" value="{{ p.interval }}">
+
+    {% if p.image %}<img src="{{ p.image }}" alt="" class="product-thumb">{% endif %}
+
+    <label for="name_{{ loop.index }}">Name</label>
+    <input type="text" id="name_{{ loop.index }}" name="name" value="{{ p.name }}" maxlength="250"
+           title="The name buyers see">
+
+    <label for="desc_{{ loop.index }}">Short description</label>
+    <input type="text" id="desc_{{ loop.index }}" name="description" value="{{ p.description }}" maxlength="500"
+           title="One line under the name">
+
+    <label for="amount_{{ loop.index }}">Price</label>
+    <div class="product-price-row">
+      <input type="number" id="amount_{{ loop.index }}" name="amount" step="0.01" min="0"
+             value="{{ '%.2f'|format(p.amount / 100) if p.amount is not none else '' }}"
+             title="Change this and a new price is created for you, with the old one retired">
+      <select name="currency" title="The currency you charge in">
+        {% for code, label in currencies %}
+        <option value="{{ code }}" {{ 'selected' if p.currency == label }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <select name="interval" title="A one-off sale, or something they pay for again">
+        {% for value, label in intervals %}
+        <option value="{{ value }}" {{ 'selected' if p.interval == value }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <p class="hint">Changing the price makes a new one and retires the old &mdash; Stripe never lets a price that has been used change, so that an old receipt still says what it said. Anyone already subscribed keeps the price they signed up at.</p>
+
+    <label for="img_{{ loop.index }}">Replace the picture</label>
+    <input type="file" id="img_{{ loop.index }}" name="image" accept="image/*" title="Leave empty to keep the current one">
+
+    <button type="submit" class="btn btn-primary btn-small">Save changes</button>
+  </form>
+
+  <form method="post" action="{{ url_for('admin.commerce_product_archive', product_id=p.product_id) }}" class="inline-form">
+    <input type="hidden" name="active" value="{{ '1' if not p.active else '0' }}">
+    <button type="submit" class="btn btn-small"
+            title="{{ 'Put this back on sale' if not p.active else 'Stop selling this. Nothing is deleted, and past orders are untouched.' }}">
+      {{ 'Put back on sale' if not p.active else 'Take off sale' }}
+    </button>
+  </form>
+</div>
+{% endfor %}
+{% endif %}
+
+<div class="card">
+  <h2>Delivery</h2>
+  <p class="hint">Only asked for when a basket holds something you post &mdash; nobody buying a download is made to type their address. Stripe collects the address and adds this charge at the payment step.</p>
+  <form method="post" action="{{ url_for('admin.commerce_postage') }}" class="fulfilment-form">
+    <label for="zone">Where you post to</label>
+    <select id="zone" name="zone" title="Stripe only offers your buyer these countries at checkout">
+      {% for key, zone in zones.items() %}
+      <option value="{{ key }}" {{ 'selected' if postage.zone == key }}>{{ zone[0] }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="amount">What delivery costs</label>
+    <input type="number" id="amount" name="amount" step="0.01" min="0"
+           value="{{ '%.2f'|format(postage.amount / 100) }}"
+           title="One flat charge per order. Enter 0 if you always post free.">
+
+    <label for="free_over">Free delivery over</label>
+    <input type="number" id="free_over" name="free_over" step="0.01" min="0"
+           value="{{ '%.2f'|format(postage.free_over / 100) }}"
+           title="Spend this much and delivery is free. Leave at 0 to always charge.">
+
+    <label for="label">What to call it</label>
+    <input type="text" id="label" name="label" value="{{ postage.label }}" maxlength="60"
+           title="What the buyer sees on the delivery line, e.g. Standard post">
+
+    <button type="submit" class="btn btn-primary btn-small">Save</button>
+  </form>
+</div>
+
+<h2 class="section-heading">What each sale delivers</h2>
+<p class="hint">Stripe takes the money. It has no idea that "10 Coaching Sessions" should become ten bookings someone can claim, or that you only have three of something in a cupboard. Say it here once.</p>
+
+<div class="card">
+  <h2>Session credits</h2>
+  <form method="post" action="{{ url_for('admin.commerce_credit_expiry') }}" class="inline-form">
+    <label for="months">How long do unused sessions stay bookable?</label>
+    <select id="months" name="months" title="Leave as Never unless you have a reason — someone who paid for ten sessions has paid for ten sessions">
+      <option value="0" {{ 'selected' if not credit_expiry_months or credit_expiry_months == '0' }}>Never expire (recommended)</option>
+      <option value="6" {{ 'selected' if credit_expiry_months == '6' }}>6 months after purchase</option>
+      <option value="12" {{ 'selected' if credit_expiry_months == '12' }}>12 months after purchase</option>
+      <option value="24" {{ 'selected' if credit_expiry_months == '24' }}>24 months after purchase</option>
+    </select>
+    <button type="submit" class="btn btn-small">Save</button>
+  </form>
+  <p class="hint">Applies to sessions bought from now on. Sessions someone has already paid for keep whatever term they were sold under.</p>
+</div>
+
+{% for item in catalogue %}
+{% set rule = rules.get(item.price_id) %}
+<div class="card fulfilment-card">
+  <div class="integration-head">
+    <h2>{{ item.name }}</h2>
+    <span class="integration-badge {{ 'is-on' if rule else 'is-off' }}">
+      {% if rule and rule.kind == 'credit' %}{{ rule.quantity }} session{{ 's' if rule.quantity != 1 }}
+      {%- elif rule and rule.kind == 'download' %}a download
+      {%- elif rule and rule.kind == 'physical' %}{{ rule.stock if rule.stock is not none else '—' }} in stock
+      {%- else %}payment only{% endif %}
+    </span>
+  </div>
+  <p class="hint">
+    {{ '%.2f'|format(item.amount / 100) ~ ' ' ~ item.currency if item.amount is not none else 'Customer chooses the amount' }}
+    {%- if item.description %} · {{ item.description }}{% endif %}
+  </p>
+
+  <form method="post" action="{{ url_for('admin.commerce_fulfilment_save') }}" class="fulfilment-form">
+    <input type="hidden" name="price_id" value="{{ item.price_id }}">
+
+    <label for="kind_{{ loop.index }}">When someone buys this…</label>
+    <select id="kind_{{ loop.index }}" name="kind" class="fulfilment-kind" title="What this sale should unlock for the buyer">
+      <option value="" {{ 'selected' if not rule }}>Just take the payment</option>
+      <option value="credit" {{ 'selected' if rule and rule.kind == 'credit' }}>Give them sessions to book</option>
+      <option value="download" {{ 'selected' if rule and rule.kind == 'download' }}>Give them a file to download</option>
+      <option value="physical" {{ 'selected' if rule and rule.kind == 'physical' }}>Send them something — keep a stock count</option>
+    </select>
+
+    <div class="fulfilment-fields" data-for="credit" {{ 'hidden' if not rule or rule.kind != 'credit' }}>
+      <label for="qty_{{ loop.index }}">How many sessions</label>
+      <input type="number" id="qty_{{ loop.index }}" name="quantity" min="1" max="100"
+             value="{{ rule.quantity if rule and rule.kind == 'credit' else 1 }}"
+             title="A buyer can book this many times before paying again">
+      <label for="ref_{{ loop.index }}">Bookable against</label>
+      {% if calcom_ready and event_types %}
+      <select id="ref_{{ loop.index }}" name="ref" title="Which meeting on your calendar these sessions can be booked into">
+        <option value="">Choose a meeting…</option>
+        {% for et in event_types %}
+        <option value="{{ et.id }}" {{ 'selected' if rule and rule.ref == et.id }}>{{ et.label }}</option>
+        {% endfor %}
+      </select>
+      {% elif calcom_ready %}
+      <p class="hint">{{ event_error or 'No event types found on your Cal.com account yet.' }}</p>
+      {% else %}
+      <p class="hint">Connect Cal.com and your meetings will appear here. <a href="{{ url_for('admin.settings_integrations') }}">Open Integrations →</a></p>
+      {% endif %}
+    </div>
+
+    <div class="fulfilment-fields" data-for="download" {{ 'hidden' if not rule or rule.kind != 'download' }}>
+      <label for="file_{{ loop.index }}">Which file</label>
+      {% if files %}
+      <select id="file_{{ loop.index }}" name="ref" title="The file the buyer gets when they pay for this">
+        <option value="">Choose a file…</option>
+        {% for f in files %}
+        <option value="{{ f.id }}" {{ 'selected' if rule and rule.kind == 'download' and rule.ref == f.id|string }}>{{ f.original_name }}</option>
+        {% endfor %}
+      </select>
+      <label for="dl_{{ loop.index }}">How many times they can download it</label>
+      <input type="number" id="dl_{{ loop.index }}" name="quantity" min="1" max="50"
+             value="{{ rule.quantity if rule and rule.kind == 'download' else 5 }}"
+             title="A few is kind — people lose files and change phones. A very high number makes the link worth sharing.">
+      <p class="hint">Five is a sensible default: enough that an honest buyer never gets stuck, few enough that the link isn't worth passing around.</p>
+      {% else %}
+      <p class="hint">Upload a file above first, then it can be chosen here.</p>
+      {% endif %}
+    </div>
+
+    <div class="fulfilment-fields" data-for="physical" {{ 'hidden' if not rule or rule.kind != 'physical' }}>
+      <label for="stock_{{ loop.index }}">How many you have</label>
+      <input type="number" id="stock_{{ loop.index }}" name="stock" min="0"
+             value="{{ rule.stock if rule and rule.stock is not none else 0 }}"
+             title="Counts down with each sale. Stripe has no stock field of its own, so this is the only place it lives.">
+      <p class="hint">Counts down as they sell. Stripe doesn't track stock at all, so this is the only record of it.</p>
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-small">Save</button>
+  </form>
+</div>
+{% endfor %}
+{% endif %}
+
+<script src="{{ static_url('js/admin/fulfilment.js') }}"></script>
+{% endblock %}

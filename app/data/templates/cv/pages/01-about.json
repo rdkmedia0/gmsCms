@@ -1,0 +1,38 @@
+{
+  "title": "About",
+  "slug_suffix": "about",
+  "page_type": "standard",
+  "meta_description": "How I work and what I care about as a designer.",
+  "sections": [
+    [
+      "html",
+      "",
+      "<nav class=\"cms-breadcrumb cms-breadcrumb-medium cms-breadcrumb-style-uppercase\">%%CMS_BREADCRUMB%%</nav>",
+      {}
+    ],
+    [
+      "banner",
+      "",
+      "<div class=\"cms-banner\" style=\"background-image:url('media/cv-banner.png')\"><div class=\"cms-banner-overlay\"><h2>How I Work</h2><p>Research-first, opinionated about details, allergic to unnecessary meetings.</p></div></div>",
+      {}
+    ],
+    [
+      "text",
+      "My Approach",
+      "<p>I start every project by trying to talk to five actual users before opening Figma — it's saved me from building the wrong thing more times than I can count. From there I move fast: rough wireframes, quick internal critique, a clickable prototype within a week.</p><p>I care a lot about the small stuff — empty states, error messages, the difference between a 200ms and a 400ms transition — because that's what makes software feel considered instead of just functional.</p>",
+      {}
+    ],
+    [
+      "columns",
+      "",
+      "{\"columns\": [{\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>Research-First</h3><p>Real user conversations before pixels.</p></div>\", \"tool_name\": \"Card\"}, {\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>Systems Thinker</h3><p>I'd rather fix the component than the screen.</p></div>\", \"tool_name\": \"Card\"}, {\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>Ships Fast</h3><p>Rough and real beats polished and late.</p></div>\", \"tool_name\": \"Card\"}]}",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-timeline\" data-style=\"vertical\"><ol class=\"cms-timeline cms-timeline-vertical\"><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step1_when\">First</span><div class=\"cms-timeline-body\"><h3 data-field=\"step1_title\">Watch someone use it</h3><p data-field=\"step1_text\">Before any drawing. Half an hour watching the actual job being done answers questions a workshop never gets to.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step2_when\">Then</span><div class=\"cms-timeline-body\"><h3 data-field=\"step2_title\">The ugly version</h3><p data-field=\"step2_text\">Rough, in front of people, early. Ideas are cheaper to throw away before they look finished.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step3_when\">Then</span><div class=\"cms-timeline-body\"><h3 data-field=\"step3_title\">Make it boring</h3><p data-field=\"step3_text\">Familiar patterns, predictable behaviour. In B2B software the interesting interface is usually the wrong one.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step4_when\">Last</span><div class=\"cms-timeline-body\"><h3 data-field=\"step4_title\">Stay for the build</h3><p data-field=\"step4_text\">Most decisions get made after handover. I would rather be there when they are.</p></div></li></ol></div>",
+      {}
+    ]
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "title": "Media",
+  "slug_suffix": "media",
+  "page_type": "standard",
+  "meta_description": "A look at the crew at work.",
+  "sections": [
+    [
+      "text",
+      "",
+      "<h2>Watch the work</h2><p>Short clips from jobs around the neighbourhood — a lawn brought back from bare patches, a border cleared in an afternoon, and what a proper autumn tidy actually looks like. Most are under a minute.</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-video-gallery cms-video-gallery-3\">\n<div class=\"cms-video-thumb\" data-video-src=\"/static/video/templates/business-media-1.mp4\"><video src=\"/static/video/templates/business-media-1.mp4#t=0.1\" preload=\"metadata\" muted playsinline></video><span class=\"cms-play-icon\">&#9658;</span><span class=\"cms-video-caption\">Mowing day</span></div>\n<div class=\"cms-video-thumb\" data-video-src=\"/static/video/templates/business-media-2.mp4\"><video src=\"/static/video/templates/business-media-2.mp4#t=0.1\" preload=\"metadata\" muted playsinline></video><span class=\"cms-play-icon\">&#9658;</span><span class=\"cms-video-caption\">Planting a bed</span></div>\n<div class=\"cms-video-thumb\" data-video-src=\"/static/video/templates/business-media-3.mp4\"><video src=\"/static/video/templates/business-media-3.mp4#t=0.1\" preload=\"metadata\" muted playsinline></video><span class=\"cms-play-icon\">&#9658;</span><span class=\"cms-video-caption\">Fall cleanup</span></div>\n</div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-stats\" data-count=\"3\"><div class=\"cms-stat-row\"><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat1_value\">40</span><span class=\"cms-stat-label\" data-field=\"stat1_label\">Summers on these streets</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat2_value\">1,200+</span><span class=\"cms-stat-label\" data-field=\"stat2_label\">Lawns brought back</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat3_value\">3 days</span><span class=\"cms-stat-label\" data-field=\"stat3_label\">Average wait in season</span></div></div></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-cta\" data-tone=\"solid\"><div class=\"cms-cta cms-cta-solid\"><h2 data-field=\"heading\">Want yours looking like that?</h2><p data-field=\"text\">Tell us the address and roughly the size — a quote comes back the same week.</p><a class=\"cms-cta-btn\" href=\"/contact\" data-href-field=\"link\"><span data-field=\"cta\">Ask for a quote</span></a></div></div>",
+      {}
+    ]
+  ]
+}

@@ -1,0 +1,50 @@
+{% extends "admin/base.html" %}
+{% block title %}{{ blog.name }} — Posts{% endblock %}
+{% block content %}
+
+<h1>{{ blog.name }}</h1>
+<p class="hint">Posts live in this blog, not on a page. Show them wherever you
+  like by adding a Blog tool to any page &mdash; on more than one page if you
+  want, without copying anything. Each post is read at
+  <code>/blog/{{ blog.slug }}/&lt;post&gt;</code>, which stays the same however
+  you rearrange the site around it.</p>
+
+<div class="card">
+  {% if not posts %}
+  <p class="muted">No posts yet.</p>
+  {% else %}
+  <table class="admin-table">
+    <thead>
+      <tr><th>Title</th><th>Published</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for post in posts %}
+      <tr>
+        <td>{{ post.title }}</td>
+        <td>
+          {% if post.published_at %}{{ post.published_at }}
+          {% else %}<span class="muted" title="Only you can see this one">Draft</span>{% endif %}
+        </td>
+        <td class="admin-table-actions">
+          <a href="{{ url_for('admin.blog_post_edit', blog_id=blog.id, post_id=post.id) }}"
+             class="btn btn-small" title="Change this post">Edit</a>
+          <form method="post"
+                action="{{ url_for('admin.blog_post_delete', blog_id=blog.id, post_id=post.id) }}"
+                class="inline-form"
+                data-confirm="You are about to delete this post. This cannot be undone."
+                data-confirm-danger="1">
+            <button type="submit" class="btn btn-small btn-danger" title="Delete this post for good">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <a href="{{ url_for('admin.blog_post_new', blog_id=blog.id) }}" class="btn btn-primary"
+     title="Write a new post in this blog">+ Add Post</a>
+  <a href="{{ url_for('admin.dashboard') }}" class="btn" title="Back to the dashboard">Done</a>
+</div>
+
+{% endblock %}

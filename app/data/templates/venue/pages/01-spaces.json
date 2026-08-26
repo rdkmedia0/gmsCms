@@ -1,0 +1,26 @@
+{
+  "title": "The spaces",
+  "slug_suffix": "spaces",
+  "page_type": "standard",
+  "meta_description": "What each space holds, and what it costs.",
+  "sections": [
+    [
+      "text",
+      "Three spaces",
+      "<p>Hired together as one. We do not run two events at once, so the whole place is yours from the Friday.</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-pricing\" data-columns=\"3\"><div class=\"cms-price-grid\"><div class=\"cms-price-tier\"><h3 class=\"cms-price-name\" data-field=\"tier1_name\">Friday or Sunday</h3><p class=\"cms-price-amount\"><span data-field=\"tier1_price\">4,200</span><small data-field=\"tier1_period\">the weekend day</small></p><ul class=\"cms-price-features\" data-field=\"tier1_features\"><li>The barn, courtyard and chapel</li><li>From noon Friday to Sunday morning</li><li>Tables, chairs and lighting</li><li>Someone here the whole time</li></ul><a class=\"cms-price-btn\" href=\"/contact\" data-href-field=\"tier1_link\"><span data-field=\"tier1_cta\">Check dates</span></a></div><div class=\"cms-price-tier is-featured\" data-flag=\"tier2_featured\"><h3 class=\"cms-price-name\" data-field=\"tier2_name\">Saturday</h3><p class=\"cms-price-amount\"><span data-field=\"tier2_price\">5,800</span><small data-field=\"tier2_period\">the weekend</small></p><ul class=\"cms-price-features\" data-field=\"tier2_features\"><li>Everything on the left</li><li>Friday afternoon to set up</li><li>Sunday morning to clear</li><li>Accommodation for eight in the loft</li></ul><a class=\"cms-price-btn\" href=\"/contact\" data-href-field=\"tier2_link\"><span data-field=\"tier2_cta\">Check dates</span></a></div><div class=\"cms-price-tier\"><h3 class=\"cms-price-name\" data-field=\"tier3_name\">Weekday gathering</h3><p class=\"cms-price-amount\"><span data-field=\"tier3_price\">1,900</span><small data-field=\"tier3_period\">per day</small></p><ul class=\"cms-price-features\" data-field=\"tier3_features\"><li>Company days, wakes, birthdays</li><li>Eight in the morning to midnight</li><li>No minimum numbers</li></ul><a class=\"cms-price-btn\" href=\"/contact\" data-href-field=\"tier3_link\"><span data-field=\"tier3_cta\">Ask about a day</span></a></div></div></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-faq cms-faq-style-cards\"><details class=\"cms-faq-item\" name=\"cms-faq-venue-spaces-2\"><summary class=\"cms-faq-q\">Do we have to use your caterer?</summary><div class=\"cms-faq-a\">No. We have four we know well and will happily recommend, but you can bring anyone with the right certificates.</div></details><details class=\"cms-faq-item\" name=\"cms-faq-venue-spaces-2\"><summary class=\"cms-faq-q\">What happens if it rains?</summary><div class=\"cms-faq-a\">Everything works indoors. The courtyard is the bonus, not the plan — we learned that the first summer.</div></details><details class=\"cms-faq-item\" name=\"cms-faq-venue-spaces-2\"><summary class=\"cms-faq-q\">Can we stay the night?</summary><div class=\"cms-faq-a\">Eight in the loft above the barn, and the farmhouse up the lane takes another twelve.</div></details></div>",
+      {}
+    ]
+  ]
+}

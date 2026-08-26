@@ -1,0 +1,15 @@
+services:
+  web:
+    image: ghcr.io/rdkmedia0/gmscms:latest
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - ./data:/app/data
+      - ./uploads:/app/app/static/uploads
+      - ./themes:/app/app/static/themes
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

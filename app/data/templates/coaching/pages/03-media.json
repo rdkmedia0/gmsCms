@@ -1,0 +1,34 @@
+{
+  "title": "Media",
+  "slug_suffix": "media",
+  "page_type": "standard",
+  "meta_description": "Talks, interviews, and client sessions.",
+  "sections": [
+    [
+      "text",
+      "",
+      "<h2>Talks and sessions</h2><p>Recorded workshops and a few podcast conversations. If you are deciding whether we would work well together, these are the most honest way to find out — it is the same voice you would get in a session.</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-video-gallery cms-video-gallery-3\">\n<div class=\"cms-video-thumb\" data-video-src=\"/static/video/templates/coaching-media-1.mp4\"><video src=\"/static/video/templates/coaching-media-1.mp4#t=0.1\" preload=\"metadata\" muted playsinline></video><span class=\"cms-play-icon\">&#9658;</span><span class=\"cms-video-caption\">A quiet morning</span></div>\n<div class=\"cms-video-thumb\" data-video-src=\"/static/video/templates/coaching-media-2.mp4\"><video src=\"/static/video/templates/coaching-media-2.mp4#t=0.1\" preload=\"metadata\" muted playsinline></video><span class=\"cms-play-icon\">&#9658;</span><span class=\"cms-video-caption\">Journal and tea</span></div>\n<div class=\"cms-video-thumb\" data-video-src=\"/static/video/templates/coaching-media-3.mp4\"><video src=\"/static/video/templates/coaching-media-3.mp4#t=0.1\" preload=\"metadata\" muted playsinline></video><span class=\"cms-play-icon\">&#9658;</span><span class=\"cms-video-caption\">Sitting practice</span></div>\n</div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-testimonial\" data-style=\"card\"><figure class=\"cms-quote cms-quote-card\"><blockquote data-field=\"quote\">I watched one of these on a Sunday night and booked on the Monday. Six months later I have the job I was too embarrassed to say out loud.</blockquote><figcaption><span class=\"cms-quote-name\" data-field=\"name\">Priya N.</span><span class=\"cms-quote-role\" data-field=\"role\">Client, career change</span></figcaption></figure></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-cta\" data-tone=\"soft\"><div class=\"cms-cta cms-cta-soft\"><h2 data-field=\"heading\">Start with a conversation</h2><p data-field=\"text\">A first call is thirty minutes and costs nothing. Bring the thing you keep putting off.</p><a class=\"cms-cta-btn\" href=\"/contact\" data-href-field=\"link\"><span data-field=\"cta\">Book a first call</span></a></div></div>",
+      {
+        "bg_color": "#ebd498"
+      }
+    ]
+  ]
+}

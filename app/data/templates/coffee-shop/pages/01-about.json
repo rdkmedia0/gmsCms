@@ -1,0 +1,32 @@
+{
+  "title": "About",
+  "slug_suffix": "about",
+  "page_type": "standard",
+  "meta_description": "Our story — how Riverside Roasters got started.",
+  "sections": [
+    [
+      "banner",
+      "",
+      "<div class=\"cms-banner\" style=\"background-image:url('media/coffee-shop-class.png')\"><div class=\"cms-banner-overlay\"><h2>Our Story</h2><p>Started in a garage roaster in 2014. Still just as obsessed.</p></div></div>",
+      {}
+    ],
+    [
+      "text",
+      "How We Got Here",
+      "<p>Riverside Roasters started as a single 1-kilo roaster in a garage, run by two friends who couldn't find a coffee they actually loved in town. Ten years later we're roasting several batches a week, all cupped and dialed in by hand before anything reaches a customer.</p><p>We still buy from the same three farm partners we started with, pay well above commodity price, and visit the farms ourselves when we can. If a bag says single-origin, we can tell you exactly whose farm it came from.</p>",
+      {}
+    ],
+    [
+      "columns",
+      "",
+      "{\"columns\": [{\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>Direct Trade</h3><p>Long-term relationships with growers, not spot-market buying.</p></div>\", \"tool_name\": \"Card\"}, {\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>Small Batch</h3><p>Every roast is under 12kg, tasted and logged.</p></div>\", \"tool_name\": \"Card\"}, {\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>Community First</h3><p>Free cupping classes every Saturday morning.</p></div>\", \"tool_name\": \"Card\"}]}",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-timeline\" data-style=\"horizontal\"><ol class=\"cms-timeline cms-timeline-horizontal\"><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step1_when\">2013</span><div class=\"cms-timeline-body\"><h3 data-field=\"step1_title\">A cart</h3><p data-field=\"step1_text\">One cart, one grinder, outside the station, in the rain more often than not.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step2_when\">2016</span><div class=\"cms-timeline-body\"><h3 data-field=\"step2_title\">The shop</h3><p data-field=\"step2_text\">Twelve seats and a roaster in the back that was too big for the room.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step3_when\">2020</span><div class=\"cms-timeline-body\"><h3 data-field=\"step3_title\">Roasting for others</h3><p data-field=\"step3_text\">Other cafés started asking for our beans, which we had not planned for at all.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step4_when\">Today</span><div class=\"cms-timeline-body\"><h3 data-field=\"step4_title\">Still twelve seats</h3><p data-field=\"step4_text\">We looked at bigger rooms twice and decided against it both times.</p></div></li></ol></div>",
+      {}
+    ]
+  ]
+}

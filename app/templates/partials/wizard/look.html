@@ -1,0 +1,55 @@
+{#  The browse-before-you-commit path. "Take everything" and "just the
+    look" are both answers to "shall I apply this?"; showing the styling
+    options declines to answer yet and goes and shows you, which is what
+    makes this an introduction rather than a gate. Every option here is
+    the same one the Colors and Style panels offer -- a guided path
+    through them, not a second copy. #}
+<p class="hint">Sixteen ready-made looks come with this app. Pick one and you get its colours,
+  fonts, layout and &mdash; if you want them &mdash; its example pages to edit over. You can change
+  any of it afterwards, and switch look again whenever you like.</p>
+
+<label for="template">The look</label>
+<select id="template" name="template" title="Each one is a complete design: colours, fonts, header and footer, and example pages.">
+  {% for t in templates %}
+  <option value="{{ t.id }}" {{ 'selected' if t.is_active }}>{{ t.name }}{{ ' — the one you are using' if t.is_active }}</option>
+  {% endfor %}
+</select>
+
+<label for="content">And its example pages?</label>
+<select id="content" name="content" title="Example pages are a starting point to edit over. Choosing “just the look” keeps the pages you have and changes only the design.">
+  <option value="look">Just the look &mdash; keep the pages I have</option>
+  <option value="everything">Take everything &mdash; its pages too, so I have something to edit over</option>
+</select>
+<p class="hint">On a brand-new site, taking everything is the easier start: you get a finished
+  example site and change the words. On a site you have written, keep your pages.</p>
+
+<label for="colors">Colours</label>
+<select id="colors" name="colors" title="Keep the look's own palette, or swap in one of these. Either way you can fine-tune every colour later from the Colors panel while editing a page.">
+  <option value="keep">Keep this look's own colours</option>
+  {% for slug, preset in color_presets.items() %}
+  <option value="{{ slug }}">{{ preset.name }}</option>
+  {% endfor %}
+</select>
+
+<label for="fonts">Fonts</label>
+<select id="fonts" name="fonts" title="Keep the look's own typefaces, or swap in a pairing. Every font here is bundled with this app — nothing is fetched from Google when somebody visits your site.">
+  <option value="keep">Keep this look's own fonts</option>
+  {% for key, pairing in font_pairings.items() %}
+  {% if pairing.name %}<option value="{{ key }}">{{ pairing.name }}</option>{% endif %}
+  {% endfor %}
+</select>
+
+<p class="hint">Both of these live in the <strong>Colors</strong> and <strong>Fonts &amp; Shape</strong>
+  panels while you are editing a page &mdash; the paint-palette and the ruler on the right-hand edge.
+  This is the same set of choices, asked once up front.</p>
+
+{% if ai_ready %}
+<p class="hint">You have AI set up, so you can also
+  <a href="{{ url_for('admin.theme_generator') }}" title="Describe the site you want and have AI design a look for it">have AI design a look from a description</a>
+  &mdash; it shows you what it made before anything is applied.</p>
+{% else %}
+<p class="hint">AI can design a look from a description of your business. That needs an AI
+  connection, which you do not have yet &mdash;
+  <a href="{{ url_for('admin.settings_ai') }}" title="Where to connect an AI provider">set one up here</a>
+  if you want it. Nothing else on this page needs it.</p>
+{% endif %}

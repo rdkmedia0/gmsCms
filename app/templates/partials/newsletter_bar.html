@@ -1,0 +1,73 @@
+{#  Subject, what to send, preview, send -- on the page itself.
+
+    Everything here is a control, so it wears the editor's clothes and
+    never the site's: a newsletter page can carry any theme at all, and
+    the Send button must not become unreadable because somebody chose a
+    pale brand colour. See "A tool's controls are the app's" in CLAUDE.md.
+
+    Plain form posts, no script: the select and the two buttons are three
+    ordinary controls, and the confirm comes from the shared data-confirm
+    handler that every other destructive action already uses. #}
+<form class="cms-newsletter-bar cms-inline-form" method="post"
+      action="{{ url_for('admin.newsletter_send', page_id=page.id) }}">
+  <input type="hidden" name="next" value="{{ current_path }}">
+  <span class="cms-newsletter-bar-label" title="This page is a newsletter — turn that off in the page's own settings on the Dashboard">✉️ Newsletter</span>
+
+  <label class="cms-newsletter-bar-field">Subject
+    <input type="text" name="subject" value="{{ page.title }}" maxlength="120"
+           title="What people see in their inbox. The page title is used if you leave it.">
+  </label>
+
+  <label class="cms-newsletter-bar-field">Send
+    {#  "Everything", "the latest", or one section by number. A newsletter
+        page is a page, and people keep writing on it: an issue is often
+        the newest thing on a page that already carries three older ones,
+        and sending the lot again is not what anybody meant. #}
+    <select name="parts" title="Which part of this page goes out. Sections are numbered from the top."
+            onchange="this.form.querySelector('.cms-newsletter-preview').search = 'parts=' + this.value">
+      {% for value, label in newsletter_send.choices %}
+      <option value="{{ value }}">{{ label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <label class="cms-newsletter-bar-field">To
+    {#  Everyone, or the customers among them. The count travels with the
+        choice so the confirm can name the number it is about to reach
+        rather than the number on the list. #}
+    <select name="audience" title="Who this goes to. A customer is somebody on the list who has paid for something, or who you have flagged as one."
+            onchange="this.form.querySelector('.cms-newsletter-send').dataset.confirm =
+                      this.form.querySelector('.cms-newsletter-send').dataset.confirmTemplate
+                        .replace('COUNT', this.selectedOptions[0].dataset.count)
+                        .replace('WHO', this.selectedOptions[0].dataset.who)">
+      {% for key, label in newsletter_send.audiences %}
+      <option value="{{ key }}" data-count="{{ newsletter_send.audience_counts[key] }}"
+              data-who="{{ 'people on your list' if key == 'all' else 'customers' }}">{{ label }} ({{ newsletter_send.audience_counts[key] }})</option>
+      {% endfor %}
+    </select>
+  </label>
+
+  <a class="cms-newsletter-preview" target="_blank" rel="noopener"
+     href="{{ url_for('admin.newsletter_preview', page_id=page.id) }}"
+     title="See exactly what lands in an inbox — plainer than the page, on purpose">Preview</a>
+
+  {% set blocked = (not newsletter_send.email_ready) or (not newsletter_send.has_address) or (not newsletter_send.counts.active) %}
+  {% set ask = "You are about to email this to COUNT WHO. It cannot be taken back. Use Preview first if you have not looked at it." %}
+  <button type="submit" class="cms-newsletter-send" {{ 'disabled' if blocked }}
+          data-confirm-template="{{ ask }}"
+          data-confirm="{{ ask | replace('COUNT', newsletter_send.audience_counts['all']) | replace('WHO', 'people on your list') }}"
+          data-confirm-danger="1"
+          title="Send this to everyone who has confirmed their subscription">
+    {{ 'Send again' if newsletter_send.last else 'Send' }}
+  </button>
+
+  <span class="cms-newsletter-bar-note">
+    {%- if not newsletter_send.email_ready %}Email isn't set up yet, so nothing can go out.
+    {%- elif not newsletter_send.has_address %}Add your postal address on the Legal pages screen first — an email to a list has to carry it.
+    {%- elif not newsletter_send.counts.active %}Nobody has confirmed a subscription yet{% if newsletter_send.counts.pending %}, though {{ newsletter_send.counts.pending }} {{ 'is' if newsletter_send.counts.pending == 1 else 'are' }} still to answer{% endif %}.
+    {%- elif newsletter_send.last %}Last sent {{ newsletter_send.last.sent_at[:16] }} to {{ newsletter_send.last.recipients }}{% if newsletter_send.last.audience == 'customers' %} (customers only){% endif %}. {{ newsletter_send.counts.active }} on the list now, {{ newsletter_send.counts.customers }} of them {{ 'a customer' if newsletter_send.counts.customers == 1 else 'customers' }}.
+    {%- else %}{{ newsletter_send.counts.active }} {{ 'person' if newsletter_send.counts.active == 1 else 'people' }} on the list, {{ newsletter_send.counts.customers }} of them {{ 'a customer' if newsletter_send.counts.customers == 1 else 'customers' }}.
+    {%- endif %}
+    {%- if not page.is_public %} This page is off the site, so the email carries no “read it online” link.{% endif %}
+  </span>
+</form>

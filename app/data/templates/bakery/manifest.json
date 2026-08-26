@@ -1,0 +1,44 @@
+{
+  "name": "Bakery",
+  "icon": "🥖",
+  "slug": "bakery",
+  "description": "A bakery: what comes out of the oven, when, and how to order it. Built from one colour scale and a lot of photography.",
+  "google_fonts_url": "/static/fonts/choices.css",
+  "palette": [
+    {
+      "slug": "primary",
+      "name": "Crust",
+      "color": "#8a4f24"
+    },
+    {
+      "slug": "secondary",
+      "name": "Wheat",
+      "color": "#c9a15b"
+    },
+    {
+      "slug": "accent",
+      "name": "Damson",
+      "color": "#7b3247"
+    }
+  ],
+  "nav_layout": "centered",
+  "page_layout": "none",
+  "footer_layout": "centered",
+  "shape_override": "rounded",
+  "shadow_override": "raised",
+  "business_name": "Flour & Salt",
+  "tagline": "Bread, pastry, mornings",
+  "footer_blurb": "Baked overnight, sold until it is gone. Usually by two.",
+  "footer_contact": {
+    "address": "Flour & Salt, 3 Lindenweg",
+    "email": "hello@flourandsalt.example",
+    "instagram": "https://instagram.com/flourandsalt"
+  },
+  "has_content": true,
+  "pages": [
+    "home",
+    "bakes",
+    "story",
+    "contact"
+  ]
+}

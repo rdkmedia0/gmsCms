@@ -1,0 +1,26 @@
+{
+  "title": "About",
+  "slug_suffix": "about",
+  "page_type": "standard",
+  "meta_description": "Our philosophy and the person behind it.",
+  "sections": [
+    [
+      "banner",
+      "",
+      "<div class=\"cms-banner\" style=\"background-image:url('media/self-help-banner.png')\"><div class=\"cms-banner-overlay\"><h2>Our Philosophy</h2><p>Small, sustainable habits — not another 5am miracle routine.</p></div></div>",
+      {}
+    ],
+    [
+      "text",
+      "Where This Came From",
+      "<p>This space started after burning out twice chasing every productivity trend going — cold plunges, 5am routines, 90-day challenges. None of it stuck, because none of it fit an actual life.</p><p>What finally worked was smaller and slower: a five-minute morning practice, a weekly honest check-in, a community that noticed when I disappeared. That's what this is built around.</p>",
+      {}
+    ],
+    [
+      "columns",
+      "",
+      "{\"columns\": [{\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>Sustainable</h3><p>Habits sized for a real week, not a retreat.</p></div>\", \"tool_name\": \"Card\"}, {\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>Honest</h3><p>No toxic positivity \\u2014 bad weeks are allowed here.</p></div>\", \"tool_name\": \"Card\"}, {\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>Supported</h3><p>A weekly group check-in, not a solo challenge.</p></div>\", \"tool_name\": \"Card\"}]}",
+      {}
+    ]
+  ]
+}

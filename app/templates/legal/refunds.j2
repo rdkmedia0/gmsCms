@@ -1,0 +1,46 @@
+<h2>Cancelling and refunds</h2>
+<p>These terms apply to everything bought from {{ business }}. They set out
+when you can change your mind, and what happens when you do.</p>
+
+{% if sells_physical %}
+<h3>Things we post to you</h3>
+<p>You can cancel for any reason within {{ withdrawal_days }} days of receiving
+your order, without giving a reason. Tell us at <a href="mailto:{{ email }}">{{ email }}</a>
+and send the item back within {{ withdrawal_days }} days of telling us. We refund
+what you paid, including standard delivery, within 14 days of getting the item
+back. Return postage is yours to pay unless the item was faulty or not what you
+ordered.</p>
+<p>Items must come back in a condition where we could reasonably sell them
+again. Handling them as you would in a shop is fine; using them is not.</p>
+{% endif %}
+
+{% if sells_digital %}
+<h3>Downloads</h3>
+<p>A download normally carries the same {{ withdrawal_days }}-day right to change
+your mind. Because a file cannot be given back once it has been sent, that right
+ends the moment your download starts &mdash; and by starting it you agree to
+that, and accept that you are giving up the right to cancel.</p>
+<p>If a file is faulty, will not open, or is not what was described, tell us at
+<a href="mailto:{{ email }}">{{ email }}</a> and we will fix it or refund you.</p>
+{% endif %}
+
+{% if sells_services %}
+<h3>Sessions and appointments</h3>
+<p>You can cancel a booking up to {{ booking_notice_hours }} hours before it
+starts, and the session goes back to your account for you to rebook whenever
+suits. Cancel later than that, or miss the appointment, and the session is
+used.</p>
+<p>Unused sessions can be refunded within {{ withdrawal_days }} days of purchase,
+less the value of any session already taken. If you asked us to start sooner
+than that and the work is finished, the right to cancel no longer applies.</p>
+{% endif %}
+
+<h3>If something goes wrong</h3>
+<p>Nothing here affects your legal rights when something is faulty, misdescribed,
+or not delivered. Email <a href="mailto:{{ email }}">{{ email }}</a> and we will
+sort it out.</p>
+{% if in_eu %}
+<p>If we cannot agree, you can use the European Commission's online dispute
+resolution platform at
+<a href="https://ec.europa.eu/consumers/odr" rel="noopener">ec.europa.eu/consumers/odr</a>.</p>
+{% endif %}

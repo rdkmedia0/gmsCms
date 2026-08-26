@@ -1,0 +1,22 @@
+{% extends "public/checkout_shell.html" %}
+{% block title %}Newsletter archive{% endblock %}
+{% block checkout_content %}
+<h1>Everything we have sent</h1>
+{% if not issues %}
+<p class="cms-account-sub">Nothing has gone out yet.</p>
+{% else %}
+<p class="cms-account-sub">Every letter we have sent, in case you missed one or want to see what you would be signing up for.</p>
+<ul class="cms-account-list">
+  {% for issue in issues %}
+  <li>
+    {#  The address comes from the route, because an issue can be a page
+        or a post and those are two different addresses. #}
+    <a href="{{ issue.url }}">{{ issue.title }}</a>
+    <span class="cms-account-sub"> — {{ issue.first_sent[:10] }}</span>
+    {% if issue.blurb %}<br><span class="cms-account-sub">{{ issue.blurb }}</span>{% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
+<p><a href="{{ url_for('public.home') }}">Back to the site</a></p>
+{% endblock %}

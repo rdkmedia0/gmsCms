@@ -1,0 +1,36 @@
+{
+  "title": "What we bake",
+  "slug_suffix": "bakes",
+  "page_type": "standard",
+  "meta_description": "The regular bakes, what they cost, and when they are out.",
+  "sections": [
+    [
+      "text",
+      "On the counter",
+      "<p>Every day unless it says otherwise. Specials go on the board and on the bake list.</p>",
+      {}
+    ],
+    [
+      "html",
+      "Daily",
+      "<table class=\"cms-table\"><thead><tr><th></th><th></th><th></th></tr></thead><tbody><tr><td>Country sourdough</td><td>White, 36-hour prove</td><td>6.50</td></tr><tr><td>Seeded rye</td><td>Dense, keeps a week</td><td>7.00</td></tr><tr><td>Baguette</td><td>Baked twice, morning and four</td><td>3.20</td></tr><tr><td>Croissant</td><td>Butter, laminated here</td><td>3.00</td></tr><tr><td>Pain au chocolat</td><td>Two batons, properly</td><td>3.40</td></tr><tr><td>Cinnamon bun</td><td>Weekends only</td><td>3.80</td></tr></tbody></table>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-faq cms-faq-style-cards\"><details class=\"cms-faq-item\" name=\"cms-faq-bakery-bakes-2\"><summary class=\"cms-faq-q\">What time should I come?</summary><div class=\"cms-faq-a\">Bread is out by seven, pastry by half past six. By two on a Saturday there is usually nothing left but a rye and an apology.</div></details><details class=\"cms-faq-item\" name=\"cms-faq-bakery-bakes-2\"><summary class=\"cms-faq-q\">Can I order ahead?</summary><div class=\"cms-faq-a\">Yes, and for weekends you should. Ring or email by Thursday and it will be put aside with your name on it.</div></details><details class=\"cms-faq-item\" name=\"cms-faq-bakery-bakes-2\"><summary class=\"cms-faq-q\">Is anything vegan?</summary><div class=\"cms-faq-a\">The sourdough, the rye and the baguettes always. The pastry is butter and there is no honest way around that.</div></details></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-timeline\" data-style=\"horizontal\"><ol class=\"cms-timeline cms-timeline-horizontal\"><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step1_when\">Monday</span><div class=\"cms-timeline-body\"><h3 data-field=\"step1_title\">The starter is fed</h3><p data-field=\"step1_text\">Everything that comes out on Wednesday begins here, and nothing about it can be hurried.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step2_when\">Overnight</span><div class=\"cms-timeline-body\"><h3 data-field=\"step2_title\">The long prove</h3><p data-field=\"step2_text\">Shaped in the evening, proved cold until four in the morning. That is where the flavour is.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step3_when\">4am</span><div class=\"cms-timeline-body\"><h3 data-field=\"step3_title\">Ovens on</h3><p data-field=\"step3_text\">Bread first, then pastry, so both hit the counter at the right moment.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step4_when\">By 2pm</span><div class=\"cms-timeline-body\"><h3 data-field=\"step4_title\">Gone</h3><p data-field=\"step4_text\">We bake what we can sell in a day. Coming late means missing out, and that is the deal.</p></div></li></ol></div>",
+      {}
+    ]
+  ],
+  "bg_image": "media/bakery-backdrop.png",
+  "bg_attach": "scroll",
+  "bg_overlay": "light",
+  "bg_surface": "panels"
+}

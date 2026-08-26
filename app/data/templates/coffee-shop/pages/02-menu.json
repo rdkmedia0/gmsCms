@@ -1,0 +1,26 @@
+{
+  "title": "Menu",
+  "slug_suffix": "menu",
+  "page_type": "standard",
+  "meta_description": "Espresso, drip coffee, and fresh pastries.",
+  "sections": [
+    [
+      "text",
+      "Our Menu",
+      "<p>All coffee is brewed to order with beans roasted in-house.</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<table class=\"cms-table\"><thead><tr><th>Item</th><th>Description</th><th>Price</th></tr></thead><tbody><tr><td>Espresso</td><td>Double shot, our house blend</td><td>$3.25</td></tr><tr><td>Cappuccino</td><td>Espresso, steamed milk, foam</td><td>$4.50</td></tr><tr><td>Pour Over</td><td>Single origin, brewed fresh</td><td>$5.00</td></tr><tr><td>Cold Brew</td><td>Steeped 18 hours, served over ice</td><td>$4.75</td></tr><tr><td>Croissant</td><td>Baked fresh every morning</td><td>$3.75</td></tr></tbody></table>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-cta\" data-tone=\"outline\"><div class=\"cms-cta cms-cta-outline\"><h2 data-field=\"heading\">Beans to take home</h2><p data-field=\"text\">Whatever is on the bar that week, ground how you like it, or whole.</p><a class=\"cms-cta-btn\" href=\"/contact\" data-href-field=\"link\"><span data-field=\"cta\">Ask at the counter</span></a></div></div>",
+      {}
+    ]
+  ]
+}

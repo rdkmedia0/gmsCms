@@ -1,0 +1,26 @@
+{
+  "title": "What people say",
+  "slug_suffix": "reviews",
+  "page_type": "standard",
+  "meta_description": "From people who got married here.",
+  "sections": [
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-testimonial\" data-style=\"large\"><figure class=\"cms-quote cms-quote-large\"><blockquote data-field=\"quote\">It rained from two until six and not one person mentioned it, which tells you everything about the room.</blockquote><figcaption><span class=\"cms-quote-name\" data-field=\"name\">Aoife and Tom</span><span class=\"cms-quote-role\" data-field=\"role\">Married here in June</span></figcaption></figure></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-timeline\" data-style=\"vertical\"><ol class=\"cms-timeline cms-timeline-vertical\"><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step1_when\">First</span><div class=\"cms-timeline-body\"><h3 data-field=\"step1_title\">You come and see it</h3><p data-field=\"step1_text\">Wednesdays mostly. Bring whoever is paying and whoever will worry.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step2_when\">Then</span><div class=\"cms-timeline-body\"><h3 data-field=\"step2_title\">We hold the date</h3><p data-field=\"step2_text\">Two weeks, free, while you think. A deposit fixes it after that.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step3_when\">Nearer</span><div class=\"cms-timeline-body\"><h3 data-field=\"step3_title\">The details</h3><p data-field=\"step3_text\">Six weeks out we sit down with the caterer and go through the day hour by hour.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step4_when\">The day</span><div class=\"cms-timeline-body\"><h3 data-field=\"step4_title\">Someone is here</h3><p data-field=\"step4_text\">From setup to the last taxi. Not to run your wedding — to deal with whatever the building does.</p></div></li></ol></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-newsletter\" ><div class=\"cms-newsletter\"><h2 data-field=\"heading\">Dates as they open</h2><p data-field=\"text\">We release the following year each September. This is the list that hears first.</p><form class=\"cms-newsletter-form\" method=\"post\" action=\"/subscribe\"><label class=\"cms-visually-hidden\" for=\"cms-sub-email\">Email address</label><input type=\"email\" id=\"cms-sub-email\" name=\"email\" required placeholder=\"you@example.com\" data-attr-field=\"placeholder\"><button type=\"submit\" class=\"cms-action-btn\"><span data-field=\"cta\">Tell me when dates open</span></button><input type=\"hidden\" name=\"consent_text\" value=\"Yes, email me when new dates are released. Unsubscribe any time.\"><p class=\"cms-newsletter-consent\" data-field=\"consent\">Yes, email me when new dates are released. Unsubscribe any time.</p><p class=\"cms-newsletter-howitworks\">We&rsquo;ll email you a link to confirm. Nothing else is sent until you follow it.</p><p class=\"cms-subscribe-note\" data-subscribe-note role=\"status\" hidden></p></form></div></div>",
+      {}
+    ]
+  ]
+}

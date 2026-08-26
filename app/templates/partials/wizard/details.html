@@ -1,0 +1,32 @@
+{#  The same fifteen legal_* settings the Legal pages screen writes, asked
+    once here so two features that would otherwise need a separate errand
+    -- the legal pages, and sending a newsletter at all -- come free. #}
+<p class="hint">Used on your legal pages and at the foot of every newsletter. An email to a list
+  has to carry a real postal address &mdash; that is the law in Europe, Switzerland and the US
+  alike, and this site refuses to send one without it.</p>
+
+<label for="business">The name you trade under</label>
+<input type="text" id="business" name="business" maxlength="120" value="{{ details.business }}"
+       placeholder="{{ site.site_title }}"
+       title="Leave it blank to use the site's own name. Fill it in only if the legal entity is different — “Flour &amp; Salt” on the door, “Flour &amp; Salt GmbH” on the paperwork.">
+
+<label for="address">Postal address</label>
+<textarea id="address" name="address" rows="3" placeholder="Bahnhofstrasse 1&#10;8001 Zurich"
+          title="One line per line. Required on legal pages in Germany, Austria and Switzerland, and on every newsletter everywhere.">{{ details.address }}</textarea>
+
+<label for="email">An email address people can write to</label>
+<input type="email" id="email" name="email" maxlength="120" value="{{ details.email }}"
+       placeholder="hello@example.com" title="Shown on your legal pages as the way to reach you.">
+
+<label for="phone">Telephone (optional)</label>
+<input type="text" id="phone" name="phone" maxlength="60" value="{{ details.phone }}"
+       placeholder="+41 44 000 00 00" title="Shown on your legal pages if you give one.">
+
+<label for="country">Where the business is</label>
+<select id="country" name="country" title="Decides which legal pages this site offers to write for you — an Impressum in Germany, Austria and Switzerland, for example.">
+  {% for code, label in countries.items() %}
+  <option value="{{ code }}" {{ 'selected' if details.country == code }}>{{ label }}</option>
+  {% endfor %}
+</select>
+<p class="hint">There are more fields &mdash; VAT number, company number, who is responsible &mdash;
+  on the Legal pages screen when you need them.</p>

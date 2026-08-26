@@ -1,0 +1,2314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ (site_settings.site_title ~ ' — ' ~ site_settings.site_tagline) if (page.is_home and site_settings.site_tagline) else (site_settings.site_title if page.is_home else (page.title ~ ' — ' ~ site_settings.site_title)) }}</title>
+  {% if page.meta_description %}<meta name="description" content="{{ page.meta_description }}">{% elif site_settings.site_tagline %}<meta name="description" content="{{ site_settings.site_tagline }}">{% endif %}
+  {% if site_settings.favicon_url %}<link rel="icon" href="{{ site_settings.favicon_url }}">{% endif %}
+  <link rel="stylesheet" href="{{ static_url('css/site-base.css') }}">
+  {% if google_fonts_url %}
+  <link rel="stylesheet" href="{{ google_fonts_url }}" data-cms-theme-asset="fonts">
+  {% endif %}
+  {% if template and template.css_path %}
+  <link rel="stylesheet" href="{{ url_for('static', filename=template.css_path) }}" data-cms-theme-asset="theme">
+  {% endif %}
+  {% if color_css %}
+  <style data-cms-theme-asset="colors">{{ color_css | safe }}</style>
+  {% endif %}
+  {% if logged_in %}
+  {# data-cms-theme-end marks where the swappable theme assets above stop:
+     applying a template replaces those four in place without a page load
+     (see admin/live-refresh.js), and one that was not on the page before
+     is inserted just before this link so it still lands after site-base.css
+     and in the same order as the server would have rendered it. #}
+  <link rel="stylesheet" href="{{ static_url('css/inline-editor.css') }}" data-cms-theme-end>
+  {% endif %}
+  {% if google_fonts_preview_url %}
+  {# Only fetched while actively editing (see google_font_choices/
+     google_fonts_preview_url in _render_page) — real visitors never pay
+     for it. Loads every GOOGLE_FONT_CHOICES family at once so the Fonts
+     panel's individual-font dropdowns can render each <option> in its
+     own actual typeface (a "style revealing dropdown"), not just its
+     name in plain text. #}
+  <link rel="stylesheet" href="{{ google_fonts_preview_url }}" data-cms-theme-asset="font-preview">
+  {% endif %}
+</head>
+{% set body_sidebar_width_px = sidebar_sections[0].sidebar_width_px if sidebar_sections and sidebar_sections[0].sidebar_width == 'custom' and sidebar_sections[0].sidebar_width_px else none %}
+{% set body_sidebar_right_width_px = sidebar_right_sections[0].sidebar_width_px if sidebar_right_sections and sidebar_right_sections[0].sidebar_width == 'custom' and sidebar_right_sections[0].sidebar_width_px else none %}
+{% set body_style_parts = [] %}
+{% if page.bg_color %}{% set _ = body_style_parts.append('background-color:' ~ page.bg_color) %}{% endif %}
+{# A picture behind the whole page. Fixed makes the content travel over a
+   still image; scroll makes the image travel with it, which is what turns
+   a tall backdrop into something that frames the page's own structure. #}
+{% if page.bg_image %}
+{% set _ = body_style_parts.append("background-image:url('" ~ page.bg_image ~ "')") %}
+{% set _ = body_style_parts.append('background-size:cover') %}
+{% set _ = body_style_parts.append('background-position:center top') %}
+{% set _ = body_style_parts.append('background-attachment:' ~ ('scroll' if page.bg_attach == 'scroll' else 'fixed')) %}
+{% endif %}
+{% if body_sidebar_width_px %}{% set _ = body_style_parts.append('--cms-sidebar-width:' ~ body_sidebar_width_px ~ 'px') %}{% endif %}
+{% if body_sidebar_right_width_px %}{% set _ = body_style_parts.append('--cms-sidebar-right-width:' ~ body_sidebar_right_width_px ~ 'px') %}{% endif %}
+<body class="{{ 'cms-page-bg cms-page-veil-' ~ (page.bg_overlay or 'none') ~ ' cms-page-surface-' ~ (page.bg_surface or 'plain') if page.bg_image }} {{ 'cms-logged-in' if logged_in }} {{ 'cms-editing' if editing }} nav-layout-{{ nav_layout }} {{ 'has-sidebar' if editing or sidebar_sections }} {{ 'has-sidebar-right' if editing or sidebar_right_sections }} {{ 'sidebar-reach-full' if sidebar_sections and sidebar_sections[0].layout_width == 'full' }} {{ 'sidebar-right-reach-full' if sidebar_right_sections and sidebar_right_sections[0].layout_width == 'full' }}" {% if editing %}data-save-template-url="{{ url_for('admin.template_save_current') }}"{% endif %} {{ ('style="' ~ body_style_parts | join('; ') ~ ';"') | safe if body_style_parts }}>
+  {% if logged_in %}
+  <div class="cms-admin-bar">
+    <span>{{ '✏️ Editing your site' if editing else '👁 Viewing as a visitor' }}</span>
+    <select class="cms-mode-select" onchange="location = this.value" title="Switch between editing and viewing the site as a visitor would see it">
+      <option value="{{ url_for('auth.set_view_mode', mode='editing', next=current_path) }}" {{ 'selected' if editing }}>✏️ Editing</option>
+      <option value="{{ url_for('auth.set_view_mode', mode='viewing', next=current_path) }}" {{ 'selected' if not editing }}>👁 Viewing</option>
+    </select>
+    {% if editing and nav_pages %}
+    {# The live nav's own links don't navigate while editing (see the
+       is_menu contenteditable note above) — clicking one is how you
+       select/drag it, not how you leave the page. This is the way back:
+       a plain page picker that always works, regardless of what the
+       current theme's header layout is doing (collapsed behind a
+       hamburger, a sidebar rail, whatever). #}
+    <select class="cms-mode-select" onchange="if (this.value) location = this.value" title="Jump to another page to edit it">
+      <option value="">📄 Switch page…</option>
+      {% for p in nav_pages %}
+      <option value="{{ url_for('public.home') if p.is_home else url_for('public.page', slug=p.slug) }}" {{ 'selected' if p.id == page.id }}>{{ p.title }}</option>
+      {% endfor %}
+    </select>
+    {% endif %}
+    <a href="{{ url_for('admin.dashboard') }}">Dashboard</a>
+    <a href="{{ url_for('auth.account') }}">Account</a>
+    <a href="{{ url_for('auth.logout') }}">Log out</a>
+  </div>
+  {#  The send controls, on the page they belong to. They used to be on
+      the Newsletters screen only, which meant writing an issue here and
+      then going somewhere else to look at it and send it -- with no way,
+      from that screen, to see which part of the page you were about to
+      post. This is the app talking, so it is chrome: the editor's own
+      type, its own accent, its own corners. #}
+  {% if editing and newsletter_send %}
+  {% include "partials/newsletter_bar.html" %}
+  {% endif %}
+  {% include "partials/assistant_panel.html" %}
+  {% if editing and content_tools %}
+  {% include "partials/tools_panel.html" %}
+  {% endif %}
+  {% if editing %}
+  {% include "partials/colors_panel.html" %}
+  {% include "partials/style_panel.html" %}
+  {% include "partials/template_panel.html" %}
+  {% endif %}
+  {% endif %}
+
+  {% macro wysiwyg_toolbar() %}
+    <div class="cms-wysiwyg-toolbar">
+      <button type="button" data-cmd="bold" title="Bold"><b>B</b></button>
+      <button type="button" data-cmd="italic" title="Italic"><i>I</i></button>
+      <button type="button" data-cmd="underline" title="Underline"><u>U</u></button>
+      <button type="button" data-cmd="insertUnorderedList" title="Bullet list">&bull; List</button>
+      <button type="button" data-cmd="formatBlock" data-value="h2" title="Heading">H2</button>
+      <button type="button" data-cmd="formatBlock" data-value="p" title="Paragraph">¶</button>
+      <button type="button" data-cmd="createLink" title="Link">🔗</button>
+      <button type="button" data-cmd="justifyLeft" title="Align left">⯇</button>
+      <button type="button" data-cmd="justifyCenter" title="Align center">☰</button>
+      <button type="button" data-cmd="justifyRight" title="Align right">⯈</button>
+      <button type="button" data-cmd="justifyFull" title="Justify">▤</button>
+      <select data-cmd="fontName" title="Font" class="cms-toolbar-select">
+        <option value="">Font…</option>
+        <optgroup label="System">
+          <option value="Arial, sans-serif">Arial</option>
+          <option value="Georgia, serif">Georgia</option>
+          <option value="'Times New Roman', serif">Times New Roman</option>
+          <option value="'Courier New', monospace">Courier New</option>
+          <option value="Verdana, sans-serif">Verdana</option>
+          <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+        </optgroup>
+        {% if google_font_choices %}
+        <optgroup label="Google Fonts">
+          {% for name, fallback in google_font_choices %}
+          <option value="'{{ name }}', {{ fallback }}" style="font-family: '{{ name }}', {{ fallback }};">{{ name }}</option>
+          {% endfor %}
+        </optgroup>
+        {% endif %}
+      </select>
+      <label class="cms-color-label" title="Text color">A
+        <input type="color" data-cmd="foreColor" value="#000000">
+      </label>
+      <button type="button" class="cms-color-reset" data-reset-cmd="foreColor" title="Reset text color to the theme's default">⟲A</button>
+      <label class="cms-color-label cms-color-label-bg" title="Highlight / cell color">A
+        <input type="color" data-cmd="hiliteColor" value="#ffff00">
+      </label>
+      <button type="button" class="cms-color-reset" data-reset-cmd="hiliteColor" title="Remove the highlight color">⟲A</button>
+      <button type="button" class="cms-insert-image-btn" title="Insert an image here">🖼️ Image</button>
+      <input type="file" class="cms-insert-image-input" accept="image/*" hidden>
+      <button type="button" class="cms-insert-icon-btn" title="Insert an icon here">{{ icon_svg(icon_choices[0][0] if icon_choices else '') | safe }} Icon</button>
+    </div>
+  {% endmacro %}
+
+  {% from "partials/icon_picker.html" import icon_picker_grid with context %}
+  {%- macro wysiwyg_body(content, save_url, extra_class='', editable=true) %}
+    {#- The editable words of a tool: the one place this markup is written.
+        Nine call sites had their own copy of it — five in render_cell, four
+        in the section chain — differing only in an extra class and where
+        the content and the save URL came from. That is the shape of the
+        whole duplication problem in miniature: two renderers for one tool,
+        so a change to how editing works had to be made in both and a fix
+        could land in one. -#}
+    <div class="{{ (extra_class ~ ' ') if extra_class }}cms-wysiwyg-body" {{ 'contenteditable="true"' | safe if editing and editable }}{% if editing %} data-field="content" data-save-url="{{ save_url }}"{% endif %}>{{ content | safe }}</div>
+  {%- endmacro %}
+
+  {%- macro edit_field(field, save_url, editable=true) -%}
+    {#- The attributes that exist only so the editor can write this
+        element back. A visitor's copy of the page carries none of them:
+        the script that reads them (inline-editor.js) is not even loaded
+        unless the admin is editing, so every one of them was weight on
+        the wire and a list of admin endpoints and row numbers published
+        to people who cannot use them. Attributes the PAGE needs —
+        data-layout-width, data-corner-style, data-shadow-style — are not
+        in here; they style the site and stay in both views. -#}
+    {%- if editing %} {{ 'contenteditable="true"' | safe if editable }} data-field="{{ field }}" data-save-url="{{ save_url }}"{% endif -%}
+  {%- endmacro %}
+
+  {%- macro contact_config_fields(block) -%}
+    {# One line per contact: what it is, what it says, whether to print it,
+       and a + / - at the end of that line. The link is worked out from
+       what was typed (see contact_link) so nobody types a mailto:, and
+       the kind is left to choose the icon. Every control is labelled by
+       its tooltip alone — a row that spelled out "Line 3", "Icon" and
+       "Print" would be three words of furniture per contact. #}
+    {% set rows = block.contact or [] %}
+    {% set row_count = rows | length if rows else 1 %}
+    <input type="hidden" name="row_count" value="{{ row_count }}">
+    <div class="cms-config-row">
+      <select name="layout" title="How the lines sit: side by side suits a footer strip, one per line suits a sidebar or a contact page.">
+        {% for key, label in contact_layouts %}
+        <option value="{{ key }}" {{ 'selected' if (block.contact_layout or 'row') == key }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      {# Off, the icons take whatever size the zone around them already
+         uses — right nearly everywhere, so it is the default. On, the
+         slider sets them, and only them: the words keep following the
+         site. #}
+      <input type="checkbox" name="icon_size_on" value="1" {{ 'checked' if block.contact_icon_size }}
+             title="Set the icon size yourself. Off, the icons follow the size of everything around them.">
+      <input type="range" name="icon_size" class="cms-contact-icon-size"
+             min="{{ contact_icon_min }}" max="{{ contact_icon_max }}"
+             value="{{ block.contact_icon_size or contact_icon_default }}"
+             title="How big the icons are, in pixels. Only used when the box beside it is ticked.">
+    </div>
+    <p class="hint">Each line shows its own icon and is clickable — an email opens the visitor's mail app, a number dials, a link opens that page. Untick to show the icon on its own, with the address on hover.</p>
+    {% for i in range(row_count) %}
+    {% set row = rows[i] if i < rows | length else {} %}
+    <div class="cms-config-row cms-contact-row">
+      <button type="button" class="cms-contact-icon-pick" data-row="{{ i }}"
+              title="Choose the icon for this line">{{ icon_svg(row.get('icon') or '🔗') | safe }}</button>
+      <input type="hidden" name="icon_{{ i }}" value="{{ row.get('icon', '') }}">
+      <input type="text" name="value_{{ i }}" value="{{ row.get('value', '') }}"
+             class="cms-contact-value"
+             title="A number, an email address, a web address, or words such as a copyright line. What you type decides what it becomes: an email opens a mail app, a number dials, an address opens that page, plain words stay text.">
+      <input type="checkbox" name="show_{{ i }}" value="1" {{ 'checked' if row.get('show', True) }}
+             title="Print the address as text. Unticked shows the icon on its own, with the address on hover.">
+      <button type="submit" name="op" value="add_{{ i }}" title="Add a line below this one">+</button>
+      <button type="submit" name="op" value="del_{{ i }}" title="Remove this line">&minus;</button>
+    </div>
+    {% endfor %}
+    {# One grid for the whole form, opened next to whichever line's icon
+       button was pressed — the same picker the Menu tool and the WYSIWYG
+       use, so icons are chosen by looking at them rather than by name. #}
+    {{ icon_picker_grid(include_none=false) }}
+  {%- endmacro %}
+
+  {% macro tool_corner_select(save_url, current, field='tool_corner_style') %}
+    {# The innermost of the three Corners levels. The site-wide setting
+       shapes everything, a section's own setting shapes that section and
+       what is in it, and this shapes only this tool — so a sharp section
+       can hold a pill card. Nothing arbitrates between them in code: the
+       value is a custom property, so the closest element that sets one
+       wins for its own subtree (see site-base.css). #}
+    <select class="cms-tool-corner-select" data-corner-field="{{ field }}"
+            title="Corners for this tool only — overrides its section's Corners, and the site-wide setting"
+            data-save-url="{{ save_url }}">
+      <option value="">Corners: follow section</option>
+      {% for key, preset in shape_presets.items() %}
+      <option value="{{ key }}" {{ 'selected' if current == key }}>Corners: {{ preset.name }}</option>
+      {% endfor %}
+    </select>
+  {% endmacro %}
+
+  {% macro tool_shadow_select(save_url, current, field='tool_shadow_style') %}
+    {# Depth's tool level. Same three tiers as Corners and resolved the
+       same way — whichever element sets --site-shadow closest wins — so a
+       raised card can sit inside a flat section. #}
+    <select class="cms-tool-shadow-select" data-shadow-field="{{ field }}"
+            title="Depth for this tool only — overrides its section's Depth, and the site-wide setting"
+            data-save-url="{{ save_url }}">
+      <option value="">Depth: follow section</option>
+      {% for key, preset in shadow_presets.items() %}
+      <option value="{{ key }}" {{ 'selected' if current == key }}>Depth: {{ preset.name }}</option>
+      {% endfor %}
+    </select>
+  {% endmacro %}
+
+  {%- macro image_controls(save_url, item, upload_url, generate_url, apply_url) -%}
+    {# THE Image tool's controls. One definition, called from the section
+       chain and from render_cell, because a picture in a column is the
+       same tool as a picture in a section. They had drifted: a cell
+       offered no width, no caption, and two cut-out shapes against the
+       section's five — differences nobody chose, which is what happens
+       when one tool is written out twice. #}
+    <input type="text" class="cms-link-input" placeholder="Link URL (optional)"
+           value="{{ item.link_url or '' }}" data-save-url="{{ save_url }}" data-field="link_url"
+           title="Make the image a link">
+    <select class="cms-anim-select" title="Animation" data-save-url="{{ save_url }}">
+      <option value="none" {{ 'selected' if not item.animation or item.animation == 'none' }}>No animation</option>
+      <option value="fade-in" {{ 'selected' if item.animation == 'fade-in' }}>Fade in</option>
+      <option value="zoom-hover" {{ 'selected' if item.animation == 'zoom-hover' }}>Zoom on hover</option>
+    </select>
+    <select class="cms-width-select" title="Image size" data-save-url="{{ save_url }}">
+      <option value="small" {{ 'selected' if item.width == 'small' }}>Small</option>
+      <option value="medium" {{ 'selected' if item.width == 'medium' }}>Medium</option>
+      <option value="large" {{ 'selected' if item.width == 'large' }}>Large</option>
+      <option value="full" {{ 'selected' if item.width == 'full' }}>Full width</option>
+    </select>
+    {# Cutting a picture into a shape and rounding its corners are two
+       different jobs, and used to be two half-overlapping lists. This one
+       crops; Corners (Colors panel) rounds, for the whole site or for one
+       section. #}
+    <select class="cms-mask-select" title="Crop this picture to a shape. For rounded corners use Corners in the Colors panel, which shapes the whole site or just this section." data-save-url="{{ save_url }}">
+      <option value="none" {{ 'selected' if not item.mask_shape or item.mask_shape == 'none' }}>Cut out: none</option>
+      <option value="circle" {{ 'selected' if item.mask_shape == 'circle' }}>Cut out: Circle</option>
+      <option value="diamond" {{ 'selected' if item.mask_shape == 'diamond' }}>Cut out: Diamond</option>
+      <option value="hexagon" {{ 'selected' if item.mask_shape == 'hexagon' }}>Cut out: Hexagon</option>
+      <option value="star" {{ 'selected' if item.mask_shape == 'star' }}>Cut out: Star</option>
+    </select>
+    <input type="text" class="cms-caption-input" placeholder="Caption (optional)"
+           value="{{ item.caption or '' }}" data-save-url="{{ save_url }}" data-field="caption"
+           title="A line printed under the picture saying what it is — leave empty for no caption">
+    <button type="button" class="cms-change-image-btn" title="Upload an image from your device">⬆ Upload</button>
+    <input type="file" class="cms-image-file-input" data-upload-url="{{ upload_url }}" accept="image/*" hidden>
+    <button type="button" class="cms-generate-image-btn" data-generate-url="{{ generate_url }}"
+            data-apply-url="{{ apply_url }}" data-kind="image" title="Generate an image with AI">✨ Generate</button>
+    <button type="button" class="cms-library-pick-btn" data-apply-url="{{ apply_url }}" data-kind="image"
+            title="Choose an existing image from the Media Library">📚 Library</button>
+  {%- endmacro %}
+
+  {%- macro image_tool(item, save_url, title=none, corner_style=none, shadow_style=none, extra_class='') -%}
+    {# And the picture itself, rendered the same way in both places. #}
+    {# Built as a list and joined, so the attribute is one tidy string. A
+       class written across three lines of Jinja carries the newlines and
+       the indentation into the page, and anything reading the markup back
+       -- the render check did -- sees a different tool. #}
+    {%- set img_classes = ['block', 'block-image', 'cms-img-' ~ (item.width or 'normal'),
+        'cms-mask-' ~ (item.mask_shape or 'none')]
+        + (['cms-anim-' ~ item.animation] if item.animation and item.animation != 'none' else [])
+        + ([extra_class] if extra_class else []) -%}
+    <section class="{{ img_classes | join(' ') }}"
+             {{ ('data-corner-style="' ~ corner_style ~ '"') | safe if corner_style }}
+             {{ ('data-shadow-style="' ~ shadow_style ~ '"') | safe if shadow_style }}>
+      {% if title %}<h2 {{ edit_field('title', save_url) }}>{{ title }}</h2>{% endif %}
+      {% if item.content %}
+        {# A caption makes this a <figure>: the words are then part of the
+           picture rather than a paragraph that happens to sit under it,
+           which is what a screen reader needs to read them together. No
+           caption, no wrapper — an existing site's markup does not change
+           just because the field exists. #}
+        {% if item.caption %}<figure class="cms-image-figure">{% endif %}
+        {% if item.link_url %}<a href="{{ item.link_url }}">{% endif %}
+        <img src="{{ item.content }}" alt="{{ title or '' }}" class="cms-managed-image">
+        {% if item.link_url %}</a>{% endif %}
+        {% if item.caption %}<figcaption>{{ item.caption }}</figcaption></figure>{% endif %}
+      {% elif editing %}<div class="cms-image-placeholder">Click "Upload", "Generate" or "Library" above to add an image</div>{% endif %}
+    </section>
+  {%- endmacro %}
+
+  {%- macro embed_code_button() -%}
+    {# The raw-HTML escape hatch, which existed only for a section. An
+       Embed dropped into a column could not have its code edited at all,
+       which is close to the whole point of the tool -- so the tool did
+       one thing in one place and something less in another. #}
+    <button type="button" class="cms-edit-html-btn" title="Edit raw HTML/script">&lt;/&gt;</button>
+  {%- endmacro %}
+
+  {%- macro embed_code_editor(save_url, raw) -%}
+    {% if editing %}
+    <div class="cms-html-editor" hidden>
+      <textarea data-save-url="{{ save_url }}">{{ raw }}</textarea>
+      <button type="button" class="cms-save-html-btn">Save HTML</button>
+    </div>
+    {% endif %}
+  {%- endmacro %}
+
+  {%- macro media_controls(save_url, item, upload_url, generate_url) -%}
+    {# THE Media Player's controls, once. The two copies had drifted the
+       way two copies do: a section could set the Player size and a cell
+       could not, so the same tool answered a different question depending
+       on which side of a column it stood. #}
+    <select class="cms-media-type-select" title="Media type" data-save-url="{{ save_url }}">
+      {#  Unset means YouTube, which is what the tool renders as -- a
+          section's column carries that default and a fresh cell does
+          not, so without this the same tool showed nothing selected in
+          a column. Same shape as the File tool's display select. #}
+      <option value="youtube" {{ 'selected' if not item.media_type or item.media_type == 'youtube' }}>YouTube link</option>
+      <option value="video" {{ 'selected' if item.media_type == 'video' }}>Uploaded video</option>
+      <option value="audio" {{ 'selected' if item.media_type == 'audio' }}>Uploaded audio</option>
+    </select>
+    <select class="cms-width-select" title="Player size" data-save-url="{{ save_url }}">
+      <option value="small" {{ 'selected' if item.width == 'small' }}>Small</option>
+      <option value="medium" {{ 'selected' if item.width == 'medium' }}>Medium</option>
+      <option value="large" {{ 'selected' if item.width == 'large' }}>Large</option>
+      <option value="full" {{ 'selected' if item.width == 'full' }}>Full width</option>
+    </select>
+    {#  Unset means YouTube here too, and for the same reason as the
+        select above: a section's column carries the default, a fresh
+        cell carries nothing, and without this the same tool offered a
+        link box in one place and an upload button in the other. #}
+    {% if not item.media_type or item.media_type == 'youtube' %}
+    <input type="text" class="cms-youtube-input" placeholder="Paste a YouTube link"
+           value="{{ item.content or '' }}" data-save-url="{{ save_url }}" data-field="content">
+    {% else %}
+    <button type="button" class="cms-change-media-btn" title="Upload audio or video">🎬 Change Media</button>
+    <input type="file" class="cms-media-file-input" data-upload-url="{{ upload_url }}" accept="video/*,audio/*" hidden>
+    {% if item.media_type == 'video' %}
+    <button type="button" class="cms-generate-video-btn" data-generate-url="{{ generate_url }}"
+            title="Generate a video with AI">🎥 Generate</button>
+    {% endif %}
+    {% endif %}
+  {%- endmacro %}
+
+  {%- macro media_tool(item, save_url, title=none, corner_style=none, shadow_style=none, extra_class='') -%}
+    {# And the player itself. A cell used to render this into a bare div,
+       so it carried neither the block-media class nor the size the
+       control above sets -- which is the other half of why Player size
+       was missing there: there was nothing for it to act on. #}
+    {%- set media_classes = ['block', 'block-media', 'cms-img-' ~ (item.width or 'normal')]
+        + ([extra_class] if extra_class else []) -%}
+    <section class="{{ media_classes | join(' ') }}"
+             {{ ('data-corner-style="' ~ corner_style ~ '"') | safe if corner_style }}
+             {{ ('data-shadow-style="' ~ shadow_style ~ '"') | safe if shadow_style }}>
+      {% if title %}<h2 {{ edit_field('title', save_url) }}>{{ title }}</h2>{% endif %}
+      {% if item.media_type == 'youtube' %}
+        {% if item.youtube_id %}
+        <div class="cms-media-responsive">
+          <iframe src="https://www.youtube-nocookie.com/embed/{{ item.youtube_id }}"
+                  title="{{ title or 'YouTube video' }}"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowfullscreen></iframe>
+        </div>
+        {% elif editing %}<div class="cms-image-placeholder">Paste a YouTube link above</div>{% endif %}
+      {% elif item.content %}
+        {% if item.media_type == 'video' %}<video controls src="{{ item.content }}"></video>
+        {% else %}<audio controls src="{{ item.content }}"></audio>{% endif %}
+      {% elif editing %}<div class="cms-image-placeholder">Click "Change Media" above to upload {{ item.media_type }}</div>{% endif %}
+    </section>
+  {%- endmacro %}
+
+  {%- macro text_tool(content, save_url, title=none, title_save_url=none, corner_style=none, shadow_style=none, extra_class='') -%}
+    {# THE Text tool. One definition, called from the section chain and
+       from render_cell, because a Text tool in a footer column and a Text
+       tool in the body are the same tool and an admin has no way of
+       knowing why they would differ. They did differ: a cell's Text was
+       missing the Corners and Depth controls every other cell tool had,
+       and carried none of the tool-level attributes that make those
+       controls work, so the footer's Text was quietly a lesser tool than
+       the body's. See BOW.md's "one renderer per tool" -- this is that
+       job, done for the first of them. #}
+    {%- set text_classes = ['block', 'block-text'] + ([extra_class] if extra_class else []) -%}
+    <section class="{{ text_classes | join(' ') }}"
+             {{ ('data-corner-style="' ~ corner_style ~ '"') | safe if corner_style }}
+             {{ ('data-shadow-style="' ~ shadow_style ~ '"') | safe if shadow_style }}>
+      {% if title %}<h2 {{ edit_field('title', title_save_url or save_url) }}>{{ title }}</h2>{% endif %}
+      {{ wysiwyg_body(content, save_url) }}
+    </section>
+  {%- endmacro %}
+
+  {% macro tool_header(label, remove_url=none, remove_confirm=none, corner_save_url=none, corner_current=none, corner_field='tool_corner_style', shadow_current=none, shadow_field='tool_shadow_style') %}
+    <div class="cms-tool-header">
+      <span class="cms-tool-header-label">{{ label }}</span>
+      <div class="cms-tool-header-controls">{{ caller() if caller }}{% if corner_save_url %}{{ tool_corner_select(corner_save_url, corner_current, corner_field) }}{{ tool_shadow_select(corner_save_url, shadow_current, shadow_field) }}{% endif %}</div>
+      {% if remove_url %}
+      {# cms-delete-form is what binds the "are you sure" dialog (see
+         inline-editor.js) — data-confirm alone does nothing, and a × that
+         deletes a section on the first click without asking is exactly
+         the accident this class exists to prevent. #}
+      <form method="post" action="{{ remove_url }}"
+            class="cms-inline-form cms-tool-remove-form{{ ' cms-delete-form' if remove_confirm }}"
+            {{ ('data-confirm="' ~ remove_confirm ~ '"') | safe if remove_confirm }}>
+        <input type="hidden" name="next" value="{{ current_path }}">
+        <button type="submit" class="cms-section-delete-btn" title="{{ 'Delete this section' if remove_confirm else 'Remove this tool' }}">&times;</button>
+      </form>
+      {% endif %}
+    </div>
+  {% endmacro %}
+
+
+  {% macro menu_config_fields(cell, nav_pages) %}
+    {% set items = cell.menu_items or [] %}
+    {% set page_item_ids = items | selectattr('type', 'equalto', 'page') | map(attribute='id') | list %}
+    <div class="cms-menu-builder" data-style="{{ cell.menu_style or 'plain' }}" data-items='{{ items | tojson }}'>
+      <div class="cms-menu-builder-row">
+        <select name="menu_style" class="cms-menu-style-select" onchange="this.form.requestSubmit()" title="Menu display style">
+          <option value="plain" {{ 'selected' if cell.menu_style == 'plain' }}>Plain links</option>
+          <option value="buttons" {{ 'selected' if cell.menu_style == 'buttons' }}>Buttons</option>
+          <option value="dropdown" {{ 'selected' if cell.menu_style == 'dropdown' }}>Dropdown (submenus)</option>
+        </select>
+        <select name="menu_size" onchange="this.form.requestSubmit()" title="Font size">
+          <option value="small" {{ 'selected' if cell.menu_size == 'small' }}>Small</option>
+          <option value="medium" {{ 'selected' if not cell.menu_size or cell.menu_size == 'medium' }}>Medium</option>
+          <option value="large" {{ 'selected' if cell.menu_size == 'large' }}>Large</option>
+        </select>
+        <select name="menu_font" class="cms-menu-font-select" onchange="this.form.requestSubmit()" title="Font">
+          <option value="">Theme font</option>
+          <option value="arial" {{ 'selected' if cell.menu_font == 'arial' }}>Arial</option>
+          <option value="georgia" {{ 'selected' if cell.menu_font == 'georgia' }}>Georgia</option>
+          <option value="times" {{ 'selected' if cell.menu_font == 'times' }}>Times New Roman</option>
+          <option value="courier" {{ 'selected' if cell.menu_font == 'courier' }}>Courier New</option>
+          <option value="verdana" {{ 'selected' if cell.menu_font == 'verdana' }}>Verdana</option>
+          <option value="trebuchet" {{ 'selected' if cell.menu_font == 'trebuchet' }}>Trebuchet MS</option>
+        </select>
+        <select name="menu_link_style" onchange="this.form.requestSubmit()" title="Link style">
+          <option value="normal" {{ 'selected' if not cell.menu_link_style or cell.menu_link_style == 'normal' }}>Normal</option>
+          <option value="bold" {{ 'selected' if cell.menu_link_style == 'bold' }}>Bold</option>
+          <option value="uppercase" {{ 'selected' if cell.menu_link_style == 'uppercase' }}>Uppercase</option>
+        </select>
+        {% if cell.menu_style == 'buttons' %}
+        <select name="menu_button_style" onchange="this.form.requestSubmit()" title="Button style">
+          <option value="solid" {{ 'selected' if not cell.menu_button_style or cell.menu_button_style == 'solid' }}>Solid</option>
+          <option value="outline" {{ 'selected' if cell.menu_button_style == 'outline' }}>Outline</option>
+          <option value="soft" {{ 'selected' if cell.menu_button_style == 'soft' }}>Soft (tinted)</option>
+          <option value="floating" {{ 'selected' if cell.menu_button_style == 'floating' }}>Floating (pill + shadow)</option>
+          <option value="tabs" {{ 'selected' if cell.menu_button_style == 'tabs' }}>Tabs (underline)</option>
+          <option value="fade" {{ 'selected' if cell.menu_button_style == 'fade' }}>Fade (gradient)</option>
+        </select>
+        {% endif %}
+        {% if cell.menu_style == 'dropdown' %}
+        <select name="menu_submenu_style" onchange="this.form.requestSubmit()" title="Submenu style">
+          <option value="card" {{ 'selected' if not cell.menu_submenu_style or cell.menu_submenu_style == 'card' }}>Card</option>
+          <option value="minimal" {{ 'selected' if cell.menu_submenu_style == 'minimal' }}>Minimal</option>
+          <option value="dark" {{ 'selected' if cell.menu_submenu_style == 'dark' }}>Dark</option>
+          <option value="bordered" {{ 'selected' if cell.menu_submenu_style == 'bordered' }}>Bordered</option>
+          <option value="pill" {{ 'selected' if cell.menu_submenu_style == 'pill' }}>Pill items</option>
+        </select>
+        {% endif %}
+        <select name="menu_align" onchange="this.form.requestSubmit()" title="Alignment">
+          <option value="left" {{ 'selected' if not cell.menu_align or cell.menu_align == 'left' }}>Left</option>
+          <option value="center" {{ 'selected' if cell.menu_align == 'center' }}>Center</option>
+          <option value="right" {{ 'selected' if cell.menu_align == 'right' }}>Right</option>
+        </select>
+        <select name="menu_direction" onchange="this.form.requestSubmit()" title="Direction — defaults to vertical when dropped in a sidebar, horizontal elsewhere; override anytime">
+          <option value="horizontal" {{ 'selected' if not cell.menu_direction or cell.menu_direction == 'horizontal' }}>Horizontal</option>
+          <option value="vertical" {{ 'selected' if cell.menu_direction == 'vertical' }}>Vertical</option>
+        </select>
+        <label class="cms-menu-align-label"><input type="checkbox" name="menu_text_color_on" {{ 'checked' if cell.menu_text_color }} onchange="this.form.requestSubmit()"> {{ 'button color' if cell.menu_style == 'buttons' else 'text' }}</label>
+        <input type="color" name="menu_text_color" value="{{ cell.menu_text_color or ('#2563eb' if cell.menu_style == 'buttons' else '#1f2430') }}" onchange="this.form.requestSubmit()" title="{{ 'Button color' if cell.menu_style == 'buttons' else 'Text color' }}">
+        <label class="cms-menu-align-label"><input type="checkbox" name="menu_bg_color_on" {{ 'checked' if cell.menu_bg_color }} onchange="this.form.requestSubmit()"> bg</label>
+        <input type="color" name="menu_bg_color" value="{{ cell.menu_bg_color or '#ffffff' }}" onchange="this.form.requestSubmit()" title="Background color">
+        <label class="cms-menu-align-label"><input type="checkbox" name="menu_highlight_current" {{ 'checked' if cell.menu_highlight_current }} onchange="this.form.requestSubmit()"> highlight current</label>
+        <div class="cms-menu-pages-picker">
+          <button type="button" class="cms-menu-pages-btn">Items ({{ items | length }}) ▾</button>
+          <div class="cms-menu-pages-dropdown" hidden>
+            {# Selection only — checked state already shows what's in the menu.
+               Order, nesting, and removal all happen on the live rendered
+               menu itself now (drag to reorder; drop onto another item to
+               nest it, drop in empty space to un-nest; the small × on a
+               live item removes it) — see the drag/remove wiring below. #}
+            <div class="cms-menu-pages-add">
+              {% for p in nav_pages %}
+              <label class="cms-menu-page-check">
+                <input type="checkbox" class="cms-menu-page-toggle" value="{{ p.id }}" data-title="{{ p.title }}" {{ 'checked' if p.id in page_item_ids }}>
+                <span class="cms-menu-page-title">{{ p.title }}</span>
+                <button type="button" class="cms-menu-icon-pick" data-page-id="{{ p.id }}" data-target-label="{{ p.title }}" title="Choose icon" hidden><span class="cms-icon-pick-preview"></span></button>
+                <button type="button" class="cms-menu-page-rename" data-page-id="{{ p.id }}" data-rename-url="{{ url_for('admin.page_rename', page_id=p.id) }}" title="Rename this page">✎</button>
+                {% if not p.is_home %}
+                <button type="button" class="cms-menu-page-delete" data-page-id="{{ p.id }}" data-page-title="{{ p.title }}" data-delete-url="{{ url_for('admin.page_delete', page_id=p.id) }}" title="Delete this page">🗑</button>
+                {% endif %}
+              </label>
+              {% endfor %}
+            </div>
+            <div class="cms-menu-pages-divider-rule"></div>
+            <div class="cms-menu-newpage-add">
+              <input type="text" class="cms-menu-newpage-title" placeholder="New page name">
+              <select class="cms-menu-newpage-type" title="Page type">
+                <option value="standard">Blank page</option>
+                <option value="blog">Blog</option>
+                <option value="contact">Contact form</option>
+              </select>
+              <button type="button" class="cms-menu-newpage-btn" data-create-url="{{ url_for('admin.page_new') }}" title="Create a new page and add it to this menu">+ Page</button>
+            </div>
+            <div class="cms-menu-custom-add">
+              <input type="text" class="cms-menu-custom-label" placeholder="Label">
+              <input type="text" class="cms-menu-custom-url" placeholder="URL or #anchor">
+              <button type="button" class="cms-menu-icon-pick cms-menu-custom-icon-pick" data-target-label="this link" title="Choose icon"><span class="cms-icon-pick-preview"></span></button>
+              <button type="button" class="cms-menu-custom-add-btn">+ Link</button>
+            </div>
+            <button type="button" class="cms-menu-divider-add-btn">+ Divider</button>
+          </div>
+          {{ icon_picker_grid() }}
+        </div>
+      </div>
+      <input type="hidden" name="menu_items" class="cms-menu-items-input" value='{{ items | tojson }}'>
+    </div>
+  {% endmacro %}
+
+  {% macro breadcrumb_config_fields(cell) %}
+    <select name="size" onchange="this.form.requestSubmit()" title="Text size">
+      <option value="small" {{ 'selected' if 'cms-breadcrumb-small' in cell.content }}>Small</option>
+      <option value="medium" {{ 'selected' if 'cms-breadcrumb-medium' in cell.content }}>Medium</option>
+      <option value="large" {{ 'selected' if 'cms-breadcrumb-large' in cell.content }}>Large</option>
+    </select>
+    <select name="style" onchange="this.form.requestSubmit()" title="Visual style">
+      <option value="plain" {{ 'selected' if 'cms-breadcrumb-style-plain' in cell.content }}>Plain</option>
+      <option value="uppercase" {{ 'selected' if 'cms-breadcrumb-style-uppercase' in cell.content }}>Uppercase</option>
+      <option value="pill" {{ 'selected' if 'cms-breadcrumb-style-pill' in cell.content }}>Pill badge</option>
+    </select>
+  {% endmacro %}
+
+  {# `col_index` (with `row_qs`) switches every URL in here from the
+     section-level routes to the Columns-cell ones. One macro rather than
+     two near-identical copies: the form is the same form, only its
+     endpoints differ — the same reasoning as banner_config_fields taking
+     its URLs as arguments. #}
+  {% macro accordion_config_fields(cell, section, col_index=none, row_qs='') %}
+    <div class="cms-accordion-style-row">
+      <label class="cms-accordion-style-label" title="How the panels are laid out on the page">Display
+        <select name="style" onchange="this.form.requestSubmit()" title="How the panels are laid out on the page">
+          {% for value, label in accordion_styles %}
+          <option value="{{ value }}" {{ 'selected' if cell.accordion and cell.accordion.style == value }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="cms-accordion-style-label" title="Let visitors click a panel to see the full picture">
+        <input type="checkbox" name="lightbox" value="1" onchange="this.form.requestSubmit()"
+               {{ 'checked' if cell.accordion and cell.accordion.lightbox }}> Click to enlarge
+      </label>
+    </div>
+    {% set panel_count = (cell.accordion.panels if cell.accordion and cell.accordion.panels else 5) %}
+    <div class="cms-accordion-style-row">
+      <span class="cms-stepper" title="Add or remove a panel at the end">
+        Panels
+        <button type="submit" name="op" value="remove_panel" title="Remove the last panel">&minus;</button>
+        <span class="cms-stepper-count">{{ panel_count }}</span>
+        <button type="submit" name="op" value="add_panel" title="Add another panel">+</button>
+      </span>
+    </div>
+    <input type="hidden" name="panel_count" value="{{ panel_count }}">
+    <p class="hint">Each panel has its own image and caption. The same panels are used whichever display you pick.</p>
+    {% for i in range(panel_count) %}
+    <div class="cms-accordion-panel-config">
+      <span class="cms-accordion-panel-config-label">Panel {{ i + 1 }}</span>
+      <input type="text" name="caption_{{ i }}" placeholder="Caption" onchange="this.form.requestSubmit()"
+             value="{{ cell.accordion_captions[i] if cell.accordion_captions and i < cell.accordion_captions|length else '' }}">
+      {% set upload_url = url_for('admin.section_accordion_image_upload', section_id=section.id, col_index=col_index, panel_index=i) ~ row_qs if col_index is not none else url_for('admin.section_accordion_image_upload', section_id=section.id, panel_index=i) %}
+      {% set generate_url = url_for('admin.section_accordion_image_generate', section_id=section.id, col_index=col_index, panel_index=i) ~ row_qs if col_index is not none else url_for('admin.section_accordion_image_generate', section_id=section.id, panel_index=i) %}
+      {% set apply_url = url_for('admin.section_accordion_image_apply', section_id=section.id, col_index=col_index, panel_index=i) ~ row_qs if col_index is not none else url_for('admin.section_accordion_image_apply', section_id=section.id, panel_index=i) %}
+      <button type="button" class="cms-change-accordion-image-btn" data-panel-index="{{ i }}" title="Upload an image for this panel">⬆</button>
+      <input type="file" class="cms-accordion-image-file-input"
+             data-upload-url="{{ upload_url }}" accept="image/*" hidden>
+      <button type="button" class="cms-generate-image-btn" data-panel-index="{{ i }}" data-kind="accordion"
+              data-generate-url="{{ generate_url }}"
+              data-apply-url="{{ apply_url }}"
+              title="Generate an image for this panel with AI">✨</button>
+    </div>
+    {% endfor %}
+  {% endmacro %}
+
+
+  {# Table tool — structure lives in the live table itself (its cells are
+     already contenteditable), so these controls edit the DOM directly and
+     ride the normal WYSIWYG save, exactly as the old table-style button
+     did. Nothing here posts to a route: a table's shape and its text are
+     one and the same piece of content. #}
+  {% macro table_config_fields(cell, save_url) %}
+    <div class="cms-table-config" data-save-url="{{ save_url }}">
+      <select class="cms-table-style-select" title="How the table should look">
+        {% for value, label in table_style_choices %}
+        <option value="{{ value }}" {{ 'selected' if cell.table and cell.table.style == value }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <label class="cms-table-config-check" title="Show a heading row across the top of the table">
+        <input type="checkbox" class="cms-table-header-toggle" {{ 'checked' if cell.table and cell.table.has_header }}> Header row
+      </label>
+      <span class="cms-stepper" title="Add or remove a row at the bottom of the table">
+        Rows
+        <button type="button" class="cms-table-row-remove" title="Remove the last row">&minus;</button>
+        <span class="cms-stepper-count cms-table-row-count">{{ cell.table.rows if cell.table else 0 }}</span>
+        <button type="button" class="cms-table-row-add" title="Add a row at the bottom">+</button>
+      </span>
+      <span class="cms-stepper" title="Add or remove a column on the right of the table">
+        Columns
+        <button type="button" class="cms-table-col-remove" title="Remove the last column">&minus;</button>
+        <span class="cms-stepper-count cms-table-col-count">{{ cell.table.cols if cell.table else 0 }}</span>
+        <button type="button" class="cms-table-col-add" title="Add a column on the right">+</button>
+      </span>
+    </div>
+    <p class="hint">Click any cell to type in it. Use the buttons above to change the table's size or look.</p>
+  {% endmacro %}
+
+  {# Video Gallery — one row per clip, each a pasted YouTube link plus an
+     optional caption. The markup (thumbnail, play badge, popup player) is
+     rebuilt from this list on every submit, so there is nothing to
+     hand-edit and no way for the two to disagree. #}
+  {% macro video_gallery_config_fields(cell, section, col_index=none, row_qs='') %}
+    {% set clips = (cell.video_gallery.clips if cell.video_gallery else []) or [] %}
+    <p class="hint">For each video: paste a YouTube link, or upload your own file with ⬆. Visitors see a thumbnail and play it in a popup either way.</p>
+    <div class="cms-video-config-row">
+      <label class="cms-video-config-label" title="How many videos sit side by side">Layout
+        <select name="layout" onchange="this.form.requestSubmit()" title="How many videos sit side by side">
+          {% for value, label in video_gallery_layouts %}
+          <option value="{{ value }}" {{ 'selected' if cell.video_gallery and cell.video_gallery.layout == value }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
+    <input type="hidden" name="clip_count" value="{{ clips | length }}">
+    {% for clip in clips %}
+    {% set upload_url = url_for('admin.section_video_gallery_clip_upload', section_id=section.id, col_index=col_index, clip_index=loop.index0) ~ row_qs if col_index is not none else url_for('admin.section_video_gallery_clip_upload', section_id=section.id, clip_index=loop.index0) %}
+    <div class="cms-video-clip-config">
+      <span class="cms-video-clip-label">{{ loop.index }}</span>
+      {# An uploaded clip's path rides along hidden — the upload route sets
+         it, and it has to survive every later rebuild (caption edit, layout
+         change, add/remove) or the upload would vanish on the next submit. #}
+      <input type="hidden" name="clip_src_{{ loop.index0 }}" value="{{ clip.src }}">
+      <input type="text" name="clip_url_{{ loop.index0 }}" value="{{ clip.url }}"
+             placeholder="{{ 'Uploaded video — paste a link to replace it' if clip.src else 'Paste a YouTube link' }}"
+             onchange="this.form.requestSubmit()"
+             title="The YouTube link for this video, or upload a file with the button on the right">
+      <input type="text" name="clip_caption_{{ loop.index0 }}" value="{{ clip.caption }}"
+             placeholder="Caption (optional)" onchange="this.form.requestSubmit()"
+             title="A short caption shown across the bottom of this video">
+      <button type="button" class="cms-change-gallery-clip-btn" title="Upload a video file for this clip">&#11014;</button>
+      <input type="file" class="cms-gallery-clip-file-input" data-upload-url="{{ upload_url }}" accept="video/*" hidden>
+      <button type="submit" name="op" value="remove_{{ loop.index0 }}" title="Remove this video">&times;</button>
+    </div>
+    {% endfor %}
+    {% if clips | length < max_video_gallery_clips %}
+    <button type="submit" name="op" value="add" class="cms-video-clip-add" title="Add another video to this gallery">+ Add video</button>
+    {% endif %}
+  {% endmacro %}
+
+  {# FAQ — a question and an answer per row, nothing else to learn. The
+     answer is a plain-text box on purpose: this tool must never become a
+     place where someone has to type markup to get a paragraph. #}
+  {% macro faq_style_fields(faq) %}
+    {# Shared by both FAQ tools: how the questions are shown is a display
+       choice, and the same text serves every one of them. #}
+    <label class="cms-faq-config-label" title="Read straight through as a document, or fold each answer away until its question is clicked">View
+      <select name="faq_style" onchange="this.form.requestSubmit()"
+              title="Read straight through as a document, or fold each answer away until its question is clicked">
+        {% for value, label in faq_views %}
+        <option value="{{ value }}" {{ 'selected' if faq.style == value }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% if faq.style != 'document' %}
+    <label class="cms-faq-config-label" title="Opening one question closes the others">
+      <input type="checkbox" name="one_at_a_time" value="1" onchange="this.form.requestSubmit()"
+             {{ 'checked' if faq.one_at_a_time }}> One open at a time
+    </label>
+    {% endif %}
+  {% endmacro %}
+
+  {% macro faq_config_fields(cell) %}
+    {# FAQ Content is one document. A real FAQ runs to dozens of questions
+       and arrives written — so it is pasted in whole here, rather than
+       typed a row at a time into boxes. Every heading is a question and
+       everything under it is that answer. #}
+    {% set faq = cell.faq or {'items': [], 'style': 'document', 'one_at_a_time': true, 'md': ''} %}
+    <div class="cms-faq-config-row">
+      <label class="cms-faq-config-label" title="What to call this set of questions, so a Reader elsewhere can pick it out. Optional if the site only has one.">Name
+        <input type="text" name="faq_name" value="{{ faq.name }}" placeholder="{{ page.title }}"
+               onchange="this.form.requestSubmit()"
+               title="What to call this set of questions, so a Reader elsewhere can pick it out">
+      </label>
+      {{ faq_style_fields(faq) }}
+      <span class="cms-faq-count" title="Questions found in the document below">{{ faq['items'] | length }} questions</span>
+    </div>
+    {% set report = faq_report if faq_report and faq_report.section == cell.id else none %}
+    {% if report %}
+    {# What went wrong, and the rules that fix it — beside the box rather
+       than somewhere else, because this is the moment they are needed.
+       The rejected text is handed back in the box below, so nothing
+       somebody just pasted is lost to an error message. #}
+    <div class="cms-faq-report">
+      <ul class="cms-faq-problems">
+        {% for problem in report.problems %}
+        <li class="is-{{ problem.level }}">
+          <strong>{{ 'Cannot save' if problem.level == 'error' else 'Check' }}</strong>
+          {{ problem.message }}
+        </li>
+        {% endfor %}
+      </ul>
+      {% if report.draft %}
+      <p class="cms-faq-rules-title">How an FAQ is written here</p>
+      <ol class="cms-faq-rules">
+        {% for rule in faq_rules %}<li>{{ rule }}</li>{% endfor %}
+      </ol>
+      {% endif %}
+    </div>
+    {% endif %}
+    {# Written on the page rather than in a box of markup. What is stored
+       is still the Q./A. document — this is a way of writing one, and
+       faq-editor.js turns the editor back into it when the form is sent.
+       Pasting from a document keeps its formatting; everything the tool
+       cannot show is dropped rather than smuggled in as invisible markup. #}
+    <div class="cms-faq-editor-bar">
+      <button type="button" data-faq-mark-question title="Turn the line the cursor is on into a question, or back into an answer">Q. Question</button>
+      <button type="button" data-cmd="bold" title="Bold"><b>B</b></button>
+      <button type="button" data-cmd="italic" title="Italic"><i>I</i></button>
+      <button type="button" data-cmd="insertUnorderedList" title="Bullet list">&bull; List</button>
+      <button type="button" data-cmd="createLink" title="Link to a page or address">&#128279;</button>
+    </div>
+    <div class="cms-faq-editor cms-wysiwyg-toolbar-target" contenteditable="true" spellcheck="true"
+         data-faq-editor
+         title="Write the FAQ here. Use Q. Question to mark a question; everything under it is its answer.">{{ (report.editor_html if report and report.editor_html else faq.editor_html) | safe }}</div>
+    {# The document the editor is turned back into, written at the moment
+       the form is sent. There is no second box showing the same FAQ a
+       different way — the editor shows the format, which is what made the
+       text view redundant. #}
+    <input type="hidden" name="faq_md" value="">
+    <p class="hint">Mark each question with <strong>Q. Question</strong>; everything under it is its
+      answer, and can be several paragraphs or a list. Anything above the first question is an
+      introduction.</p>
+    <p class="hint">Paste an FAQ in and its formatting is kept &mdash; headings become questions, and
+      <code>Q:</code>, <code>A:</code>, numbered questions and <code>#</code> headings are all understood.</p>
+    <button type="submit" class="btn btn-small btn-primary" title="Save this document and show it on the page">Save</button>
+  {% endmacro %}
+
+  {% macro faq_reader_config_fields(cell) %}
+    {# FAQ Reader: whose questions, which of them, and how they are shown.
+       No question is written here — that is the point of the split. #}
+    {% set faq = cell.faq or {'style': 'list', 'one_at_a_time': true, 'mirror_ids': []} %}
+    {% set sources = faq_sources | rejectattr('section_id', 'equalto', cell.id) | list %}
+    <div class="cms-faq-config-row">
+      <label class="cms-faq-config-label" title="Which page's questions this shows">Questions from
+        <select name="faq_source" onchange="this.form.requestSubmit()" title="Which page's questions this shows">
+          <option value="" {{ 'selected' if not faq.mirror_source }}>Choose a page&hellip;</option>
+          {% for src in sources %}
+          <option value="{{ src.section_id }}" {{ 'selected' if faq.mirror_source == src.section_id }}>{{ src.label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      {{ faq_style_fields(faq) }}
+      <label class="cms-faq-config-label" title="List the questions above them, as a contents">
+        <input type="checkbox" name="show_contents" value="1" onchange="this.form.requestSubmit()"
+               {{ 'checked' if faq.show_contents }}> Contents list
+      </label>
+    </div>
+    {% if not sources %}
+    <p class="hint">Nothing to read yet &mdash; add an FAQ Content tool to a page and write some questions there first.</p>
+    {% elif faq.mirror_source %}
+    <p class="hint">Tick the questions to show. To change their wording, edit them where they were written.</p>
+    {% for src in sources if src.section_id == faq.mirror_source %}
+      {% for item in src['items'] %}
+      <label class="cms-faq-pick" title="Show this question here">
+        <input type="checkbox" name="faq_pick" value="{{ item.id }}"
+               onchange="this.form.requestSubmit()"
+               {{ 'checked' if item.id in faq.mirror_ids }}>
+        {{ item.q }}
+      </label>
+      {% endfor %}
+    {% endfor %}
+    {% else %}
+    <p class="hint">Choose which page's questions to show, then tick the ones you want.</p>
+    {% endif %}
+  {% endmacro %}
+
+  {% macro contact_form_tool() %}
+    {# The form itself. Lifted out of the old "contact page" wholesale —
+       captcha, honeypot and all — because none of it depended on the kind
+       of page it was standing on, which is exactly why it is a tool now.
+       It posts back to whichever page it sits on. #}
+    <div class="cms-contact-form-wrap">
+      {% if request.args.get('sent') %}
+      <p class="cms-contact-sent">Thanks — your message has been sent.</p>
+      {% elif request.args.get('error') %}
+      <p class="cms-contact-error">Sorry, that message couldn't be sent. Please try again later.</p>
+      {% endif %}
+      {% if editing and not email_configured %}
+      <p class="cms-contact-error">Email isn't set up yet — messages sent here won't go anywhere until you configure <a href="{{ url_for('admin.settings_email') }}">Email Settings</a> from the Dashboard.</p>
+      {% endif %}
+      <form method="post" action="{{ url_for('public.contact_submit', slug=page.slug) }}" class="cms-contact-form">
+        <label for="cms-contact-name">Name</label>
+        <input type="text" id="cms-contact-name" name="name" required>
+        <label for="cms-contact-email">Email</label>
+        <input type="email" id="cms-contact-email" name="email" required>
+        <label for="cms-contact-message">Message</label>
+        <textarea id="cms-contact-message" name="message" rows="6" required></textarea>
+
+        {# A field nobody can see and no person will fill in. Bots fill
+           every input they find, which is what gives them away. Hidden in
+           CSS rather than type="hidden" so that a bot reading the markup
+           cannot tell it apart from the real fields. #}
+        <div class="cms-contact-hp" aria-hidden="true">
+          <label for="cms-contact-website">Website</label>
+          <input type="text" id="cms-contact-website" name="{{ captcha_field }}" tabindex="-1" autocomplete="off">
+        </div>
+
+        <label for="cms-contact-answer">{{ captcha_question }}</label>
+        <input type="text" id="cms-contact-answer" name="captcha_answer" required
+               autocomplete="off" inputmode="numeric" size="8"
+               title="A quick check that you're a person — answer in digits or words">
+        <input type="hidden" name="captcha_token" value="{{ captcha_token }}">
+        {% if request.args.get('again') %}
+        <p class="cms-contact-error">That wasn't the right answer — please try again.</p>
+        {% endif %}
+
+        <button type="submit" class="cms-contact-submit">Send Message</button>
+      </form>
+    </div>
+  {% endmacro %}
+
+  {% macro blog_config_fields(cell) %}
+    {# Which set of writing this shows, and how. The posts themselves are
+       managed away from the page, because they belong to the blog rather
+       than to any one place it is shown. #}
+    {% set blog = cell.blog or {'blog_id': none, 'style': 'cards', 'count': 0} %}
+    {% set chosen = (blogs | selectattr('id', 'equalto', blog.blog_id) | list | first) %}
+    <div class="cms-faq-config-row">
+      <label class="cms-faq-config-label" title="Which blog's posts to show here">Blog
+        <select name="blog_id" onchange="this.form.requestSubmit()" title="Which blog's posts to show here">
+          <option value="" {{ 'selected' if not blog.blog_id }}>Choose a blog&hellip;</option>
+          {% for b in blogs %}
+          <option value="{{ b.id }}" {{ 'selected' if blog.blog_id == b.id }}>{{ b.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      {% if chosen %}
+      <label class="cms-faq-config-label" title="What this blog is called. Its address stays as it is, so no link to a post ever breaks.">Name
+        <input type="text" name="blog_name" value="{{ chosen.name }}"
+               onchange="this.form.requestSubmit()"
+               title="What this blog is called. Its address stays as it is, so no link to a post ever breaks.">
+      </label>
+      {% endif %}
+      <label class="cms-faq-config-label" title="How the posts are laid out here">Style
+        <select name="blog_style" onchange="this.form.requestSubmit()" title="How the posts are laid out here">
+          {% for value, label in blog_styles %}
+          <option value="{{ value }}" {{ 'selected' if blog.style == value }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="cms-faq-config-label" title="Show only the newest few. Zero shows all of them.">Show
+        <input type="number" name="blog_count" value="{{ blog.count }}" min="0" max="50" step="1"
+               onchange="this.form.requestSubmit()"
+               title="Show only the newest few. Zero shows all of them.">
+      </label>
+    </div>
+    {% if blog.blog_id == none %}
+    <div class="cms-faq-config-row">
+      <label class="cms-faq-config-label" title="What to call the new blog">New blog name
+        <input type="text" name="blog_new_name" placeholder="Journal"
+               title="What to call the new blog">
+      </label>
+      {# Its own field name, not blog_id: two controls sharing one name
+         means only the first is read, and the empty select won. #}
+      <button type="submit" class="btn btn-small btn-primary" name="blog_op" value="new"
+              title="Start a blog with this name and show it here">Start it</button>
+    </div>
+    <p class="hint">Choose a blog to show here, or start one. A blog can be shown on as many pages as you like &mdash; the posts are not copied.</p>
+    {% else %}
+    <p class="hint">Posts belong to the blog, not to this page &mdash; showing it somewhere else
+      shows the same posts, and drafts are visible only to you.</p>
+    {% endif %}
+  {% endmacro %}
+
+  {% macro basket_config_fields(cell) %}
+    {% set basket = cell.basket or {'style': 'icon', 'align': 'right', 'hide_when_empty': False} %}
+    <div class="cms-faq-config-row">
+      <label class="cms-faq-config-label" title="How the basket looks">Style
+        <select name="basket_style" onchange="this.form.requestSubmit()" title="How the basket looks">
+          {% for value, label in basket_styles %}
+          <option value="{{ value }}" {{ 'selected' if basket.style == value }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="cms-faq-config-label" title="Where it sits in the row — right is where a shopper looks first">Position
+        <select name="basket_align" onchange="this.form.requestSubmit()" title="Where it sits in the row — right is where a shopper looks first">
+          {% for value, label in basket_aligns %}
+          <option value="{{ value }}" {{ 'selected' if basket.align == value }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="cms-faq-config-label" title="Hide it until somebody has put something in it">
+        <input type="checkbox" name="hide_when_empty" value="1" onchange="this.form.requestSubmit()"
+               {{ 'checked' if basket.hide_when_empty }}> Hide when empty
+      </label>
+    </div>
+    <p class="hint">Put this in your header and it shows on every page, which is where people look for it.
+      The count is whatever is in that visitor's own basket.</p>
+  {% endmacro %}
+
+  {% macro search_config_fields(cell) %}
+    {% set search = cell.search or {'style': 'bar', 'placeholder': '', 'show_count': true} %}
+    <div class="cms-faq-config-row">
+      <label class="cms-faq-config-label" title="How the search box looks">Style
+        <select name="search_style" onchange="this.form.requestSubmit()" title="How the search box looks">
+          {% for value, label in search_styles %}
+          <option value="{{ value }}" {{ 'selected' if search.style == value }}>{{ label }}</option>
+        {% endfor %}
+        </select>
+      </label>
+      <label class="cms-faq-config-label" title="The greyed-out wording inside the empty box">Wording
+        <input type="text" name="search_placeholder" value="{{ search.placeholder }}"
+               onchange="this.form.requestSubmit()" title="The greyed-out wording inside the empty box">
+      </label>
+      <label class="cms-faq-config-label" title="Say how many questions matched">
+        <input type="checkbox" name="show_count" value="1" onchange="this.form.requestSubmit()"
+               {{ 'checked' if search.show_count }}> Show how many matched
+      </label>
+    </div>
+    <p class="hint">Searches the questions on this page &mdash; from an FAQ Content or FAQ Reader tool, wherever they sit.</p>
+  {% endmacro %}
+
+  {% macro shop_config_fields(block) %}
+    {% set shop = block.shop or {'columns': '3', 'show_description': True} %}
+    {% if not stripe_connected %}
+      <p class="hint">Connect Stripe and everything you sell appears here automatically. <a href="{{ url_for('admin.settings_integrations') }}">Open Integrations &rarr;</a></p>
+    {% else %}
+    <div class="cms-buy-config-row">
+      <label class="cms-buy-config-label" title="How many products sit side by side on a wide screen">Layout
+        <select name="columns" onchange="this.form.requestSubmit()" title="How many products sit side by side on a wide screen">
+          {% for value, label in [('2', 'Two across'), ('3', 'Three across'), ('4', 'Four across')] %}
+          <option value="{{ value }}" {{ 'selected' if shop.columns == value }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="cms-buy-config-label" title="Show each product's Stripe description under its name">
+        <input type="checkbox" name="show_description" value="1" {{ 'checked' if shop.show_description }}
+               onchange="this.form.requestSubmit()" title="Show each product's Stripe description under its name"> Show descriptions
+      </label>
+    </div>
+    <p class="hint">Everything active in your Stripe account is shown here, with its picture, name and price. To change what is on sale &mdash; or add a photo &mdash; edit the product in Stripe. Stock counts come from "What products deliver".</p>
+    {% endif %}
+  {% endmacro %}
+
+  {% macro shop_grid(block) %}
+    {% set shop = block.shop or {'columns': '3', 'show_description': True} %}
+    {% if block.shop_error %}
+      <p class="hint">The shop couldn't load just now. Please try again in a moment.</p>
+    {% elif not block.products %}
+      <p class="hint">Nothing is for sale yet.</p>
+    {% else %}
+    <div class="cms-shop-grid" data-columns="{{ shop.columns }}">
+      {% for item in block.products %}
+      <div class="cms-shop-item{{ ' is-sold-out' if item.sold_out }}{{ ' is-example' if item.example }}">
+        {% if item.example %}<span class="cms-shop-example" title="An example, so you can see how the shop looks. Connect Stripe and your own products replace these.">Example</span>{% endif %}
+        {% if item.image %}<img src="{{ item.image }}" alt="{{ item.name }}" class="cms-shop-image" loading="lazy">{% endif %}
+        <h3 class="cms-shop-name">{{ item.name }}</h3>
+        {% if shop.show_description and item.description %}
+        <p class="cms-shop-desc">{{ item.description }}</p>
+        {% endif %}
+        <p class="cms-shop-price">
+          {{ '%.2f'|format(item.amount / 100) ~ ' ' ~ item.currency if item.amount is not none else 'Name your price' }}
+        </p>
+        {% if item.sold_out %}
+        <p class="cms-shop-stock">Sold out</p>
+        {% else %}
+        {% if item.stock is not none %}<p class="cms-shop-stock">Only {{ item.stock }} left</p>{% endif %}
+        {% if item.example %}
+        {# No basket for something that does not exist. A button that
+           looked real here would be the one thing worse than an empty
+           shop. #}
+        <p class="cms-shop-stock">Not for sale &mdash; an example</p>
+        {% else %}
+        <form method="post" action="{{ url_for('public.cart_add') }}">
+          <input type="hidden" name="price_id" value="{{ item.price_id }}">
+          <button type="submit" class="cms-action-btn" title="Put {{ item.name }} in your basket">Add to basket</button>
+        </form>
+        {% endif %}
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    <p class="cms-shop-basket"><a href="{{ url_for('public.cart') }}" title="See what is in your basket">View basket &rarr;</a></p>
+    {% endif %}
+  {% endmacro %}
+
+  {% macro block_field(field, name, values, images) %}
+    {% set value = values.get(name, '') %}
+    {# Same shape as every other tool bar: label text, then its control,
+       on one line. See inline-editor.css's "Tool config bars". #}
+    {% if field.kind == 'checkbox' %}
+    <label class="cms-block-check" title="{{ field.help or field.label }}">
+      <input type="checkbox" name="{{ name }}" value="1" {{ 'checked' if value == '1' }}
+             onchange="this.form.requestSubmit()"> {{ field.label }}
+    </label>
+    {% elif field.kind == 'select' %}
+    <label class="cms-block-label" title="{{ field.help or field.label }}">{{ field.label }}
+      <select name="{{ name }}" onchange="this.form.requestSubmit()">
+        {% for opt, opt_label in field.options %}
+        <option value="{{ opt }}" {{ 'selected' if value == opt }}>{{ opt_label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% elif field.kind == 'textarea' %}
+    <label class="cms-block-label is-wide" title="{{ field.help or field.label }}">{{ field.label }}
+      <textarea name="{{ name }}" rows="2">{{ value }}</textarea>
+      {% if field.help %}<span class="hint">{{ field.help }}</span>{% endif %}
+    </label>
+    {% elif field.kind == 'link' %}
+    {# Where a button goes is a choice between this site's own pages, not
+       an address to be typed. Typing one meant knowing that a page is
+       reached at /its-slug, which is exactly the kind of knowledge the
+       rest of this app is built to not require. "Somewhere else" is still
+       there for a booking system or a shop on another site, and only that
+       option asks for anything to be typed. #}
+    {% set known = link_pages | map(attribute='url') | list %}
+    {% set is_other = value and value not in known %}
+    <label class="cms-block-label" title="{{ field.help or field.label }}: pick a page on this site, or choose Somewhere else for an address off it">{{ field.label }}
+      <select name="{{ name }}" class="cms-link-select">
+        <option value="" {{ 'selected' if not value }}>Nowhere yet</option>
+        {% for lp in link_pages %}
+        <option value="{{ lp.url }}" {{ 'selected' if value == lp.url }}>{{ lp.title }}</option>
+        {% endfor %}
+        <option value="__other__" {{ 'selected' if is_other }}>Somewhere else…</option>
+      </select>
+    </label>
+    <input type="text" class="cms-link-other" name="{{ name }}__other"
+           value="{{ value if is_other else '' }}"
+           placeholder="example.com/book"
+           title="The full address to link to, on another site"
+           {{ 'hidden' if not is_other }}>
+    {% elif field.kind == 'image' %}
+    {# A picture is chosen by looking at it. This used to be a dropdown of
+       filenames, which asked an admin to recognise their own photograph by
+       whatever the camera called it -- and a column of long filenames is
+       what pushed this bar off the side of a phone. #}
+    <span class="cms-block-image-field" title="{{ field.help or field.label }}">
+      <span class="cms-block-image-name">{{ field.label }}</span>
+      <input type="hidden" name="{{ name }}" value="{{ value }}">
+      <img class="cms-block-image-thumb" src="{{ value }}" alt="" {{ 'hidden' if not value }}>
+      <span class="cms-block-image-none" {{ 'hidden' if value }}>No picture</span>
+      <button type="button" class="cms-block-image-pick" title="Choose a picture from the Media Library">Choose</button>
+      <button type="button" class="cms-block-image-upload" title="Upload a picture from this device">Upload</button>
+      <input type="file" class="cms-block-image-file" accept="image/*" hidden>
+      <button type="button" class="cms-block-image-clear" title="Use no picture here" {{ 'hidden' if not value }}>&times;</button>
+    </span>
+    {% else %}
+    <label class="cms-block-label" title="{{ field.help or field.label }}">{{ field.label }}
+      <input type="text" name="{{ name }}" value="{{ value }}">
+    </label>
+    {% endif %}
+  {% endmacro %}
+
+  {% macro block_config_fields(cell) %}
+    {# The words are edited on the page — click them and type. What is left
+       here is what cannot be typed into a page: which style, which
+       picture, where a button goes, and how many of something there is. #}
+    {% set spec = cell.block_spec %}
+    {% set values = cell.block_values or {} %}
+    {#  A tool that cannot work says so to the person who can fix it. The
+        Email sign-up refuses a subscription without a way to send the
+        confirmation and without a postal address to sign it -- and that
+        refusal was only ever shown to the VISITOR, as "sign-ups aren't
+        working just now", which tells the one person who cannot do
+        anything about it. #}
+    {%- if cell.block_key == 'newsletter' and signup_blockers %}
+    <p class="hint cms-tool-warning">
+      Sign-ups will be turned away until this is sorted:
+      {% for why, endpoint, label in signup_blockers %}{{ why }}{{ ' — ' }}<a href="{{ url_for(endpoint) }}">{{ label }} →</a>{{ '; ' if not loop.last }}{% endfor %}
+    </p>
+    {%- endif %}
+    {% set images = media_images or [] %}
+    {% set counts = cell.block_counts or {} %}
+    <div class="cms-config-row">
+      {% for entry in spec.fields %}
+        {% if not entry.group and entry.kind not in ('text', 'textarea') %}
+          {{ block_field(entry, entry.name, values, images) }}
+        {% endif %}
+      {% endfor %}
+    </div>
+
+    {% for entry in spec.fields %}
+      {% if entry.group %}
+      {% set used = counts.get(entry.group, 1) %}
+      <div class="cms-config-row">
+        {# Both buttons go dead at their limit rather than staying live and
+           doing nothing. A button that accepts a click and changes nothing
+           reads as broken software, which is exactly how the cap was
+           reported: "I tried to add a new row by clicking add and nothing
+           happened." #}
+        <span class="cms-stepper" title="Add or remove {{ entry.label | lower }} — up to {{ entry.count }}">
+          {{ entry.label }}s
+          <button type="submit" name="op" value="remove_{{ entry.group }}"
+                  title="{{ 'Remove the last one' if used > 1 else 'There has to be at least one' }}"
+                  {{ 'disabled' if used <= 1 }}>&minus;</button>
+          <span class="cms-stepper-count">{{ used }}</span>
+          <button type="submit" name="op" value="add_{{ entry.group }}"
+                  title="{{ 'Add another' if used < entry.count else entry.count ~ ' is the most this tool holds' }}"
+                  {{ 'disabled' if used >= entry.count }}>+</button>
+        </span>
+        {% for i in range(1, used + 1) %}
+          {% for field in entry.fields %}
+            {% if field.kind not in ('text', 'textarea') %}
+              {{ block_field(field, entry.group ~ i ~ '_' ~ field.name, values, images) }}
+            {% endif %}
+          {% endfor %}
+        {% endfor %}
+      </div>
+      {% endif %}
+    {% endfor %}
+
+    {#  This sentence is a promise, so it has to be true of every block it
+        appears under. It said "heading, price or line of text": price is a
+        pricing table's word and means nothing on an Email sign-up, and the
+        promise itself was false there, because the sign-up button's label
+        sat on the <button> and could not be typed into at all. Both fixed
+        — see build_newsletter — and the wording now names what is actually
+        clickable rather than one block's furniture. #}
+    <p class="hint">Everything you can see on the page is edited on the page — click any heading, line of text or button label and type.</p>
+    {# No Apply button. Every other tool in this app changes the page as
+       you change the control — a Banner's shape, an Image's size, a
+       Card's colour — and a declared block asking to be submitted was the
+       one place that convention broke. The +/- buttons stay: they are the
+       control, not a save step. #}
+  {% endmacro %}
+
+  {% macro buy_config_fields(cell) %}
+    {% set buy = cell.buy or {'price_id': '', 'label': 'Buy now', 'style': 'button'} %}
+    {% if not stripe_connected %}
+      <p class="hint">Connect Stripe first and this becomes a list of your own products. <a href="{{ url_for('admin.settings_integrations') }}">Open Integrations →</a></p>
+    {% elif not stripe_catalogue %}
+      <p class="hint">Stripe is connected, but this account has no active products yet. Add one in Stripe and it will appear here.</p>
+    {% else %}
+    <div class="cms-buy-config-row">
+      <label class="cms-buy-config-label" title="Which of your Stripe products this button sells">Product
+        <select name="price_id" onchange="this.form.requestSubmit()" title="Which of your Stripe products this button sells">
+          <option value="">Choose a product…</option>
+          {% for item in stripe_catalogue %}
+          <option value="{{ item.price_id }}"
+                  data-name="{{ item.name }}"
+                  data-price="{{ '%.2f'|format(item.amount / 100) ~ ' ' ~ item.currency if item.amount is not none else '' }}"
+                  {{ 'selected' if buy.price_id == item.price_id }}>{{ item.label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="cms-buy-config-label" title="How the button looks on the page">Style
+        <select name="buy_style" onchange="this.form.requestSubmit()" title="How the button looks on the page">
+          {% for value, label in [('button', 'Button only'), ('card', 'Card with name and price')] %}
+          <option value="{{ value }}" {{ 'selected' if buy.style == value }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <input type="text" name="label" value="{{ buy.label }}" placeholder="Button text"
+             onchange="this.form.requestSubmit()" title="What the button itself says, e.g. Book now">
+    </div>
+    <p class="hint">The price is charged by Stripe, never taken from this page. Test-mode keys accept Stripe's test cards and charge nobody.</p>
+    {% endif %}
+  {% endmacro %}
+
+  {% macro zone_style_attrs(zone, template, zone_style) %}data-save-url="{{ url_for('admin.template_zone_style', template_id=template.id, zone=zone) }}" data-bg-color="{{ zone_style.bg or '' }}" data-border-color="{{ zone_style.border or '' }}" data-style-label="{{ zone|replace('_', ' ')|title }}"{% endmacro %}
+
+  {% macro divider_config_fields(cell) %}
+    <select name="divider_style" onchange="this.form.requestSubmit()" title="Line style">
+      <option value="solid" {{ 'selected' if 'cms-divider-solid' in cell.content }}>Solid</option>
+      <option value="dashed" {{ 'selected' if 'cms-divider-dashed' in cell.content }}>Dashed</option>
+      <option value="dotted" {{ 'selected' if 'cms-divider-dotted' in cell.content }}>Dotted</option>
+      <option value="double" {{ 'selected' if 'cms-divider-double' in cell.content }}>Double</option>
+    </select>
+    <select name="divider_width" onchange="this.form.requestSubmit()" title="Line width">
+      <option value="narrow" {{ 'selected' if 'cms-divider-narrow' in cell.content }}>Narrow</option>
+      <option value="medium" {{ 'selected' if 'cms-divider-medium' in cell.content }}>Medium</option>
+      <option value="full" {{ 'selected' if 'cms-divider-full' in cell.content }}>Full width</option>
+    </select>
+    <select name="divider_spacing" onchange="this.form.requestSubmit()" title="Space above/below">
+      <option value="small" {{ 'selected' if 'cms-divider-spacing-small' in cell.content }}>Small spacing</option>
+      <option value="medium" {{ 'selected' if 'cms-divider-spacing-medium' in cell.content }}>Medium spacing</option>
+      <option value="large" {{ 'selected' if 'cms-divider-spacing-large' in cell.content }}>Large spacing</option>
+    </select>
+    <input type="color" name="divider_color" value="{{ cell.divider_color or '#e2e4e9' }}" onchange="this.form.requestSubmit()" title="Line color">
+  {% endmacro %}
+
+  {% macro banner_config_fields(cell, generate_url=none, apply_url=none, image_upload_url=none, image_clear_url=none) %}
+    {% set ov = banner_overlay_settings(cell.content) %}
+    <select name="shape" onchange="this.form.requestSubmit()" title="Shape / cutout for the banner">
+      <option value="none" {{ 'selected' if 'cms-mask-' not in cell.content }}>No shape</option>
+      <option value="rounded" {{ 'selected' if 'cms-mask-rounded' in cell.content }}>Rounded</option>
+      <option value="circle" {{ 'selected' if 'cms-mask-circle' in cell.content }}>Circle</option>
+      <option value="square" {{ 'selected' if 'cms-mask-square' in cell.content }}>Square</option>
+      <option value="diamond" {{ 'selected' if 'cms-mask-diamond' in cell.content }}>Diamond</option>
+      <option value="hexagon" {{ 'selected' if 'cms-mask-hexagon' in cell.content }}>Hexagon</option>
+      <option value="star" {{ 'selected' if 'cms-mask-star' in cell.content }}>Star</option>
+    </select>
+    <select name="attachment" onchange="this.form.requestSubmit()" title="Whether the background image scrolls with the page or stays fixed (parallax)">
+      <option value="scroll" {{ 'selected' if 'cms-banner-fixed' not in cell.content }}>Scrolls with page</option>
+      <option value="fixed" {{ 'selected' if 'cms-banner-fixed' in cell.content }}>Fixed (parallax)</option>
+    </select>
+    {% if image_upload_url %}
+    <button type="button" class="cms-change-banner-image-btn" title="Upload a background image from your device">⬆ Upload</button>
+    <input type="file" class="cms-banner-image-file-input" data-upload-url="{{ image_upload_url }}" accept="image/*" hidden>
+    <button type="button" class="cms-clear-card-image-btn" data-clear-url="{{ image_clear_url }}" title="Remove the background image" {{ 'hidden' if 'background-image' not in cell.content }}>Remove image</button>
+    {% endif %}
+    {% if generate_url %}
+    <button type="button" class="cms-generate-image-btn" data-generate-url="{{ generate_url }}" data-apply-url="{{ apply_url }}" data-kind="banner" title="Generate a background image with AI">✨ Generate</button>
+    {% endif %}
+    {% if apply_url %}
+    <button type="button" class="cms-library-pick-btn" data-apply-url="{{ apply_url }}" data-kind="banner" title="Choose an existing image from the Media Library">📚 Library</button>
+    {% endif %}
+    <div class="cms-banner-text-config">
+      <span class="cms-banner-text-config-label">Text box style</span>
+      <div class="cms-banner-text-config-grid">
+        <label>Position
+          <select name="position" onchange="this.form.requestSubmit()" title="Where the text box sits within the banner">
+            {% for pos, label in [('top-left','Top left'), ('top-center','Top center'), ('top-right','Top right'), ('center-left','Middle left'), ('center-center','Middle center'), ('center-right','Middle right'), ('bottom-left','Bottom left'), ('bottom-center','Bottom center'), ('bottom-right','Bottom right')] %}
+            <option value="{{ pos }}" {{ 'selected' if ov.position == pos }}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>Box color
+          <input type="color" name="overlay_bg_color" value="{{ ov.overlay_bg_color }}" onchange="this.form.requestSubmit()" title="Text box background color">
+        </label>
+        <label>Box opacity
+          <input type="range" name="overlay_opacity" min="0" max="100" value="{{ ov.overlay_opacity }}" onchange="this.form.requestSubmit()" title="Text box background opacity">
+        </label>
+        <label>Text color
+          <input type="color" name="text_color" value="{{ ov.text_color }}" onchange="this.form.requestSubmit()" title="Headline/body text color">
+        </label>
+        <label>Text size
+          <input type="number" name="font_size" min="10" max="96" placeholder="auto" value="{{ ov.font_size }}" onchange="this.form.requestSubmit()" title="Text size in pixels — blank follows the theme's default">
+        </label>
+        <label>Font
+          <select name="font_family" onchange="this.form.requestSubmit()" title="Font family for the banner's text">
+            <option value="default" {{ 'selected' if ov.font_family == 'default' }}>Theme default</option>
+            <option value="serif" {{ 'selected' if ov.font_family == 'serif' }}>Serif</option>
+            <option value="sans" {{ 'selected' if ov.font_family == 'sans' }}>Sans-serif</option>
+            <option value="mono" {{ 'selected' if ov.font_family == 'mono' }}>Monospace</option>
+            <option value="rounded" {{ 'selected' if ov.font_family == 'rounded' }}>Rounded</option>
+            <option value="elegant" {{ 'selected' if ov.font_family == 'elegant' }}>Elegant</option>
+          </select>
+        </label>
+        <label>Weight
+          <select name="font_weight" onchange="this.form.requestSubmit()" title="Bold or normal text weight">
+            <option value="normal" {{ 'selected' if ov.font_weight == 'normal' }}>Normal</option>
+            <option value="bold" {{ 'selected' if ov.font_weight == 'bold' }}>Bold</option>
+          </select>
+        </label>
+        <label>Style
+          <select name="font_style" onchange="this.form.requestSubmit()" title="Italic or normal text style">
+            <option value="normal" {{ 'selected' if ov.font_style == 'normal' }}>Normal</option>
+            <option value="italic" {{ 'selected' if ov.font_style == 'italic' }}>Italic</option>
+          </select>
+        </label>
+        <label>Align
+          <select name="text_align" onchange="this.form.requestSubmit()" title="Text alignment within the box">
+            <option value="left" {{ 'selected' if ov.text_align == 'left' }}>Left</option>
+            <option value="center" {{ 'selected' if ov.text_align == 'center' }}>Center</option>
+            <option value="right" {{ 'selected' if ov.text_align == 'right' }}>Right</option>
+          </select>
+        </label>
+        <label>Box padding
+          <input type="range" name="box_padding" min="4" max="80" value="{{ ov.box_padding }}" onchange="this.form.requestSubmit()" title="How much padding surrounds the text inside the box">
+        </label>
+        <label>Box width
+          <input type="range" name="box_width" min="20" max="100" value="{{ ov.box_width }}" onchange="this.form.requestSubmit()" title="How wide the text box can grow — up to the full width of the banner">
+        </label>
+        <label>Box shape
+          <select name="box_shape" onchange="this.form.requestSubmit()" title="Corner shape of the text box itself">
+            <option value="square" {{ 'selected' if ov.box_shape == 'square' }}>Square</option>
+            <option value="rounded" {{ 'selected' if ov.box_shape == 'rounded' }}>Rounded</option>
+            <option value="large-rounded" {{ 'selected' if ov.box_shape == 'large-rounded' }}>Large rounded</option>
+            <option value="pill" {{ 'selected' if ov.box_shape == 'pill' }}>Pill</option>
+          </select>
+        </label>
+      </div>
+    </div>
+  {% endmacro %}
+
+  {% macro card_config_fields(cell, image_upload_url=none, image_clear_url=none, generate_url=none, apply_url=none, reset_url=none) %}
+    {% set cs = card_style_settings(cell.content) %}
+    {% set cb = card_button_settings(cell.content) %}
+    <select name="shape" onchange="this.form.requestSubmit()" title="Shape of the card's background">
+      <option value="rectangle" {{ 'selected' if cs.shape == 'rectangle' }}>Rectangle</option>
+      <option value="rounded" {{ 'selected' if cs.shape == 'rounded' }}>Rounded</option>
+      <option value="oval" {{ 'selected' if cs.shape == 'oval' }}>Oval</option>
+      <option value="circle" {{ 'selected' if cs.shape == 'circle' }}>Circle</option>
+      <option value="pill" {{ 'selected' if cs.shape == 'pill' }}>Pill</option>
+    </select>
+    <input type="color" name="color" value="{{ cs.color or '#f0f1f3' }}" onchange="this.form.requestSubmit()" title="Background color (shows through/behind any image)">
+    {# A card could always hold a link, but a link is underlined text. This
+       is the button — added here, then written on the page like the rest of
+       the card, because the words on a button are words on the page. #}
+    <label title="Add a button at the bottom of the card. Click it on the page to change what it says.">
+      <input type="checkbox" name="button" value="1" {{ 'checked' if cb.has_button }} onchange="this.form.requestSubmit()">
+      Button
+    </label>
+    <input type="text" class="cms-link-input" name="button_link" value="{{ cb.link if cb.link != '#' else '' }}" placeholder="Button goes to"
+           onchange="this.form.requestSubmit()" title="Where the button goes: a page on this site (/contact), a full web address, an email (mailto:you@example.com) or a phone number (tel:...)"
+           {{ 'hidden' if not cb.has_button }}>
+    {% if image_upload_url %}
+    <button type="button" class="cms-change-card-image-btn" title="Upload a background image from your device">⬆ Upload</button>
+    <input type="file" class="cms-card-image-file-input" data-upload-url="{{ image_upload_url }}" accept="image/*" hidden>
+    {# Always in the DOM (not just when an image is already set) — the JS
+       toggles its `hidden` state directly after an upload/generate/clear
+       so that never has to reload the page just to reveal/hide this. #}
+    <button type="button" class="cms-clear-card-image-btn" data-clear-url="{{ image_clear_url }}" title="Remove the background image" {{ 'hidden' if not cs.has_image }}>Remove image</button>
+    {% endif %}
+    {% if generate_url %}
+    <button type="button" class="cms-generate-image-btn" data-generate-url="{{ generate_url }}" data-apply-url="{{ apply_url }}" data-kind="card" title="Generate a background image with AI">✨ Generate</button>
+    {% endif %}
+    {% if apply_url %}
+    <button type="button" class="cms-library-pick-btn" data-apply-url="{{ apply_url }}" data-kind="card" title="Choose an existing image from the Media Library">📚 Library</button>
+    {% endif %}
+    {% if reset_url %}
+    <button type="button" class="cms-reset-card-btn" data-reset-url="{{ reset_url }}" title="Reset shape, color, and image back to the default card">↺ Reset</button>
+    {% endif %}
+  {% endmacro %}
+
+  {%- macro tool_config_forms(item, section, save_url, col_index=none, row_qs='') -%}
+    {#- Every tool's own controls, once, wherever the tool is standing.
+
+        A section passes col_index=none and gets exactly the URLs it
+        always had: Flask drops a None value and picks the rule that
+        does not need one. A cell passes its index and its ?row=
+        suffix. Both chains carried this list until the routes
+        underneath them became one -- see BOW.md, "One list of tool
+        controls". -#}
+          {%- if item.type == 'html' and not item.is_menu and not item.is_breadcrumb and not item.is_divider and not item.is_image_accordion and not item.is_video_gallery and not item.is_faq and not item.is_faq_reader and not item.is_search and not item.is_blog and not item.is_basket and not item.is_contact_form and not item.is_contact_info and not item.is_buy_button and not item.is_shop and not item.is_block -%}
+          {# A Table keeps the rich-text ribbon (its cells are real text) but
+             loses the raw-HTML button: every part of its shape now has a real
+             control of its own (see table_config_fields), so the escape hatch
+             would only be a way to break the markup those controls read. #}
+          {%- if not item.is_table %}{{ embed_code_button() }}{%- endif %}
+          {%- if not item.is_dynamic %}{{ wysiwyg_toolbar() }}{%- endif %}
+          {%- endif %}
+          {%- if item.type == 'text' %}{{ wysiwyg_toolbar() }}{%- endif %}
+          {%- if item.type == 'image' -%}
+          {{ image_controls(save_url, item,
+                            url_for('admin.section_image_upload', section_id=section.id, col_index=col_index) ~ row_qs,
+                            url_for('admin.section_image_generate', section_id=section.id, col_index=col_index) ~ row_qs,
+                            url_for('admin.section_image_apply', section_id=section.id, col_index=col_index) ~ row_qs) }}
+          {%- endif %}
+          {%- if item.type == 'file' -%}
+          <select class="cms-file-display-select" title="How should this download look?" data-save-url="{{ save_url }}">
+            {#  "card" is the default, so an unset value means card -- the cell's
+                own list said so and the section's did not, which is the one
+                real difference the two lists had grown. #}
+            <option value="card" {{ 'selected' if not item.file_display or item.file_display == 'card' }}>Card</option>
+            <option value="button" {{ 'selected' if item.file_display == 'button' }}>Button</option>
+            <option value="text-link" {{ 'selected' if item.file_display == 'text-link' }}>Plain text link</option>
+            <option value="icon" {{ 'selected' if item.file_display == 'icon' }}>Icon only</option>
+          </select>
+          <button type="button" class="cms-change-file-btn" title="Change file">📎 Change File</button>
+          <input type="file" class="cms-file-file-input" data-upload-url="{{ url_for('admin.section_file_upload', section_id=section.id, col_index=col_index) }}{{ row_qs }}" hidden>
+          {%- endif %}
+          {%- if item.type == 'media' -%}
+          {{ media_controls(save_url, item,
+                            url_for('admin.section_media_upload', section_id=section.id, col_index=col_index) ~ row_qs,
+                            url_for('admin.section_media_generate', section_id=section.id, col_index=col_index) ~ row_qs) }}
+          {%- endif %}
+          {#  The Contact Form's panel says why it is empty. A cell's list
+              said this and a section's did not, so the same tool explained
+              itself in a column and stared back from a section. #}
+          {%- if item.is_contact_form -%}
+          <p class="hint">Messages go to your Email Settings address. Nothing to configure here.</p>
+          {%- endif %}
+          {%- if item.is_menu -%}
+          <form method="post" action="{{ url_for('admin.section_menu_update', section_id=section.id, col_index=col_index) }}{{ row_qs }}" class="cms-inline-form cms-menu-config-form">
+            <input type="hidden" name="next" value="{{ current_path }}">
+            {{ menu_config_fields(item, nav_pages) }}
+          </form>
+          {%- endif %}
+          {%- if item.is_breadcrumb -%}
+          <form method="post" action="{{ url_for('admin.section_breadcrumb_update', section_id=section.id, col_index=col_index) }}{{ row_qs }}" class="cms-inline-form cms-breadcrumb-config-form">
+            <input type="hidden" name="next" value="{{ current_path }}">
+            {{ breadcrumb_config_fields(item) }}
+          </form>
+          {%- endif %}
+          {%- if item.is_buy_button -%}
+          <form method="post" action="{{ url_for('admin.section_buy_update', section_id=section.id, col_index=col_index) }}{{ row_qs }}" class="cms-inline-form cms-buy-config-form">
+            <input type="hidden" name="next" value="{{ current_path }}">
+            {{ buy_config_fields(item) }}
+          </form>
+          {%- endif %}
+          {%- if item.is_shop -%}
+          <form method="post" action="{{ url_for('admin.section_shop_update', section_id=section.id, col_index=col_index) }}{{ row_qs }}" class="cms-inline-form cms-buy-config-form">
+            <input type="hidden" name="next" value="{{ current_path }}">
+            {{ shop_config_fields(item) }}
+          </form>
+          {%- endif %}
+          {%- if item.is_block -%}
+          <form method="post" action="{{ url_for('admin.section_block_update', section_id=section.id, key=item.block_key, col_index=col_index) }}{{ row_qs }}" class="cms-inline-form cms-block-config-form">
+            <input type="hidden" name="next" value="{{ current_path }}">
+            {{ block_config_fields(item) }}
+          </form>
+          {%- endif %}
+          {%- if item.is_faq -%}
+          <form method="post" action="{{ url_for('admin.section_faq_update', section_id=section.id, col_index=col_index) }}{{ row_qs }}" class="cms-inline-form cms-faq-config-form">
+            <input type="hidden" name="next" value="{{ current_path }}">
+            {{ faq_config_fields(item) }}
+          </form>
+          {%- endif %}
+          {%- if item.is_faq_reader -%}
+          <form method="post" action="{{ url_for('admin.section_faq_update', section_id=section.id, col_index=col_index) }}{{ row_qs }}" class="cms-inline-form cms-faq-config-form">
+            <input type="hidden" name="next" value="{{ current_path }}">
+            {{ faq_reader_config_fields(item) }}
+          </form>
+          {%- endif %}
+          {%- if item.is_basket -%}
+          <form method="post" action="{{ url_for('admin.section_basket_update', section_id=section.id, col_index=col_index) }}{{ row_qs }}" class="cms-inline-form">
+            <input type="hidden" name="next" value="{{ current_path }}">
+            {{ basket_config_fields(item) }}
+          </form>
+          {%- endif %}
+          {%- if item.is_blog -%}
+          <form method="post" action="{{ url_for('admin.section_blog_update', section_id=section.id, col_index=col_index) }}{{ row_qs }}" class="cms-inline-form cms-blog-config-form">
+            <input type="hidden" name="next" value="{{ current_path }}">
+            {{ blog_config_fields(item) }}
+          </form>
+          {%- if item.blog and item.blog.blog_id -%}
+          {# No list of posts here: they are already on the page below,
+             and while editing each card opens that post. Listing them
+             again in the toolbar was the same information twice. #}
+          <a class="btn btn-small btn-primary"
+             href="{{ url_for('admin.blog_post_new', blog_id=item.blog.blog_id, next=current_path) }}"
+             title="Write a new post — you will come back to this page when you save">+ Write a post</a>
+          <p class="hint">Prefer a full list? The Dashboard has every blog under <strong>Your Blogs</strong>.</p>
+          {%- endif %}
+          {%- endif %}
+          {%- if item.is_contact_info -%}
+          <form method="post" action="{{ url_for('admin.section_contact_update', section_id=section.id, col_index=col_index) }}{{ row_qs }}" class="cms-inline-form cms-contact-tool-form cms-block-config-form">
+            <input type="hidden" name="next" value="{{ current_path }}">
+            {{ contact_config_fields(item) }}
+          </form>
+          {%- endif %}
+          {%- if item.is_search -%}
+          <form method="post" action="{{ url_for('admin.section_search_update', section_id=section.id, col_index=col_index) }}{{ row_qs }}" class="cms-inline-form cms-search-config-form">
+            <input type="hidden" name="next" value="{{ current_path }}">
+            {{ search_config_fields(item) }}
+          </form>
+          {%- endif %}
+          {%- if item.is_image_accordion -%}
+          <form method="post" action="{{ url_for('admin.section_accordion_update', section_id=section.id, col_index=col_index) }}{{ row_qs }}" class="cms-inline-form cms-accordion-config-form">
+            <input type="hidden" name="next" value="{{ current_path }}">
+            {{ accordion_config_fields(item, section, col_index, row_qs) }}
+          </form>
+          {%- endif %}
+          {%- if item.is_table -%}
+          {{ table_config_fields(item, save_url) }}
+          {%- endif %}
+          {%- if item.is_video_gallery -%}
+          <form method="post" action="{{ url_for('admin.section_video_gallery_update', section_id=section.id, col_index=col_index) }}{{ row_qs }}" class="cms-inline-form cms-video-gallery-config-form">
+            <input type="hidden" name="next" value="{{ current_path }}">
+            {{ video_gallery_config_fields(item, section, col_index, row_qs) }}
+          </form>
+          {%- endif %}
+          {%- if item.is_divider -%}
+          <form method="post" action="{{ url_for('admin.section_divider_update', section_id=section.id, col_index=col_index) }}{{ row_qs }}" class="cms-inline-form cms-divider-config-form">
+            <input type="hidden" name="next" value="{{ current_path }}">
+            {{ divider_config_fields(item) }}
+          </form>
+          {%- endif %}
+          {%- if item.type == 'banner' -%}
+          <form method="post" action="{{ url_for('admin.section_banner_update', section_id=section.id, col_index=col_index) }}{{ row_qs }}" class="cms-inline-form cms-banner-config-form">
+            <input type="hidden" name="next" value="{{ current_path }}">
+            {{ banner_config_fields(item,
+                 url_for('admin.section_banner_image_generate', section_id=section.id, col_index=col_index) ~ row_qs,
+                 url_for('admin.section_image_apply', section_id=section.id, col_index=col_index) ~ row_qs,
+                 url_for('admin.section_banner_image_upload', section_id=section.id, col_index=col_index) ~ row_qs,
+                 url_for('admin.section_banner_image_clear', section_id=section.id, col_index=col_index) ~ row_qs) }}
+          </form>
+          {%- endif %}
+          {%- if item.type == 'card' -%}
+          <form method="post" action="{{ url_for('admin.section_card_update', section_id=section.id, col_index=col_index) }}{{ row_qs }}" class="cms-inline-form cms-card-config-form">
+            <input type="hidden" name="next" value="{{ current_path }}">
+            {{ card_config_fields(item, url_for('admin.section_card_image_upload', section_id=section.id, col_index=col_index) ~ row_qs, url_for('admin.section_card_image_clear', section_id=section.id, col_index=col_index) ~ row_qs, url_for('admin.section_card_image_generate', section_id=section.id, col_index=col_index) ~ row_qs, url_for('admin.section_image_apply', section_id=section.id, col_index=col_index) ~ row_qs, url_for('admin.section_card_reset', section_id=section.id, col_index=col_index) ~ row_qs) }}
+          </form>
+          {%- endif %}
+  {%- endmacro %}
+
+  {% macro render_cell(cell, s, col_index, row_index) %}
+    {% set row_qs = ('?row=' ~ row_index) if row_index is not none else '' %}
+    {% set cell_save_url = url_for('admin.section_column_update', section_id=s.id, col_index=col_index) ~ row_qs %}
+    {% set cell_clear_url = url_for('admin.section_column_clear', section_id=s.id, col_index=col_index) ~ row_qs %}
+
+    {% if cell.type == 'empty' %}
+      {% if editing %}<div class="cms-cell-empty-hint">Drop a tool here</div>{% endif %}
+
+    {% elif cell.type == 'rows' %}
+      <div class="cms-column-rows cms-column-rows-{{ cell.rows_list | length }}">
+        {% for row_cell in cell.rows_list %}
+        <div class="cms-row-cell"{% if editing %} data-row-index="{{ loop.index0 }}" data-set-tool-url="{{ url_for('admin.section_column_set_tool', section_id=s.id, col_index=col_index) }}?row={{ loop.index0 }}"{% endif %} {{ ('data-corner-style="' ~ row_cell.corner_style ~ '"') | safe if row_cell.corner_style }}>
+          {{ render_cell(row_cell, s, col_index, loop.index0) }}
+        </div>
+        {% endfor %}
+      </div>
+
+    {% elif cell.type == 'text' %}
+      {# No Corners or Depth, for the same reason the section chain
+         withholds them (see tool_can_be_shaped): Text paints no box, so
+         the controls would do nothing and read as a bug. The point of
+         one Text tool is that this decision is made once — a cell's Text
+         and a section's Text now offer the same controls because they
+         are the same tool, not because two lists happen to agree. #}
+      {% if editing %}{% call tool_header(cell.display_label, cell_clear_url) %}{{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}{% endcall %}{% endif %}
+      {{ text_tool(cell.display_content, cell_save_url, extra_class='cms-column-body') }}
+
+    {% elif cell.type == 'image' %}
+      {% if editing %}
+      {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+        {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
+      {% endcall %}
+      {% endif %}
+      {{ image_tool(cell, cell_save_url, corner_style=cell.corner_style,
+                    shadow_style=cell.shadow_style, extra_class='cms-column-body') }}
+
+    {% elif cell.type == 'media' %}
+      {% if editing %}
+      {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+        {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
+      {% endcall %}
+      {% endif %}
+      {{ media_tool(cell, cell_save_url, extra_class='cms-column-body') }}
+
+    {% elif cell.type == 'file' %}
+      {% if editing %}
+      {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+        {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
+      {% endcall %}
+      {% endif %}
+      <div class="cms-column-body">
+        {% if not cell.content %}
+          {% if editing %}<div class="cms-image-placeholder">Click "Change File" above to upload</div>{% endif %}
+        {% elif cell.file_display == 'button' %}
+          <a href="{{ cell.content }}" download class="cms-file-btn">{{ cell.title or 'Download' }}</a>
+        {% elif cell.file_display == 'text-link' %}
+          <a href="{{ cell.content }}" download class="cms-file-textlink">{{ cell.content }}</a>
+        {% elif cell.file_display == 'icon' %}
+          <a href="{{ cell.content }}" download class="cms-file-icon-only" title="{{ cell.title or 'Download' }}">📄</a>
+        {% else %}
+          <div class="cms-file-card">
+            <span class="cms-file-icon">📄</span>
+            <div class="cms-file-info">
+              <span {{ edit_field('title', cell_save_url) }} class="cms-file-name">{{ cell.title or 'Untitled file' }}</span>
+              {% if cell.file_size_display %}<span class="cms-file-size">{{ cell.file_size_display }}</span>{% endif %}
+            </div>
+            <a href="{{ cell.content }}" download class="cms-file-download">Download</a>
+          </div>
+        {% endif %}
+      </div>
+
+    {% elif cell.type == 'banner' %}
+      {% if editing %}
+      {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+      {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
+      {% endcall %}
+      {% endif %}
+      {{ wysiwyg_body(cell.display_content, cell_save_url, 'cms-column-body') }}
+
+    {% elif cell.type == 'card' %}
+      {% if editing %}
+      {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+      {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
+      {% endcall %}
+      {% endif %}
+      {{ wysiwyg_body(cell.display_content, cell_save_url, 'cms-column-body') }}
+
+    {% elif cell.is_menu %}
+      {% if editing %}
+      {% set menu_label = 'Menu (Dropdown)' if cell.menu_style == 'dropdown' else ('Menu (Buttons)' if cell.menu_style == 'buttons' else 'Menu') %}
+      {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+      {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
+      {% endcall %}
+      {% endif %}
+      <div class="cms-column-body">{{ cell.display_content | safe }}</div>
+
+    {% elif cell.is_breadcrumb %}
+      {% if editing %}
+      {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+      {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
+      {% endcall %}
+      {% endif %}
+      <div class="cms-column-body">{{ cell.display_content | safe }}</div>
+
+    {% elif cell.is_buy_button %}
+      {% if editing %}
+      {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+      {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
+      {% endcall %}
+      {% endif %}
+      <div class="cms-column-body">{{ cell.display_content | safe }}</div>
+
+    {% elif cell.is_block %}
+      {% if editing %}
+      {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+      {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
+      {% endcall %}
+      {% endif %}
+      <div class="cms-column-body cms-block-host" {{ ('data-save-url="' ~ cell_save_url ~ '"') | safe if editing }}>{{ cell.display_content | safe }}</div>
+
+    {% elif cell.is_shop %}
+      {% if editing %}
+      {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+      {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
+      {% endcall %}
+      {% endif %}
+      <div class="cms-column-body">{{ shop_grid(cell) }}</div>
+
+    {% elif cell.is_faq_reader %}
+      {% if editing %}
+      {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+      {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
+      {% endcall %}
+      {% endif %}
+      <div class="cms-column-body">{{ cell.display_content | safe }}</div>
+
+    {% elif cell.is_contact_form %}
+      {% if editing %}{% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+        {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
+      {% endcall %}{% endif %}
+      <div class="cms-column-body">{{ contact_form_tool() }}</div>
+
+    {% elif cell.is_contact_info %}
+      {% if editing %}
+      {# No Corners or Depth, for the same reason Text has none (see
+         tool_can_be_shaped): a Contacts block paints no box — its lines
+         are inline links with no background, border or shadow — so the
+         controls would change nothing and read as a bug. #}
+      {% call tool_header(cell.display_label, cell_clear_url) %}
+      {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
+      {% endcall %}
+      {% endif %}
+      <div class="cms-column-body cms-block-host">{{ cell.content | safe }}</div>
+
+    {% elif cell.is_blog %}
+      {% if editing %}
+      {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+      {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
+      {% endcall %}
+      {% endif %}
+      <div class="cms-column-body">{{ cell.display_content | safe }}</div>
+
+    {% elif cell.is_search %}
+      {% if editing %}
+      {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+      {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
+      {% endcall %}
+      {% endif %}
+      <div class="cms-column-body">{{ cell.display_content | safe }}</div>
+
+    {% elif cell.is_faq %}
+      {% if editing %}
+      {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+      {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
+      {% endcall %}
+      {% endif %}
+      <div class="cms-column-body">{{ cell.display_content | safe }}</div>
+
+    {% elif cell.is_video_gallery %}
+      {% if editing %}
+      {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+      {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
+      {% endcall %}
+      {% endif %}
+      <div class="cms-column-body">{{ cell.display_content | safe }}</div>
+
+    {% elif cell.is_table %}
+      {# Same split as a full-width Table section: structure through the
+         tool's own controls, cell text straight into the live table. #}
+      {% if editing %}
+      {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+        {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
+      {% endcall %}
+      {% endif %}
+      {{ wysiwyg_body(cell.display_content, cell_save_url, 'cms-column-body') }}
+
+    {% elif cell.is_image_accordion %}
+      {% if editing %}
+      {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+      {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
+      {% endcall %}
+      {% endif %}
+      <div class="cms-column-body">{{ cell.display_content | safe }}</div>
+
+    {% elif cell.is_divider %}
+      {% if editing %}
+      {% call tool_header(cell.display_label, cell_clear_url) %}
+      {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
+      {% endcall %}
+      {% endif %}
+      <div class="cms-column-body">{{ cell.display_content | safe }}</div>
+
+    {% elif cell.is_basket %}
+      {# It reached the catch-all before this, so a Basket in a column was
+         handed a bold/italic ribbon and none of its own three settings.
+         Same fields the section renders, same service behind them. #}
+      {% if editing %}
+      {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+        {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
+      {% endcall %}
+      {% endif %}
+      <div class="cms-column-body">{{ cell.display_content | safe }}</div>
+
+    {% else %}
+      {% if editing %}{% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}{{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}{% endcall %}{% endif %}
+      {# cms-html-preview in BOTH views, matching the section. It looks
+         like editor markup and is not: site-base.css styles it for
+         visitors -- link colours, and `overflow-x: auto` on a preview
+         holding a table. Gating it on `editing` was the first attempt and
+         would have taken those away from a cell, which is the opposite of
+         the point. It also happens to be the handle the code editor swaps
+         against, which is how one handler finds it in either container. #}
+      {{ wysiwyg_body(cell.display_content, cell_save_url, 'cms-column-body cms-html-preview',
+                      editable=not cell.is_dynamic) }}
+      {{ embed_code_editor(cell_save_url, cell.raw) }}
+    {% endif %}
+  {% endmacro %}
+
+  {% macro add_divider(action_url, before_id, edit_target_id=none) %}
+    <div class="cms-section-divider">
+      {% if edit_target_id %}
+      <button type="button" class="cms-section-edit-icon" data-target="section-{{ edit_target_id }}" title="Edit this section (layout, background, width)">
+        <svg viewBox="0 0 20 20" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 3.5l3 3L6 17H3v-3z"/></svg>
+      </button>
+      {% endif %}
+      <form method="post" action="{{ action_url }}" class="cms-inline-form">
+        <input type="hidden" name="type" value="blank">
+        <input type="hidden" name="next" value="{{ current_path }}">
+        {% if before_id %}<input type="hidden" name="before" value="{{ before_id }}">{% endif %}
+        <button type="submit" class="cms-section-divider-btn" title="Add a section here">
+          <svg viewBox="0 0 20 20" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 4v12M4 10h12"/></svg>
+        </button>
+      </form>
+      {% if edit_target_id %}
+      <form method="post" action="{{ url_for('admin.section_delete', section_id=edit_target_id) }}" class="cms-inline-form cms-delete-form" data-confirm="Delete this section? This cannot be undone.">
+        <input type="hidden" name="next" value="{{ current_path }}">
+        <button type="submit" class="cms-section-divider-delete-btn" title="Delete this section">
+          <svg viewBox="0 0 20 20" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5l10 10M15 5L5 15"/></svg>
+        </button>
+      </form>
+      {% endif %}
+    </div>
+  {% endmacro %}
+
+  {% macro render_zone_list(items, add_url, single=false) %}
+    {% if single %}
+      {# The sidebar is a single rail, not a stack of independently
+         addable sections — one box, same as any other section. More rows
+         come from Divide (which stacks vertically there — see
+         .site-sidebar-zone .cms-columns in site-base.css), not from
+         adding a second top-level section. So: one add-point to create
+         the section if it doesn't exist yet, then just its own
+         edit/delete — no "add another" once it's filled. #}
+      {% if editing %}{{ add_divider(add_url, items[0].id if items else none, items[0].id if items else none) }}{% endif %}
+      {% if items %}{{ render_section(items[0]) }}{% endif %}
+    {% else %}
+    {% if editing %}{{ add_divider(add_url, items[0].id if items else none, items[0].id if items else none) }}{% endif %}
+    {% for s in items %}
+      {{ render_section(s) }}
+      {% if editing %}
+        {% set next_item = items[loop.index] if not loop.last else none %}
+        {{ add_divider(add_url, next_item.id if next_item else none, next_item.id if next_item else none) }}
+      {% endif %}
+    {% endfor %}
+    {% endif %}
+  {% endmacro %}
+
+  {% macro render_section(s) %}
+      {# layout_width is NOT NULL DEFAULT 'auto' in the DB — every section
+         starts at the literal string 'auto', so there's no separate
+         "untouched" state to key a fallback off of. Instead 'auto' itself
+         means "follow the site-wide default" (see get_layout_settings /
+         inject_layout_settings, set on the Dashboard) — only an explicit
+         Full/Custom choice on a section overrides it. That matches "Auto
+         is the base default" from how the setting was described: changing
+         the global default reshapes every section still sitting at Auto,
+         and picking Auto again later re-opts a section back into it. #}
+      {% set effective_width = default_section_width if s.layout_width == 'auto' else s.layout_width %}
+      {% set effective_pct = s.layout_width_pct or (default_section_width_pct | int) %}
+      {% set section_style_parts = [] %}
+      {% if s.bg_color %}{% set _ = section_style_parts.append('background-color:' ~ s.bg_color) %}{% endif %}
+      {# A picture behind the section. The overlay is a class rather than
+         another inline value so it can adapt to the theme, and so the
+         same photograph can sit under dark text on one page and light
+         text on another. #}
+      {% if s.bg_image %}
+      {% set _ = section_style_parts.append("background-image:url('" ~ s.bg_image ~ "')") %}
+      {% endif %}
+      {% if s.border_color %}{% set _ = section_style_parts.append('border: 2px solid ' ~ s.border_color) %}{% endif %}
+      {% if effective_width == 'custom' %}{% set _ = section_style_parts.append('--cms-width-pct:' ~ effective_pct) %}{% endif %}
+      {% set is_sidebar_zone = s.zone in ('sidebar', 'sidebar_right') %}
+      {# The height constraint goes on --cms-content-height-px (a custom
+         property) plus a marker class, applied by CSS to .cms-section's
+         direct .block child — NOT to .cms-section itself. Putting
+         height+overflow:auto directly on .cms-section used to clip the
+         section's own toolbar and resize handle (both absolutely-
+         positioned direct children, sitting slightly outside/above the
+         box) the instant a custom height existed, cutting the toolbar off
+         and forcing it to wrap. The .block wrapper holds only the actual
+         content, so it can scroll independently while the toolbar stays
+         fully outside and unclipped. #}
+      {% if not is_sidebar_zone and s.content_height_px %}{% set _ = section_style_parts.append('--cms-content-height-px:' ~ s.content_height_px ~ 'px') %}{% endif %}
+      <div class="cms-section{{ ' cms-has-custom-height' if not is_sidebar_zone and s.content_height_px }}{{ ' cms-section-bg cms-bg-' ~ (s.bg_overlay or 'medium') ~ ' cms-bg-pos-' ~ (s.bg_position or 'center') if s.bg_image }}" id="section-{{ s.id }}" data-layout-width="{{ effective_width }}" data-corner-style="{{ s.corner_style or '' }}" data-shadow-style="{{ s.shadow_style or '' }}"{% if editing %} data-section-id="{{ s.id }}" data-type="{{ s.type }}" data-save-url="{{ url_for('admin.section_update', section_id=s.id) }}" data-bg-color="{{ s.bg_color or '' }}" data-border-color="{{ s.border_color or '' }}" data-bg-image="{{ s.bg_image or '' }}" data-bg-overlay="{{ s.bg_overlay or '' }}" data-bg-position="{{ s.bg_position or '' }}" data-supports-corner="1" data-style-label="This section"{% endif %} {{ ('style="' ~ section_style_parts | join('; ') ~ ';"') | safe if section_style_parts }}>
+        {% if editing %}
+        {% if is_sidebar_zone %}
+        <div class="cms-resize-handle cms-resize-handle-w {{ 'cms-resize-handle-w-right' if s.zone == 'sidebar_right' }}" data-axis="width" data-save-url="{{ url_for('admin.section_update', section_id=s.id) }}" title="Drag to resize the rail's width"></div>
+        {% else %}
+        <div class="cms-resize-handle cms-resize-handle-h" data-axis="height" data-save-url="{{ url_for('admin.section_update', section_id=s.id) }}" title="Drag to resize this section's height"></div>
+        {% endif %}
+        {% endif %}
+        {% if editing %}
+        <div class="cms-section-toolbar">
+          <span class="cms-drag-handle" title="Drag to reorder">⠿</span>
+          <span class="cms-section-move-arrows">
+            <form method="post" action="{{ url_for('admin.section_move', section_id=s.id) }}" class="cms-inline-form">
+              <input type="hidden" name="next" value="{{ current_path }}">
+              <input type="hidden" name="direction" value="up">
+              <button type="submit" class="cms-move-btn" title="Move up">▲</button>
+            </form>
+            <form method="post" action="{{ url_for('admin.section_move', section_id=s.id) }}" class="cms-inline-form">
+              <input type="hidden" name="next" value="{{ current_path }}">
+              <input type="hidden" name="direction" value="down">
+              <button type="submit" class="cms-move-btn" title="Move down">▼</button>
+            </form>
+          </span>
+          <span class="cms-section-label">{{ s.display_label }}</span>
+          <form method="post" action="{{ url_for('admin.section_divide', section_id=s.id) }}" class="cms-inline-form">
+            <input type="hidden" name="next" value="{{ current_path }}">
+            <label title="Divide this section into columns">Divide
+              <select name="columns" onchange="this.form.submit()" title="Number of columns">
+                {% set current_count = s.columns_list | length if s.type == 'columns' else 1 %}
+                {% for n in range(1, 7) %}<option value="{{ n }}" {{ 'selected' if n == current_count }}>{{ n }}</option>{% endfor %}
+              </select>
+            </label>
+          </form>
+          {# The select always shows what's literally stored (s.layout_width),
+             not effective_width — "Auto" stays shown/selected even when it's
+             currently resolving to Full/Custom via the site-wide default, so
+             the dropdown never claims an override exists when it doesn't;
+             the label spells out what Auto currently means instead. #}
+          {# In the sidebar, sections already always span the rail's full
+             width (the conventional structure every zone shares) — the
+             one axis actually free to size there is height, not width,
+             so this same control (same field, same values) governs
+             viewport HEIGHT instead once a section lives in that zone. #}
+          {# A header-zone section's effective width can be further narrowed
+             (or, under minimal, pulled out of flow entirely) by the site's
+             header layout choice (settings.nav_layout — see Theme & Layout
+             panel), on top of whatever this Auto/Full/Custom pick says. That
+             used to be a silent override with no way to tell from here;
+             surface it in the option label instead of hiding it. #}
+          {% set header_layout_note = (' — narrowed by header layout: ' ~ nav_layout) if (s.zone == 'header' and nav_layout in ('split', 'centered')) else ((' — hidden behind ☰ by header layout: minimal') if (s.zone == 'header' and nav_layout == 'minimal') else '') %}
+          <select class="cms-layout-width-select" title="{{ 'Section height — Auto follows the content until you pick Full/Custom here' if is_sidebar_zone else 'Section width — Auto follows the site-wide default (Dashboard) until you pick Full/Custom here' }}" data-save-url="{{ url_for('admin.section_update', section_id=s.id) }}">
+            <option value="auto" {{ 'selected' if s.layout_width == 'auto' }}>Auto{{ '' if is_sidebar_zone else (' (site default: ' ~ default_section_width ~ ')' if default_section_width != 'auto') }}{{ header_layout_note }}</option>
+            <option value="full" {{ 'selected' if s.layout_width == 'full' }}>{{ 'Full height' if is_sidebar_zone else 'Full width' }}{{ header_layout_note }}</option>
+            <option value="custom" {{ 'selected' if s.layout_width == 'custom' }}>Custom %{{ header_layout_note }}</option>
+          </select>
+          <input type="number" class="cms-layout-width-pct-input" min="10" max="100" value="{{ effective_pct }}" title="{{ 'Height as a % of the full viewport (100% = same as Full height)' if is_sidebar_zone else 'Width as a % of the full viewport (100% = same as Full width)' }}" data-save-url="{{ url_for('admin.section_update', section_id=s.id) }}" {{ 'hidden' if s.layout_width != 'custom' }}>
+          {% if is_sidebar_zone %}
+          {# The rail's own width — separate from the Height control above,
+             which reuses layout_width/pct for a different axis entirely.
+             Auto is the normal 240px rail; Custom sets an exact pixel
+             width via sidebar_width_px, applied to the whole rail (not
+             just this section, though there's only ever the one). #}
+          <select class="cms-sidebar-width-select" title="Sidebar rail width — Auto is the standard 240px rail" data-save-url="{{ url_for('admin.section_update', section_id=s.id) }}">
+            <option value="auto" {{ 'selected' if s.sidebar_width == 'auto' }}>Auto (240px)</option>
+            <option value="custom" {{ 'selected' if s.sidebar_width == 'custom' }}>Custom px</option>
+          </select>
+          <input type="number" class="cms-sidebar-width-px-input" min="160" max="600" step="10" value="{{ s.sidebar_width_px or 240 }}" title="Rail width in pixels" data-save-url="{{ url_for('admin.section_update', section_id=s.id) }}" {{ 'hidden' if s.sidebar_width != 'custom' }}>
+          {% endif %}
+          {% if not is_sidebar_zone %}
+          {# A dragged custom height (content_height_px) is separate from
+             the Width select above and has no other UI — this is the only
+             way back to auto/content-driven height once it's been set. #}
+          <button type="button" class="cms-content-height-reset" data-save-url="{{ url_for('admin.section_update', section_id=s.id) }}" title="Reset height back to Auto" {{ 'hidden' if not s.content_height_px }}>⟲ height</button>
+          {% endif %}
+          {# Corners, on the section's own toolbar rather than only inside the
+             Colors panel. It is a section property like Width beside it, and
+             it was previously reachable in one place only: click the section
+             on the page, then open Colors, then find Selection — which meant
+             the answer to "where do I round this off?" was three steps away
+             from the thing being rounded. Same field either way, so the two
+             controls are one setting shown in two places. #}
+          <select class="cms-section-corner-select" title="Corners for this section — overrides the site-wide Corners setting (Colors panel) for this one section" data-save-url="{{ url_for('admin.section_update', section_id=s.id) }}">
+            <option value="">Corners: site default</option>
+            {% for key, preset in shape_presets.items() %}
+            <option value="{{ key }}" {{ 'selected' if s.corner_style == key }}>Corners: {{ preset.name }}</option>
+            {% endfor %}
+          </select>
+          {# The picture behind this section, on the section's own bar. It
+             was reachable only by selecting the section and opening the
+             Colours panel, which is the same three-steps-away problem
+             Corners had — and a background is the thing people look for
+             first when a band of the page is a photograph. Same field as
+             the panel's copy, so the two are one setting shown twice. The
+             dim and position only appear once there is a picture for them
+             to act on. #}
+          {# A picture is chosen by looking at it. The same thumbnail grid
+             the editor already uses elsewhere (cmsImagePicker), rather
+             than a list of filenames — "bakery-band-2.png" tells nobody
+             what is in it. #}
+          <button type="button" class="cms-section-bg-pick"
+                  title="Put a picture behind this section — choose it from your Image Library"
+                  data-save-url="{{ url_for('admin.section_update', section_id=s.id) }}">
+            {{ 'Background: change' if s.bg_image else 'Background: choose' }}
+          </button>
+          {% if s.bg_image %}
+          <button type="button" class="cms-section-bg-clear"
+                  title="Remove the picture behind this section"
+                  data-save-url="{{ url_for('admin.section_update', section_id=s.id) }}">Background: none</button>
+          {% endif %}
+          {% if s.bg_image %}
+          <select class="cms-section-bg-select" data-field="bg_overlay"
+                  title="How much to dim the picture so the words on top stay readable"
+                  data-save-url="{{ url_for('admin.section_update', section_id=s.id) }}">
+            <option value="medium" {{ 'selected' if (s.bg_overlay or 'medium') == 'medium' }}>Dim: medium</option>
+            <option value="dark" {{ 'selected' if s.bg_overlay == 'dark' }}>Dim: strong</option>
+            <option value="light" {{ 'selected' if s.bg_overlay == 'light' }}>Dim: pale wash</option>
+            <option value="tint" {{ 'selected' if s.bg_overlay == 'tint' }}>Dim: brand colour</option>
+          </select>
+          <select class="cms-section-bg-select" data-field="bg_position"
+                  title="Which part of the picture to show, and whether it drifts as the page scrolls"
+                  data-save-url="{{ url_for('admin.section_update', section_id=s.id) }}">
+            <option value="center" {{ 'selected' if (s.bg_position or 'center') == 'center' }}>Picture: centred</option>
+            <option value="top" {{ 'selected' if s.bg_position == 'top' }}>Picture: top</option>
+            <option value="bottom" {{ 'selected' if s.bg_position == 'bottom' }}>Picture: bottom</option>
+            <option value="fixed" {{ 'selected' if s.bg_position == 'fixed' }}>Picture: stays put</option>
+          </select>
+          {% endif %}
+          <form method="post" action="{{ url_for('admin.section_clear', section_id=s.id) }}" class="cms-inline-form cms-delete-form" data-confirm="Clear all content from this section? The section and its layout stay — this only empties it.">
+            <input type="hidden" name="next" value="{{ current_path }}">
+            <button type="submit" title="Clear all content, keep the section">Clear</button>
+          </form>
+        </div>
+        {% endif %}
+
+        {# The tool's own controls — distinct from the section-layout toolbar
+           above (Divide/background/width/Clear/Delete). Closed by default;
+           opened via the edit pill next to this section's own "+" divider
+           (see add_divider), so the two never compete for the same space. #}
+        {% if editing and (s.type in ('html', 'text', 'image', 'file', 'media', 'banner', 'card')) %}
+        <div class="cms-tool-panel" id="tool-panel-{{ s.id }}">
+          {# Corners is offered on a tool only where the tool has something to
+             shape. A Text tool paints no box of its own and neither does
+             anything inside it, and a Divider is a line — on those the
+             dropdown could be set and would do nothing, which reads as a
+             bug rather than as a choice. Everything else either paints a
+             box (Banner, Card, File) or contains one that inherits the
+             value (a Table's rows, a Pricing tier, an Accordion). #}
+          {% set tool_can_be_shaped = s.type != 'text' and not s.is_divider and not s.is_contact_info %}
+          {# Remove sits in the panel's corner here too. A tool in a Columns
+             cell has always had it; a tool that is its own section had it
+             only on the bar above, so the same × was in two different
+             places depending on where the tool happened to be standing.
+             For a section, removing the tool IS deleting the section,
+             which is why it asks first. #}
+          {% call tool_header(s.display_label,
+                              remove_url=url_for('admin.section_delete', section_id=s.id),
+                              remove_confirm='Delete this section? This cannot be undone.',
+                              corner_save_url=(url_for('admin.section_update', section_id=s.id) if tool_can_be_shaped else none),
+                              corner_current=s.tool_corner_style,
+                              shadow_current=s.tool_shadow_style) %}
+          {#  Every tool's controls, from the one list below. A section
+              passes no column index, so each URL comes out exactly as
+              it always did -- Flask drops a None and picks the rule
+              that does not need one. #}
+          {{- tool_config_forms(s, s, url_for('admin.section_update', section_id=s.id)) }}
+          {% endcall %}
+        </div>
+        {% endif %}
+
+        {% if s.type == 'blank' %}
+          <section class="block block-blank">
+            {% if editing %}<div class="cms-cell-empty-hint">Drop a tool here</div>{% endif %}
+          </section>
+        {% elif s.type == 'header' %}
+          <section class="block block-header" {{ ('data-corner-style="' ~ s.tool_corner_style ~ '"') | safe if s.tool_corner_style }} {{ ('data-shadow-style="' ~ s.tool_shadow_style ~ '"') | safe if s.tool_shadow_style }}>
+            <h1 {{ edit_field('title', url_for('admin.section_update', section_id=s.id)) }}>{{ s.title }}</h1>
+            <p class="lead" {{ 'contenteditable="true"' | safe if editing }} data-field="content" data-save-url="{{ url_for('admin.section_update', section_id=s.id) }}">{{ s.content }}</p>
+          </section>
+        {% elif s.type == 'text' %}
+          {# Name and formatting bar both live in this section's tool
+             panel (above), opened by the edit pill, exactly like Banner,
+             Card and Image. Naming it by parking a header here instead
+             made Text the only tool shouting its name at a page nobody
+             had selected — the right fix for "Text has no name" was the
+             conventional place, not a second convention. #}
+          {{ text_tool(s.display_content, url_for('admin.section_update', section_id=s.id),
+                       title=s.title, corner_style=s.tool_corner_style, shadow_style=s.tool_shadow_style) }}
+        {% elif s.type == 'image' %}
+          {{ image_tool(s, url_for('admin.section_update', section_id=s.id), title=s.title,
+                        corner_style=s.tool_corner_style, shadow_style=s.tool_shadow_style) }}
+        {% elif s.type == 'file' %}
+          <section class="block block-file" {{ ('data-corner-style="' ~ s.tool_corner_style ~ '"') | safe if s.tool_corner_style }} {{ ('data-shadow-style="' ~ s.tool_shadow_style ~ '"') | safe if s.tool_shadow_style }}>
+            {% if not s.content %}
+              {% if editing %}<div class="cms-image-placeholder">Click "Change File" above to upload</div>{% endif %}
+            {% elif s.file_display == 'button' %}
+              <a href="{{ s.content }}" download class="cms-file-btn">{{ s.title or 'Download' }}</a>
+            {% elif s.file_display == 'text-link' %}
+              <a href="{{ s.content }}" download class="cms-file-textlink">{{ s.content }}</a>
+            {% elif s.file_display == 'icon' %}
+              <a href="{{ s.content }}" download class="cms-file-icon-only" title="{{ s.title or 'Download' }}">📄</a>
+            {% else %}
+              <div class="cms-file-card">
+                <span class="cms-file-icon">📄</span>
+                <div class="cms-file-info">
+                  <span {{ edit_field('title', url_for('admin.section_update', section_id=s.id)) }} class="cms-file-name">{{ s.title or 'Untitled file' }}</span>
+                  {% if s.file_size_display %}<span class="cms-file-size">{{ s.file_size_display }}</span>{% endif %}
+                </div>
+                <a href="{{ s.content }}" download class="cms-file-download">Download</a>
+              </div>
+            {% endif %}
+          </section>
+        {% elif s.type == 'media' %}
+          {{ media_tool(s, url_for('admin.section_update', section_id=s.id), title=s.title,
+                        corner_style=s.tool_corner_style, shadow_style=s.tool_shadow_style) }}
+        {% elif s.type == 'columns' %}
+          <section class="block block-columns" {{ ('data-corner-style="' ~ s.tool_corner_style ~ '"') | safe if s.tool_corner_style }} {{ ('data-shadow-style="' ~ s.tool_shadow_style ~ '"') | safe if s.tool_shadow_style }}>
+            {% if editing %}<div class="cms-active-tool-header-slot"></div>{% endif %}
+            <div class="cms-columns cms-columns-{{ s.columns_list | length }}">
+              {% for cell in s.columns_list %}
+              {% set col_index = loop.index0 %}
+              <div class="cms-column"{% if editing %} data-col-index="{{ col_index }}" data-set-tool-url="{{ url_for('admin.section_column_set_tool', section_id=s.id, col_index=col_index) }}"{% endif %} {{ ('data-corner-style="' ~ cell.corner_style ~ '"') | safe if cell.corner_style }}>
+                {% if editing %}
+                <div class="cms-column-tools">
+                  <form method="post" action="{{ url_for('admin.section_column_split_rows', section_id=s.id, col_index=col_index) }}" class="cms-inline-form">
+                    <input type="hidden" name="next" value="{{ current_path }}">
+                    <label title="Split this column into stacked rows">Rows
+                      <select name="rows" onchange="this.form.requestSubmit()" title="Number of rows">
+                        {% set current_rows = cell.rows_list | length if cell.type == 'rows' else 1 %}
+                        {% for n in range(1, 5) %}<option value="{{ n }}" {{ 'selected' if n == current_rows }}>{{ n }}</option>{% endfor %}
+                      </select>
+                    </label>
+                  </form>
+                </div>
+                {% endif %}
+                {{ render_cell(cell, s, col_index, none) }}
+              </div>
+              {% endfor %}
+            </div>
+          </section>
+        {% elif s.type == 'html' %}
+          <section class="block block-html" {{ ('data-corner-style="' ~ s.tool_corner_style ~ '"') | safe if s.tool_corner_style }} {{ ('data-shadow-style="' ~ s.tool_shadow_style ~ '"') | safe if s.tool_shadow_style }}>
+            {% if s.title %}<h2>{{ s.title }}</h2>{% endif %}
+            {% if s.is_block %}
+            {# Structure comes from the toolbar, words come from here: the
+               editable bits carry data-field, and inline-editor.js saves
+               the whole block back when one of them changes. #}
+            <div class="cms-html-preview cms-block-host" {{ ('data-save-url="' ~ url_for('admin.section_update', section_id=s.id) ~ '"') | safe if editing }}>{{ s.display_content | safe }}</div>
+            {% elif s.is_shop %}
+            {# Built at render time, never stored: a storefront frozen into
+               markup would go on advertising last month's prices. #}
+            <div class="cms-html-preview">{{ shop_grid(s) }}</div>
+            {% elif s.is_contact_form %}
+            <div class="cms-html-preview">{{ contact_form_tool() }}</div>
+            {% elif s.is_dynamic or s.is_menu or s.is_divider or s.is_image_accordion or s.is_video_gallery or s.is_faq or s.is_faq_reader or s.is_search or s.is_blog or s.is_basket or s.is_buy_button or s.is_contact_info %}
+            {# A Menu's links come from real pages, not free text — locking this out of
+               contenteditable is what actually matters (it's also what makes native
+               drag-to-reorder on the links work at all: a contenteditable ancestor
+               intercepts mouse-drag for text selection before a draggable child ever
+               gets a chance to start its own drag). Formatting still happens, just
+               through the tool's own controls (style/size/font/color/align), same as
+               a dynamic block's placeholders. Image Accordion is the same reasoning:
+               its 5 panel images/captions are each set through their own dedicated
+               control (see accordion_config_fields), never by hand-editing markup. #}
+            {# cms-block-host is the hook the editor swaps a rebuilt tool into
+               after a save (see .cms-block-config-form in inline-editor.js).
+               Without it a Contacts line saved and then sat unchanged until
+               the page was reloaded — the tools rendered here are exactly the
+               ones whose own controls rebuild their markup. #}
+            <div class="cms-html-preview cms-block-host" {{ 'title="Auto-updating block — use Edit raw HTML to change its wrapper/styling"' | safe if s.is_dynamic }}>{{ s.display_content | safe }}</div>
+            {% else %}
+            {{ wysiwyg_body(s.display_content, url_for('admin.section_update', section_id=s.id), 'cms-html-preview') }}
+            {% endif %}
+            {{ embed_code_editor(url_for('admin.section_update', section_id=s.id), s.raw) }}
+          </section>
+        {% elif s.type == 'banner' %}
+          <section class="block block-banner" {{ ('data-corner-style="' ~ s.tool_corner_style ~ '"') | safe if s.tool_corner_style }} {{ ('data-shadow-style="' ~ s.tool_shadow_style ~ '"') | safe if s.tool_shadow_style }}>
+            {# The overlay's headline/text is still directly editable — just without the rich-text ribbon. #}
+            {{ wysiwyg_body(s.content, url_for('admin.section_update', section_id=s.id), 'cms-html-preview') }}
+          </section>
+        {% elif s.type == 'card' %}
+          <section class="block block-card" {{ ('data-corner-style="' ~ s.tool_corner_style ~ '"') | safe if s.tool_corner_style }} {{ ('data-shadow-style="' ~ s.tool_shadow_style ~ '"') | safe if s.tool_shadow_style }}>
+            {{ wysiwyg_body(s.content, url_for('admin.section_update', section_id=s.id), 'cms-html-preview') }}
+          </section>
+        {% endif %}
+      </div>
+  {% endmacro %}
+
+  {# Header/sidebar/footer are all the exact same zone system — a template
+     "setting the initial structure" means seeding a zone with a real Menu
+     tool section (see _seed_zone_with_nav in admin.py), never hardcoded
+     brand/nav markup. If a zone is empty, it just renders nothing (a
+     visitor sees no header at all) other than the "+ Add section" editor
+     UI, exactly like an empty page body. #}
+  {% set zso = (template.zone_style_overrides | from_json) if template and template.zone_style_overrides else {} %}
+  <header class="site-header nav-layout-{{ nav_layout }}" {{ zone_style_attrs('header', template, zso.get('header', {})) | safe if editing and template }}>
+    <button type="button" class="cms-nav-toggle" aria-label="Toggle menu" aria-expanded="false">☰</button>
+    {% if editing %}
+    <div id="cms-header-list" class="site-header-zone" data-reorder-url="{{ url_for('admin.zone_section_reorder', template_id=template.id, zone='header') }}">
+      {{ render_zone_list(header_sections, url_for('admin.zone_section_new', template_id=template.id, zone='header')) }}
+    </div>
+    {% elif header_sections %}
+    <div id="cms-header-list" class="site-header-zone">
+      {% for s in header_sections %}{{ render_section(s) }}{% endfor %}
+    </div>
+    {% endif %}
+  </header>
+
+  {% if editing or sidebar_sections %}
+  {% set sidebar_width_px = sidebar_sections[0].sidebar_width_px if sidebar_sections and sidebar_sections[0].sidebar_width == 'custom' and sidebar_sections[0].sidebar_width_px else none %}
+  <aside class="site-sidebar{{ ' site-sidebar-empty' if not sidebar_sections }}" {{ ('style="--cms-sidebar-width:' ~ sidebar_width_px ~ 'px;"') | safe if sidebar_width_px }} {{ zone_style_attrs('sidebar', template, zso.get('sidebar', {})) | safe if editing and template }}>
+    {% if editing %}
+    <div id="cms-sidebar-list" class="site-sidebar-zone" data-reorder-url="{{ url_for('admin.zone_section_reorder', template_id=template.id, zone='sidebar') }}">
+      {{ render_zone_list(sidebar_sections, url_for('admin.zone_section_new', template_id=template.id, zone='sidebar'), true) }}
+    </div>
+    {% else %}
+    <div id="cms-sidebar-list" class="site-sidebar-zone">
+      {% for s in sidebar_sections %}{{ render_section(s) }}{% endfor %}
+    </div>
+    {% endif %}
+  </aside>
+  {% endif %}
+
+  <main class="site-content" {{ zone_style_attrs('body', template, zso.get('body', {})) | safe if editing and template }}>
+    {#  What happened to a sign-up. The form redirects back here with an
+        answer in the query string and, until now, nothing displayed it --
+        somebody typed their address, the page reloaded, and that was the
+        entire response. That was thin before and impossible now: with
+        confirmation by email, the one thing a person MUST be told is to go
+        and look in their inbox. #}
+    {#  Only reached without script: the form posts itself and shows the
+        answer in its own box (see site.js). The words come from
+        public.py's SIGNUP_MESSAGES so that the two ways of answering
+        cannot drift apart -- they were written out here in full, and
+        rewording one would have left the other saying something else. #}
+    {%- set subscribed = request.args.get('subscribed') %}
+    {%- if subscribed %}
+    {%- set answer = signup_messages.get(subscribed) or signup_messages['ok'] %}
+    <p class="cms-subscribe-note{{ '' if answer[1] else ' is-bad' }}" role="status">{{ answer[0] }}</p>
+    {%- endif %}
+    {% if post %}
+    {# A post, shown on the page its blog is on. The page's own sections
+       are not rendered — the post stands in their place — but everything
+       around it is the ordinary shell, which is the point of rendering it
+       here rather than in a template of its own. #}
+    {% set post_save_url = url_for('admin.blog_post_update', blog_id=blog.id, post_id=post.id) %}
+    <article class="cms-blog-post">
+      <p><a href="{{ url_for('public.page', slug=page.slug) if not page.is_home else url_for('public.home') }}">&larr; Back to {{ page.title }}</a></p>
+
+      {% if editing %}
+      <div class="cms-tool-header cms-post-bar">
+        <span class="cms-tool-header-label">Post</span>
+        <div class="cms-tool-header-controls">
+          <a class="btn btn-small"
+             href="{{ url_for('admin.blog_post_edit', blog_id=blog.id, post_id=post.id, next=current_path) }}"
+             title="Open the writing form — better for a long piece, and it comes back here">Write / publish</a>
+          <button type="button" class="cms-change-post-image-btn" title="Upload a picture for the top of this post">&#11014; Picture</button>
+          <input type="file" class="cms-post-image-file-input" accept="image/*"
+                 data-upload-url="{{ url_for('admin.blog_post_image_upload', blog_id=blog.id, post_id=post.id) }}" hidden>
+          <form method="post" action="{{ url_for('admin.blog_post_delete', blog_id=blog.id, post_id=post.id) }}"
+                class="cms-inline-form cms-delete-form" data-confirm="Delete this post? This cannot be undone.">
+            <button type="submit" class="cms-section-delete-btn" title="Delete this post">&times;</button>
+          </form>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if post.featured_image %}
+      <img class="cms-blog-post-image" src="{{ post.featured_image }}" alt="{{ post.title }}">
+      {% endif %}
+      <h1 {{ edit_field('title', post_save_url) }}>{{ post.title }}</h1>
+      {% if post.published_at %}<p class="cms-blog-date">{{ post.published_at }}</p>{% endif %}
+      {% if not post.published_at %}<p class="cms-blog-draft-badge">Draft &mdash; not visible to visitors yet</p>{% endif %}
+      {% if post.excerpt or editing %}
+      <p class="cms-blog-post-excerpt" {{ 'contenteditable="true"' | safe if editing }}
+         data-field="excerpt" data-save-url="{{ post_save_url }}"
+         {{ 'data-placeholder="One line summarising the post — this is what shows on the card."' | safe if editing }}>{{ post.excerpt }}</p>
+      {% endif %}
+      <div class="cms-blog-post-body cms-wysiwyg-body" {{ 'contenteditable="true"' | safe if editing }}
+           data-field="content" data-save-url="{{ post_save_url }}">{{ post_content | safe }}</div>
+    </article>
+    {% endif %}
+
+    <div id="cms-sections-list" data-default-width="{{ default_section_width }}" {{ ('data-reorder-url="' ~ url_for('admin.section_reorder', page_id=page.id) ~ '"') | safe if editing }}>
+    {{ render_zone_list(sections, url_for('admin.section_new', page_id=page.id)) if editing else '' }}
+    {% if not editing %}{% for s in sections %}{{ render_section(s) }}{% endfor %}{% endif %}
+    </div>
+
+
+  </main>
+
+  {% if editing or sidebar_right_sections %}
+  {% set sidebar_right_width_px = sidebar_right_sections[0].sidebar_width_px if sidebar_right_sections and sidebar_right_sections[0].sidebar_width == 'custom' and sidebar_right_sections[0].sidebar_width_px else none %}
+  <aside class="site-sidebar site-sidebar-right{{ ' site-sidebar-empty' if not sidebar_right_sections }}" {{ ('style="--cms-sidebar-right-width:' ~ sidebar_right_width_px ~ 'px;"') | safe if sidebar_right_width_px }} {{ zone_style_attrs('sidebar_right', template, zso.get('sidebar_right', {})) | safe if editing and template }}>
+    {% if editing %}
+    <div id="cms-sidebar-right-list" class="site-sidebar-zone" data-reorder-url="{{ url_for('admin.zone_section_reorder', template_id=template.id, zone='sidebar_right') }}">
+      {{ render_zone_list(sidebar_right_sections, url_for('admin.zone_section_new', template_id=template.id, zone='sidebar_right'), true) }}
+    </div>
+    {% else %}
+    <div id="cms-sidebar-right-list" class="site-sidebar-zone">
+      {% for s in sidebar_right_sections %}{{ render_section(s) }}{% endfor %}
+    </div>
+    {% endif %}
+  </aside>
+  {% endif %}
+
+  <footer class="site-footer" {{ zone_style_attrs('footer', template, zso.get('footer', {})) | safe if editing and template }}>
+    {% if editing %}
+    <div id="cms-footer-list" data-reorder-url="{{ url_for('admin.zone_section_reorder', template_id=template.id, zone='footer') }}">
+      {{ render_zone_list(footer_sections, url_for('admin.zone_section_new', template_id=template.id, zone='footer')) }}
+    </div>
+    {% elif footer_sections %}
+    <div id="cms-footer-list">
+      {% for s in footer_sections %}{{ render_section(s) }}{% endfor %}
+    </div>
+    {% else %}
+    <p>&copy; {{ page.title }}</p>
+    {% endif %}
+  </footer>
+
+  <!-- Video gallery popup player — always present, works for every visitor -->
+  <div id="cms-lightbox" class="cms-lightbox" hidden>
+    <button type="button" class="cms-lightbox-close" aria-label="Close">&times;</button>
+    <iframe id="cms-lightbox-frame" title="Video player" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+    {# The same overlay serves two jobs: a video player (above) and a picture enlarged from an Image Accordion set to "click to enlarge". One is shown at a time — see site.js. #}
+    <img id="cms-lightbox-img" class="cms-lightbox-image" alt="" hidden>
+    <video id="cms-lightbox-video" class="cms-lightbox-video" controls playsinline hidden></video>
+  </div>
+  <script src="{{ static_url('js/site.js') }}"></script>
+
+  {% if editing %}
+  {% include "partials/cms_modal.html" %}
+
+  {# The Image Library, for any control that needs to show pictures rather
+     than filenames. A data block, read with JSON.parse — never JS built
+     per-template (see CLAUDE.md). #}
+  <script type="application/json" id="cms-media-images">{{ media_images | tojson }}</script>
+
+  <div id="cms-image-picker-backdrop" class="cms-modal-backdrop" hidden>
+    <div class="cms-modal cms-image-picker">
+      <p>Pick the one you want to keep — the rest stay in the <a href="{{ url_for('admin.image_library') }}" target="_blank">Media Library</a> for later.</p>
+      <div id="cms-image-picker-grid" class="cms-image-picker-grid"></div>
+      <div class="cms-modal-actions">
+        <button type="button" id="cms-image-picker-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="cms-toast" class="cms-toast" hidden></div>
+
+  {# One shared picker for every "Insert Icon" button on the page (every
+     WYSIWYG toolbar has its own button, but there's no per-item state to
+     track here unlike the Menu tool — inserting just needs a target
+     contenteditable and a cursor position, not a stored icon key). #}
+  <div id="cms-insert-icon-picker">{{ icon_picker_grid(include_none=false) }}</div>
+
+  <script src="{{ static_url('js/admin/live-refresh.js') }}"></script>
+  <script src="{{ static_url('js/inline-editor.js') }}"></script>
+  <script src="{{ static_url('js/admin/faq-editor.js') }}"></script>
+  {% endif %}
+</body>
+</html>

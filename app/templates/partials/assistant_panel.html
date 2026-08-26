@@ -1,0 +1,62 @@
+<link rel="stylesheet" href="{{ static_url('css/cms-sidepanel.css') }}">
+
+<button type="button" class="cms-dock-tab-btn cms-dock-tab-assistant" id="cms-assistant-tab" data-panel="assistant" title="AI Assistant">💬</button>
+
+<div class="cms-dock-panel" id="cms-assistant-panel" data-panel="assistant">
+  <div class="cms-dock-resize-handle" title="Drag to resize"></div>
+  <div class="cms-dock-resize-edge" title="Drag to resize width"></div>
+  <div class="cms-dock-header">
+    <span class="cms-dock-title">💬 AI Assistant</span>
+    <span class="cms-dock-header-actions">
+      {% include "partials/dock_position_toggle.html" %}
+      <button type="button" class="cms-assistant-close" id="cms-assistant-close">&times;</button>
+    </span>
+    <div class="cms-dock-header-filters">
+      {% include "partials/dock_tool_search.html" %}
+      {% include "partials/dock_grouped_toggle.html" %}
+    </div>
+  </div>
+
+  <div class="cms-dock-content">
+    {% if not assistant_configured %}
+    <div class="cms-assistant-unconfigured">
+      <p>The AI assistant isn't connected yet. Set these on the server (e.g. in your Docker Compose environment) to enable it:</p>
+      <ul>
+        <li><code>OPEN_WEBUI_URL</code></li>
+        <li><code>OPEN_WEBUI_API_KEY</code></li>
+        <li><code>OPEN_WEBUI_MODEL</code> (optional)</li>
+      </ul>
+    </div>
+    {% else %}
+    <div class="cms-assistant-body">
+      <p class="hint">Ask how to do something, or ask it to fix/improve a specific section. Nothing is saved until you click Apply.</p>
+      <div id="chat-log" class="chat-log"></div>
+      <div id="chat-proposal" class="chat-proposal" hidden>
+        <h3>Proposed change</h3>
+        <p id="proposal-reason"></p>
+        <pre id="proposal-preview"></pre>
+        <div class="inline-form">
+          <button type="button" id="proposal-apply" class="btn btn-primary btn-small">Apply</button>
+          <button type="button" id="proposal-discard" class="btn btn-small">Discard</button>
+        </div>
+      </div>
+    </div>
+    <div class="cms-assistant-footer">
+      <div id="chat-image-preview" class="cms-assistant-image-preview" hidden>
+        <img id="chat-image-thumb" alt="Attached image">
+        <button type="button" id="chat-image-remove" title="Remove attached image">&times;</button>
+      </div>
+      <form id="chat-form" class="inline-form" data-chat-url="{{ url_for('admin.assistant_chat') }}" data-apply-url="{{ url_for('admin.assistant_apply') }}">
+        <button type="button" id="chat-image-btn" class="btn btn-small" title="Attach an image (e.g. a screenshot to guide the AI)">🖼️</button>
+        <input type="file" id="chat-image-input" accept="image/*" hidden>
+        <input type="text" id="chat-input" placeholder="Ask a question..." autocomplete="off" required>
+        <button type="submit" class="btn btn-primary btn-small">Send</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<script src="{{ static_url('js/side-panels.js') }}"></script>
+<script src="{{ static_url('js/admin/elapsed-timer.js') }}"></script>
+<script src="{{ static_url('js/admin/assistant-panel.js') }}"></script>

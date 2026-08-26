@@ -1,0 +1,41 @@
+/* "Ashgrove" — one plum, eleven steps, and photography doing the
+   rest. Like the bakery, every surface here is a step on the primary
+   ramp rather than a separate colour: ground 50, rules 100, secondary
+   text 700, headings 950. Brass appears once, on the things you are
+   meant to click. */
+:root {
+  --site-heading-font-family: "Playfair Display", Georgia, serif;
+  --site-font-family: "Karla", -apple-system, "Segoe UI", sans-serif;
+  --site-heading-weight: 600;
+  --site-body-bg: var(--primary-50, #fbf8fa);
+  --site-panel-bg: rgba(255, 253, 254, .96);
+}
+body { background: var(--site-body-bg); color: var(--primary-950, #2e2329); }
+
+.site-header { background: var(--primary-50, #fbf8fa);
+  border-bottom: 1px solid var(--primary-100, #ece0e6); }
+.site-brand { font-family: "Playfair Display", Georgia, serif;
+  color: var(--primary-800, #5b3a52); letter-spacing: .01em; }
+.site-nav a { color: var(--primary-700, #6b4a5f); letter-spacing: .08em;
+  text-transform: uppercase; font-size: .78rem; font-weight: 600; }
+.site-nav a:hover { color: var(--accent, #b8894a); }
+.site-footer { background: var(--primary-950, #241a20); color: var(--primary-100, #efe6ea); }
+.site-footer a { color: var(--primary-100, #efe6ea); }
+
+h1, h2, h3 { color: var(--primary-900, #3a2b34); letter-spacing: -.01em; }
+p, li { color: var(--primary-800, #4a3b43); }
+.block-header { background: transparent; text-align: center; }
+
+.cms-price-tier { background: var(--accent-50, #fff); border-color: var(--primary-100, #ece0e6); }
+.cms-price-name { color: var(--accent, #b8894a); letter-spacing: .1em; }
+.cms-price-amount { color: var(--primary-900, #3a2b34); }
+.cms-price-btn { background: var(--primary-800, #5b3a52); }
+.cms-price-btn:hover { background: var(--accent, #b8894a); }
+.cms-stat { background: var(--primary-100, #f4ebef); }
+.cms-stat-value { font-family: "Playfair Display", Georgia, serif;
+  color: var(--primary-700, #6b4a5f); }
+.cms-quote blockquote { font-family: "Playfair Display", Georgia, serif; }
+.cms-quote blockquote::before { color: var(--accent, #b8894a); }
+.cms-content-divider { border-color: var(--primary-200, #dcc7d2); }
+.cms-banner-overlay h2 { font-family: "Playfair Display", Georgia, serif; font-weight: 400;
+  font-size: clamp(2.1rem, 5.5vw, 3.6rem); letter-spacing: -.01em; }

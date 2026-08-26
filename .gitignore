@@ -1,0 +1,27 @@
+venv/
+venv2/
+__pycache__/
+*.pyc
+/data/
+/uploads/
+/themes/
+app/static/uploads/*
+!app/static/uploads/.gitkeep
+.env
+!.env.example
+.secret_key
+.encryption_key
+# Claude Code's own runtime state, not project source — launch.json points
+# at a venv path on one particular machine, which is nobody else's business
+# and wrong everywhere but here.
+.claude/
+#  Anything holding a password, wherever it was dropped. initpwd.txt was
+#  put in this directory to be READ, and a `git add -A` committed and
+#  pushed it -- so the rule is now a pattern rather than a filename,
+#  because the next one will be called something else.
+initpwd.txt
+*password*.txt
+*passwd*.txt
+*.secret
+*credentials*
+app/data/template-packages/

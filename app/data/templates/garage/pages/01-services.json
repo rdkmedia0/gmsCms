@@ -1,0 +1,26 @@
+{
+  "title": "Services",
+  "slug_suffix": "services",
+  "page_type": "standard",
+  "meta_description": "Servicing, repairs, diagnostics and tyres, with prices.",
+  "sections": [
+    [
+      "text",
+      "What we do",
+      "<p>All makes, petrol, diesel and hybrid. Prices below include labour; parts are quoted before we fit them.</p>",
+      {}
+    ],
+    [
+      "html",
+      "Common jobs",
+      "<table class=\"cms-table\"><thead><tr><th>Job</th><th>From</th><th>Time</th></tr></thead><tbody><tr><td>Interim service</td><td>120</td><td>2 hours</td></tr><tr><td>Full service</td><td>260</td><td>half a day</td></tr><tr><td>Brake pads, front</td><td>160</td><td>1–2 hours</td></tr><tr><td>Diagnostic check</td><td>60</td><td>45 minutes</td></tr><tr><td>Tyre fitted and balanced</td><td>25</td><td>20 minutes</td></tr><tr><td>Air conditioning regas</td><td>95</td><td>1 hour</td></tr></tbody></table>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-faq cms-faq-style-list\"><details class=\"cms-faq-item\" name=\"cms-faq-garage-services-2\"><summary class=\"cms-faq-q\">Will servicing here affect my warranty?</summary><div class=\"cms-faq-a\">No. As long as it is serviced to schedule with the right parts, a manufacturer warranty stands &amp;mdash; that has been the law across Europe since 2003.</div></details><details class=\"cms-faq-item\" name=\"cms-faq-garage-services-2\"><summary class=\"cms-faq-q\">Do you use genuine parts?</summary><div class=\"cms-faq-a\">Where it matters, yes. Where a good aftermarket part is the same thing in a different box, we will offer you both prices and let you choose.</div></details><details class=\"cms-faq-item\" name=\"cms-faq-garage-services-2\"><summary class=\"cms-faq-q\">Can I wait while it is done?</summary><div class=\"cms-faq-a\">For anything under an hour, yes &amp;mdash; there is a kettle and a chair. For longer jobs most people drop the car off before eight.</div></details></div>",
+      {}
+    ]
+  ]
+}

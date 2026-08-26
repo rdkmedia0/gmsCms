@@ -1,0 +1,32 @@
+{
+  "title": "Education",
+  "slug_suffix": "education",
+  "page_type": "standard",
+  "meta_description": "Education and certifications.",
+  "sections": [
+    [
+      "text",
+      "",
+      "<h2>Education and training</h2><p>The formal part is below. The more useful half was never on a transcript &mdash; a decade of shipping, and the three courses I went back for once I knew which questions to ask.</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<table class=\"cms-table\"><thead><tr><th>Degree</th><th>Institution</th><th>Year</th></tr></thead><tbody><tr><td>B.A. Graphic Design</td><td>State University</td><td>2016</td></tr><tr><td>UX Certificate</td><td>Design Academy</td><td>2017</td></tr></tbody></table>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-timeline\" data-style=\"vertical\"><ol class=\"cms-timeline cms-timeline-vertical\"><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step1_when\">2019</span><div class=\"cms-timeline-body\"><h3 data-field=\"step1_title\">Interaction Design Foundation</h3><p data-field=\"step1_text\">Certificate in design thinking. Went back for it after five years of practice.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step2_when\">2021</span><div class=\"cms-timeline-body\"><h3 data-field=\"step2_title\">Nielsen Norman Group</h3><p data-field=\"step2_text\">UX research methods, in person. Changed how I run every study since.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step3_when\">2024</span><div class=\"cms-timeline-body\"><h3 data-field=\"step3_title\">Accessibility for designers</h3><p data-field=\"step3_text\">WCAG in practice, not in theory. Now part of how I hand work over.</p></div></li></ol></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-cta\" data-tone=\"soft\"><div class=\"cms-cta cms-cta-soft\"><h2 data-field=\"heading\">The rest is in the work</h2><p data-field=\"text\">Case studies and talks say more about how I think than any of the above.</p><a class=\"cms-cta-btn\" href=\"/writing\" data-href-field=\"link\"><span data-field=\"cta\">See the writing</span></a></div></div>",
+      {}
+    ]
+  ]
+}

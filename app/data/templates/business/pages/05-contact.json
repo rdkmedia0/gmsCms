@@ -1,0 +1,35 @@
+{
+  "title": "Contact",
+  "slug_suffix": "contact",
+  "page_type": "standard",
+  "meta_description": "Get a free estimate or grab our flyer.",
+  "sections": [
+    [
+      "text",
+      "Let's Chat",
+      "<p>Give us a call, stop by, or grab our flyer below — we'd love to help out.</p>",
+      {}
+    ],
+    [
+      "file",
+      "Miller Family Landscaping Flyer.pdf",
+      "/static/demo/sample-download.pdf",
+      {
+        "file_display": "card",
+        "file_size": 2400000
+      }
+    ],
+    [
+      "card",
+      "",
+      "<div class=\"cms-card-shape\"><h3>📞 (555) 019-2837</h3><p>412 Maple Street · Open Mon–Sat · 8am–5pm</p></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-contact-form-tool\"></div>",
+      {}
+    ]
+  ]
+}

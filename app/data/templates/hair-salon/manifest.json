@@ -1,0 +1,45 @@
+{
+  "name": "Hair Salon",
+  "icon": "💇",
+  "slug": "hair-salon",
+  "description": "A salon or barbershop: services and prices, the people, the work. Editorial, image-led, one colour scale.",
+  "google_fonts_url": "/static/fonts/choices.css",
+  "palette": [
+    {
+      "slug": "primary",
+      "name": "Plum",
+      "color": "#5b3a52"
+    },
+    {
+      "slug": "secondary",
+      "name": "Rosewood",
+      "color": "#9c6474"
+    },
+    {
+      "slug": "accent",
+      "name": "Brass",
+      "color": "#b8894a"
+    }
+  ],
+  "nav_layout": "centered",
+  "page_layout": "none",
+  "footer_layout": "centered",
+  "shape_override": "pill",
+  "shadow_override": "subtle",
+  "business_name": "Ashgrove Hair",
+  "tagline": "Cuts, colour, and an hour to yourself",
+  "footer_blurb": "A small salon on Ashgrove Road. Four chairs, no rush.",
+  "footer_contact": {
+    "address": "Ashgrove Hair, 14 Ashgrove Road",
+    "email": "hello@ashgrovehair.example",
+    "phone": "+41 44 555 0121",
+    "instagram": "https://instagram.com/ashgrovehair"
+  },
+  "has_content": true,
+  "pages": [
+    "home",
+    "services",
+    "team",
+    "contact"
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "title": "About",
+  "slug_suffix": "about",
+  "page_type": "standard",
+  "meta_description": "Credentials and coaching philosophy.",
+  "sections": [
+    [
+      "html",
+      "",
+      "<nav class=\"cms-breadcrumb cms-breadcrumb-medium cms-breadcrumb-style-plain\">%%CMS_BREADCRUMB%%</nav>",
+      {}
+    ],
+    [
+      "banner",
+      "",
+      "<div class=\"cms-banner\" style=\"background-image:url('media/coaching-banner.png')\"><div class=\"cms-banner-overlay\"><h2>Hi, I'm Morgan</h2><p>ICF-certified coach, 9 years in, 400+ client sessions.</p></div></div>",
+      {}
+    ],
+    [
+      "text",
+      "My Background",
+      "<p>I spent a decade in corporate operations, doing everything \"right\" and feeling more disconnected every year — training as a coach was how I found my way back to something that felt true. I'm ICF-certified (PCC level) and have walked alongside 400+ clients since 2017.</p><p>My style is warm and unhurried: I'll ask the question you're avoiding, and I'll hold space for you to actually hear your own answer.</p>",
+      {}
+    ],
+    [
+      "columns",
+      "",
+      "{\"columns\": [{\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>Certified</h3><p>ICF Professional Certified Coach (PCC).</p></div>\", \"tool_name\": \"Card\"}, {\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>Experienced</h3><p>400+ sessions across career and life transitions.</p></div>\", \"tool_name\": \"Card\"}, {\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>Focused</h3><p>Small caseload \\u2014 12 active clients, max.</p></div>\", \"tool_name\": \"Card\"}]}",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-stats\" data-count=\"3\"><div class=\"cms-stat-row\"><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat1_value\">11</span><span class=\"cms-stat-label\" data-field=\"stat1_label\">Years coaching</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat2_value\">300+</span><span class=\"cms-stat-label\" data-field=\"stat2_label\">People sat with</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat3_value\">60 min</span><span class=\"cms-stat-label\" data-field=\"stat3_label\">A session</span></div></div></div>",
+      {}
+    ]
+  ]
+}

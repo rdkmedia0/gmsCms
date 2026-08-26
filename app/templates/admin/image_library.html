@@ -1,0 +1,45 @@
+{% extends "admin/base.html" %}
+{% block title %}Media Library — My Site Admin{% endblock %}
+{% block content %}
+<h1>Media Library</h1>
+<p class="hint">Every file that's ever been uploaded or AI-generated on this site, in one place — reusable anywhere an Image/Banner/Card asks for one. Click an image to view it full size, generate a variation, or delete it. Deleting removes the file itself, even if it's still in use somewhere.</p>
+
+{% if not images %}
+<div class="card"><p>Nothing here yet — upload a file or generate an image somewhere on the site and it'll show up here.</p></div>
+{% else %}
+<div class="media-library-grid" id="media-library-grid">
+  {% for item in images %}
+  <div class="media-library-item" data-index="{{ loop.index0 }}">
+    {% if item.is_image %}
+    <button type="button" class="media-library-thumb-btn" data-index="{{ loop.index0 }}" title="{{ item.prompt or item.filename }}">
+      <img src="{{ item.url }}" alt="" loading="lazy">
+    </button>
+    {% else %}
+    <a href="{{ item.url }}" target="_blank" class="media-library-thumb-btn media-library-file" title="{{ item.filename }}">📄</a>
+    {% endif %}
+    <button type="button" class="media-library-delete" data-filename="{{ item.filename }}" title="Delete">&times;</button>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div id="media-lightbox" class="media-lightbox" hidden
+     data-delete-url-base="{{ url_for('admin.generated_image_delete', filename='__FN__') }}"
+     data-generate-from-url="{{ url_for('admin.generate_image_from_library') }}">
+  <div class="media-lightbox-inner">
+    <img id="media-lightbox-img" src="" alt="">
+    <p id="media-lightbox-caption" class="media-lightbox-caption"></p>
+  </div>
+  <button type="button" id="media-lightbox-prev" class="media-lightbox-nav media-lightbox-prev" title="Previous">&lsaquo;</button>
+  <button type="button" id="media-lightbox-next" class="media-lightbox-nav media-lightbox-next" title="Next">&rsaquo;</button>
+  <button type="button" id="media-lightbox-close" class="media-lightbox-close" title="Close (Esc)">&times;</button>
+  <div class="media-lightbox-actions">
+    <button type="button" id="media-lightbox-generate" class="btn-small">✨ Use to generate new image</button>
+    <button type="button" id="media-lightbox-delete" class="btn-small btn-danger">Delete</button>
+  </div>
+</div>
+
+<script type="application/json" id="media-library-data">{{ images | tojson }}</script>
+<script src="{{ static_url('js/admin/elapsed-timer.js') }}"></script>
+<script src="{{ static_url('js/admin/image-library.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,2003 @@
+/* Shared side dock — one panel, two switchable tabs (AI Assistant, Tools).
+   Used by both the admin backend and the public site (when logged in). */
+
+/*  The editor's own accent. Every control in this app looks the same on
+    every install: these are the app's buttons, focus rings and selected
+    states, not the site's, and a control that changes colour with the
+    template is a control whose legibility is decided by somebody's brand.
+    That was not hypothetical -- the self-help template ships #7c8c74,
+    which gave the admin's own primary buttons 3.58:1 for their white
+    text, and an owner can override the palette to anything at all. The
+    site's colours still reach everything the site owns; see
+    site-base.css. */
+:root { --cms-ui-accent: #2563eb; --cms-ui-accent-dark: #1d4ed8; }
+
+/*  The corner scale, declared here too for the same reason as
+    --cms-ui-accent: this stylesheet is loaded on pages where the others
+    are not, and a token that resolves on one page and not the other is
+    worse than no token. The rule behind the two values is in
+    inline-editor.css. */
+:root { --cms-ui-radius-control: 4px; --cms-ui-radius-surface: 8px; }
+
+/* Two separate, independently-styled floating tabs — visually distinct and
+   allowed to overlap slightly — but both slide to the same offset and stay
+   visible together whenever the shared dock panel is open, since either one
+   can be used to switch what the (single) panel is showing. */
+:root {
+  /*  Room always kept for the tab, so it never hides behind its own panel. */
+  --cms-dock-tab-space: 46px;
+  --cms-dock-open-edge: min(var(--cms-dock-width, 220px),
+                            calc(100vw - var(--cms-dock-tab-space)));
+}
+.cms-dock-tab-btn {
+  position: fixed;
+  right: 0;
+  z-index: 10000;
+  border: none;
+  border-radius: var(--cms-ui-radius-control) 0 0 8px;
+  padding: 10px 8px;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+  color: #fff;
+  transition: right 0.2s ease;
+}
+/*  The open tab sits on the panel's actual edge, so it has to be the same
+    expression the panel's own width resolves to: the width the admin
+    dragged it to, OR whatever the screen leaves once the tab itself is
+    accounted for, whichever is smaller. Anything else drifts — the set
+    width alone pushed the tab off a narrow screen, and a flat 90vw (what
+    the phone rule below used to say) left it stranded mid-page whenever
+    the panel was narrower than that, which is the gap on a phone.
+    The reserved strip is what keeps the tab reachable: at 90vw a 300px
+    screen left 30px for a 41px tab, so the thing you close the panel with
+    was itself half off the screen. */
+.cms-dock-tab-btn.cms-open { right: var(--cms-dock-open-edge); }
+/* All three tabs stay visible whenever the dock is open (see the header
+   comment), overlapping each other slightly — each needs its own distinct
+   baseline z-index so that overlap always resolves the same predictable
+   way (later/lower tab stacks above the one before it), never left to
+   accidental DOM order. The active tab then jumps well above all three,
+   unambiguously, regardless of which one it is — a small +1/+2 bump
+   wasn't enough of a gap and let a later inactive tab still win. */
+.cms-dock-tab-assistant { z-index: 10000; }
+.cms-dock-tab-tools { z-index: 10001; }
+.cms-dock-tab-colors { z-index: 10002; }
+.cms-dock-tab-style { z-index: 10003; }
+.cms-dock-tab-template { z-index: 10004; }
+.cms-dock-tab-btn.cms-dock-front { z-index: 10010; }
+@media (max-width: 480px) {
+  /*  Nothing to correct here any more — the rule above already lands on
+      the panel edge at any width. Kept as a place to hang phone-only
+      adjustments if the panel ever grows one. */
+  .cms-dock-tab-btn { box-shadow: -2px 0 10px rgba(0, 0, 0, .22); }
+}
+.cms-dock-tab-assistant { top: 90px; background: var(--cms-ui-accent); }
+.cms-dock-tab-assistant:hover { background: var(--cms-ui-accent-dark); }
+/* Overlapping by design (stacked, touching) but with its own border and
+   shadow so the seam between the two is still visible — two distinct tabs,
+   not one two-tone pill. */
+.cms-dock-tab-tools {
+  top: 118px;
+  background: #059669;
+  border-top: 2px solid var(--card-bg, #fff);
+  box-shadow: -2px 2px 8px rgba(0, 0, 0, 0.25);
+}
+.cms-dock-tab-tools:hover { background: #047857; }
+.cms-dock-tab-colors {
+  top: 146px;
+  background: #d97706;
+  border-top: 2px solid var(--card-bg, #fff);
+  box-shadow: -2px 2px 8px rgba(0, 0, 0, 0.25);
+}
+.cms-dock-tab-colors:hover { background: #b45309; }
+.cms-dock-tab-style {
+  top: 174px;
+  background: #7c3aed;
+  border-top: 2px solid var(--card-bg, #fff);
+  box-shadow: -2px 2px 8px rgba(0, 0, 0, 0.25);
+}
+.cms-dock-tab-style:hover { background: #6d28d9; }
+.cms-dock-tab-template {
+  top: 202px;
+  background: #475569;
+  border-top: 2px solid var(--card-bg, #fff);
+  box-shadow: -2px 2px 8px rgba(0, 0, 0, 0.25);
+}
+.cms-dock-tab-template:hover { background: #334155; }
+
+.cms-dock-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: var(--cms-dock-height, 100vh);
+  width: var(--cms-dock-width, 220px);
+  max-width: calc(100vw - var(--cms-dock-tab-space));
+  max-height: 100vh;
+  /*  Below this the panel is unusable anyway — but it must never win
+      against the reserved tab strip, or the tab goes off-screen again. */
+  min-width: min(220px, calc(100vw - var(--cms-dock-tab-space)));
+  min-height: 240px;
+  background: #fff;
+  /* This is the editor's OWN chrome, not part of the site being edited —
+     it must stay readable no matter what the active theme does to body
+     text color (a dark theme like Dark Studio sets body { color: #f2f2f5 }
+     for the SITE content, which — with nothing overriding it here —
+     cascaded straight into the panel too: near-white text on this
+     panel's white background, unreadable). Pin plain, theme-independent
+     colors rather than reading the site's own --text/--card-bg vars,
+     which are exactly the ones a dark theme redefines. */
+  color: #1f2430;
+  border-left: 1px solid #e2e4e9;
+  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.08);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.2s ease;
+  font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+.cms-dock-panel.cms-open { transform: translateX(0); }
+/*  See side-panels.js: the panels render closed and side-docked, and
+    their real position and open state are only known one script later.
+    Applying it is a change of transform, which this transition would
+    otherwise animate — so on every page load the bar slid in from the
+    right-hand edge on its way to the bottom of the screen, as if it had
+    just been opened. It had not: it was already open before the page was
+    replaced. */
+:root.cms-dock-restoring .cms-dock-panel,
+:root.cms-dock-restoring .cms-dock-tab-btn { transition: none !important; }
+/*  The Tools panel is the one exception to the 220px floor above — its
+    content is a grid of fixed-size chips (see .cms-tools-grid), not a
+    form, so it stays genuinely usable much narrower: one 88px chip plus
+    the panel's own padding. Letting it shrink that far is what makes the
+    1-column "long scrollable strip" reachable on a phone, rather than
+    something the reflow rule could produce in theory but the panel's own
+    floor never actually allowed. An id selector beats the shared class
+    regardless of source order, so only this one narrows — Colors/Style/
+    Template keep their own 220px floor even while the shared width
+    variable everything reads from is sitting at 120px. */
+#cms-tools-panel { min-width: min(120px, calc(100vw - var(--cms-dock-tab-space))); }
+
+/*  Docked along the bottom instead of the side — an admin's own choice
+    (the toggle button in any panel's header), and a whole-dock one: every
+    panel and every tab moves together. That is not just consistency for
+    its own sake. The dock's accordion works by sitting every panel at the
+    exact same rect and letting only the front one show (see openPanel in
+    side-panels.js); moving ONE panel elsewhere breaks that assumption and
+    leaves two panels visible at once. Orientation therefore belongs to
+    the dock, never to a single panel. */
+/*  Tall enough for a panel's own controls and no more — a bar along the
+    bottom is taking space away from the page being edited, so its default
+    is the smallest useful size rather than a comfortable one. Drag its
+    top edge for more. */
+/*  The smallest height that still shows everything: measured against the
+    tallest thing any panel puts in the bar (the Template panel's layout
+    diagrams, 105px) plus the content padding, the header and the
+    scrollbar. A bar along the bottom is taking room from the page being
+    edited, so it defaults to exactly what it needs and no more — drag its
+    top edge for more. */
+/*  Derived, not chosen. Two rows of tiles is the bar's whole content, so
+    its height is that measure plus the chrome around it — the header, the
+    content padding and the horizontal scrollbar. Stating it this way
+    means the two are always in step: change the tile height and the bar
+    follows, instead of a hand-picked number drifting out of agreement
+    with what it is supposed to hold. */
+:root {
+  /*  One gap between tiles, wherever they are. It had been 3px inside a
+      section and 0 or 4 at the seams between them, which is what made the
+      row look unevenly spaced. */
+  --cms-dock-tile-gap: 6px;
+  --cms-dock-bottom-rows: calc(2 * var(--cms-tool-chip-height-bottom, 40px) + var(--cms-dock-tile-gap));
+  --cms-dock-bottom-header: 45px;
+  --cms-dock-bottom-chrome: 63px;  /*  header 45 + padding 6 + scrollbar 8 + 4 slack */
+  --cms-dock-bottom-height: calc(var(--cms-dock-bottom-rows) + var(--cms-dock-bottom-chrome));
+}
+.cms-dock-panel.cms-dock-bottom {
+  top: auto;
+  bottom: 0;
+  right: 0;
+  left: 0;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  height: var(--cms-dock-bottom-height);
+  max-height: 70vh;
+  /*  Two rows is the floor as well as the default: below it the bar stops
+      being able to show what it is for. */
+  min-height: calc(var(--cms-dock-bottom-rows) + var(--cms-dock-bottom-chrome));
+  border-left: none;
+  border-top: 1px solid #e2e4e9;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
+  transform: translateY(100%);
+}
+.cms-dock-panel.cms-dock-bottom.cms-open { transform: translateY(0); }
+/*  Only the front panel paints. Every panel carries `cms-open` together so
+    that switching tabs is an instant restack rather than a slide (see
+    openPanel), but the ones behind were still drawing their own
+    scrollbars at the same rect — which is the second, unusable scrollbar
+    that appears under the bar. `visibility` stops them painting while
+    leaving them laid out, so the restack stays instant. */
+.cms-dock-panel.cms-open:not(.cms-dock-front) { visibility: hidden; }
+/*  The tabs follow the dock. Stacked down the right edge they read as a
+    column beside a side panel; along the bottom they have to become a row
+    sitting ON the bar's top edge, or they are still pointing at where the
+    dock used to be. Same idea as the side tabs' `right` offset, turned
+    ninety degrees: `bottom` rises to clear the open panel, and the corner
+    radius/shadow flip to match which edge they now grow out of. */
+.cms-dock-tab-btn.cms-dock-bottom {
+  right: auto !important;
+  top: auto;
+  bottom: 0;
+  border-radius: var(--cms-ui-radius-control) 8px 0 0;
+  transition: bottom 0.2s ease;
+  /*  The same overlap the side tabs have, turned ninety degrees: they sit
+      31px apart across a ~41px tab, so each one laps the last by about
+      ten pixels and the strip reads as one connected set. The seam that
+      makes the overlap legible moves with it — a card-coloured edge on
+      the side the next tab arrives from (left here, top down the side) —
+      and the shadow throws up-and-left to match the edge they now grow
+      out of. Spacing them apart instead, which is what this did first,
+      left five unrelated buttons in a row. */
+  border-top: none;
+  border-left: 2px solid var(--card-bg, #fff);
+  box-shadow: -2px -2px 8px rgba(0, 0, 0, 0.25);
+}
+.cms-dock-tab-assistant.cms-dock-bottom { border-left: none; }
+.cms-dock-tab-btn.cms-dock-bottom.cms-open {
+  bottom: min(var(--cms-dock-bottom-height, 190px), 70vh);
+}
+.cms-dock-tab-assistant.cms-dock-bottom { left: 10px; }
+.cms-dock-tab-tools.cms-dock-bottom { left: 41px; }
+.cms-dock-tab-colors.cms-dock-bottom { left: 72px; }
+.cms-dock-tab-style.cms-dock-bottom { left: 103px; }
+.cms-dock-tab-template.cms-dock-bottom { left: 134px; }
+/*  The header is one line here, always, whatever the panel is called.
+    It was allowed to wrap, so "Template & Layout" took two lines where
+    "Colors" took one — and that panel alone then had 100px of content
+    instead of 126, which is less than the two rows everything is sized
+    against. The result was tiles clipped top and bottom and half-empty
+    boxes, but only on that panel and only at narrower widths, which is
+    exactly the kind of fault that reads as random. A fixed height makes
+    every panel's bar identical by construction; the title gives way
+    first, since the tab beside it already says which panel this is. */
+.cms-dock-panel.cms-dock-bottom .cms-dock-header {
+  flex-wrap: nowrap;
+  height: var(--cms-dock-bottom-header, 45px);
+  min-height: var(--cms-dock-bottom-header, 45px);
+  gap: 8px;
+}
+.cms-dock-panel.cms-dock-bottom .cms-dock-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/*  The "?" beside a title would be the first thing truncation ate, and a
+    half-clipped help button is worse than none — the same words are on
+    the section spines inside. */
+.cms-dock-panel.cms-dock-bottom .cms-dock-title .cms-panel-help { display: none; }
+.cms-dock-panel.cms-dock-bottom .cms-dock-header-actions { flex-wrap: nowrap; }
+.cms-dock-panel.cms-dock-bottom .cms-tools-search { flex: 0 1 170px; min-width: 74px; }
+
+/*  On a phone the header's four controls do not fit beside the title,
+    and the one that lost was the dock-position toggle — pushed off the
+    right-hand edge, half of it past the screen. The title gives up its
+    text (the tab above it is already labelled and coloured) and the
+    toggle drops to its icon, which is enough to keep everything on
+    screen and reachable. */
+@media (max-width: 560px) {
+  .cms-dock-panel.cms-dock-bottom .cms-dock-title { font-size: 0; flex: 0 0 auto; }
+  .cms-dock-panel.cms-dock-bottom .cms-dock-title::first-letter { font-size: 16px; }
+  .cms-dock-panel.cms-dock-bottom .cms-dock-position-label { display: none; }
+  .cms-dock-panel.cms-dock-bottom .cms-tools-search { flex: 1 1 60px; min-width: 60px; }
+}
+
+/*  ONE bar, one scrollbar. Each panel's contents lay out as a single row
+    that runs off the right-hand side and scrolls — headings, their
+    options, and the buttons that act on them, in reading order. The
+    earlier attempt gave every gallery its own little scroller, which
+    meant three or four separate scrollbars per panel and no way to see
+    what was past any of them without finding and dragging each one. */
+.cms-dock-panel.cms-dock-bottom .cms-dock-content {
+  flex-direction: row;
+  flex-wrap: nowrap;
+  /*  Tight. In a bar this short the padding reads as a band of empty
+      space above and below the tiles rather than as breathing room.
+      (This used to be restated as 8px 12px lower down the same rule,
+      where it quietly won — which is why halving it appeared to do
+      nothing.) */
+  padding: 3px 8px;
+  /*  Centre everything on one line. This was `stretch` back when a spine
+      needed a definite height to cap itself against; spines state their
+      own height now, so stretching only meant the disclosures and their
+      buttons settled at a different height from the tiles beside them —
+      six pixels out on Fonts, which is the misalignment you can see
+      between ADVANCED and the tile next to it. */
+  align-items: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  gap: var(--cms-dock-tile-gap);
+}
+.cms-dock-panel.cms-dock-bottom .cms-dock-content > * {
+  max-width: none;
+  flex: 0 0 auto;
+}
+/*  A thin scrollbar. The default is 15px tall, and since the bar has to
+    reserve room for it whether or not it appears, that was 15px of empty
+    band above and below the tiles on every panel whose content happened
+    to fit. Eight is still comfortably grabbable and gives the seven back
+    to the bar. */
+.cms-dock-panel.cms-dock-bottom .cms-dock-content { scrollbar-width: thin; }
+.cms-dock-panel.cms-dock-bottom .cms-dock-content::-webkit-scrollbar { height: 8px; }
+.cms-dock-panel.cms-dock-bottom .cms-dock-content::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, .25);
+  border-radius: 4px;
+}
+.cms-dock-panel.cms-dock-bottom .cms-dock-content::-webkit-scrollbar-track { background: transparent; }
+
+/*  A section and its controls, kept together as one unit so the row reads
+    as groups rather than a loose queue of tiles. The heading sits to the
+    LEFT of what it labels (it sits above in the tall view — same
+    relationship, turned ninety degrees), and anything that follows the
+    options in the markup — a Reset button, a picker — lands to their
+    right, in the order it is written.
+
+    `display: contents` in the side dock: the wrapper is built by JS for
+    both orientations (see buildGroups in side-panels.js) but must not
+    change the vertical layout at all, so there it vanishes and its
+    children lay out against .cms-dock-content exactly as before. */
+.cms-dock-group { display: contents; }
+.cms-dock-panel.cms-dock-bottom .cms-dock-group {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  min-height: 0;
+  padding: 0 10px 0 0;
+}
+/*  Between groups, never before the first. `:first-child` looked like it
+    covered that but does not: the panels open with a hidden element (the
+    Colours panel's selection block), so the first VISIBLE group is the
+    second child and kept its divider and 14px of padding — a stray rule
+    and a gap down the left-hand end of the bar. An adjacent-sibling
+    selector says what was actually meant. */
+.cms-dock-panel.cms-dock-bottom .cms-dock-group + .cms-dock-group {
+  border-left: 1px solid var(--border, #e2e4e9);
+  padding-left: 10px;
+}
+/*  Folded away, a group is only its spine, and the padding that keeps a
+    heading clear of its own tiles has nothing left to keep it clear of.
+    Two collapsed sections sat 27px apart — ten each side, plus the gap
+    and the rule — which read as a gap rather than a row of tabs. Closed,
+    they pack together. */
+.cms-dock-panel.cms-dock-bottom .cms-dock-group.is-collapsed { padding-right: 0; }
+.cms-dock-panel.cms-dock-bottom .cms-dock-group.is-collapsed + .cms-dock-group { padding-left: 4px; }
+.cms-dock-panel.cms-dock-bottom .cms-tools-group.is-collapsed { margin-right: 0; }
+
+/*  Ungrouped: one flat row, no headings. The groups stop being groups
+    (`display: contents` lifts their children straight into the bar's own
+    row) and the spines go, which is the same answer in every panel —
+    Colours' palettes run on into its corners, the tools run on into each
+    other. Tools additionally rebuilds its grid without the group wrappers
+    (see tools-panel.js), since its chips are a two-row grid rather than
+    a plain row. */
+/*  Ungrouped still has sections, it just does not name them — so a thin
+    line marks where one ends and the next begins. `display: contents`
+    made that impossible (a box that is not there cannot carry a border),
+    so the group stays a real row; its tiles flow along the bar exactly as
+    before, with a divider between one group and the next. */
+.cms-dock-panel.cms-dock-bottom.cms-dock-ungrouped .cms-dock-group {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--cms-dock-tile-gap);
+  flex: 0 0 auto;
+  padding: 0;
+  border-left: none;
+}
+.cms-dock-panel.cms-dock-bottom.cms-dock-ungrouped .cms-dock-group + .cms-dock-group {
+  border-left: 1px solid var(--border, #e2e4e9);
+  padding-left: var(--cms-dock-tile-gap);
+}
+.cms-dock-panel.cms-dock-bottom.cms-dock-ungrouped .cms-dock-group-head,
+.cms-dock-panel.cms-dock-bottom.cms-dock-ungrouped .cms-tools-group-head { display: none; }
+/*  In the side dock the heading is a heading again, so grouping there is
+    only about whether the headings show at all. */
+.cms-dock-panel.cms-dock-ungrouped .cms-dock-group-head,
+.cms-dock-panel.cms-dock-ungrouped .cms-tools-group-head { display: none; }
+
+/*  Ungrouped is ONE row everywhere, the way the tools already read when
+    flattened. The galleries are a two-row grid while grouped — that is
+    what lets a group show twice as many tiles in the same height — but
+    ungrouped there are no groups to be compact within, just one run of
+    everything the panel has, so they become a single scrolling line like
+    the tools beside them. */
+/*  One row, so the row measure everything sizes against is one row. The
+    spines, the galleries and the bar's own min-height all read this. */
+.cms-dock-panel.cms-dock-bottom.cms-dock-ungrouped {
+  --cms-dock-bottom-rows: var(--cms-tool-chip-height-bottom, 40px);
+}
+.cms-dock-panel.cms-dock-bottom.cms-dock-ungrouped .cms-color-preset-gallery,
+.cms-dock-panel.cms-dock-bottom.cms-dock-ungrouped .cms-font-preset-gallery,
+.cms-dock-panel.cms-dock-bottom.cms-dock-ungrouped .cms-tpl-grid {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  height: auto;
+}
+.cms-dock-panel.cms-dock-bottom.cms-dock-ungrouped .cms-color-preset-gallery > *,
+.cms-dock-panel.cms-dock-bottom.cms-dock-ungrouped .cms-font-preset-gallery > *,
+.cms-dock-panel.cms-dock-bottom.cms-dock-ungrouped .cms-tpl-grid > * {
+  flex: 0 0 auto;
+  width: var(--cms-tool-chip-size);
+  height: var(--cms-tool-chip-height-bottom, 40px);
+}
+
+/*  Ungrouped, an action lies flat again. A spine reads sideways because a
+    grouped bar is two rows tall and a heading has that height to run
+    down; one row is 40px, which fits about four letters upright — which
+    is why "Reload" and the disclosures came out clipped. With a single
+    row there is no reason to turn them: a normal horizontal button fits
+    the row exactly and reads at a glance. */
+.cms-dock-panel.cms-dock-bottom.cms-dock-ungrouped .cms-dock-content details > summary,
+.cms-dock-panel.cms-dock-bottom.cms-dock-ungrouped .cms-dock-content > form > .btn,
+.cms-dock-panel.cms-dock-bottom.cms-dock-ungrouped .cms-dock-group > form > .btn,
+.cms-dock-panel.cms-dock-bottom.cms-dock-ungrouped .cms-dock-content > .btn,
+.cms-dock-panel.cms-dock-bottom.cms-dock-ungrouped .cms-dock-group > .btn,
+.cms-dock-panel.cms-dock-bottom.cms-dock-ungrouped .cms-tpl-save-btn {
+  writing-mode: horizontal-tb;
+  transform: none;
+  width: auto;
+  min-width: 0;
+  /*  The spine sets `flex: 0 0 26px`, and a fixed basis outranks `width:
+      auto` — so the button turned upright but stayed 26px wide and clipped
+      its own label. The basis has to be released too. */
+  flex: 0 0 auto;
+  height: var(--cms-dock-bottom-rows);
+  max-height: var(--cms-dock-bottom-rows);
+  padding: 0 10px;
+  white-space: nowrap;
+}
+/*  The layout diagrams are the one tile that is not tile-shaped: 104px
+    wide and drawn to be read at 96 tall. Squeezed into a 40px row the
+    drawing says nothing, so ungrouped it steps aside and the option
+    becomes a plain labelled tile the same size as every other one. The
+    picture is there in the grouped view, which has the height for it. */
+.cms-dock-panel.cms-dock-bottom.cms-dock-ungrouped .nav-layout-picker {
+  align-items: center;
+  height: auto;
+}
+.cms-dock-panel.cms-dock-bottom.cms-dock-ungrouped .nav-layout-option {
+  width: var(--cms-tool-chip-size);
+  min-width: var(--cms-tool-chip-size);
+  height: var(--cms-dock-bottom-rows);
+  justify-content: center;
+}
+.cms-dock-panel.cms-dock-bottom.cms-dock-ungrouped .nav-layout-option svg { display: none; }
+.cms-dock-panel.cms-dock-bottom.cms-dock-ungrouped .nav-layout-option-label {
+  font-size: 9px;
+  line-height: 1.1;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/*  An OPEN disclosure has to obey the single row too. Its body is written
+    as a column — a labelled select above three role buttons, a ramp per
+    colour — which is right in a tall panel and a third row deep in a bar
+    that has one. Laid along the row instead, capped to its height, and
+    scrolling within itself if it runs long. */
+
+/*  A spine nested in a disclosure is capped well below the row so it fits
+    inside it (see the grouped rule) — but ungrouped that same cap left the
+    Save button 18px tall against 40px neighbours. Both of those caps are
+    gone: a disclosure's contents live in a panel now, not on the row, so
+    the button simply takes its natural height — pinned to the row's it
+    grew to the full height of the bar instead. */
+/*  The name field, out of the markup's inline styles. Down the side
+    panel it fills the width, as it did; in the bar it is one control on a
+    row and takes only what it needs. */
+.cms-tpl-save-name {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 10px;
+}
+.cms-dock-panel.cms-dock-bottom .cms-tpl-save-name {
+  width: 150px;
+  margin: 0;
+}
+
+/*  A line break inside a control's label is a line box the bar has no
+    second line for — but only out on the row itself. Inside a popover
+    there is room, and a break there is deliberate; hiding those ran the
+    font assignments together into one unreadable line. */
+.cms-dock-panel.cms-dock-bottom .cms-dock-content > br,
+.cms-dock-panel.cms-dock-bottom .cms-dock-group > br { display: none; }
+
+/*  One tile size down the side too. A name that runs to two lines —
+    "Garage / Mechanic" against "Bakery" — was making its tile taller than
+    its neighbours, so a grid meant to read as a set stepped up and down
+    along every row. Same answer as the bar: state the height, clamp the
+    label, keep the full name on the tooltip. */
+:root { --cms-dock-side-tile-height: 58px; }
+.cms-dock-panel:not(.cms-dock-bottom) .cms-tpl-choice,
+.cms-dock-panel:not(.cms-dock-bottom) .cms-color-preset-swatch,
+.cms-dock-panel:not(.cms-dock-bottom) .cms-font-preset-btn {
+  height: var(--cms-dock-side-tile-height);
+  justify-content: center;
+}
+
+/*  Which preset is the one in force. The Shades tiles carried an
+    is-current class from the day they were added and nothing styled it,
+    so the panel could tell you what the options were but never which one
+    you were looking at. Scoped to the class rather than to Shades, so
+    any preset gallery that marks its current entry gets the same ring.
+
+    Its own rule, deliberately. It was first written into the middle of
+    the selector list above, which split that list in two: the template
+    tiles ended up sharing this outline instead of the height beside it,
+    so every tile in the panel wore a "current" ring and none of them was
+    the stated size any more. A rule inserted into a comma list changes
+    what the list means. */
+.cms-color-preset-swatch.is-current {
+  outline: 2px solid var(--cms-ui-accent);
+  outline-offset: -2px;
+}
+.cms-dock-panel:not(.cms-dock-bottom) .cms-tpl-name,
+.cms-dock-panel:not(.cms-dock-bottom) .cms-color-preset-label,
+.cms-dock-panel:not(.cms-dock-bottom) .cms-font-preset-btn {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.15;
+}
+
+/*  A heading is the same object in both docks — the bar's spine, laid
+    back down. Same size, weight, case and colour, and the same bordered
+    plate it sits on, so a section reads as a section wherever the dock
+    is; only the direction of the text changes. A rule across the top was
+    all it had before, which made the two docks look like different
+    panels made by different hands.
+
+    Disclosure summaries take it too: in the bar they are spines beside
+    the group headings, so down the side they should not suddenly be
+    plain text. */
+.cms-dock-panel:not(.cms-dock-bottom) .cms-dock-group-head,
+.cms-dock-panel:not(.cms-dock-bottom) .cms-tools-group-head,
+.cms-dock-panel:not(.cms-dock-bottom) .cms-dock-content details > summary {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--muted, #6b7280);
+  margin: 10px 0 6px;
+  padding: 5px 8px;
+  border: 1px solid var(--border, #e2e4e9);
+  border-radius: var(--cms-ui-radius-surface);
+  background: var(--bg, #f5f6f8);
+  cursor: pointer;
+  list-style: none;
+}
+.cms-dock-panel:not(.cms-dock-bottom) .cms-dock-group-head:hover,
+.cms-dock-panel:not(.cms-dock-bottom) .cms-tools-group-head:hover,
+.cms-dock-panel:not(.cms-dock-bottom) .cms-dock-content details > summary:hover {
+  border-color: #059669;
+  color: #059669;
+}
+.cms-dock-panel:not(.cms-dock-bottom) .cms-dock-content details > summary::-webkit-details-marker,
+.cms-dock-panel:not(.cms-dock-bottom) .cms-dock-content details > summary::marker { display: none; content: ""; }
+.cms-dock-panel:not(.cms-dock-bottom) .cms-dock-content > .cms-dock-group:first-of-type .cms-dock-group-head,
+.cms-dock-panel:not(.cms-dock-bottom) .cms-tools-group:first-child > .cms-tools-group-head {
+  margin-top: 0;
+}
+
+/*  The selection controls fit the panel they are in. A <select> sizes
+    itself to its longest option, and "Background picture: none" came to
+    284px inside a 220px panel — it simply ran out past the edge. */
+.cms-selected-style select {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.cms-selected-style {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.cms-selected-style > summary { flex: 1 0 100%; }
+/*  In the bar these sit in a panel over the page, which has room for a
+    sensible field width rather than the sidebar's full-width stacking. */
+.cms-dock-panel.cms-dock-bottom .cms-selected-style select { width: 220px; }
+
+/*  A disclosure in the bar opens ABOVE it, not inside it. Expanding
+    "Full range" inline meant three colour ramps laid along the row —
+    several hundred pixels of it — for something you glance at and close;
+    the same is true of the font picker and the save form. Opening as a
+    panel over the page keeps the bar exactly one row high whatever is
+    open, and the contents keep the ordinary top-to-bottom layout they
+    were written for, which is easier to read than a row anyway. Same
+    shape as the "?" tooltips this dock already uses. */
+.cms-dock-panel.cms-dock-bottom .cms-dock-content details { position: relative; }
+.cms-dock-panel.cms-dock-bottom .cms-dock-content details[open]::details-content {
+  /*  Fixed, not absolute. The bar's content box is the thing that
+      scrolls, so anything positioned outside it — which is the whole
+      point of opening upward — is clipped by it and simply never appears.
+      Fixed takes it out of that box entirely and sits it just above the
+      bar, where nothing can crop it. */
+  position: fixed;
+  bottom: calc(var(--cms-dock-bottom-height) + 8px);
+  left: 12px;
+  z-index: 10020;
+  display: block;
+  width: max-content;
+  max-width: min(520px, 80vw);
+  max-height: 60vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px 14px;
+  /*  A column with real spacing between its blocks. Left to each block's
+      own margins — written for a tall panel where they sit among other
+      things — the pieces ended up touching: a select against three
+      buttons against a list, with nothing to separate one control from
+      the next. */
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #fff;
+  color: #1f2430;
+  border: 1px solid var(--border, #e2e4e9);
+  border-radius: var(--cms-ui-radius-control);
+  box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.18);
+}
+/*  The popover's own close button (added by side-panels.js). Pinned to
+    the top-right of the panel it opens, which is where anyone looks to
+    dismiss something that has just covered the page. The panel keeps a
+    little room on its right so the contents never run under it. */
+.cms-dock-popover-close {
+  display: none;
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  z-index: 1;
+  border: none;
+  background: none;
+  padding: 2px 4px;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--muted, #6b7280);
+  cursor: pointer;
+}
+.cms-dock-popover-close:hover { color: #111827; }
+/*  The popover's "?" sits beside its close button. The panel-wide rule
+    hides every "?" in the bar — right for a rotated spine, where the
+    button lands outside the bar — so this copy has to say otherwise. */
+/*  Two class names deep, so it beats `.cms-panel-help`'s own display —
+    a single class each, and that one is declared later, so the copy was
+    showing down the side as well as in the bar and every disclosure had
+    two "?" buttons. */
+.cms-panel-help.cms-dock-popover-help { display: none; }
+.cms-dock-panel.cms-dock-bottom .cms-dock-content details[open] > .cms-dock-popover-help {
+  display: block;
+  position: absolute;
+  top: 6px;
+  right: 26px;
+  z-index: 1;
+}
+
+.cms-dock-panel.cms-dock-bottom .cms-dock-content details[open] > .cms-dock-popover-close { display: block; }
+.cms-dock-panel.cms-dock-bottom .cms-dock-content details[open]::details-content { padding-right: 28px; }
+
+/*  Inside the panel there is room, so the controls go back to the layout
+    they have in the tall dock rather than the bar's one-row rules. */
+/*  Explanatory paragraphs stay out of the bar, popover included: the
+    panel's own "?" carries the same words now, so printing them in the
+    body as well was the explanation twice over and a third of the panel
+    spent on it. (The rule that used to show them was written as
+    `::details-content .hint`, which is invalid anyway — a pseudo-element
+    cannot take descendants, and one bad selector voids the whole rule.) */
+.cms-dock-panel.cms-dock-bottom .cms-dock-content details .cms-ramp-row {
+  margin: 6px 0;
+  line-height: normal;
+}
+.cms-dock-panel.cms-dock-bottom .cms-dock-content details .cms-ramp-label { min-width: 74px; font-size: .78rem; }
+.cms-dock-panel.cms-dock-bottom .cms-dock-content details .cms-ramp-strip { min-width: 240px; }
+.cms-dock-panel.cms-dock-bottom .cms-dock-content details .cms-ramp-swatch { height: 26px; }
+.cms-dock-panel.cms-dock-bottom .cms-dock-content details .cms-color-picker-form {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  height: auto;
+  max-height: none;
+}
+.cms-dock-panel.cms-dock-bottom .cms-dock-content details form {
+  display: block;
+  height: auto;
+  margin: 0;
+}
+.cms-dock-panel.cms-dock-bottom .cms-dock-content details .cms-tpl-save-name {
+  width: 100%;
+  margin-bottom: 8px;
+}
+/*  A button in the panel is an ordinary button again, not a spine. */
+.cms-dock-panel.cms-dock-bottom .cms-dock-content details[open] .btn,
+.cms-dock-panel.cms-dock-bottom .cms-dock-content details .cms-tpl-save-btn {
+  writing-mode: horizontal-tb;
+  transform: none;
+  min-width: 0;
+  flex: 0 0 auto;
+  height: auto;
+  max-height: none;
+  padding: 6px 10px;
+  border-radius: var(--cms-ui-radius-control);
+  /*  As wide as the field above it. A 50px button under a 177px input
+      read as two unrelated controls that happened to be stacked; matching
+      their width makes them one thing — type a name, press save. */
+  width: 100%;
+  align-self: stretch;
+}
+/*  Enough specificity to beat the ungrouped rule's `width: auto`, which
+    is right for a button standing on the bar's own row and wrong for one
+    inside a panel. */
+.cms-dock-panel.cms-dock-bottom.cms-dock-ungrouped .cms-dock-content details .btn,
+.cms-dock-panel.cms-dock-bottom.cms-dock-ungrouped .cms-dock-content details .cms-tpl-save-btn {
+  width: 100%;
+  align-self: stretch;
+}
+
+/*  A heading with nothing under it (marked by buildGroups) is a
+    super-heading over the sections that follow — "Customize" above
+    Headers, Pages and Footers. As a spine it was a control that folded
+    nothing away, sitting between two groups it did not belong to. It
+    keeps its place as a heading in the tall panel and simply does not
+    become a spine here. */
+.cms-dock-panel.cms-dock-bottom .cms-dock-group-empty { display: none; }
+
+/*  Collapsing a group is how an admin gets the bar down to just what they
+    are using — Colours alone is three galleries, and somebody adjusting
+    fonts wants none of them. Clicking the heading folds it away; the
+    caret says which way it goes. Works in both orientations. */
+.cms-dock-group-head {
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.cms-dock-group-head::after {
+  content: "▾";
+  font-size: 9px;
+  opacity: 0.55;
+  transition: transform 0.15s ease;
+}
+.cms-dock-group.is-collapsed > .cms-dock-group-head::after { transform: rotate(-90deg); }
+/*  Written twice on purpose. The galleries set their own `display` under
+    a two-class bottom-mode selector, which outranks a bare
+    `.cms-dock-group.is-collapsed > *` — so collapsing appeared to do
+    nothing there. The second form carries enough specificity to win. */
+.cms-dock-group.is-collapsed > *:not(.cms-dock-group-head) { display: none; }
+.cms-dock-panel.cms-dock-bottom .cms-dock-group.is-collapsed > *:not(.cms-dock-group-head) { display: none; }
+/*  The heading turns on its side and becomes the group's spine, reading
+    bottom-to-top. Horizontal, each one spent 80-140px of a bar whose only
+    scarce axis is the one it was eating; upright it costs about fourteen,
+    and a collapsed group folds down to exactly that — a labelled tab you
+    can open again, rather than something that has vanished. */
+.cms-dock-panel.cms-dock-bottom .cms-dock-group-head {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  text-align: center;
+  white-space: nowrap;
+  /*  Exactly as tall as the two rows of tiles it labels, never taller.
+      A heading that will not fit at that height is a heading that needs
+      shortening (see TOOL_CATEGORIES in db.py, now single words), not a
+      bar that grows to accommodate it. */
+  height: var(--cms-dock-bottom-rows);
+  /*  Centre the words along the spine. These heads are flex containers,
+      and in vertical writing mode the MAIN axis runs vertically — so
+      justify-content is what centres the text against the tiles beside
+      it. Left at its default the label sat about 15px low, which is the
+      "headings not middle aligned" you can see against a row of tiles. */
+  justify-content: center;
+  /*  A spine is as long as its heading, and "Customize the active
+      template" ran to 209px — taller than the bar, so it set the height
+      instead of fitting it. Capped at the bar and trimmed with an
+      ellipsis: the full wording is still on the element's own tooltip. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-height: 100%;
+  margin: 0;
+  padding: 4px 2px;
+  flex: 0 0 auto;
+  /*  Centre, not stretch: the spine now states its own height (the rows
+      measure), so stretching only pinned it to the top of a group that
+      happened to be taller and let it hang out of the bottom of the bar. */
+  align-self: center;
+  border: 1px solid var(--border, #e2e4e9);
+  border-radius: var(--cms-ui-radius-surface);
+  background: var(--bg, #f5f6f8);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+.cms-dock-panel.cms-dock-bottom .cms-dock-group-head:hover {
+  border-color: #059669;
+  color: #059669;
+}
+/*  A caret rotates with the text and then reads as a stray mark; the
+    spine already shows its state by being all that is left when the
+    group is folded. The "?" beside it would rotate too, so it is laid
+    back flat on its own. */
+.cms-dock-panel.cms-dock-bottom .cms-dock-group-head::after { content: none; }
+/*  Hidden, not laid flat. Inside a rotated spine the "?" ended up above
+    the bar's own content box — a stray mark floating over the page above
+    the dock. The section names here are a word or two and the same
+    explanation is on each control's own tooltip, so the spine loses
+    nothing by dropping it. */
+/*  The "?" is back in the bar. It was hidden wholesale because inside a
+    rotated spine it floated outside the bar — but that was the tooltip
+    escaping its box, not the button; the button itself belongs with the
+    heading it explains. In a spine it inherits the vertical writing mode
+    and reads on its side, alongside the words.
+
+    Only the panel TITLE keeps its "?" hidden: that row has a name, a
+    search box and three buttons to fit already, and every section inside
+    carries its own. */
+.cms-dock-panel.cms-dock-bottom .cms-dock-title .cms-panel-help { display: none; }
+/*  In the bar the tooltip is not drawn in place at all — see showHelp in
+    side-panels.js, which fills one shared bubble on <body>. Every box a
+    "?" sits in down here clips it, and a rotated spine even captures
+    `position: fixed`, so the only reliable home for it is outside the
+    dock entirely. */
+.cms-dock-panel.cms-dock-bottom .cms-panel-help .cms-panel-help-text { display: none; }
+.cms-dock-help-bubble {
+  position: fixed;
+  z-index: 10050;
+  width: 240px;
+  max-width: calc(100vw - 24px);
+  padding: 8px 10px;
+  background: #111827;
+  color: #f9fafb;
+  border-radius: var(--cms-ui-radius-surface);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.45;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: normal;
+  writing-mode: horizontal-tb;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .15s ease;
+}
+.cms-dock-help-bubble.is-shown { opacity: 1; visibility: visible; }
+
+/*  The tiles themselves were mostly air: dots and a label came to 28px
+    inside a 46px box. Trimmed to what they actually hold — the icon and
+    label sit together, and the label takes one line rather than
+    reserving two, since almost every name fits one at this width and the
+    full text is on the tooltip regardless. */
+.cms-dock-panel.cms-dock-bottom .cms-tool-chip {
+  padding: 2px 3px;
+  gap: 0;
+}
+.cms-dock-panel.cms-dock-bottom .cms-tool-icon { font-size: 15px; line-height: 1.1; }
+.cms-dock-panel.cms-dock-bottom .cms-tool-name {
+  -webkit-line-clamp: 2;
+  line-height: 1.1;
+  font-size: 9px;
+}
+.cms-dock-panel.cms-dock-bottom .cms-color-preset-swatch,
+.cms-dock-panel.cms-dock-bottom .cms-tpl-choice {
+  padding: 2px 3px;
+  gap: 1px;
+}
+.cms-dock-panel.cms-dock-bottom .cms-color-preset-label,
+.cms-dock-panel.cms-dock-bottom .cms-tpl-name {
+  font-size: 9px;
+  line-height: 1.1;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.cms-dock-panel.cms-dock-bottom .cms-color-preset-dot,
+.cms-dock-panel.cms-dock-bottom .cms-tpl-dot { width: 10px; height: 10px; }
+
+/*  Actions and disclosures take the spine treatment too — "Reset Shape to
+    Theme Default", "The full range of each colour", "Save as a new
+    template". Laid flat they were the widest things in the bar, each one
+    a paragraph-length label lying across the space the tiles needed; on
+    their side they cost the same fourteen pixels as a heading, and the
+    bar reads as one row of labelled spines with their contents beside
+    them. */
+.cms-dock-panel.cms-dock-bottom .cms-dock-content details > summary,
+.cms-dock-panel.cms-dock-bottom .cms-dock-content > form > .btn,
+.cms-dock-panel.cms-dock-bottom .cms-dock-group > form > .btn,
+.cms-dock-panel.cms-dock-bottom .cms-dock-content > .btn,
+.cms-dock-panel.cms-dock-bottom .cms-dock-group > .btn,
+.cms-dock-panel.cms-dock-bottom .cms-tpl-save-btn {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  /*  Flex, not block. In vertical writing mode a block element fills its
+      containing block along what is now the horizontal axis, so the
+      Reload Content button stretched to 761px and lay invisibly on top of
+      the layout diagrams beside it — they were there all along, behind a
+      transparent button. Flex sizes to its content in both axes, which is
+      why the group headings (already flex) never had the problem. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /*  Stated outright rather than left to shrink-to-fit. A <button> in
+      vertical writing mode does not size to its content the way a div
+      does — it filled what is now its block axis and came out 761px wide,
+      lying invisibly across the layout diagrams next to it. A concrete
+      width and a concrete cap also beat `100%`, which had nothing
+      definite to resolve against here and let one summary grow to 227px,
+      taller than the bar it sits in. */
+  width: 26px;
+  min-width: 26px;
+  /*  A definite height, not just a cap. A spine sized to its own text, so
+      the long labels ("Full range", "Customize") reached the cap and read
+      as one control while a short one ("Shades") stopped 15px short and
+      read as a different, smaller kind of thing. They are the same kind
+      of thing, so they are the same size — the same reason the tool chips
+      are all 84x40 whatever their names are. */
+  height: var(--cms-dock-bottom-rows);
+  max-height: var(--cms-dock-bottom-rows);
+  align-self: center;
+  flex: 0 0 26px;
+  margin: 0;
+  padding: 6px 2px;
+  border: 1px solid var(--border, #e2e4e9);
+  border-radius: var(--cms-ui-radius-surface);
+  background: var(--bg, #f5f6f8);
+  color: var(--muted, #6b7280);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  cursor: pointer;
+  list-style: none;
+}
+.cms-dock-panel.cms-dock-bottom .cms-dock-content details > summary::-webkit-details-marker,
+.cms-dock-panel.cms-dock-bottom .cms-dock-content details > summary::marker { display: none; content: ""; }
+.cms-dock-panel.cms-dock-bottom .cms-dock-content details > summary:hover,
+.cms-dock-panel.cms-dock-bottom .cms-dock-content > form > .btn:hover,
+.cms-dock-panel.cms-dock-bottom .cms-dock-group > form > .btn:hover,
+.cms-dock-panel.cms-dock-bottom .cms-tpl-save-btn:hover {
+  border-color: #059669; color: #059669;
+}
+/*  A disclosure is the spine plus whatever it opens, side by side. */
+/*  `[open]` matters here. A <details> hides its own contents when closed
+    only while it keeps its default block box — give it `display: flex`
+    unconditionally and Chrome renders the body whether or not it is
+    open, which is why the colour ramps were sitting in the bar all along
+    with the disclosure shut, overflowing it and taking room nothing
+    asked for. Closed, it stays a plain block and shows just its spine. */
+.cms-dock-panel.cms-dock-bottom .cms-dock-content details {
+  flex: 0 0 auto;
+  margin: 0;
+  min-height: 0;
+}
+.cms-dock-panel.cms-dock-bottom .cms-dock-content details[open] {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 6px;
+}
+/*  What a disclosure opens is no longer laid out in the bar at all — it
+    goes in a panel above it, which has its own height and scrolling (see
+    the ::details-content rule). Both of the caps that used to live here,
+    holding the contents to one row, were left over from when they were
+    laid along it, and the one on the children was cutting the Save form
+    off at 40px with 69px inside it. Only the margin reset is still
+    wanted. */
+.cms-dock-panel.cms-dock-bottom .cms-dock-content details > *:not(summary) { margin: 0; }
+/*  A button inside a disclosure is just a button. It used to be capped to
+    fit within the bar's row, back when a disclosure opened along that
+    row; the panel it opens in now has its own height, and the cap only
+    squashed it — 18px against a 21px field beside it. Nor does an open
+    disclosure need a rule down its right-hand side any more: it takes no
+    room on the row to divide off. */
+/*  A form holding one of those buttons must not stop it stretching. */
+.cms-dock-panel.cms-dock-bottom .cms-dock-content > form,
+.cms-dock-panel.cms-dock-bottom .cms-dock-group > form {
+  display: flex;
+  align-items: stretch;
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+/*  What a disclosure opens, laid out for a bar rather than a column. The
+    colour pickers were a single tall stack — three labels and a button,
+    one under another, taller than the bar and scrolling inside it — so
+    they take the same two-row, flow-across shape as everything else
+    here. The shade ramps keep their row-per-colour, just compactly:
+    three at 18px sit inside the two-row measure where three at 26px plus
+    margins did not. */
+.cms-dock-panel.cms-dock-bottom .cms-color-picker-form {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-columns: none;
+  grid-template-rows: repeat(2, auto);
+  align-content: center;
+  justify-content: start;
+  gap: 4px 12px;
+  margin: 0;
+}
+.cms-dock-panel.cms-dock-bottom .cms-color-picker-item {
+  font-size: 11px;
+  gap: 5px;
+  white-space: nowrap;
+}
+.cms-dock-panel.cms-dock-bottom .cms-color-picker-item input[type="color"] {
+  width: 22px;
+  height: 22px;
+}
+.cms-dock-panel.cms-dock-bottom .cms-color-picker-form .btn { align-self: center; }
+/*  1.2 line-height on the label was making a 35px row out of an 18px
+    swatch, which put the three of them three pixels past the bar. */
+.cms-dock-panel.cms-dock-bottom .cms-ramp-row { margin: 1px 0; gap: 6px; line-height: 1; }
+.cms-dock-panel.cms-dock-bottom .cms-ramp-label { min-width: 52px; font-size: 10px; }
+.cms-dock-panel.cms-dock-bottom .cms-ramp-strip { min-width: 190px; }
+.cms-dock-panel.cms-dock-bottom .cms-ramp-swatch { height: 18px; }
+
+/*  The delete badge hangs 6px outside its tile, which at this size put it
+    squarely on top of the neighbouring template — so in the bar it is
+    tucked inside its own tile instead. It was also revealed on hover
+    only, which hid the one thing a tile does not otherwise say: whether
+    it can be deleted at all. The active template has no badge, so a tile
+    showing one is the answer to that question, and it has to be visible
+    to be an answer. */
+.cms-dock-panel.cms-dock-bottom .cms-tpl-delete-btn {
+  top: 1px;
+  right: 1px;
+  width: 14px;
+  height: 14px;
+  font-size: 11px;
+}
+
+/*  Explanatory text has to wrap. As a flex item in a nowrap row it sat on
+    one endless line and pushed everything else off the end of the bar —
+    the intro paragraph alone was wider than the screen. */
+/*  No explanatory paragraphs in the bar. Every one of them was a column
+    of prose sitting where tools could be, and the same words are already
+    on the "?" beside each heading and on every control's own tooltip —
+    which is where they are read anyway, at the moment they are needed.
+    The Assistant keeps its one line (below): with an empty chat log there
+    is nothing else on screen to say what the panel is for. */
+.cms-dock-panel.cms-dock-bottom .hint { display: none; }
+
+/*  The Assistant is the one panel that must NOT become a sideways strip.
+    A conversation is a column — the log fills what height there is and
+    scrolls DOWN, the way every chat does — and the box you type into has
+    to be on screen at all times. Laid out as a row like the others, the
+    log took the full width and pushed the input and Send button off the
+    right-hand end, so sending a message meant scrolling sideways to find
+    the button first. */
+#cms-assistant-panel.cms-dock-bottom .cms-dock-content {
+  flex-direction: column;
+  align-items: stretch;
+  overflow: hidden;
+  gap: 6px;
+}
+#cms-assistant-panel.cms-dock-bottom .cms-dock-content > * { flex: 0 1 auto; width: auto; }
+#cms-assistant-panel.cms-dock-bottom .cms-assistant-body { flex: 1 1 auto; min-height: 0; }
+#cms-assistant-panel.cms-dock-bottom .chat-log { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+#cms-assistant-panel.cms-dock-bottom .cms-assistant-footer { flex: 0 0 auto; }
+/*  The chat's own intro stays: an empty log says nothing by itself. */
+#cms-assistant-panel.cms-dock-bottom .hint { display: block; width: auto; max-width: none; }
+/*  A conversation reads badly the full width of a screen; keep it to a
+    sensible measure rather than letting it stretch. */
+#cms-assistant-panel.cms-dock-bottom .cms-assistant-body,
+#cms-assistant-panel.cms-dock-bottom .cms-assistant-footer { max-width: 760px; }
+
+/*  Galleries stop being their own scrollers here: they are plain rows
+    inside the one bar that scrolls (see above). */
+.cms-dock-panel.cms-dock-bottom .cms-color-preset-gallery,
+.cms-dock-panel.cms-dock-bottom .cms-font-preset-gallery,
+.cms-dock-panel.cms-dock-bottom .cms-tpl-grid,
+.cms-dock-panel.cms-dock-bottom .nav-layout-picker {
+  /*  Explicitly flex: .nav-layout-picker is a two-column GRID by default
+      (a rule further down this file overrides admin.css's flex one), and
+      flex-wrap means nothing to a grid — the diagrams kept laying out
+      two-across and several deep no matter what was asked of them. */
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  overflow: visible;
+  max-width: none;
+  margin: 0;
+  gap: 6px;
+}
+/*  Colours, Fonts and Templates use the Tools convention: identical
+    tiles, flowing in TWO rows that wrap down-then-across. They were one
+    row of variable-width buttons, which read as a different kind of panel
+    for no reason and spent the same height on half as many choices. */
+.cms-dock-panel.cms-dock-bottom .cms-color-preset-gallery,
+.cms-dock-panel.cms-dock-bottom .cms-font-preset-gallery,
+.cms-dock-panel.cms-dock-bottom .cms-tpl-grid {
+  display: grid;
+  grid-auto-flow: column;
+  /*  Clear the explicit two-column track the side-dock rule sets, or it
+      survives here as the FIRST two columns, sized to their content
+      rather than to the tile — which is why the first two tiles came out
+      44px and 8px wide while every later one was 84. Every column in this
+      mode is implicit, so grid-auto-columns should be the only track
+      sizing in play. */
+  grid-template-columns: none;
+  grid-template-rows: repeat(2, var(--cms-tool-chip-height-bottom, 46px));
+  grid-auto-columns: var(--cms-tool-chip-size);
+  align-content: center;
+  justify-content: start;
+  height: auto;
+  gap: var(--cms-dock-tile-gap);
+}
+/*  Every panel's tile is the Tools chip's size. Fonts had its own wider
+    track for its longer labels, which made it the one panel whose tiles
+    did not match the rest — the label wraps instead. */
+/*  The layout diagrams are taller than a tile and only ever fit one row,
+    so they take the bar's height rather than a two-row measure. */
+.cms-dock-panel.cms-dock-bottom .nav-layout-picker {
+  flex-flow: row nowrap;
+  align-items: stretch;
+  gap: var(--cms-dock-tile-gap);
+  /*  Held to the same two-row measure as everything else. At 103px these
+      were the tallest thing in the bar by seven pixels, which meant THEY
+      set its height rather than the rows of tiles the height is meant to
+      be about. */
+  height: var(--cms-dock-bottom-rows);
+  gap: var(--cms-dock-tile-gap);
+}
+.cms-dock-panel.cms-dock-bottom .nav-layout-option {
+  height: 100%;
+  padding: 3px 2px;
+  overflow: hidden;
+}
+.cms-dock-panel.cms-dock-bottom .nav-layout-option svg {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+}
+.cms-dock-panel.cms-dock-bottom .cms-color-preset-gallery > *,
+.cms-dock-panel.cms-dock-bottom .cms-font-preset-gallery > *,
+.cms-dock-panel.cms-dock-bottom .cms-tpl-grid > * {
+  /*  The track sets the size now; the item just fills it. */
+  width: auto;
+  min-width: 0;
+  height: auto;
+}
+/*  The tile is usually a <form> wrapping the real button, so the size has
+    to reach the button too or the form just holds a bigger child. */
+.cms-dock-panel.cms-dock-bottom .cms-color-preset-gallery > * > .cms-color-preset-swatch,
+/*  `.cms-tpl-grid > * > button` also matched the DELETE badge, which sits
+    in the same wrapper — so the badge was stretched to 100% x 100% of the
+    tile. Invisible at opacity 0 but still the top thing under the cursor,
+    which is why clicking a template asked to delete it instead of
+    applying it. Name the button that is meant to fill the tile. */
+.cms-dock-panel.cms-dock-bottom .cms-tpl-grid > * > .cms-tpl-choice,
+.cms-dock-panel.cms-dock-bottom .cms-font-preset-gallery > * > .cms-font-preset-btn {
+  width: 100%;
+  height: 100%;
+  padding: 3px 2px;
+  overflow: hidden;
+  /*  A fixed tile has to be told what to do with a label longer than it
+      is — "Fraunces + Nunito Sans" and "System Sans (no webfont)" ran
+      straight out of the box otherwise. Clamped to the lines that fit,
+      with the full name still on the button's own tooltip. */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  font-size: 9px;
+  line-height: 1.15;
+  text-align: center;
+  word-break: break-word;
+}
+/*  The corner/depth previews are 28px and their label 14px, which came
+    to two pixels more than the tile — enough to make every one of them
+    a scroll container. Trimmed to fit rather than growing every tile in
+    every panel to suit them. */
+.cms-dock-panel.cms-dock-bottom .cms-shape-preset-swatch,
+.cms-dock-panel.cms-dock-bottom .cms-shadow-preset-swatch {
+  width: 22px;
+  height: 20px;
+  /*  The depth swatch carries 5px of margin so its shadow has somewhere
+      to fall; in a tile this size that margin is the overflow. */
+  margin: 1px auto;
+}
+.cms-dock-panel.cms-dock-bottom .cms-color-preset-dots { margin: 0; }
+
+/*  Font names are the longest label in any of these panels, so their
+    tiles get a little more room rather than every panel's tile growing
+    to suit the worst case. */
+
+/*  The layout diagrams keep their own width — they are pictures of a
+    page, and squeezed to chip width they stop being readable — but still
+    take the two-row flow. */
+.cms-dock-panel.cms-dock-bottom .nav-layout-picker > * { flex: 0 0 auto; }
+/*  Pin the diagram's width, or it sizes itself from its own aspect ratio
+    once the grid's fixed columns stop constraining it — the SVGs doubled
+    in height the moment they became flex items, which put the row well
+    over the height of the bar it was being shortened to fit. */
+.cms-dock-panel.cms-dock-bottom .nav-layout-option { width: 104px; min-width: 104px; }
+.cms-dock-panel.cms-dock-bottom .nav-layout-option svg { width: 100%; height: auto; }
+
+/*  The grid flips axis here: a bottom bar has width to spare and almost
+    no height, so the tools run in one row that scrolls sideways instead
+    of several that scroll down — the opposite tradeoff from the side
+    dock. The content box itself does NOT scroll; the grid inside it does,
+    which is what keeps the search box and headings still while the tools
+    move under them. */
+#cms-tools-panel.cms-dock-bottom .cms-dock-content {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 0;
+  /*  The same padding as every other panel — its own larger value made
+      Tools the one bar whose rows did not fit the height derived for
+      them. */
+  padding: 3px 8px;
+  /*  Its content is a column, so the strip needs centring on the main
+      axis; without it the rows sat at the top with all the slack below. */
+  justify-content: center;
+  overflow: hidden; /*  the grid below owns the scrolling, not this */
+}
+#cms-tools-panel.cms-dock-bottom .cms-dock-content > * { max-width: none; }
+#cms-tools-panel.cms-dock-bottom .cms-tools-grid {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  /*  Own the height as well as the width. As a flex child with the
+      default `flex: 0 1 auto` this collapsed to a few pixels, because
+      anything above it in the column took its space first. */
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  margin-bottom: 0;
+  padding-bottom: 4px; /*  room for the horizontal scrollbar itself */
+  /*  Collapsed spines should read as a row of tabs sitting side by side,
+      not as scattered markers — 10px between them plus each group's own
+      padding left them looking unrelated. */
+  gap: 4px;
+}
+/*  Trimmed so TWO stack in the band rather than one. At 8px padding a
+    chip was 53px and a pair needed 110 against the 103 available, so the
+    wrap put every chip in its own column — a single row again, by a
+    seven-pixel margin. At 4px a pair comes to 94 and fits. */
+#cms-tools-panel.cms-dock-bottom .cms-tool-chip {
+  flex: 0 0 auto;
+  padding: 4px 4px;
+  gap: 1px;
+  height: var(--cms-tool-chip-height-bottom, 46px);
+}
+/*  Instructions worth a paragraph in a tall side panel are three lines of
+    a short bar's whole height — the tools themselves have to win that
+    trade. The same words stay on every chip's own tooltip, which is where
+    they are actually read, at the moment they matter. */
+#cms-tools-panel.cms-dock-bottom #cms-tools-hint { display: none; }
+/*  Exporting and importing toolkits is a rare, deliberate errand, not
+    something done mid-edit on a phone — it stays one tap away in the
+    side dock rather than permanently costing this bar a row. */
+#cms-tools-panel.cms-dock-bottom .cms-tool-new { display: none; }
+
+/*  A category group, on its side. The heading becomes the group's spine —
+    the text itself rotated to read bottom-to-top — so it costs about
+    fourteen pixels of the bar's width instead of a whole row of its
+    height, and clicking it folds the group down to just that spine.
+    That is the only way a bar this short can show which tools are which
+    AND let you put the ones you are not using out of the way. */
+#cms-tools-panel.cms-dock-bottom .cms-tools-group {
+  display: flex;
+  flex-direction: row;
+  /*  Both children now state the same height, so centre them against each
+      other rather than stretching either one to the group. */
+  align-items: center;
+  flex: 0 0 auto;
+  margin: 0;
+  min-height: 0;
+  gap: 4px;
+}
+#cms-tools-panel.cms-dock-bottom .cms-tools-group-head {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);   /*  reads bottom-to-top, the usual spine */
+  text-align: center;
+  height: var(--cms-dock-bottom-rows);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-overflow: ellipsis;
+  max-height: 100%;
+  margin: 0;
+  padding: 6px 1px;
+  border: 1px solid var(--border, #e2e4e9);
+  border-radius: var(--cms-ui-radius-surface);
+  background: var(--bg, #f5f6f8);
+  flex: 0 0 auto;
+  white-space: nowrap;
+  overflow: hidden;
+}
+#cms-tools-panel.cms-dock-bottom .cms-tools-group-head:hover {
+  border-color: #059669; color: #059669;
+}
+/*  The caret is a vertical-mode casualty — rotated with the text it reads
+    as a stray mark rather than an affordance, and the spine already shows
+    its own state by being all that is left when collapsed. */
+#cms-tools-panel.cms-dock-bottom .cms-tools-group-head::after { content: none; }
+/*  TWO rows, wrapping into columns. A chip is 53px tall in a band of 110,
+    so a single row left more empty space than it used while running each
+    group out to 800px wide. Flowing down-then-across halves every group's
+    width and spends the height that was going to waste — the bar shows
+    roughly twice as many tools without getting any bigger. */
+/*  Two rows, flowing across — as a GRID, not a wrapping flex column. A
+    `column wrap` flex container does not size its own width to the
+    columns it wrapped into: it stayed one tile wide (84px) while its
+    contents ran to 700, so everything past the first column spilled out
+    over the next section. Grid states the same intent — two rows, add
+    columns as needed — and measures itself correctly. It also makes the
+    two rows independent of the bar's height, which is what let a
+    hand-dragged shorter bar silently fall back to a single row. */
+#cms-tools-panel.cms-dock-bottom .cms-tools-group-chips {
+  /*  State the height instead of inheriting whatever the flex chain
+      leaves. Stretched, this box came out 76px while the two rows inside
+      it need 83 — so the chips overhung their own container by 3px at the
+      top and 4 at the bottom, and the spine, which correctly matched the
+      container, looked misaligned against them. Both are pinned to the
+      same measure now, so they cannot disagree. */
+  height: var(--cms-dock-bottom-rows);
+  flex: 0 0 auto;
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-columns: none;  /*  see the gallery rule above */
+  grid-template-rows: repeat(2, var(--cms-tool-chip-height-bottom, 46px));
+  grid-auto-columns: var(--cms-tool-chip-size);
+  align-content: center;
+  justify-content: start;
+  height: auto;
+  gap: var(--cms-dock-tile-gap);
+}
+/*  Needs the id to outrank the `display: flex` directly above it — the
+    plain `.cms-tools-group.is-collapsed > ...` rule loses on specificity,
+    so the class went on and nothing folded. */
+#cms-tools-panel.cms-dock-bottom .cms-tools-group.is-collapsed > .cms-tools-group-chips {
+  display: none;
+}
+/*  The bottom bar's own resize handle: a strip along its top edge,
+    dragged up/down to change height — width is always the full screen
+    in this mode, so there is nothing to drag sideways. Hidden in the
+    normal side-docked mode, and the side handles hidden in this one. */
+.cms-dock-bottom-resize-edge {
+  display: none;
+  position: absolute; top: -4px; left: 0; right: 0; height: 8px;
+  cursor: ns-resize; touch-action: none;
+}
+/*  No resize handle along the bottom. The bar's height is worked out
+    from what it holds (two rows plus its chrome), so dragging it taller
+    only ever added empty space below the tiles — a control whose whole
+    range of motion is "add padding". Dragging stays where it means
+    something: the side dock, where width is a real choice. */
+.cms-dock-panel.cms-dock-bottom .cms-dock-bottom-resize-edge { display: none; }
+.cms-dock-panel.cms-dock-bottom > .cms-dock-resize-handle,
+.cms-dock-panel.cms-dock-bottom > .cms-dock-resize-edge { display: none; }
+.cms-dock-header-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  margin-left: auto; }
+/*  The title gives way so the buttons can stay on its line. Fixed at its
+    natural width it was 170px of a 199px panel, which pushed Close onto a
+    row of its own — and the filters onto a third. Truncated, everything
+    that acts on the panel sits beside its name. */
+.cms-dock-title {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /*  A cap, not just permission to shrink. Flex wraps a line BEFORE it
+      shrinks anything on it, so a title wide enough to leave the buttons
+      no room sent them to the next line — and then grew to fill the line
+      it had just cleared. Capping its base size keeps the row from ever
+      needing to wrap in the first place. */
+  max-width: calc(100% - 76px);
+}
+.cms-dock-header-actions { flex: 0 0 auto; }
+/*  The "?" in a panel title cannot shrink, so on the one title long
+    enough to need it — "Template & Layout" — it kept the row from fitting
+    and pushed Close down a line. The tab beside the panel and the title
+    itself already say what it is, and every section inside carries its
+    own explanation. */
+.cms-dock-title .cms-panel-help { display: none; }
+/*  Down the side the header is two rows: the panel's name with the two
+    buttons that act on the panel itself (move it, close it) on the same
+    line as it, and the search and grouping switch — which act on the
+    CONTENTS — on a line of their own beneath. The close button belongs
+    beside the title it closes; it had been wrapping to a third line
+    under everything else. */
+.cms-dock-header-filters {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 0 100%;
+  min-width: 0;
+}
+.cms-dock-header-filters .cms-tools-search { margin-left: 0; flex: 1 1 auto; width: auto; }
+/*  Icon only. The word beside it repeated what the icon and its tooltip
+    already say, in a header that has a panel name to fit as well. */
+.cms-dock-panel:not(.cms-dock-bottom) .cms-dock-position-label { display: none; }
+.cms-dock-panel:not(.cms-dock-bottom) .cms-dock-position-toggle { padding: 4px 5px; }
+
+/*  Along the bottom it is all one line again: the filters sit between the
+    title and the buttons, which is where they were. */
+.cms-dock-panel.cms-dock-bottom .cms-dock-header-filters {
+  flex: 0 1 auto;
+  order: 1;
+  margin-left: auto;
+}
+.cms-dock-panel.cms-dock-bottom .cms-dock-header-actions { order: 2; margin-left: 6px; }
+
+
+/*  Labelled, not just an icon — "⬓" reads as nothing in particular on
+    first sight, and a control an admin can't identify is a control they
+    can't use. The label names the action a click performs ("Bottom"
+    while docked at the side, "Side" once it's there), so the button says
+    what it does without needing the hover-only title tooltip at all. */
+.cms-dock-position-toggle {
+  display: flex; align-items: center; gap: 4px;
+  background: none; border: 1px solid var(--border, #e2e4e9); border-radius: var(--cms-ui-radius-control);
+  font-size: 11px; font-weight: 600; cursor: pointer;
+  color: var(--muted, #6b7280); line-height: 1; padding: 4px 7px;
+}
+.cms-dock-position-toggle:hover { color: #059669; border-color: #059669; }
+.cms-dock-position-icon { font-size: 14px; }
+
+/* Drag handle — top-left corner of the panel, resizes both width (drag
+   left/right) and height (drag down; the panel is pinned to top:0, so
+   "shorter" means the height itself shrinks, not that the panel moves
+   down). Only rendered on the front panel — the others aren't visible to
+   drag from, and it must live inside a `cms-open` panel to be reachable
+   at all. */
+.cms-dock-resize-handle {
+  position: absolute; top: 0; left: 0; width: 14px; height: 14px;
+  cursor: nwse-resize; z-index: 2; touch-action: none;
+}
+.cms-dock-resize-handle::before {
+  content: ""; position: absolute; top: 4px; left: 4px; width: 7px; height: 7px;
+  border-left: 2px solid var(--border, #e2e4e9); border-top: 2px solid var(--border, #e2e4e9);
+}
+.cms-dock-resize-handle:hover::before { border-color: var(--cms-ui-accent); }
+
+/* Full-height strip along the whole left edge — width-only resize,
+   grabbable anywhere down the side rather than only the small top-left
+   corner square above. Straddles the panel's own left border (-5px) so
+   the grab target isn't awkwardly split between inside/outside it. */
+.cms-dock-resize-edge {
+  position: absolute; top: 0; left: -5px; width: 10px; height: 100%;
+  cursor: ew-resize; z-index: 1; touch-action: none;
+}
+.cms-dock-resize-edge:hover { background: rgba(37, 99, 235, 0.12); }
+
+/* While actively dragging either handle, the tabs' own `right` transition
+   (see .cms-dock-tab-btn) must not run — each pointermove already sets
+   the new position directly, and animating every one of those in turn
+   makes the tabs visibly lag behind the panel edge as it's dragged,
+   "catching up" only after the drag stops instead of tracking it live. */
+.cms-dock-resizing .cms-dock-tab-btn { transition: none; }
+/* Both panels share the same screen space (fixed, same size/position) since
+   they're independent — whichever tab was clicked most recently stacks on
+   top via z-index, the same way switching browser tabs brings one forward. */
+.cms-dock-panel.cms-dock-front { z-index: 10001; }
+
+.cms-dock-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  row-gap: 4px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border, #e2e4e9);
+  flex-shrink: 0;
+}
+.cms-dock-title { font-size: 14px; font-weight: 700; }
+
+/* Each tab's content fills the panel below the header and scrolls
+   internally. min-height:0 is required here — without it a flex child
+   won't shrink below its content size, so overflow-y:auto never engages
+   and the whole panel spills off-screen instead of scrolling. */
+.cms-dock-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+.cms-assistant-close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: var(--muted, #6b7280);
+  line-height: 1;
+  padding: 4px 6px;
+}
+.cms-assistant-unconfigured { font-size: 13px; color: var(--muted, #6b7280); }
+.cms-assistant-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.cms-dock-content .hint { font-size: 12px; margin: 0 0 8px; }
+.cms-assistant-footer { padding-top: 8px; flex-shrink: 0; }
+
+.chat-log {
+  flex: 1;
+  min-height: 60px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  background: var(--bg, #f5f6f8);
+  border-radius: var(--cms-ui-radius-surface);
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+.chat-msg { padding: 8px 10px; border-radius: var(--cms-ui-radius-surface); max-width: 90%; white-space: pre-wrap; }
+.chat-msg-thinking { display: flex; align-items: center; gap: 8px; color: var(--muted, #6b7280); font-size: 13px; }
+.cms-chat-spinner {
+  width: 13px; height: 13px; flex-shrink: 0; border-radius: 50%;
+  border: 2px solid rgba(0,0,0,0.15); border-top-color: var(--cms-ui-accent);
+  animation: cms-spin 0.7s linear infinite;
+}
+@keyframes cms-spin { to { transform: rotate(360deg); } }
+.chat-msg-user { align-self: flex-end; background: var(--cms-ui-accent); color: #fff; }
+.chat-msg-assistant { align-self: flex-start; background: var(--card-bg, #fff); border: 1px solid var(--border, #e2e4e9); }
+.chat-proposal {
+  background: #fffbeb; border: 2px solid #fbbf24; border-radius: var(--cms-ui-radius-surface); padding: 10px; margin-bottom: 10px; font-size: 13px;
+}
+.chat-proposal pre {
+  white-space: pre-wrap; word-break: break-word; background: #fff; padding: 8px;
+  border-radius: var(--cms-ui-radius-surface); border: 1px solid var(--border, #e2e4e9); max-height: 160px; overflow-y: auto; font-size: 12px;
+}
+.cms-dock-content .inline-form { flex-wrap: nowrap; gap: 6px; }
+.cms-dock-content #chat-input { min-width: 0; font-size: 13px; }
+/* [hidden] must win over the plain-class rule below — display:flex on the
+   class alone has the same specificity as the UA stylesheet's [hidden] {
+   display:none } but comes later/from author CSS, so it silently overrides
+   "hidden" and leaves an empty, broken-image-icon bar shown at all times
+   otherwise. */
+.cms-assistant-image-preview[hidden] { display: none; }
+.cms-assistant-image-preview {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 6px;
+  padding: 4px 6px; background: var(--bg, #f5f6f8); border-radius: var(--cms-ui-radius-surface);
+}
+.cms-assistant-image-preview img { width: 28px; height: 28px; object-fit: cover; border-radius: var(--cms-ui-radius-surface); }
+.cms-assistant-image-preview button {
+  margin-left: auto; background: none; border: none; cursor: pointer;
+  font-size: 16px; color: var(--muted, #6b7280); line-height: 1;
+}
+
+/*  Search sits in the panel HEADER (see tools_panel.html), not above the
+    grid — it is reached for before the tools, and in the bottom bar every
+    body row it took was a row the tools did not get. */
+/*  A fixed, modest width pushed to the right-hand end, with the gap after
+    the title doing the separating. As `flex: 1` it grew to 1225px on a
+    wide screen — a search box the width of the screen for a list of
+    twenty-nine short names. */
+.cms-tools-search {
+  flex: 0 0 auto; width: 170px; display: flex; align-items: center; gap: 5px;
+  margin-left: auto;
+  border: 1px solid var(--border, #e2e4e9); border-radius: var(--cms-ui-radius-control);
+  padding: 3px 7px; background: #fff;
+}
+.cms-tools-search-icon { opacity: .6; font-size: 12px; flex: none; }
+.cms-tools-search input {
+  flex: 1; min-width: 0; border: none; outline: none; background: none;
+  font: inherit; font-size: 11px; color: inherit;
+}
+/*  One tick box, no caption. "Grouped" beside it was a word competing
+    with the panel title and the search box for a header that has to hold
+    four controls on a phone; a checkbox already looks like a checkbox,
+    and its tooltip says which way round it goes. */
+.cms-grouped-toggle {
+  display: flex; align-items: center;
+  cursor: pointer;
+  padding: 3px;
+}
+.cms-grouped-toggle input { margin: 0; cursor: pointer; }
+.cms-tools-no-match { text-align: center; padding: 8px 0; }
+
+/*  A category and its tools, as one foldable unit. In the side dock the
+    heading sits above its chips, as a heading does; in the bottom bar it
+    turns on its side and becomes the spine of the group (see the
+    .cms-dock-bottom rules further up), which is what lets a whole
+    category be folded down to the width of its own name. */
+.cms-tools-group { margin-bottom: 8px; }
+.cms-tools-group-head {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .04em; color: var(--muted, #6b7280);
+  margin: 8px 0 4px; padding-top: 6px;
+  border-top: 1px solid var(--border, #e2e4e9);
+  cursor: pointer; user-select: none;
+}
+/*  Only the spacing. The heading is a bordered plate now, not a rule
+    across the top, so dropping its top border made the first group's
+    heading the one that did not match the rest. */
+.cms-tools-group:first-child > .cms-tools-group-head { margin-top: 0; }
+.cms-tools-group-head::after { content: " ▾"; font-size: 9px; opacity: .55; }
+.cms-tools-group.is-collapsed > .cms-tools-group-head::after { content: " ▸"; }
+.cms-tools-group.is-collapsed > .cms-tools-group-chips { display: none; }
+
+/*  Tools grid — a fixed-size chip, repeated however many times fit the
+    panel's own width. `repeat(auto-fill, ...)` is what makes this a column
+    COUNT that changes with the panel, rather than a column WIDTH that
+    stretches: at 220px that is two chips across; narrowed to one chip's
+    width it is a single column.
+
+    minmax(chip, 1fr) rather than a bare length, because a bare length
+    sizes the columns and then abandons whatever is left over. Two 84px
+    chips in a 230px panel left ~56px stacked up the right-hand edge,
+    against ~10px on the left — the panel looked mis-hung rather than
+    merely padded. The count is unchanged (a column is still at least a
+    chip wide); the remainder is now shared between the columns instead of
+    dumped at the end. auto-fill, never auto-fit: auto-fit collapses the
+    empty tracks, so a group with one tool in it would stretch that chip
+    across the whole panel while its neighbours stayed chip-sized. */
+/*  Sized so TWO fit across the dock's default width — the panel is 220px,
+    which leaves ~181px once its padding and scrollbar are taken, and
+    2x84+6 is 174. At 88px it came to 182 and fell one pixel short, so the
+    default side view showed a single column when it should show two. */
+:root { --cms-tool-chip-size: 84px; --cms-tool-chip-height: 52px;
+        --cms-tool-chip-height-bottom: 40px; }
+.cms-tools-group-chips,
+.cms-tools-grid.is-flat {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--cms-tool-chip-size), 1fr));
+  justify-content: start;
+  gap: 6px;
+}
+.cms-tools-grid { margin-bottom: 10px; }
+
+/*  Filtered-out chips and headings are hidden via the [hidden] attribute
+    — see site-base.css's global `[hidden] { display: none !important; }`,
+    which exists precisely because a component's own display rule
+    otherwise wins against the attribute. */
+.cms-tool-chip-form { margin: 0; }
+/*  Every chip the SAME size, not just the same width. Names run from
+    "Text" to "Contact Form", so letting height follow the label gave a
+    grid of tiles that stepped up and down along each row — and in the
+    bottom bar's two-row flow it left ragged gaps wherever a short name
+    sat above a tall one. Fixed height plus a two-line clamp makes the
+    grid regular; the full name is on the chip's own tooltip either way. */
+.cms-tool-chip {
+  /*  Fill the track rather than sit at a fixed width inside it. The grid
+      above already decides how many columns there are and gives them the
+      leftover width; a chip pinned to 84px inside a 94.5px track just
+      moved the wasted space from the end of the row into every gap. The
+      chip-size variable still sets the MINIMUM, through the grid's
+      minmax() — it is what decides the column count. */
+  width: 100%;
+  height: var(--cms-tool-chip-height, 52px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  border: 1px solid var(--border, #e2e4e9);
+  border-radius: var(--cms-ui-radius-control);
+  background: var(--bg, #f5f6f8);
+  cursor: grab;
+  position: relative;
+  font-family: inherit;
+}
+.cms-tool-chip:hover { border-color: #059669; }
+.cms-tool-chip:active { cursor: grabbing; }
+.cms-tool-icon { font-size: 16px; }
+.cms-tool-name {
+  font-size: 10px; font-weight: 600; text-align: center; line-height: 1.2;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; word-break: break-word;
+}
+.cms-tool-delete {
+  position: absolute; top: 0; right: 2px; font-size: 12px; color: var(--muted, #6b7280); cursor: pointer;
+}
+.cms-tool-delete:hover { color: var(--danger, #dc2626); }
+.cms-tool-export {
+  position: absolute; top: 0; left: 2px; font-size: 12px; color: var(--muted, #6b7280);
+  cursor: pointer; text-decoration: none;
+}
+.cms-tool-export:hover { color: #059669; }
+.cms-toolkit-import-form { display: flex; gap: 6px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
+.cms-toolkit-import-form input[type="file"] { font-size: 11px; flex: 1; min-width: 0; }
+
+.cms-tool-new { margin-top: 4px; font-size: 12px; flex-shrink: 0; }
+.cms-tool-new summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
+.cms-tool-new-form { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.cms-tool-new-form input, .cms-tool-new-form select, .cms-tool-new-form textarea {
+  padding: 6px 8px; border: 1px solid var(--border, #e2e4e9); border-radius: var(--cms-ui-radius-control); font-family: inherit; font-size: 12px;
+}
+.cms-menu-page-check { display: flex; align-items: center; gap: 6px; font-weight: normal; }
+.cms-menu-page-check input { width: auto; padding: 0; }
+.cms-menu-tool-form { flex-direction: column; align-items: stretch; }
+.cms-menu-style-label { font-size: 12px; font-weight: 600; }
+.cms-menu-page-row { display: flex; flex-direction: column; gap: 2px; padding: 2px 0; }
+.cms-menu-parent-row { font-size: 11px; color: var(--muted, #6b7280); padding-left: 20px; display: flex; align-items: center; gap: 4px; }
+
+/* Colors panel — preset swatch gallery + advanced per-color pickers,
+   compact 2-across like the tools grid. */
+.cms-color-preset-gallery { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-bottom: 10px; }
+.cms-color-preset-swatch {
+  width: 100%; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 8px 4px; border: 1px solid var(--border, #e2e4e9); border-radius: var(--cms-ui-radius-control);
+  background: var(--bg, #f5f6f8); cursor: pointer; font-family: inherit;
+}
+.cms-color-preset-swatch:hover { border-color: #d97706; }
+/*  Centre the dots in the row, not just the row in the tile. The row is a
+    stretched flex child the width of the tile, so at flex-start the three
+    dots sat against its left edge while the label under them was centred
+    — which reads as the swatch being off-centre. */
+.cms-color-preset-dots { display: flex; justify-content: center; }
+.cms-color-preset-dot { width: 14px; height: 14px; border-radius: 50%; margin-left: -5px; border: 2px solid var(--card-bg, #fff); }
+.cms-color-preset-dot:first-child { margin-left: 0; }
+.cms-color-preset-label { font-size: 10px; font-weight: 600; text-align: center; line-height: 1.2; }
+.cms-color-advanced { margin-top: 8px; font-size: 12px; flex-shrink: 0; }
+
+/* "Selection" sub-area — whatever section/zone's 🎨 button was last
+   clicked (see inline-editor.js's cmsSelectedStyle), shown above the
+   template-wide palette so per-section/zone color editing has one home
+   instead of being scattered across inline toolbars. */
+.cms-selected-style[hidden] { display: none; }
+.cms-selected-style { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+.cms-selected-style hr { width: 100%; border: none; border-top: 1px solid var(--border, #e2e4e9); margin: 8px 0 0; }
+.cms-selected-style .cms-tpl-section-label { width: 100%; margin: 0; }
+.cms-selected-corner-select { font-size: 12px; padding: 4px 6px; border: 1px solid var(--border, #e2e4e9); border-radius: var(--cms-ui-radius-control); }
+.cms-color-advanced summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
+.cms-color-picker-form { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.cms-color-picker-item { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 500; }
+.cms-color-picker-item input[type="color"] { width: 28px; height: 28px; padding: 1px; border: 1px solid var(--border, #e2e4e9); border-radius: var(--cms-ui-radius-control); cursor: pointer; }
+
+/*  Inside a popover the blocks are spaced by the popover itself, so their
+    own margins would only double it. */
+.cms-dock-panel.cms-dock-bottom .cms-dock-content details[open] .cms-font-role-btns,
+.cms-dock-panel.cms-dock-bottom .cms-dock-content details[open] .cms-font-assigned,
+.cms-dock-panel.cms-dock-bottom .cms-dock-content details[open] .cms-font-individual-select { margin: 0; }
+/*  The three role buttons share the width evenly rather than each taking
+    what its own word needs — "Heading" wide, "Body" narrow — which is
+    what made them look jammed together. */
+.cms-dock-panel.cms-dock-bottom .cms-dock-content details[open] .cms-font-role-btns {
+  display: flex;
+  gap: var(--cms-dock-tile-gap);
+}
+.cms-dock-panel.cms-dock-bottom .cms-dock-content details[open] .cms-font-role-form {
+  flex: 1 1 0;
+  /*  A flex item will not go below its own content width by default, so
+      "Heading" stayed wider than "Body" however the basis was set. */
+  min-width: 0;
+}
+/*  ...and the label has to fit the share it gets. Equal thirds of this
+    panel are about 63px, where "Heading" at the default size needs 76 —
+    so it spilled past its own button and read as badly centred rather
+    than as too big. Smaller text and tighter padding fit it, and the
+    three stay identical. */
+.cms-dock-panel.cms-dock-bottom .cms-dock-content details[open] .cms-font-role-form .btn {
+  width: 100%;
+  padding: 6px 4px;
+  font-size: 10px;
+  text-align: center;
+  white-space: nowrap;
+}
+/*  A rule above the summary of what is currently assigned: it reports,
+    the controls above it act, and the two should not read as one block. */
+.cms-dock-panel.cms-dock-bottom .cms-dock-content details[open] .cms-font-assigned {
+  border-top: 1px solid var(--border, #e2e4e9);
+  padding-top: 10px;
+}
+
+/*  What each role is currently set to, as label/value rows. The roles
+    line up under one another so it reads as a short table rather than a
+    sentence — "Heading: theme default Body: theme default Footer:
+    follows Body" was three facts with nothing between them. */
+.cms-font-assigned {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 10px;
+  margin: 10px 0 0;
+  font-size: 11px;
+  line-height: 1.3;
+}
+.cms-font-assigned dt {
+  font-weight: 600;
+  color: var(--muted, #6b7280);
+}
+.cms-font-assigned dd {
+  margin: 0;
+  color: inherit;
+  overflow-wrap: anywhere;
+}
+
+.cms-font-individual-label {
+  display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; margin-top: 8px;
+}
+.cms-font-individual-select { font-size: 14px; padding: 6px 8px; border: 1px solid var(--border, #e2e4e9); border-radius: var(--cms-ui-radius-control); width: 100%; }
+.cms-font-role-btns { display: flex; gap: 6px; margin-top: 6px; }
+.cms-font-role-form { flex: 1; }
+.cms-font-role-form .btn { width: 100%; }
+
+/* Style panel — font pairings stack single-column (names like "DM Serif
+   Display + Work Sans" don't fit a 2-across grid); shape presets reuse
+   the Colors panel's swatch gallery layout since their names are short. */
+.cms-font-preset-gallery { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.cms-font-preset-btn {
+  width: 100%; text-align: left; padding: 8px 10px; border: 1px solid var(--border, #e2e4e9);
+  border-radius: var(--cms-ui-radius-control); background: var(--bg, #f5f6f8); cursor: pointer; font-family: inherit; font-size: 12px; font-weight: 600;
+}
+.cms-font-preset-btn:hover { border-color: #7c3aed; }
+.cms-shape-preset-swatch { display: block; width: 28px; height: 28px; background: #7c3aed; }
+/* Depth preset swatch — same footprint as the shape swatch, but the
+   thing being previewed is the shadow, so it needs a plain light face
+   and room around it for the shadow to actually show. */
+.cms-shadow-preset-swatch {
+  display: block; width: 34px; height: 22px; margin: 5px auto;
+  background: #fff; border: 1px solid #e5e7eb; border-radius: var(--cms-ui-radius-control);
+}
+
+
+/* Theme & Structure panel — theme swatches + nav-layout diagrams, same
+   compact 2-across sizing as Colors/Tools above it in the same dock. */
+.cms-tpl-section-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted, #6b7280); margin: 12px 0 6px; }
+.cms-tpl-section-label:first-of-type { margin-top: 0; }
+.cms-tpl-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.cms-tpl-choice-wrap { position: relative; }
+.cms-tpl-choice {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 8px 4px; border: 2px solid var(--border, #e2e4e9); border-radius: var(--cms-ui-radius-control);
+  background: var(--bg, #f5f6f8); cursor: pointer; font-family: inherit; width: 100%;
+}
+.cms-tpl-choice:hover { border-color: #475569; }
+.cms-tpl-delete-btn {
+  position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; padding: 0;
+  border: none; border-radius: 50%; background: #dc2626; color: #fff; font-size: 13px;
+  line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.cms-tpl-delete-btn:hover { background: #b91c1c; }
+.cms-tpl-choice-selected { border-color: #475569; background: rgba(71, 85, 105, 0.08); }
+.cms-tpl-dots { display: flex; justify-content: center; }
+.cms-tpl-dot { width: 12px; height: 12px; border-radius: 50%; margin-left: -4px; border: 2px solid var(--card-bg, #fff); }
+.cms-tpl-dot:first-child { margin-left: 0; }
+.cms-tpl-dot-empty { background: var(--border, #e2e4e9); }
+.cms-tpl-name { font-size: 10px; font-weight: 600; text-align: center; line-height: 1.2; }
+
+.nav-layout-picker { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+.nav-layout-option-form { margin: 0; }
+.nav-layout-option {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 6px 4px; border: 2px solid var(--border, #e2e4e9); border-radius: var(--cms-ui-radius-control);
+  background: var(--bg, #f5f6f8); cursor: pointer; font-family: inherit;
+}
+.nav-layout-option:hover { border-color: #475569; }
+.nav-layout-option-selected { border-color: #475569; background: rgba(71, 85, 105, 0.08); }
+.nav-diagram-svg { width: 100%; height: auto; display: block; }
+.nd-header { fill: var(--border, #e2e4e9); stroke: var(--muted, #6b7280); stroke-width: 1; }
+.nd-footer { fill: var(--border, #e2e4e9); stroke: var(--muted, #6b7280); stroke-width: 1; }
+.nd-content { fill: none; stroke: var(--border, #e2e4e9); stroke-width: 1; }
+.nd-mark { fill: var(--muted, #6b7280); opacity: 0.55; }
+.nd-mark-dim { opacity: 0.3; }
+.nd-mark-dashed { fill: none; stroke: var(--muted, #6b7280); stroke-width: 1; stroke-dasharray: 3 2; opacity: 0.5; }
+.nav-layout-option-selected .nd-header { fill: rgba(71, 85, 105, 0.25); stroke: #475569; }
+.nav-layout-option-selected .nd-footer { fill: rgba(71, 85, 105, 0.25); stroke: #475569; }
+.nav-layout-option-selected .nd-mark { fill: #475569; opacity: 0.8; }
+.nav-layout-option-label { font-size: 10px; font-weight: 600; text-align: center; line-height: 1.2; }
+
+.cms-tpl-save-btn {
+  width: 100%; margin-top: 14px; padding: 10px; font-size: 13px; font-weight: 700;
+  border: none; border-radius: var(--cms-ui-radius-control); background: #475569; color: #fff; cursor: pointer;
+}
+.cms-tpl-save-btn:hover:not(:disabled) { background: #334155; }
+.cms-tpl-save-btn:disabled { background: var(--border, #e2e4e9); color: var(--muted, #6b7280); cursor: default; }
+
+.cms-snapshot-save { display: flex; flex-direction: column; gap: 6px; }
+.cms-snapshot-save input {
+  padding: 8px 10px; font-size: 13px; border: 1px solid var(--border, #e2e4e9); border-radius: var(--cms-ui-radius-control);
+}
+.cms-snapshot-save .cms-tpl-save-btn { margin-top: 0; }
+.cms-snapshot-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.cms-snapshot-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 8px 10px; border: 1px solid var(--border, #e2e4e9); border-radius: var(--cms-ui-radius-surface); background: var(--bg, #f5f6f8);
+}
+.cms-snapshot-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cms-snapshot-label { font-size: 12px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cms-snapshot-actions { display: flex; gap: 4px; flex: 0 0 auto; }
+.cms-snapshot-restore, .cms-snapshot-delete {
+  border: 1px solid var(--border, #e2e4e9); border-radius: var(--cms-ui-radius-control); background: #fff; cursor: pointer;
+  font-size: 11px; font-weight: 600; padding: 5px 8px;
+}
+.cms-snapshot-restore:hover { border-color: #475569; color: #475569; }
+.cms-snapshot-delete:hover { border-color: #dc2626; color: #dc2626; }
+
+.cms-demo-active {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 8px 10px; margin-bottom: 8px; border-radius: var(--cms-ui-radius-surface);
+  background: rgba(71, 85, 105, 0.08); font-size: 12px;
+}
+.cms-demo-clear-btn {
+  border: 1px solid #dc2626; border-radius: var(--cms-ui-radius-control); background: #fff; color: #dc2626;
+  cursor: pointer; font-size: 11px; font-weight: 600; padding: 5px 8px;
+}
+.cms-demo-clear-btn:hover { background: #dc2626; color: #fff; }
+.cms-demo-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.cms-demo-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 8px 10px; border: 1px solid var(--border, #e2e4e9); border-radius: var(--cms-ui-radius-surface); background: var(--bg, #f5f6f8);
+}
+.cms-demo-row-active { border-color: #475569; background: rgba(71, 85, 105, 0.08); }
+.cms-demo-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cms-demo-label { font-size: 12px; font-weight: 700; }
+.cms-demo-load-btn {
+  flex: 0 0 auto; border: 1px solid var(--border, #e2e4e9); border-radius: var(--cms-ui-radius-control); background: #fff;
+  cursor: pointer; font-size: 11px; font-weight: 600; padding: 5px 10px;
+}
+.cms-demo-load-btn:hover:not(:disabled) { border-color: #475569; color: #475569; }
+.cms-demo-load-btn:disabled { color: var(--muted, #6b7280); cursor: default; }
+
+/* Panel help "?" — see partials/panel_help.html for why the panels
+   explain themselves this way rather than in inline paragraphs.
+
+   The bubble spans its own label row rather than hanging off the little
+   "?" itself, and that is not a style choice: .cms-dock-content scrolls
+   (overflow-y: auto), and overflow clips on BOTH axes, so anything
+   anchored to the button that reached past the panel's edge got sliced
+   off mid-sentence instead of overlapping the page. Sizing it to the row
+   means it can never exceed the panel's width. Vertically there is no
+   such problem — overflow-y: auto scrolls rather than clips.
+
+   That works by the button being position: static while its label row is
+   positioned, so the bubble resolves against the row. Any new place this
+   macro is used needs its container in the positioned list below. */
+.cms-panel-help {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; margin-left: 6px; padding: 0; flex: none;
+  border: 1px solid #c9ced6; border-radius: 50%; background: #fff;
+  color: #6b7280; font-size: 11px; font-weight: 700; line-height: 1;
+  cursor: help; vertical-align: middle;
+}
+.cms-panel-help:hover, .cms-panel-help:focus-visible {
+  background: var(--cms-ui-accent); border-color: var(--cms-ui-accent); color: #fff; outline: none;
+}
+/* The containers a help "?" can sit in — each must be positioned so the
+   bubble sizes to it. */
+.cms-dock-title, .cms-dock-content .cms-tpl-section-label, .cms-dock-content summary { position: relative; }
+.cms-panel-help-text {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 20; padding: 8px 10px;
+  background: #111827; color: #f9fafb; border-radius: var(--cms-ui-radius-surface);
+  font-size: 12px; font-weight: 400; line-height: 1.45; text-align: left;
+  white-space: normal; box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+  opacity: 0; visibility: hidden; transition: opacity .15s ease;
+  pointer-events: none;
+}
+.cms-panel-help:hover .cms-panel-help-text,
+.cms-panel-help:focus-visible .cms-panel-help-text { opacity: 1; visibility: visible; }
+
+/* The eleven shades behind each role colour, shown so the depth is
+   visible rather than implied. */
+.cms-ramp-row { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+.cms-ramp-label { min-width: 74px; font-size: .78rem; text-transform: capitalize; opacity: .8; }
+.cms-ramp-strip { display: flex; flex: 1; border-radius: var(--cms-ui-radius-surface); overflow: hidden;
+  border: 1px solid rgba(128,128,128,.3); }
+.cms-ramp-swatch { flex: 1; height: 26px; cursor: help; }
+.cms-ramp-swatch.is-base { box-shadow: inset 0 0 0 2px rgba(255,255,255,.85),
+  inset 0 0 0 3px rgba(0,0,0,.35); }

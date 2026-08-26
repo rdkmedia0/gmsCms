@@ -1,0 +1,54 @@
+/* "Modern Chic" — Bauhaus/Swiss International Style influence for a
+   resume site: crisp white ground, sharp geometric corners (no rounding),
+   a bold primary-color triad (near-black / red / cobalt), a confident
+   geometric display face over a clean grotesque body. */
+:root {
+  --site-heading-font-family: "Space Grotesk", -apple-system, "Segoe UI", sans-serif;
+  --site-font-family: "Inter", -apple-system, "Segoe UI", sans-serif;
+  --site-heading-weight: 700;
+}
+
+/*  This theme's own shaping, stated as defaults rather than as
+    border-radius declarations. site-base.css draws every corner from
+    --site-radius and falls back to these, so the hero, cards and
+    banners keep being shaped differently here, while the admin's
+    site-wide Corners choice (and a single section's own override)
+    still reach them. */
+:root {
+  --corner-banner: 0;
+  --corner-card: 0;
+  --corner-hero: 0;
+  --corner-panel: 0;
+  --corner-post: 0;
+  --pad-panel: 24px;
+}
+body { background: var(--site-body-bg, #ffffff); color: var(--primary-base, #1a1a1a); }
+.site-header { background: var(--site-header-bg, #ffffff); border-bottom: var(--site-header-border, 3px solid var(--primary-base, #1a1a1a)); }
+.site-footer { background: var(--site-footer-bg, #1a1a1a); border-top: var(--site-footer-border, none); color: var(--primary-50, #f4f4f4); }
+.site-footer a { color: var(--primary-50, #f4f4f4); }
+.site-brand { color: var(--primary-base, #1a1a1a); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+.site-nav a { color: var(--primary-base, #1a1a1a); font-weight: 500; }
+.site-nav a:hover { color: var(--wp--preset--color--secondary, #c81e3a); }
+
+.block-header {
+  background: var(--primary-base, #1a1a1a); color: var(--accent-50, #ffffff); border-left: 10px solid var(--wp--preset--color--secondary, #c81e3a);
+}
+.block-header h1 { color: var(--accent-50, #ffffff); }
+.block-header .lead { color: var(--neutral-300, #d8d8d8); }
+
+h2, .block-text h2, .block-image h2, .block-html h2 {
+  border-left: none; padding-left: 0; text-transform: uppercase; letter-spacing: 0.03em;
+}
+h2::before {
+  content: ""; display: inline-block; width: 14px; height: 14px; margin-right: 10px;
+  background: var(--wp--preset--color--accent, #2f6fed); border-radius: 50%; vertical-align: middle;
+}
+
+.block-html { background: var(--accent-50, #ffffff); border: 2px solid var(--primary-base, #1a1a1a); }
+
+.cms-card-shape { border: 2px solid var(--primary-base, #1a1a1a); background: var(--accent-50, #ffffff); }
+
+.cms-blog-card { border: 2px solid var(--primary-base, #1a1a1a); }
+.cms-table thead { background: var(--primary-base, #1a1a1a); color: var(--accent-50, #ffffff); }
+
+a { color: var(--wp--preset--color--accent, #2f6fed); }

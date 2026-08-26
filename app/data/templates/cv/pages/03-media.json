@@ -1,0 +1,32 @@
+{
+  "title": "Media",
+  "slug_suffix": "media",
+  "page_type": "standard",
+  "meta_description": "Walkthroughs and talks.",
+  "sections": [
+    [
+      "text",
+      "",
+      "<h2>Talks and walkthroughs</h2><p>Conference talks, and a few screen recordings walking through work I can show publicly. The walkthroughs are the useful ones if you want to know how I think rather than what I shipped.</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-video-gallery cms-video-gallery-3\">\n<div class=\"cms-video-thumb\" data-video-src=\"/static/video/templates/cv-media-1.mp4\"><video src=\"/static/video/templates/cv-media-1.mp4#t=0.1\" preload=\"metadata\" muted playsinline></video><span class=\"cms-play-icon\">&#9658;</span><span class=\"cms-video-caption\">Sketching flows</span></div>\n<div class=\"cms-video-thumb\" data-video-src=\"/static/video/templates/cv-media-2.mp4\"><video src=\"/static/video/templates/cv-media-2.mp4#t=0.1\" preload=\"metadata\" muted playsinline></video><span class=\"cms-play-icon\">&#9658;</span><span class=\"cms-video-caption\">Mapping the problem</span></div>\n<div class=\"cms-video-thumb\" data-video-src=\"/static/video/templates/cv-media-3.mp4\"><video src=\"/static/video/templates/cv-media-3.mp4#t=0.1\" preload=\"metadata\" muted playsinline></video><span class=\"cms-play-icon\">&#9658;</span><span class=\"cms-video-caption\">The workspace</span></div>\n</div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-timeline\" data-style=\"vertical\"><ol class=\"cms-timeline cms-timeline-vertical\"><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step1_when\">2026</span><div class=\"cms-timeline-body\"><h3 data-field=\"step1_title\">Designing for the second week</h3><p data-field=\"step1_text\">Why onboarding metrics flatter you, and what to measure instead. Config Europe.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step2_when\">2025</span><div class=\"cms-timeline-body\"><h3 data-field=\"step2_title\">Research without a research team</h3><p data-field=\"step2_text\">Six habits that get you most of the way. Internal talk, since made public.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step3_when\">2024</span><div class=\"cms-timeline-body\"><h3 data-field=\"step3_title\">The redesign we did not do</h3><p data-field=\"step3_text\">A case study in arguing for the smaller change.</p></div></li></ol></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-cta\" data-tone=\"solid\"><div class=\"cms-cta cms-cta-solid\"><h2 data-field=\"heading\">Looking for someone?</h2><p data-field=\"text\">I am open to product design work, contract or permanent.</p><a class=\"cms-cta-btn\" href=\"/contact\" data-href-field=\"link\"><span data-field=\"cta\">Get in touch</span></a></div></div>",
+      {}
+    ]
+  ]
+}

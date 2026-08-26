@@ -1,0 +1,32 @@
+{
+  "title": "Get involved",
+  "slug_suffix": "involved",
+  "page_type": "standard",
+  "meta_description": "Volunteering, plots and what needs doing.",
+  "sections": [
+    [
+      "text",
+      "Ways in",
+      "<p>Most people start by turning up on a Saturday. After that there are a few other ways to be useful.</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-timeline\" data-style=\"horizontal\"><ol class=\"cms-timeline cms-timeline-horizontal\"><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step1_when\">Easiest</span><div class=\"cms-timeline-body\"><h3 data-field=\"step1_title\">Saturday mornings</h3><p data-field=\"step1_text\">Just come. Ten till two, every week, whatever the weather. Tools provided.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step2_when\">More</span><div class=\"cms-timeline-body\"><h3 data-field=\"step2_title\">Take on a bed</h3><p data-field=\"step2_text\">Beds come free a few times a year. There is a waiting list and it moves.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step3_when\">Most</span><div class=\"cms-timeline-body\"><h3 data-field=\"step3_title\">Join the committee</h3><p data-field=\"step3_text\">Six people, meets monthly, mostly about compost and the water bill. Always needs one more.</p></div></li></ol></div>",
+      {}
+    ],
+    [
+      "html",
+      "What we are short of",
+      "<table class=\"cms-table\"><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>Hands</td><td>Saturdays, and Wednesday evenings in summer</td></tr><tr><td>Tools</td><td>Spades, forks, anything with a working handle</td></tr><tr><td>Compost</td><td>Always, endlessly, more than you would think</td></tr><tr><td>A treasurer</td><td>Two hours a month, and we would be very grateful</td></tr></tbody></table>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-newsletter\" ><div class=\"cms-newsletter\"><h2 data-field=\"heading\">What is happening</h2><p data-field=\"text\">A short note once a month: what needs doing, what is ready to pick, when the next work day is.</p><form class=\"cms-newsletter-form\" method=\"post\" action=\"/subscribe\"><label class=\"cms-visually-hidden\" for=\"cms-sub-email\">Email address</label><input type=\"email\" id=\"cms-sub-email\" name=\"email\" required placeholder=\"you@example.com\" data-attr-field=\"placeholder\"><button type=\"submit\" class=\"cms-action-btn\"><span data-field=\"cta\">Keep me in the loop</span></button><input type=\"hidden\" name=\"consent_text\" value=\"Yes, send me the monthly note. Unsubscribe any time.\"><p class=\"cms-newsletter-consent\" data-field=\"consent\">Yes, send me the monthly note. Unsubscribe any time.</p><p class=\"cms-newsletter-howitworks\">We&rsquo;ll email you a link to confirm. Nothing else is sent until you follow it.</p><p class=\"cms-subscribe-note\" data-subscribe-note role=\"status\" hidden></p></form></div></div>",
+      {}
+    ]
+  ]
+}

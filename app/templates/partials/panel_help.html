@@ -1,0 +1,16 @@
+{# A "?" that reveals one line of explanation on hover or keyboard focus.
+
+   The side panels used to explain themselves in inline paragraphs, which
+   is fine for one sentence and awful for ten — the Template & Layout
+   panel had grown longer in prose than in controls, pushing the controls
+   themselves below the fold. This keeps the same words (real text in the
+   DOM, so it is selectable and reaches a screen reader) but out of the
+   way until asked for.
+
+   It deliberately does NOT use a `title` attribute: that would render a
+   second, native tooltip on top of this one. The button is focusable, so
+   the text is reachable without a mouse. #}
+{% macro panel_help(text) %}<button type="button" class="cms-panel-help" aria-label="What's this?">?<span class="cms-panel-help-text" role="tooltip">{{ text }}</span></button>{% endmacro %}
+
+{# A section heading with its explanation folded into a "?" beside it. #}
+{% macro panel_section(label, help='', tag='h4') %}<{{ tag }} class="cms-tpl-section-label">{{ label }}{% if help %}{{ panel_help(help) }}{% endif %}</{{ tag }}>{% endmacro %}

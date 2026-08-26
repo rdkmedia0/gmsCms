@@ -1,0 +1,43 @@
+/* "Flour & Salt" — built entirely out of the primary colour's own
+   eleven-step scale. Nothing here is a loose hex: the page ground is
+   step 50, borders are 100, muted text is 700, headings are 900. Change
+   the crust colour in the Colors panel and every one of them moves
+   together, which is the whole point of the ramp and the reason this
+   template stopped needing a second colour to look finished. */
+:root {
+  --site-heading-font-family: "Bitter", Georgia, serif;
+  --site-font-family: "Mukta", -apple-system, "Segoe UI", sans-serif;
+  --site-heading-weight: 700;
+  --site-body-bg: var(--primary-50, #fdf9f3);
+  --site-panel-bg: rgba(255, 252, 247, .96);
+}
+body { background: var(--site-body-bg); color: var(--primary-950, #2b1d12); }
+
+.site-header {
+  background: var(--primary-50, #fdf9f3);
+  border-bottom: 1px solid var(--primary-100, #e8dcc9);
+}
+.site-brand { font-family: "Bitter", Georgia, serif; color: var(--primary-800, #7a4b26);
+  letter-spacing: -.01em; }
+.site-nav a { color: var(--primary-800, #5c4633); font-weight: 600; }
+.site-nav a:hover { color: var(--accent, #7b3247); }
+.site-footer { background: var(--primary-950, #2b1d12); color: var(--primary-100, #f3e7d6); }
+.site-footer a { color: var(--primary-100, #f3e7d6); }
+
+h1, h2, h3 { color: var(--primary-900, #3b2c21); }
+h2 { letter-spacing: -.01em; }
+p, li { color: var(--primary-800, #4a3a2c); }
+
+/*  Every surface is a step on the same scale. */
+.cms-price-tier, .cms-quote-card, .cms-newsletter {
+  background: var(--secondary-50, #fff); border-color: var(--primary-100, #e8dcc9);
+}
+.cms-stat { background: var(--primary-100, #f3e9dc); }
+.cms-stat-value { font-family: "Bitter", Georgia, serif; color: var(--primary-700, #8a4f24); }
+.cms-table th { background: var(--primary-100, #f3e9dc); color: var(--primary-900, #3b2c21);
+  border-bottom: 2px solid var(--primary-200, #e0cdb0); }
+.cms-table td { border-bottom: 1px solid var(--primary-100, #f0e6d8); }
+.cms-table td:last-child { font-variant-numeric: tabular-nums; color: var(--primary-900, #3b2c21); }
+.cms-content-divider { border-color: var(--primary-200, #e0cdb0); }
+.cms-faq summary { color: var(--primary-900, #3b2c21); }
+.cms-banner-overlay h2 { font-size: clamp(2.1rem, 5.5vw, 3.6rem); letter-spacing: -.02em; }

@@ -1,0 +1,191 @@
+services:
+  web:
+    #  Two ways to get the code, and the file supports both without being
+    #  edited. `docker compose pull` fetches the published image and
+    #  `up -d` runs it; `up -d --build` ignores the registry and compiles
+    #  this working tree instead, which is what you want while developing.
+    #  The published image is private, so a host pulls it with a token —
+    #  see README.md, "Run the published image".
+    image: ghcr.io/rdkmedia0/gmscms:latest
+    build: .
+    ports:
+      # WEB_PORT is the port on the HOST. There are three ways this gets
+      # reached and all three are supported:
+      #
+      #   1. Nothing in front of it. Set WEB_PORT=443 and give it a
+      #      certificate (TLS_CERT_FILE / TLS_KEY_FILE below) and this
+      #      container is the whole web server. No proxy required.
+      #   2. A platform that terminates TLS for you (a PaaS, a load
+      #      balancer). Leave it on 5000 and let the platform route to it.
+      #   3. A proxy you run yourself — nginx, Caddy, Traefik. If the
+      #      proxy is on this same machine, set
+      #      WEB_PORT=127.0.0.1:5000 so nothing else can reach the port
+      #      at all; if it is elsewhere on the LAN, leave it open to the
+      #      LAN and close it at the firewall.
+      #
+      # X-Forwarded-* headers are believed only from a private or
+      # loopback peer, so cases 2 and 3 work and case 1 cannot be lied to
+      # by a visitor. TRUST_PROXY below overrides that if your proxy
+      # reaches this container from a public address.
+      - "${WEB_PORT:-5000}:5000"
+    # ---------------------------------------------------------------
+    # Everything below is OPTIONAL and only read on the FIRST run: each
+    # value is copied into the site's own database (secrets encrypted)
+    # and from then on is edited in the admin screens, not here. That is
+    # deliberate — a key that lives permanently in this file is a
+    # plaintext secret in something people copy, back up and paste into
+    # forums, and rotating it should be pasting a new one into a form,
+    # not editing YAML and recreating a container.
+    #
+    # Two ways to fill these in. Either put them in a .env file next to
+    # this one (see .env.example), or replace the ${...} with the value
+    # itself, in quotes. Anything left blank is simply skipped, and can
+    # be set later in the admin screens instead.
+    # ---------------------------------------------------------------
+    environment:
+      # Where the database and uploads live inside the container — matches
+      # the volumes below, so they survive rebuilds and restarts.
+      DATA_DIR: /app/data
+
+      # --- signing in ------------------------------------------------
+      # Your own Google address. Set this AND the two client values below
+      # and password sign-in is switched off automatically: there is a
+      # safer way in, so the password stops being a way in at all.
+      # What you sign in as. Defaults to "admin" if left blank, and only
+      # ever read on the very first run.
+      ADMIN_USERNAME: "${ADMIN_USERNAME:-}"
+      ADMIN_GOOGLE_EMAIL: "${ADMIN_GOOGLE_EMAIL:-}"
+      GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID:-}"
+      GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET:-}"
+      # Leave ADMIN_PASSWORD blank and one is generated for you on first
+      # run, printed in this container's log and written to
+      # data/initial-admin-password.txt. A fixed password shipped in an
+      # image is not a default, it is a password everyone already knows.
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD:-}"
+      # Username/password sign-in. Leave blank to decide it in the admin
+      # screens (where it starts ON). Set to 1 to force it on, or 0 to
+      # force it off — either applies on every restart, so this file and
+      # the running site never disagree.
+      #
+      # 0 is refused, and logged, unless Google sign-in can actually take
+      # over: a client id, a secret, and an admin with their own Google
+      # address linked. And whenever it is off, the login page can check
+      # directly with Google and let the password back in for an hour if
+      # Google is not answering — so an outage is not a lockout.
+      PASSWORD_LOGIN: "${PASSWORD_LOGIN:-}"
+
+      # --- taking payments -------------------------------------------
+      # sk_test_... charges nobody and accepts Stripe's test cards.
+      STRIPE_SECRET_KEY: "${STRIPE_SECRET_KEY:-}"
+      STRIPE_WEBHOOK_SECRET: "${STRIPE_WEBHOOK_SECRET:-}"
+
+      # --- bookings ---------------------------------------------------
+      # A personal API key from app.cal.com is enough.
+      CALCOM_API_KEY: "${CALCOM_API_KEY:-}"
+
+      # --- sending email ----------------------------------------------
+      # Needed for order confirmations and the link a buyer uses to reach
+      # what they paid for. Gmail needs an App Password, not your normal
+      # one. Host and port default to smtp.gmail.com:587 if left blank.
+      SMTP_HOST: "${SMTP_HOST:-}"
+      SMTP_PORT: "${SMTP_PORT:-}"
+      SMTP_USERNAME: "${SMTP_USERNAME:-}"
+      SMTP_PASSWORD: "${SMTP_PASSWORD:-}"
+      SMTP_FROM_EMAIL: "${SMTP_FROM_EMAIL:-}"
+      CONTACT_TO_EMAIL: "${CONTACT_TO_EMAIL:-}"
+
+      # --- https --------------------------------------------------------
+      # Serving HTTPS yourself, with no proxy in front. Point these at a
+      # certificate and its key INSIDE the container (mount them with the
+      # volumes below), set WEB_PORT=443, and this container is the whole
+      # web server. Both must be set, and both must be readable by uid
+      # 1000 — the app refuses to start on half a pair rather than
+      # quietly serving plain HTTP.
+      #
+      # Getting a certificate without a proxy: `certbot certonly
+      # --standalone` on the host while this container is stopped, then
+      # mount /etc/letsencrypt and renew on a timer. Renewal needs port
+      # 80, so stop this container for the minute it takes, or use a DNS
+      # challenge.
+      TLS_CERT_FILE: "${TLS_CERT_FILE:-}"
+      TLS_KEY_FILE: "${TLS_KEY_FILE:-}"
+
+      # Who is allowed to say what the original request looked like.
+      # "auto" (the default) believes X-Forwarded-* only from a private
+      # or loopback peer — a proxy on this machine, this docker network,
+      # or the LAN — and strips those headers from anyone else, so a
+      # directly-exposed container cannot be told it is something it is
+      # not. "always" if your proxy reaches this from a public address.
+      # "never" if nothing is in front of it and you want it said out loud.
+      TRUST_PROXY: "${TRUST_PROXY:-}"
+
+      # You should not need this. The session cookie is marked Secure
+      # automatically on any request that arrived over https — whether
+      # this container terminated the TLS itself or a trusted proxy did —
+      # while http://localhost:5000 still works for local admin. Set it to
+      # 1 only to pin the flag on for every request including plain http,
+      # which will lock you out of a site you reach over http, by design.
+      FORCE_SECURE_COOKIES: "${FORCE_SECURE_COOKIES:-}"
+
+      # --- web address -------------------------------------------------
+      # You should not need this. The site learns the address it is
+      # reached on the first time you sign in, and uses it for Stripe's
+      # return links, emailed links and product pictures. Set it only to
+      # override that — for instance if you are setting the site up on one
+      # address but will serve it on another.
+      SITE_PUBLIC_URL: "${SITE_PUBLIC_URL:-}"
+
+      # --- where secrets are encrypted ---------------------------------
+      # Optional, and worth doing once the site is live. The API keys you
+      # save in the admin screens are encrypted; by default the key that
+      # opens them sits in data/ beside the database, so anyone who copies
+      # that folder — a backup, a volume snapshot — has both halves.
+      # Put the contents of data/.encryption_key here (or use a Docker
+      # secret) and delete the file, and the two live in different places.
+      # An invalid value stops the site rather than starting with the
+      # wrong key and writing a half-readable database.
+      ENCRYPTION_KEY: "${ENCRYPTION_KEY:-}"
+
+      # --- AI assistant (optional) --------------------------------------
+      # Leave blank to hide it. Needs an Open WebUI instance reachable
+      # from this container and an API key from its
+      # Settings -> Account -> API Keys (not a Google/OAuth token).
+      OPEN_WEBUI_URL: "${OPEN_WEBUI_URL:-}"
+      OPEN_WEBUI_API_KEY: "${OPEN_WEBUI_API_KEY:-}"
+      OPEN_WEBUI_MODEL: "${OPEN_WEBUI_MODEL:-}"
+      OPEN_WEBUI_IMAGE_MODEL: "${OPEN_WEBUI_IMAGE_MODEL:-}"
+      OPEN_WEBUI_VIDEO_MODEL: "${OPEN_WEBUI_VIDEO_MODEL:-}"
+
+    volumes:
+      - ./data:/app/data
+      - ./uploads:/app/app/static/uploads
+      - ./themes:/app/app/static/themes
+      # Serving HTTPS yourself? Mount the certificates in, read-only, and
+      # point TLS_CERT_FILE / TLS_KEY_FILE at the paths INSIDE the
+      # container:
+      #   - /etc/letsencrypt:/etc/letsencrypt:ro
+    restart: unless-stopped
+    #  Docker's default json-file driver keeps every line for ever, and
+    #  this container now logs a line per request. On a small VPS that is
+    #  a disk filling up quietly over months and taking the site with it
+    #  -- the kind of outage that has nothing to do with the application.
+    #  Three files of 10 MB is a few days of traffic, which is what anyone
+    #  is realistically going to read.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    #  The app drops to an unprivileged user itself (see the entrypoint).
+    #  These make the container a poorer place to land regardless: no
+    #  route to regaining privileges, and none of the capabilities a web
+    #  app has any use for.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE

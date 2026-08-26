@@ -1,0 +1,26 @@
+{
+  "title": "Contact",
+  "slug_suffix": "contact",
+  "page_type": "standard",
+  "meta_description": "Where we are and how to book.",
+  "sections": [
+    [
+      "text",
+      "Booking",
+      "<p>Ring us, or send a message and we will ring you back the same day. Thursdays we are open until eight.</p>",
+      {}
+    ],
+    [
+      "text",
+      "Opening hours",
+      "<p>Tuesday to Saturday, 9 till 6</p><p>Thursdays until 8</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-contact-form-tool\"></div>",
+      {}
+    ]
+  ]
+}

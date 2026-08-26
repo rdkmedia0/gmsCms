@@ -1,0 +1,125 @@
+{% extends "admin/base.html" %}
+{% block title %}Edit {{ page.title }} — My Site Admin{% endblock %}
+{% block content %}
+<div class="page-edit-header">
+  <h1>Editing: {{ page.title }}</h1>
+  <a href="{{ url_for('public.page', slug=page.slug) if not page.is_home else url_for('public.home') }}" target="_blank" class="btn">Preview Page ↗</a>
+</div>
+
+<div class="card">
+  <div class="card-header"><h2>Page Background</h2></div>
+  <form method="post" action="{{ url_for('admin.page_bg_color', page_id=page.id) }}" class="inline-form">
+    <label style="margin:0;">Background color
+      <input type="color" name="bg_color" value="{{ page.bg_color or '#ffffff' }}">
+    </label>
+    <button type="submit" class="btn btn-small">Save</button>
+  </form>
+  {% if page.bg_color %}
+  <p class="muted" style="margin-top:16px;">Picture behind the whole page — sits under every section, so a page can be framed by one image rather than broken into bands.</p>
+  <form method="post" action="{{ url_for('admin.page_bg_color', page_id=page.id) }}" class="fulfilment-form">
+    <input type="hidden" name="bg_color" value="{{ page.bg_color or '' }}">
+    <label for="page_bg_image">The picture</label>
+    <select id="page_bg_image" name="bg_image" title="Chosen from your Image Library — upload there first">
+      <option value="">No picture</option>
+      {% for img in media_images or [] %}
+      <option value="{{ img.url }}" {{ 'selected' if page.bg_image == img.url }}>{{ img.name }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="page_bg_attach">How it behaves</label>
+    <select id="page_bg_attach" name="bg_attach" title="Still means the page scrolls over a fixed image; travelling means the image moves with the content">
+      <option value="fixed" {{ 'selected' if (page.bg_attach or 'fixed') == 'fixed' }}>Stays still, page scrolls over it</option>
+      <option value="scroll" {{ 'selected' if page.bg_attach == 'scroll' }}>Travels with the page</option>
+    </select>
+
+    <label for="page_bg_overlay">How much to dim it</label>
+    <select id="page_bg_overlay" name="bg_overlay" title="A picture at full strength almost never leaves text readable">
+      <option value="none" {{ 'selected' if (page.bg_overlay or 'none') == 'none' }}>Not at all</option>
+      <option value="light" {{ 'selected' if page.bg_overlay == 'light' }}>Pale wash (keeps dark text readable)</option>
+      <option value="medium" {{ 'selected' if page.bg_overlay == 'medium' }}>Dimmed (for light text)</option>
+      <option value="dark" {{ 'selected' if page.bg_overlay == 'dark' }}>Strongly dimmed (for light text)</option>
+      <option value="tint" {{ 'selected' if page.bg_overlay == 'tint' }}>Your brand colour</option>
+    </select>
+
+    <label for="page_bg_surface">How the content sits on it</label>
+    <select id="page_bg_surface" name="bg_surface" title="The difference between a usable backdrop and an unreadable one">
+      <option value="plain" {{ 'selected' if (page.bg_surface or 'plain') == 'plain' }}>Straight on the picture</option>
+      <option value="panels" {{ 'selected' if page.bg_surface == 'panels' }}>Each section on its own panel</option>
+      <option value="veil" {{ 'selected' if page.bg_surface == 'veil' }}>One soft column behind everything</option>
+    </select>
+    <p class="hint">Panels are the safe choice: sections get their own background so the picture frames them rather than showing through the words. "Straight on the picture" suits a photograph that is mostly sky or texture.</p>
+
+    <button type="submit" class="btn btn-small btn-primary">Save the backdrop</button>
+  </form>
+
+  <form method="post" action="{{ url_for('admin.page_bg_color', page_id=page.id) }}">
+    <input type="hidden" name="bg_color" value="">
+    <button type="submit" class="btn btn-small">Reset to theme default</button>
+  </form>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-header"><h2>Layout</h2></div>
+  <p class="hint">Overrides just for this page, on top of the site-wide Theme &amp; Layout settings — the header arrangement or a sidebar/footer's own sections aren't duplicated, this only changes what THIS page shows.</p>
+  <form method="post" action="{{ url_for('admin.page_layout', page_id=page.id) }}">
+    <label style="display:block;margin-bottom:10px;" title="Swap just this page's header arrangement — every other page keeps using the site-wide choice.">Header layout
+      <select name="nav_layout_override" title="Swap just this page's header arrangement — every other page keeps using the site-wide choice.">
+        <option value="">Use site default</option>
+        {% for key, info in nav_layouts.items() %}
+        <option value="{{ key }}" {{ 'selected' if page.nav_layout_override == key }}>{{ info[0] }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label style="display:block;margin-bottom:6px;" title="The left sidebar's own sections stay exactly as they are on every other page — this just skips showing that rail here.">
+      <input type="checkbox" name="hide_sidebar" value="1" {{ 'checked' if page.hide_sidebar }}> Hide the left sidebar on this page
+    </label>
+    <label style="display:block;margin-bottom:6px;" title="The right sidebar's own sections stay exactly as they are on every other page — this just skips showing that rail here.">
+      <input type="checkbox" name="hide_sidebar_right" value="1" {{ 'checked' if page.hide_sidebar_right }}> Hide the right sidebar on this page
+    </label>
+    <label style="display:block;margin-bottom:10px;" title="The footer's own sections stay exactly as they are on every other page — this just skips showing it here.">
+      <input type="checkbox" name="hide_footer" value="1" {{ 'checked' if page.hide_footer }}> Hide the footer on this page
+    </label>
+    <button type="submit" class="btn btn-small btn-primary" title="Save this page's layout overrides.">Save</button>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card-header"><h2>This page</h2></div>
+  <form method="post" action="{{ url_for('admin.page_settings', page_id=page.id) }}">
+    <label style="display:block;margin-bottom:6px;" title="Off means visitors get a Not Found — you can still open and edit it while signed in. Useful for an issue that only goes to your list, or a page you are still writing.">
+      <input type="checkbox" name="is_public" value="1" {{ 'checked' if page.is_public }} {{ 'disabled' if page.is_home }}>
+      People can read this page on the site
+    </label>
+    <p class="hint">{% if page.is_home %}The home page always stays on the site.{% else %}Turn this off and the page is yours alone: it stays exactly where it is, keeps its address, and answers a visitor with Not Found. A newsletter sent while it is off carries no &ldquo;read it online&rdquo; link, because there would be nothing to read.{% endif %}</p>
+    <label style="display:block;margin:10px 0 6px;" title="Adds a Send panel to the top of this page while you are editing it, and lists it on the Newsletters screen">
+      <input type="checkbox" name="is_newsletter" value="1" {{ 'checked' if page.page_type == 'newsletter' }}>
+      This page is a newsletter
+    </label>
+    <p class="hint">Only changes what YOU see: a Subject line, a Preview and a Send button at the top of the page while editing, and a line on the Newsletters screen. Any page can be one, and one can stop being one &mdash; the writing stays put either way.</p>
+    <button type="submit" class="btn btn-small btn-primary" title="Save these two settings">Save</button>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card-header"><h2>SEO</h2></div>
+  <p class="hint">Search description — shown under this page's title in search results and link previews. Keep it to a sentence or two.</p>
+  <form method="post" action="{{ url_for('admin.page_seo', page_id=page.id) }}">
+    <textarea name="meta_description" rows="2" maxlength="300" placeholder="e.g. Small-batch coffee roasted daily in Asheville, NC — espresso, pour-over, and fresh pastries.">{{ page.meta_description or '' }}</textarea>
+    <button type="submit" class="btn btn-small btn-primary" style="margin-top:8px;">Save</button>
+  </form>
+  <p class="hint">Page address: <code>{{ request.host_url.rstrip('/') }}/{{ page.slug }}</code>{% if page.is_home %} (this page is also served at <code>/</code>, since it's Home){% endif %}</p>
+</div>
+
+{#  Posts are managed from the Blog tool on whichever page shows them,
+    or from Manage posts inside it — they belong to a blog now, not to
+    a page, so a page editor is the wrong place to list them. #}
+
+{% if not sections %}
+<div class="card empty-state">
+  <p>This page has no content yet. <a href="{{ url_for('public.home') if page.is_home else url_for('public.page', slug=page.slug) }}">View Page</a> and add your first section there — headings, text, images, and every other tool are all editable directly on the page while you're logged in.</p>
+</div>
+{% endif %}
+
+<a href="{{ url_for('admin.dashboard') }}" class="btn">← Back to Dashboard</a>
+{% endblock %}

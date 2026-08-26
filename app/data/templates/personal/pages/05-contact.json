@@ -1,0 +1,26 @@
+{
+  "title": "Contact",
+  "slug_suffix": "contact",
+  "page_type": "standard",
+  "meta_description": "Get in touch.",
+  "sections": [
+    [
+      "text",
+      "Say Hello",
+      "<p>Available for freelance work and always happy to hear from readers.</p>",
+      {}
+    ],
+    [
+      "card",
+      "",
+      "<div class=\"cms-card-shape\"><h3>sam@example.com</h3><p>Instagram: @sam.shoots</p></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-contact-form-tool\"></div>",
+      {}
+    ]
+  ]
+}

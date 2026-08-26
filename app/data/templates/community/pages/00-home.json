@@ -1,0 +1,39 @@
+{
+  "title": "Home",
+  "slug_suffix": "home",
+  "page_type": "standard",
+  "meta_description": "A community garden run by whoever shows up. Everyone welcome.",
+  "sections": [
+    [
+      "banner",
+      "",
+      "<div class=\"cms-banner\" style=\"background-image:url('media/community-banner.png')\"><div class=\"cms-banner-overlay\"><h2>Turn up on a Saturday</h2><p>A community garden run by whoever shows up. No membership, no experience, no fee.</p></div></div>",
+      {}
+    ],
+    [
+      "text",
+      "What this is",
+      "<p>Half an acre behind the leisure centre, growing vegetables, flowers and a certain amount of chaos. It is run by whoever comes, and has been since 2011.</p><p>You do not need to know anything. Somebody will hand you a fork and tell you what needs doing.</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-stats\" data-count=\"3\"><div class=\"cms-stat-row\"><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat1_value\">2011</span><span class=\"cms-stat-label\" data-field=\"stat1_label\">Digging here since</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat2_value\">60+</span><span class=\"cms-stat-label\" data-field=\"stat2_label\">People through the gate each month</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat3_value\">0</span><span class=\"cms-stat-label\" data-field=\"stat3_label\">Membership fee, ever</span></div></div></div>",
+      {
+        "bg_image": "media/community-band.png",
+        "bg_overlay": "tint",
+        "bg_position": "center",
+        "bg_color": "#cdbdab"
+      }
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-cta\" data-tone=\"soft\"><div class=\"cms-cta cms-cta-soft\"><h2 data-field=\"heading\">Saturdays, 10 till 2</h2><p data-field=\"text\">Come for twenty minutes or the whole day. There is always tea and usually cake.</p><a class=\"cms-cta-btn\" href=\"/contact\" data-href-field=\"link\"><span data-field=\"cta\">Find the gate</span></a></div></div>",
+      {
+        "bg_color": "#e9d5a0"
+      }
+    ]
+  ]
+}

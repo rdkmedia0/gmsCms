@@ -1,0 +1,35 @@
+{% extends "public/checkout_shell.html" %}
+{% block checkout_content %}
+{% if state.paid and not state.pending %}
+  <h1>Thank you — your payment went through</h1>
+  <p>We've emailed a confirmation{% if state.email %} to <strong>{{ state.email }}</strong>{% endif %}.</p>
+
+  {% if state.link %}
+  <div class="cms-thanks-actions">
+    {% if state.credits %}
+    <a class="cms-action-btn" href="{{ state.link }}">Book your {{ state.credits }} session{{ 's' if state.credits != 1 }}</a>
+    {% endif %}
+    {% if state.downloads %}
+    <a class="cms-action-btn" href="{{ state.link }}">Download now</a>
+    {% endif %}
+    {% if not state.credits and not state.downloads %}
+    <a class="cms-action-btn" href="{{ state.link }}">View your order</a>
+    {% endif %}
+  </div>
+  {# Shown as well as linked: the buyer may be on a phone, about to close
+     this tab, and the email may take a minute or land in spam. This link
+     is the only way back to what they just paid for. #}
+  <p class="cms-thanks-link">Keep this link — it opens your purchases any time, no password needed:<br>
+    <a href="{{ state.link }}">{{ state.link }}</a>
+  </p>
+  {% endif %}
+
+{% elif state.pending %}
+  <h1>Payment received — just confirming it</h1>
+  <p>Stripe has taken your payment and we're waiting for it to be confirmed, which usually takes a few seconds. You can safely close this page: the confirmation email will arrive{% if state.email %} at <strong>{{ state.email }}</strong>{% endif %} either way.</p>
+{% else %}
+  <h1>We couldn't confirm a payment</h1>
+  <p>If you've just paid, nothing is lost — the confirmation email is the record, and it will arrive shortly. If you didn't complete checkout, nothing has been charged.</p>
+{% endif %}
+<p><a href="{{ url_for('public.home') }}">Back to the site</a></p>
+{% endblock %}

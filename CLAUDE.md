@@ -1,0 +1,967 @@
+# Architecture principles for this project
+
+This is a self-hosted Flask CMS. It used to have a single 5,251-line
+`app/routes/admin.py` mixing routing, business logic, hardcoded content
+data, AI prompt text, and ad-hoc markup/styling, plus dead code from a
+removed WordPress-import feature that went unnoticed for a long time. That
+was fully cleaned up and de-monolithed (see "Refactor history" at the
+bottom for what changed and how it was verified). **Do not let it regrow
+that way.** Every rule below exists to prevent a repeat of that specific
+failure mode — read this file before making structural changes.
+
+## Where things live
+
+```
+app/
+  routes/
+    admin/            # the admin Blueprint — package, not a single file
+      __init__.py     # `bp` + cross-cutting shared state: settings getters,
+                       # sidebar/footer layout application, the demo/package
+                       # content merge engine, undo snapshots, _list_tools
+      dashboard.py     # dashboard, help, theme-generator routes
+      pages.py         # page/blog-post CRUD, undo route, per-page layout
+      sections.py      # every section/column/banner/card/image-library
+                       # route, plus the Tools-panel routes
+      templates.py     # template colors/activate/delete, nav-layout,
+                       # sidebar/footer layout presets, package import/export
+      demo.py          # demo pack load/clear
+      settings.py      # site/favicon/layout/email/AI/Google settings, admins
+      assistant_routes.py  # AI assistant chat/apply
+    auth.py            # login/logout/Google OAuth/account
+    public.py          # the public-facing site (pages, blog posts)
+  services/            # reusable business logic — see "No monolith files"
+    packages.py        # Template Package install/export/import (zip)
+    sections.py        # section-content classification, columns, banner/
+                       # card styling, starter-HTML builders, image-library
+                       # listing — the biggest one, matches the biggest
+                       # feature area
+    menu.py            # the Menu-tool builder, shared by body sections,
+                       # template zones, and demo/package content
+    palette.py         # color-palette role matching + tint_shade_ramp()
+                       # (the 6-step lightest..darkest expansion per role
+                       # color, bridged into --{role}-{step} CSS vars)
+    tools.py           # custom-tool toolkit export/import (a tool can be
+                       # imported from a shared file or a Template Package,
+                       # or deleted, but not created from scratch anymore
+                       # — see "Content tools" below for why)
+  data/
+    templates/<slug>/  # built-in Template Packages shipped with the app —
+                       # see "Template Packages" below
+  templates/
+    admin/, partials/, public/   # Jinja templates — structure + data-*
+                                  # only, no embedded logic (see below)
+    prompts/*.j2        # AI prompt content (see "AI prompts" below)
+  static/
+    js/admin/           # extracted admin-panel JS — one file per template,
+                         # plus shared helpers: modal.js (the cmsModal()
+                         # confirm/prompt dialog), elapsed-timer.js (the
+                         # "Generating... Ns" counter pattern)
+    js/inline-editor.js # the live-page WYSIWYG editor (contenteditable,
+                         # drag-drop, uses window.cmsModal from modal.js)
+    css/                # site-base.css (shared structure) + one theme.css
+                         # per built-in look (now sourced from
+                         # data/templates/<slug>/theme.css at seed time)
+    fonts/              # every selectable Google Font, self-hosted as real
+                         # .woff2 files + local @font-face CSS (one file per
+                         # FONT_PAIRINGS preset, plus one shared choices.css
+                         # for individually-picked fonts) with each family's
+                         # OFL/Apache license text in fonts/licenses/ — see
+                         # "Fonts are fully self-hosted" below
+  assistant.py, ai_image.py, ai_video.py, mailer.py, crypto.py, icons.py, db.py, csrf.py
+  theme_generator.py, theme_layouts.py   # AI Theme Generator (distinct
+                                          # from Template Packages — see below)
+```
+
+## No monolith files
+
+Never let routing, business logic, and content data pile up in one file.
+When adding a route:
+
+- The route function itself should be thin: parse the request, call one
+  service function, format the response. If a route body is doing real
+  work (looping over rows, building HTML, branching on business rules),
+  that work belongs in `app/services/<domain>.py`, not inline in the route.
+- Services take `db` and plain arguments — never `request`/`session`/
+  `flash`/`redirect`. That's what keeps them callable from more than one
+  route, from `_seed()`, and from a script, without dragging Flask
+  request-context along.
+- Import direction is one-way: `routes -> services -> data/db`. A service
+  never imports from `routes`. If you find yourself doing that, the logic
+  is in the wrong layer.
+- A hardcoded content blob (business copy, a big config dict, a whole
+  demo site's worth of pages) does not belong as a Python literal inside a
+  route file. It belongs in `app/data/` as its own file(s) — see "Template
+  Packages" below for the pattern this project uses for themes and demo
+  content.
+- If a route file (or a service file) starts creeping past ~500-800 lines
+  again, that's the signal to split it by domain the same way
+  `app/routes/admin/` already is — one file per feature area, sharing
+  state through the package's `__init__.py`, not by re-merging everything
+  back into one file.
+
+## A tool's controls are the app's; a tool's content is the site's
+
+The single boundary that decides how anything in the editor is styled,
+and which side of it a change belongs on. See BOW.md (2026-08-25) for how
+each of these was found and measured.
+
+- **Controls** — a tool's panel, its selects, steppers, hints, labels and
+  buttons, the toolbars, the admin screens, the dock — are this app
+  talking. They are styled centrally (`inline-editor.css`, `admin.css`,
+  `cms-sidepanel.css`) and look identical on every install: the editor's
+  own typeface (`--cms-ui-font`), its own accent (`--cms-ui-accent`), its
+  own text colour (`--cms-ui-text`) and its own corners
+  (`--cms-ui-radius-control` 4px for anything you click or type into,
+  `--cms-ui-radius-surface` 8px for a plate something sits on, 999px for a
+  pill). **Take the token; never type a radius.**
+  An action is an icon with a tooltip, and the same glyph means the same
+  act everywhere: a pencil edits, a **red ×** removes, a tick is a state
+  and not a button. When the label is a glyph the `title` is the only text
+  there is, so every one carries a sentence — see `.icon-btn` /
+  `.icon-state` in `admin.css`.
+  **Never `var(--primary)`, never an inherited site face or colour, in a
+  control.** A chrome surface — anything that paints a background of its
+  own — states what colour text on it is; it never lets the site's colour
+  reach it by inheritance. Six of them did, invisibly, because every
+  label inside them happened to pin its own; that is how the Numbers
+  panel became unreadable, one unpinned element later.
+  A control whose colour comes from the active template is a control
+  whose legibility is decided by somebody's brand — the self-help
+  palette gave the admin's own buttons 3.58:1, and an owner can override
+  a palette to anything.
+- **Content** — what the tool renders onto the page — belongs to the
+  site and keeps following the palette, the fonts and the three-tier
+  Corners/Depth. A theme styling `.cms-stat-value` or `.cms-card-shape`
+  is correct and must not be "fixed".
+- The test is **"could a visitor ever see it?"** If not, it is the app's.
+  A form a *visitor* fills in (newsletter sign-up, contact form) is
+  content even though it is made of form controls, and still wears the
+  site's clothes.
+- A control does not stop being a control when it stands somewhere else.
+  The Rows stepper on a Columns cell sits in a bare `.cms-inline-form`
+  rather than in a tool panel; it is still chrome. Every form carrying
+  that class is this app asking the admin a question.
+- **Editor markup does not ship to visitors.** `data-save-url`,
+  `data-field`, `data-section-id` and `data-set-tool-url` are gated on
+  `editing` (see the `edit_field` macro in `public/page.html`). The
+  attributes the PAGE renders with — `data-layout-width`,
+  `data-corner-style`, `data-shadow-style` — stay in both views.
+- **One convention per control, everywhere.** A tool's name always takes
+  its own line at the top of its panel. It used to sit left or on top
+  depending on whether the controls happened to fit beside it, so the
+  same tool changed shape when its column was resized.
+
+Tools cannot carry CSS at all — `content_tools` has no stylesheet column,
+only markup and identity — so this is enforced by the schema rather than
+by discipline. Keep it that way: a tool that needs a new look needs a
+rule in the central stylesheet, not a style of its own.
+
+## Templates: HTML, CSS, and JS stay separate
+
+A Jinja template (`app/templates/**/*.html`) should contain **structure and
+`data-*` attributes only** — no embedded business logic in a `<script>`
+block, no hand-rolled CSS in a `<style>` block, beyond values that are
+*genuinely* per-request runtime data (a computed color, an uploaded image
+URL) that cannot be a static class or file. There are currently zero
+inline `<script>` blocks anywhere in `app/templates/` — keep it that way.
+
+- Real JS logic lives in `app/static/js/` (or `app/static/js/admin/` for
+  admin-only panels), as its own file, reading whatever it needs off
+  `data-*` attributes or a `<script type="application/json">` data block —
+  never generated ad hoc per-template via Jinja. If a page needs data that
+  isn't just a URL/id/flag (e.g. the Image Library's list of images), put
+  it in a `<script type="application/json" id="...">` block and
+  `JSON.parse()` it, rather than interpolating it into the JS file itself.
+- Real CSS lives in `app/static/css/` (or a package's own `theme.css`) as
+  real classes — never a `<style>` block hand-built in a route or a
+  one-off inline `style="..."` for a value that's actually a fixed
+  constant (if the value never changes, it's a CSS class, not an inline
+  style).
+- The only Jinja values allowed to flow into JS/CSS at all are the ones
+  that are genuinely dynamic per page load (a URL from `url_for`, an id, a
+  boolean flag) — pass those as `data-*` attributes and read them from the
+  static JS file, don't generate the logic itself in the template.
+- Before adding a new inline `<script>`/`<style>` block to a template,
+  check whether the same interaction already exists elsewhere. Two
+  templates independently re-implementing the same confirm-and-submit flow
+  is exactly the kind of drift this rule exists to prevent — it already
+  happened once between `dashboard.html` and `partials/template_panel.html`
+  (native `confirm()` + full form-submits vs. `window.cmsModal()` +
+  `fetch()`, silently diverged over time). Also check for the "elapsed
+  seconds" counter pattern (`window.cmsElapsedTimer` in
+  `static/js/admin/elapsed-timer.js`) before hand-rolling another
+  `setInterval` for a slow async action.
+- The shared confirm/prompt modal (`window.cmsModal`, from
+  `static/js/admin/modal.js`) needs its backdrop markup on the page —
+  `{% include "partials/cms_modal.html" %}` — before it'll work. Both
+  `admin/base.html` and `public/page.html` already include it; if you add
+  a third page shell that needs confirm dialogs, include it there too.
+
+## Fonts are fully self-hosted — never add a live Google Fonts link
+
+Every font this app can select — the 7 non-empty `FONT_PAIRINGS` presets
+and all `GOOGLE_FONT_CHOICES` (`routes/admin/__init__.py`) — is bundled as
+real `.woff2` files with local `@font-face` CSS under `app/static/fonts/`
+(see its own README.md). Nothing in this app fetches `fonts.googleapis.com`
+or `fonts.gstatic.com` at runtime, by design: this was a deliberate fix
+(2026-08-22, see BOW.md) after checking Google Fonts' actual license terms
+(OFL 1.1 / Apache 2.0 both explicitly permit self-hosting and bundling
+font files with software) and confirming a live CDN link had two real
+costs — silent fallback-font degradation if the visitor can't reach
+Google, and every visitor's IP going to Google on every page load (a
+GDPR-relevant third-party exposure some EU courts have specifically
+flagged for unconsented live Google Fonts loading).
+
+There is no free-form "type any font name" input anywhere in the app —
+every font choice is a closed, fixed set — which is exactly what makes
+bundling all of it upfront tractable. **When adding a new font choice**
+(a new `GOOGLE_FONT_CHOICES` entry or `FONT_PAIRINGS` preset), it must be
+downloaded and added to `app/static/fonts/` the same way (fetch the CSS2
+API URL with a real browser User-Agent so Google serves clean WOFF2-only
+`@font-face` blocks, download each referenced file, **rename it
+`<family>-<NN>.woff2`** — Google's own filenames are up to 132 characters
+of base64 naming a build on their CDN, long enough that a `git clone` into
+a nested folder fails on Windows' 260-character path limit and leaves a
+repository that looks cloned and is not — rewrite `src: url(...)` to the
+local path, fetch the family's OFL/Apache license text from
+`google/fonts` on GitHub into `fonts/licenses/`) — never just add a
+`https://fonts.googleapis.com/...` URL and call it done, even temporarily.
+Template Packages don't need to bundle font files themselves: every
+deployment of this codebase already ships the complete fixed font set as
+part of the repo/Docker image, so a package's `google_fonts_url` (always
+one of the local paths above) resolves correctly regardless of which
+install exports or imports it.
+
+## AI prompts live in template files, not Python strings
+
+A prompt sent to an AI provider (a system prompt, an instruction block) is
+content, not code. Long/static prompts go in `app/templates/prompts/*.j2`,
+rendered with `render_template()` like any other template — even a prompt
+with no variables (`assistant_system_prompt.j2` has none;
+`theme_generator_brief.j2` takes `brief`/`schema`). Short (a few lines),
+tightly-coupled-to-a-JSON-schema strings (like a single tool's
+`description` field in `assistant.py`'s `TOOLS` list) are fine to stay
+inline. If the assistant's own feature-set description drifts from
+reality after a feature changes (it did once, for a removed importer),
+fix `assistant_system_prompt.j2` in the same change.
+
+## Template Packages: this app is a template manager, not a CMS with a demo-data side feature
+
+The product framing: **a template manager (browse/install/activate/save/
+export full-site looks) built on top of a general-purpose CMS**. A
+"Template Package" is authored as a directory under `app/data/templates/<slug>/`
+(built into a shipped `.zip` — see "Shipped templates travel as one .zip each" below)
+(built-in, shipped with the app — 16 exist today, each a complete look +
+content pack: `bakery`, `business`, `clinic`, `coaching`, `coffee-shop`,
+`community`, `cv`, `fitness`, `garage`, `hair-salon`, `personal`,
+`restaurant`, `self-help`, `shop`, `trades`, `venue`. The set is chosen
+against how the large builders categorise demand, not by taste: trades,
+appointment-led services, food, retail and portfolio all have one, and
+each differs in nav/shape/shadow/palette/fonts AND in page structure —
+six templates built from the same four sections demonstrate one layout
+six times, which is what the earlier set did) or `app/static/themes/<slug>/` (admin-imported or saved from
+the live site, in the Docker-mounted persistent volume). Earlier
+revisions shipped 6 additional content-free "theme-only" packages
+(Simple Clean, Modern SaaS, Editorial Serif, Corporate Navy, Dark Studio,
+Warm Community) that a content pack pointed at by name via a manifest
+`theme_name` key. That indirection is gone: each of the 6 packages above
+now ships its own `theme.css`/`palette`/`google_fonts_url` directly, so
+there's nothing left for a bare theme-only package to do that the paired
+content pack doesn't already do better. Don't reintroduce a "theme-only,
+no content" package — every built-in should be a real, complete look:
+
+```
+<slug>/
+  manifest.json     # name, slug, palette/nav/layout metadata
+  theme.css         # optional
+  palette.json      # optional, or inlined in manifest.json's "palette" key
+  pages/
+    NN-<slug>.json  # optional — omit entirely for a template with no content;
+                     # NN prefix keeps page order stable across files
+  blog_posts.json    # optional
+  media/             # optional — the template's OWN pictures, named
+                     # <slug>-<what it is>.png so a file copied into any
+                     # shared place still says whose it is. A template's
+                     # pictures belong to the template: never a shared
+                     # app-wide folder, which is what made an exported
+                     # package silently incomplete.
+```
+
+**Shipped templates travel as one .zip each.** The folders above are
+where a template is AUTHORED — loose files, diffable, reviewable. The
+image build runs `services.packages.build_template_zips()`, which turns
+each folder into `app/data/template-packages/<slug>.zip` and deletes the
+sources (a `packager` stage in the Dockerfile, so the sources are gone
+before the runtime image copies the tree — delete them in a later layer
+and the earlier one still carries all 86MB). Zips are deterministic:
+fixed entry timestamps, sorted entries, so identical sources always build
+identical bytes. Each carries an `install.json` written by
+`package_inventory()` — every page and its section count, every picture
+with size and checksum, the layout and identity keys it will apply —
+so what a package will do can be read before letting it do it.
+
+**Every package becomes a `templates` row**, whether or not it ships
+`pages/` — see `app/__init__.py`'s seed loop, which calls
+`services.packages.install_template_zip()` for every shipped zip on every
+boot. That deliberately uses the SAME extractor (`safe_extract_zip`) and
+the same installer an admin's uploaded package goes through: the import
+path used to run only when somebody uploaded something, which is exactly
+how it came to discard a package's pages and pictures unnoticed. It now
+runs sixteen times per boot, so a break in it is a failed start rather
+than a surprise months later. Reinstalling is skipped when the archive
+already unpacked in place matches by hash (`.installed-from`), so a boot
+costs milliseconds — but a template with no `templates` row is always
+reinstalled, which is how a deleted builtin comes back. Every installed
+package, builtin or uploaded, lives at `static/themes/<slug>/`;
+`template_package_dir()` has one answer now, not one per kind. A template's LOOK and its CONTENT are two
+independent, always-available actions on any installed template, not two
+different kinds of package and not one combined action gated on whether a
+package happens to have `pages/`:
+
+- **Activate** (`routes/admin/templates.py`'s `template_activate`) flips
+  `is_active` and applies everything the package ships: its default
+  layout, if its manifest declares one (`nav_layout`/`page_layout`/
+  `footer_layout` keys — optional on any template) via
+  `_apply_default_layout()` (`routes/admin/__init__.py`), AND its page
+  content, if it has any, via `_apply_pack_content()` — activating a look
+  loads what comes with it, one step, all-or-nothing. Either part is
+  skipped (and the admin told to confirm) if it would replace an existing
+  sidebar/footer section or page content, unless already confirmed
+  (`force=1`; see `_default_layout_conflicts()`/`pack_content_conflicts()`
+  and `template-panel.js`'s snapshot-first confirm flow).
+- **Load Content** (`template_load_content` route) re-merges ALL of a
+  package's `pages/*.json` into the site's own matching pages via
+  `_apply_pack_content()` — all-or-nothing, no per-page picker (a
+  template has its base data; you load all of it or none). Since Activate
+  already loads it once, this exists mainly to reload it again later
+  (e.g. resetting a page back to the template's own copy after editing
+  it). A single action scoped to whichever template is currently
+  **active** — not a picker listed per library entry
+  (`dashboard_template_maps()` computes just one `active_content` value,
+  not a map of every content-bearing template) — since only one template
+  is ever "the one you're looking at" at a time.
+- **Save current site as a new template**
+  (`services.packages.save_current_site_as_package()`) captures the
+  active template's look plus every live page's content, writing
+  straight into `app/static/themes/<new-slug>/` + a new `templates` row —
+  the same place an imported `.zip` lands, immediately
+  activatable/exportable/loadable like any other entry. Exporting to a
+  `.zip` (`export_package_zip()`) stays a separate, always-available
+  action on any library entry, builtin or not.
+- **Delete** works on any template, including builtins — a deleted
+  builtin's `templates` row (and its copied `static/themes/<slug>/`
+  asset) just comes back the next time the app restarts, since the seed
+  loop reinstalls every builtin package unconditionally. Only the
+  currently-active template can't be deleted.
+- **Every template gets a customizable color palette**, even a
+  content-only package whose manifest never declared one —
+  `install_theme_package()` falls back to `packages.DEFAULT_PALETTE`
+  (primary/secondary/accent, chosen as a genuine complementary scheme —
+  see its own docstring) so the Colors panel works universally, not just
+  on templates that happen to ship their own colors. `--primary`/
+  `--primary-dark` (`public.py`'s `_color_override_css()`, always
+  bridging the resolved primary color, override or not) reach every
+  colorable object in `site-base.css` that isn't a real theme's own
+  markup — Menu buttons, Card/Banner accents, the File tool's
+  button/hover/text-link, and a body-text hyperlink (`.cms-wysiwyg-body
+  a`) — so customizing colors has a visible, site-wide effect even on a
+  template with no imported theme CSS of its own. `COLOR_PRESETS`
+  (`routes/admin/__init__.py`) are built the same way: each one's accent
+  is chosen as that primary's actual complementary contrast, not just
+  another shade of the same hue — when adding a new preset or touching
+  `DEFAULT_PALETTE`, keep that relationship (secondary = analogous/deeper
+  shade for cohesion, accent = genuine complementary contrast), and when
+  wiring a new section type's CSS, check whether it has a color that
+  should route through `--primary`/`--primary-dark` instead of a
+  hardcoded hex, the same way the File tool and body links now do.
+- **Layout has a 3-tier cascade**: a template's own default (above) →
+  site-wide override (`settings.nav_layout`, unchanged) → per-page
+  override (`pages.nav_layout_override`/`hide_sidebar`/
+  `hide_sidebar_right`/`hide_footer` — set from the page's own "Layout"
+  card in `admin/page_edit.html`, resolved in `public.py`'s
+  `_render_page`/`blog_post`). A page's own hide flags never fork that
+  zone's content — the sidebar/footer's sections stay one shared,
+  template-wide thing; a page just opts out of showing them.
+
+There is no "active demo pack" concept — no `demo_active_pack` setting,
+no `demo.py`, no undo-by-clearing. There is also no separate Snapshots
+system any more (the old `page_snapshots` table/routes are gone) —
+"Save current site as a new template" (see above) IS the one
+undo/get-back-to-this mechanism: it's a real, portable template the
+moment it's saved, reusable by Activating it again later. The shared
+`cmsModal()` (`static/js/admin/modal.js`) offers "save the current setup
+as a new template first" as a checkbox on every layout/content-
+destructive confirm, wired through `template-panel.js`'s
+`maybeSaveTemplate()`, which posts to `template_save_current` with no
+name so it auto-names the save `"<active template> - <timestamp>"` —
+the admin can rename it (or export it) from the Dashboard afterward.
+
+**This is not two separate systems** — don't reintroduce a hardcoded
+`BUILTIN_THEMES` list or a `DEMO_PACKS` dict in Python, and don't gate a
+feature on "does this package have `pages/`" as if that made it a
+different kind of thing. If it's a starting point for a site — a color
+scheme, a full demo site, anything in between — it's a package under
+`app/data/templates/` (or an admin's own saved one under
+`app/static/themes/`), loaded through `app/services/packages.py`. When
+adding a new built-in look or demo site, add a package folder (see any
+existing one for the exact shape). When adding logic that operates on
+packages, add it to `app/services/packages.py`, not back into a route
+file.
+
+Note this is distinct from the **AI Theme Generator** (`theme_generator.py`
++ `theme_layouts.py`, reached via `routes/admin/dashboard.py`'s
+`theme_generator` route) — that's a from-scratch AI-copywriting flow using
+its own small fixed layout skeletons (`landing`/`about`/`simple` in
+`theme_layouts.LAYOUTS`), not a package. The two were considered for
+unification (a Theme Generator layout is conceptually "a package with
+structure but no content") but kept separate for now — see "Deferred
+follow-ups" below.
+
+## The site's identity is the site's, never the template's
+
+One install is one website. However many templates get tried on, the name,
+the tagline, the business details, the postal address and the contact are
+the site's own: captured once, managed from the admin screens, and read by
+everything that needs them. **A template brings a look and some pages. It
+does not bring an identity, and activating one must not overwrite these.**
+
+Two things worth knowing before touching this:
+
+- These details live in two places -- `site_title`/`site_tagline`, and
+  the fifteen `legal_*` settings written from the Legal pages screen.
+  Write into what is there; do not open a third home. **The legal name
+  falls back to the site's** (`legal.settings_for`) rather than standing
+  empty beside it, and the Legal screen says so and points out a
+  disagreement instead of merging one: a trading name and a legal entity
+  genuinely can differ ("Flour & Salt" on the door, "Flour & Salt GmbH"
+  on the paperwork), so differing must be something the owner typed, not
+  something that happened to them. This install had a tab reading one
+  business and a Terms page naming another, which is how it was found.
+- A package MAY carry an identity (`business_name`, `tagline`,
+  `footer_blurb`, `footer_contact` in its manifest -- the builtins all do,
+  with invented names for invented businesses). On apply it is a
+  **fallback only**: used when the site has none of its own, never an
+  overwrite. `_apply_pack_identity()` (`routes/admin/__init__.py`) is the
+  one place that happens, and only because a fresh install has no name of
+  its own: it writes the manifest's `business_name` ONLY while the current
+  name is still a placeholder or another builtin's demo name.
+- **A package never carries a connection or a key.** Not an API key, not
+  SMTP, not Stripe or Cal.com settings. This holds by construction today
+  -- the only setting `_build_package_dir()` reads is `nav_layout`, and
+  commerce is not captured at all -- and it must keep holding: keys live
+  encrypted in settings (`crypto.py`) and have no business in a file that
+  travels. Content and the site's name are a different matter and are fine
+  to carry.
+- **The risk in a shared package is misattribution, not disclosure.** It
+  is tempting to treat an embedded Cal.com widget or Stripe button as a
+  secret escaping. It is not: that markup is served to every visitor of
+  the site it came from, so a copy reveals nothing, and it is of no use to
+  anybody unless they actually want to book or buy -- from the original
+  owner. The real failure is the other way round, and it lands on the
+  person who INSTALLED the package: their site now carries a Pay Now
+  button wired to somebody else's Stripe account, or a booking that fills
+  somebody else's calendar, looking for all the world like part of the
+  template. Money and appointments go to the wrong party, silently.
+  The same is true of the owner's business details. An Impressum is public
+  by law; the problem is not that the address escaped, it is that the
+  importer's terms page would now name the wrong legal entity and the
+  wrong VAT number.
+  So the rule is about pointing, not hiding: **content that names a
+  specific real-world party -- a payment account, a calendar, a legal
+  entity -- must not silently keep pointing at that party on somebody
+  else's site.** Which makes it an INSTALL-time concern, not an
+  export-time one: nothing needs stripping on the way out. Treat such a
+  reference the way a Blog tool's id is already treated -- the installer
+  fills it from the receiving site's own integration, or leaves the block
+  visibly unconfigured, exactly as a package ships `data-blog-id=""`
+  because it cannot know what the receiving install will call things. That is a heuristic standing in for an answer nobody has
+  given yet. If a flow ever records that the owner stated their identity
+  (see BOW.md's setup wizard), this path stops applying to them entirely
+  rather than getting a smarter guess.
+
+## Features are tools, never page types
+
+A page type describes the page **as a whole** — a blog's list of posts, a
+newsletter's ability to be sent as email. That list is closed
+(`PAGE_TYPES` in `services/sections.py`) and should stay closed. Every
+other capability is a **tool** an admin drops onto an ordinary page.
+
+This was learned the expensive way, twice. "FAQ" was briefly a page type,
+with the page enforcing what could go on it and injecting a search box
+and a contents list of its own. It was the wrong shape in three separate
+ways: the questions could not live anywhere else, a site could not have
+two sets of them, and every later feature would have had to ask which
+kind of page it was standing on before knowing what it could do.
+Replacing it with tools removed all three limits at once and deleted code
+rather than adding it.
+
+**Blog** went the same way for the same reasons (`services/blog.py`). A
+blog was a page, which made "this site has a blog" and "this page is the
+blog" one statement — one blog per site, at one address, and nothing else
+able to show its posts. A blog is now a named set of posts with a slug of
+its own, and the Blog tool is one place a set is shown: several blogs per
+site, several on a page, or the same blog on two pages without its posts
+being copied. A post's address is built from the blog's slug, so it never
+changes when pages are rearranged — and existing sites carried across
+with their URLs intact, because the migrated blog keeps the old page's
+slug. Note what this cost: `blog_posts.page_id` was NOT NULL, so the
+table had to be rebuilt. **A column pointing at the wrong owner is the
+tell that a feature has been modelled as a page.**
+
+**Contact** went too. `PAGE_TYPES` still lists `standard` and
+`newsletter`, but newsletter no longer earns its place as a TYPE and the
+way it lost that is the clearest statement of the rule this project has.
+It was defended here on the grounds that it changed what the page IS to
+the rest of the app: kept out of navigation, listed in the public
+archive, sendable to a list. Two of those three turned out not to be
+about newsletters at all — a page is in a menu because somebody ticked
+it, and whether a page is readable is a question EVERY page has, now
+answered by `pages.is_public`. The third, sendability, is an action an
+admin performs, not a way the page is treated. So what is left is a
+marker about what the owner sees on that page while editing it.
+**The test still stands**: if the answer to "what does this type do" is a
+thing that appears on the page, it is a tool; if it is how the page is
+treated by everything else, it is a type. What this taught is the
+follow-up question — **ask it about each behaviour separately**. Three
+behaviours were bundled under one type and only one of them was ever
+about the type at all.
+
+What replaced the types for page creation is `PAGE_LAYOUTS` — a starting
+point, not a kind. Choosing "Blog" makes an ordinary page with a Blog
+tool already on it, pointed at a blog; choosing "FAQ" makes one with a
+Text, a Search and an FAQ Content tool. Every one of them is a standard
+page afterwards, and nothing later has to ask what it was created as.
+Template Packages follow the same rule: their pages are all `standard`
+and carry tools, and a package's Blog tool ships with an empty
+`data-blog-id` that the installer fills in, since a package cannot know
+what id a blog will get on somebody else's install.
+
+So, when adding a capability:
+
+- **Ask what the admin drops on a page**, not what kind of page it is. If
+  the answer is "a page that does X", the feature is a tool called X.
+- **Splitting one tool in two is normal** when it does two jobs. FAQ
+  Content writes questions; FAQ Reader shows a chosen set of them from
+  wherever they were written, with its own display options. One toolbar
+  for each, and neither one carrying controls that belong to the other.
+- **A tool that produces content other tools consume gives its output a
+  name and a stable id.** Every FAQ question carries a permanent
+  `data-faq-id`, and a set of them carries `data-faq-name`, so a page can
+  hold several sets and a Reader elsewhere can tell them apart. The page
+  title alone cannot do this — two sets on one page both answer to it.
+- **A page-wide behaviour is a tool too.** Search is a control an admin
+  drops where they want it, filtering whatever on that page has said it
+  is searchable. It is not something an "FAQ page" does automatically,
+  which is what it was first built as.
+- **Do not enforce rules by page type** ("this page may not use Embed").
+  Enforce them in the tool that has the requirement: an FAQ answer takes
+  a small written vocabulary (`faq_markdown` — bold, italic, a link, a
+  list, escaped first and converted second) because the tool has to read
+  the answer back to edit it. That constraint travels with the tool onto
+  any page, which is the point.
+
+## Security is not optional
+
+This app accepts uploads (images, files, `.zip` template package archives)
+and renders admin-authored HTML. Treat every input-handling change as
+security-relevant, not just the ones that look risky:
+
+- **Uploaded archives**: never call `ZipFile.extractall()` on an untrusted
+  file — use `services.packages.safe_extract_zip()`, which resolves every
+  entry's real destination path and rejects the whole upload if it would
+  land outside the target directory (zip-slip), caps total uncompressed
+  size and entry count (zip-bomb protection) independent of the request
+  body size limit, and only extracts files whose type is on an explicit
+  allowlist. Route any new archive-accepting feature through this
+  function rather than writing a second one.
+- **File uploads**: keep using `secure_filename()` plus a generated unique
+  name (the existing pattern at every upload call site in this codebase) —
+  never trust or reuse a client-supplied filename directly on disk.
+- **Path handling**: when a user-influenced value builds a filesystem path
+  (an upload filename, a package slug), verify the resolved path stays
+  inside the intended directory before touching disk — the existing
+  `os.path.commonpath(...)` check in the image-library delete route
+  (`routes/admin/sections.py`) is the pattern to follow.
+- **Raw HTML**: any admin-authored raw HTML (the "HTML/Embed" tool,
+  imported package content) is rendered `| safe` by design — this is an
+  admin-only, trusted-operator feature, not a public input path. Don't add
+  a new path that lets an unauthenticated visitor's input reach a `| safe`
+  render.
+- **Auth/CSRF**: every state-changing admin route stays behind
+  `@login_required` and the existing CSRF middleware (`app/csrf.py`,
+  Origin/Referer-based, not a hidden-token scheme — see its own docstring
+  for why) — don't add a new route that bypasses either.
+- **A commit is checked before it is made, not after.** `.githooks/pre-commit`
+  refuses any commit carrying a file named like a credential, or content
+  shaped like a live key (`sk_live_`, `whsec_`, `ghp_`, a PEM header). It
+  exists because a `git add -A` swept up a password file somebody had put
+  in the working directory to be READ, committed it, and pushed it to a
+  remote -- and the repository had to be destroyed and rebuilt. Care is
+  what failed there, so the replacement is not more care. **Enable it in
+  every clone: `git config core.hooksPath .githooks`** (git does not
+  enable hooks on clone, by design). `.gitignore` also matches credential
+  files by PATTERN rather than by name, because the next one will be
+  called something else.
+- **Secrets**: never log, commit, or echo `.secret_key`, `.encryption_key`,
+  API keys, or OAuth client secrets. `data/`, `.secret_key`, and
+  `.encryption_key` are gitignored on purpose — keep it that way. Don't
+  commit Claude Code's own runtime state either (`.claude/scheduled_tasks.lock`
+  is gitignored for the same reason: it's per-session, not project source).
+- When in doubt, treat the change as if it were public-facing: validate
+  size, type, and destination before trusting any uploaded or imported
+  content.
+
+## Content tools: use the right tool for the job
+
+Demo/seed/generated content must compose only from the Tool menu's actual
+primitives (Text, Image, Banner, Card, Columns, Menu, Table, ...) — if a
+real admin couldn't reproduce a piece of content by picking tools from the
+panel, neither can generated content. Never invent a one-off CSS class or
+bespoke markup structure to make something look right; if the visual
+result needs a genuinely new capability, that's a product discussion, not
+a private code path.
+
+Within that, the **HTML/Embed tool is reserved for real third-party embed
+code** — a Cal.com booking widget, a Stripe button, anything that
+genuinely needs actual `<script>`/iframe markup to function. It is never
+the answer for styling text, laying out simple content, or working around
+something a proper tool doesn't do yet — every one of those has (or
+should have) a dedicated tool, and reaching for Embed instead hides the
+gap rather than surfacing it. This applies equally to the AI assistant's
+own content edits (see `assistant_system_prompt.j2`) and to any
+generated/seeded content.
+
+**There is no "create a new custom tool" feature any more** (removed
+2026-08-22, see BOW.md) — it used to be a form (and an AI Assistant
+function, `create_content_tool`) for saving a `(section_type, raw HTML)`
+pair as a new tool-panel chip. On inspection it added no real capability
+beyond the existing tools: using it well required hand-typing HTML, which
+is exactly the Embed-wrapped shortcut the rule above exists to prevent —
+and since the AI Assistant only ever proposes content, not code, it could
+structurally never build a *genuinely* new tool (a real dedicated editing
+form) either, only ever another Embed-shaped one. `content_tools` rows
+can still arrive via the Toolkit import/export system
+(`services/tools.py`) or a Template Package's bundled `tools.json`, and
+can still be deleted — just not authored from scratch in this app.
+
+This extends to **every admin/editing surface, not just generated
+content**: design for a total novice ("think as if grandma wants to
+build a website") — plain quick-select controls (dropdowns, checkboxes,
+labeled buttons), a `title` tooltip on every control in addition to
+adjacent `<p class="hint">` text, never a raw HTML textarea as the way to
+accomplish ordinary styling or layout. `admin/page_edit.html` used to
+render every section's `content` in a raw `<textarea>` — including plain
+Text/Card/Banner sections whose `content` is real HTML — as a legacy
+fallback UI; it was removed once the live inline editor
+(`public/page.html` + `inline-editor.js`, reached via "View Site") fully
+superseded it with real WYSIWYG editing for every section type. If you're
+tempted to add a raw-HTML input for something a real admin would want to
+do with plain content, stop — that's a product discussion (a new
+dedicated tool), not a quick escape hatch.
+
+## What was added after the refactor (same rules apply)
+
+Each of these follows the structure above — thin routes, logic in
+`app/services/`, content in templates, no inline script:
+
+- **Commerce**: `services/integrations.py` (provider registry: Stripe,
+  Cal.com), `services/commerce.py` (customers, orders, entitlements, the
+  booking↔credit link), `services/cart.py`, `services/downloads.py`
+  (paid files, stored OUTSIDE any served directory — see its docstring).
+  Products are created and repriced from this app; a Stripe price is
+  immutable, so "change the price" means new price + retire old + move
+  the fulfilment rule.
+- **One list of tool controls**: a tool's config forms live once, in
+  `tool_config_forms` (`public/page.html`), called by the section chain
+  and by `render_cell` alike -- a section passes no `col_index` and gets
+  the URLs it always had, since Flask drops a None and picks the rule
+  that does not need one. `tools/parity_check.py` puts every tool on a
+  page twice, once as a section and once as a cell, and compares the two
+  panels with the ids, URLs and storage field names taken out: **30
+  tools, 0 differences**. Run it after touching anything a tool renders;
+  it is what found the last three places where the same tool behaved
+  differently depending on which container it was standing in.
+- **Declared content blocks**: `services/blocks.py`. Eight tools
+  (pricing, testimonial, stats, logos, team, timeline, CTA, newsletter
+  sign-up) share ONE config form, ONE parser and ONE pair of routes. A
+  ninth tool is a dictionary entry, not six files. Content lives once, in
+  the markup, read back via `data-field` attributes.
+- **Section backgrounds**: any section can carry a picture with an
+  overlay (`bg_image`/`bg_overlay`/`bg_position`). The overlay is not
+  optional — text over an unmodified photograph is legible about half the
+  time — and it is a class, so everything inside a dimmed band flips
+  colour with it.
+- **Newsletters**: `services/newsletter.py`. A newsletter IS a page,
+  sent as email by translating its sections to inline-styled HTML. One
+  message per person, refused without a postal address. `page_type=
+  'newsletter'` is a **marker about what the owner sees** -- Subject,
+  Preview and Send on the page itself while editing, plus a line on the
+  Newsletters screen -- and can be turned on or off on any page from its
+  own settings. Nothing about the SITE branches on it: whether a page is
+  in a menu is whether somebody ticked it, and whether visitors can read
+  it is `pages.is_public`, a question every page has (a private page 404s
+  for a visitor, still opens for its owner, is left out of `_nav_pages`
+  and the `/newsletters` archive, and its email carries no "read it
+  online" link). A send is aimed with `newsletter.sections_for()`:
+  everything, the latest (`sections.updated_at`, stamped to the
+  millisecond by a trigger so it means last CHANGED, not last added), or
+  one section by number. The preview takes the same aim, because a
+  preview of something else is not a preview. `tools/newsletter_check.py`
+  walks the lot with the mail captured instead of sent. **A blog post can
+  be sent too, and is the common path**: a post already has a title, a
+  date, a permanent address and an online copy, so it is an issue
+  without inventing one. Both go through `_send_it()` in
+  `routes/admin/newsletters.py` -- extract the guards first, then add the
+  caller, or the two drift. `newsletter_sends` records `target_kind` +
+  `target_id` with **no foreign key on purpose**: the record that you
+  emailed forty people outlives the page or post being deleted, which is
+  what it is for. Sending a draft publishes it first (an email whose
+  "read it online" link 404s is worse than either). **The email takes the
+  active template's colour** (`newsletter.look_from()` over
+  `palette.role_ramps()`) for links, rules and the ground behind the
+  card -- but stays a LIGHT card and sends only the fallback half of the
+  theme's font stack, because Gmail strips `@font-face` and several
+  clients invert dark grounds. A greeting and a sign-off wrap every send
+  (`newsletter_intro`/`newsletter_outro`, plain text, `{{title}}` and
+  `{{link}}`); the sender line and unsubscribe link are appended by the
+  code and are deliberately not editable.
+- **Who a send reaches** (`services/subscribers.py`): `AUDIENCES` is
+  everyone or customers-only. **A customer is computed, never stored** --
+  any subscriber whose address has a `paid` order (`is_customer_sql()`),
+  so the number cannot go stale and a refund takes it back;
+  `subscribers.is_customer` is only the owner's own flag for a sale this
+  site never saw (shop, telephone, a different address at checkout), and
+  it ADDS to the orders rather than overriding them. **A customer is not
+  a subscriber**: every audience intersects with the confirmed list, so
+  somebody who bought and never confirmed is never written to. Sends
+  record their audience, and a private page (`is_public = 0`) is how
+  content reaches the list without appearing on the site -- which is not
+  the same as secret, since an email can be forwarded.
+- **The email list is double opt-in, and the record is the point**
+  (`services/subscribers.py`). Signing up sends ONE mail with a link;
+  nothing else is ever sent to an address that has not followed it
+  (`listing(confirmed_only=True)` is what a send reads). Three rules that
+  are easy to break by accident: **the form must say a confirmation mail
+  is coming** before it is used -- a fixed line in `build_newsletter`,
+  deliberately not an editable field, because an owner rewording it into
+  "you're subscribed" would make the site lie about its own mechanism;
+  **every message after confirmation carries an unsubscribe link** that
+  needs no login, in the body and in `List-Unsubscribe`/
+  `List-Unsubscribe-Post` headers (which is why `public.unsubscribe`
+  answers POST and is the one member of `csrf.TOKEN_IS_THE_CREDENTIAL_ENDPOINTS`);
+  and **each step is written down** -- consent wording as shown at the
+  time, signup IP and page, when the invitation was sent, when and from
+  where it was answered -- because "we had consent" is a claim you have
+  to evidence a year later. Erasing somebody (admin) is a different act
+  from unsubscribing them and takes that evidence with it, by design.
+  `tools/signup_check.py` walks the whole path with the mail captured
+  instead of sent; run it after touching any of this.
+- **Backups**: `services/backup.py`. SQLite `VACUUM INTO`, never a file
+  copy; restore pushes back through SQLite's backup API rather than
+  swapping a file under a running app. The encryption key is excluded by
+  default so a leaked archive cannot spend money.
+- **Legal pages**: `services/legal.py` + `templates/legal/*.j2`, written
+  from the owner's own details and what the site actually sells. They go
+  on **one page called Terms & Conditions** (`/terms-and-conditions`) by default, each document a marked section
+  under its own heading and anchor — four extra entries in the menu of a
+  five-page site is a real cost. "A page for each" remains, for the case
+  that needs it: an Impressum is expected under its own clearly labelled
+  link in Germany and Austria. Either way each document keeps its own
+  `data-legal-doc` marker, so a refresh rewrites that section and nothing
+  around it, and switching to one page removes the old separate pages only
+  when they hold nothing but generated text.
+- **Bootstrap**: `app/bootstrap.py` — first-run setup from environment
+  for a Docker install with no shell. Read once, adopted into the
+  database, encrypted; the admin screens are authoritative thereafter.
+  **A first boot also opens the site with a template on**
+  (`_open_with_a_look`, `FIRST_TEMPLATE` in `app/__init__.py`): a
+  template manager whose new install shows an unstyled placeholder page
+  is advertising the wrong thing. Guarded on FIRST BOOT -- the branch
+  that has just created the home page -- never on "nothing looks
+  active", so an upgrade can never apply a template over somebody's
+  site; and it runs after the blueprints are registered, because
+  applying a look builds menus and a menu asks `url_for` where a page
+  lives. The example business name that comes with it is flagged on
+  every admin screen until the owner replaces it
+  (`site_still_has_a_borrowed_name`). `tools/fresh_install_check.py`
+  boots against an empty DATA_DIR twice and checks the lot.
+- **Site address**: `services/site.py` is the single authority for any
+  URL that leaves the app. Never `url_for(_external=True)` for those.
+- **An FAQ is a document, not a form**: FAQ Content holds one document
+  (`data-faq-md`). **The rule is `Q.`** — it marks where a question
+  starts, and the answer is simply what follows until the next one. That
+  one marker is enough: an answer can be several paragraphs or a list with
+  no further concept, anything before the first `Q.` is an introduction,
+  and nothing has to be inferred about where a question ends. `A.` was
+  tried alongside it and dropped as noise — still READ, since pasted FAQs
+  use it, but never required or written. `normalise_faq_source` also reads
+  `#` headings, numbered questions and plain question-then-answer blocks,
+  so an existing FAQ usually pastes in untouched; those are tolerance, not
+  the rule. It is written in a WYSIWYG (`faq-editor.js`) whose serialiser
+  is the exact inverse of `faq_editor_html`, so the document stays the
+  stored form and the checker, mirroring and views never learn the editor
+  exists. It
+  is written and pasted whole, because a real FAQ runs to dozens of
+  questions and arrives already written; a row-at-a-time form was fine for
+  three and unusable for forty. How it is SHOWN is a separate choice
+  (`FAQ_VIEWS`): read straight through, or folded into rows that open. The
+  same text serves every view, and both render the same
+  `cms-faq-item`/`cms-faq-q` markup so Search and the Reader behave
+  identically either way. A question's id is the slug of its own words —
+  derived, not stored, since there is nowhere to hide a generated id in
+  text somebody edits by hand. The trade: rewording a question changes its
+  id and a Reader falls back to the next question, which is the right way
+  round, because a reworded question is usually a different question.
+  Each set takes an optional `data-faq-name`, so one page can hold several.
+  An FAQ Reader elsewhere can mirror them
+  (`build_faq_mirror`/`resolve_faq_mirror`) — it stores which questions it
+  shows, never their words, and they are resolved at render time. So a
+  wording change on the FAQ page reaches every page repeating it, a
+  deleted question drops out rather than dangling, and mirrored text is
+  deliberately not editable in place. A mirror is never a source, and a
+  block cannot point at itself.
+
+## Running it for real
+
+`README.md` is the operator's document -- install, reverse proxy, backups,
+recovery. It is written for somebody who has never seen this code, and it
+is the thing to update when a deployment fact changes. What follows is the
+part that constrains the CODE.
+
+- **Two workers, one SQLite file.** `db.get_db()` opens WAL with a 30s
+  busy timeout and `synchronous = NORMAL`. Under the default rollback
+  journal a writer blocks every reader, so an admin saving a page could
+  500 a visitor reading one -- and the odds rise with traffic, which is
+  the worst possible shape for a fault. Consequences to respect: never
+  copy `cms.db` as a file (the -wal file holds recent writes; backups go
+  through `VACUUM INTO` and SQLite's backup API for exactly this reason),
+  and WAL needs a local filesystem, so a `DATA_DIR` on NFS/SMB falls back
+  and the app must not assert on the pragma's return value.
+- **A first boot is two processes, and it is the boot that does work.**
+  Setting WAL takes an exclusive lock; a fresh install has both gunicorn
+  workers running the migration and installing sixteen packages at the
+  same moment, so one of them asked for that lock, was refused, and took
+  the container down -- `database is locked`, on the pragma, at boot.
+  Invisible on any database already converted, because the pragma is then
+  a no-op that never asks. Two rules came out of it: **`busy_timeout` is
+  set before anything that can be refused** (it was set after the pragma
+  that needed it), and the switch is asked about before it is made, since
+  READING the mode takes no lock. gunicorn also runs `--preload` now, so
+  `create_app()` happens once in the master rather than once per worker --
+  there was never a reason for the second one to migrate and seed.
+- **Never order by a timestamp to mean "most recent".** This was got
+  wrong three times: whole seconds tied, milliseconds tied, and the
+  tie-break -- the row id -- silently means "added last", which is a
+  different question and usually the wrong answer. WAL made writes fast
+  enough that three of them land in one millisecond, and "send the latest
+  section" started picking the wrong one. `sections.changed_seq` is a
+  counter the triggers bump with `MAX + 1`, so the order is total; read it
+  through `newsletter._changed_key`, and include the column in any SELECT
+  feeding it. A clock cannot fix this at any resolution -- there is always
+  a faster machine.
+- **A migration may not touch the data it is migrating.** The backfill for
+  that column ran with the old timestamp trigger still installed, so each
+  row it wrote fired the trigger, rewrote that row's `updated_at` to
+  "now", and moved it ahead of the ordering the next row was about to be
+  ranked against -- every row came out first, and every section's real
+  timestamp was destroyed. **Drop triggers before backfilling the column
+  they stamp**, and prefer a backfill that repairs a bad run (this one
+  re-ranks whenever the numbering is not a total order, not only when it
+  is missing) over one that only fills blanks.
+- **The session cookie's `Secure` flag is decided per request**, by
+  `_SchemeAwareSessions` in `app/__init__.py`, from whether THIS request
+  arrived over https (ProxyFix having applied `X-Forwarded-Proto`). It was
+  an environment variable, which meant it was off on every install whose
+  owner never read the log line telling them to set it. `FORCE_SECURE_
+  COOKIES=1` still pins it on. HSTS is sent on https requests only, and
+  deliberately without `includeSubDomains`/`preload` -- promises about
+  names this app does not control.
+- **`/healthz` touches the database** (`routes/public.py`) because a
+  process that is running and a site that works are different claims: the
+  interesting failure is a data volume that did not mount, which a check
+  on the port alone calls healthy. It answers to anyone who can reach the
+  port, so it says `ok` and nothing else -- no version, no counts.
+- **A reverse proxy is not a dependency.** Three shapes are supported and
+  the code has to be correct in all of them: this container serving its
+  own certificate (`TLS_CERT_FILE`/`TLS_KEY_FILE`, added to gunicorn's
+  arguments by the entrypoint), a platform terminating TLS in front of
+  it, and a proxy somebody runs. So `X-Forwarded-*` is believed only from
+  a peer that could BE a proxy -- `TrustedProxyFix` in `app/__init__.py`,
+  which applies `ProxyFix` for a non-global peer and STRIPS the headers
+  from anyone else, since a directly-exposed container must not be
+  tellable by a visitor that their request was something it was not.
+  `TRUST_PROXY=always|never` overrides. Note the range predicate is
+  `not is_global`, not `is_private`: Python calls the documentation
+  ranges private and leaves carrier-grade NAT out of them.
+- **The proxy was also load-bearing for slow clients.** Two sync workers
+  can hold two connections, which is invisible behind nginx (it buffers
+  the request and only then speaks to gunicorn) and is two lazy sockets
+  from a dead site without one -- for `--timeout 2000` each. gunicorn
+  runs `gthread` with 8 threads per worker for that reason; keep any
+  worker-model change compatible with it (per-request SQLite connections
+  via `g` are thread-safe, module-level mutable state would not be).
+- **The image is published, and the compose file names it.** Every push to
+  `main` builds `ghcr.io/rdkmedia0/gmscms` for amd64 AND arm64
+  (`.github/workflows/publish.yml`) -- a small site's VPS is as likely to
+  be one as the other. `docker-compose.yml` carries `image:` and `build:`
+  together on purpose: `compose pull && up -d` runs the published image,
+  `up -d --build` compiles the working tree, and neither needs the file
+  edited. If you change the Dockerfile or anything the build copies, the
+  published image is what a host gets -- so a change verified only against
+  a local build is a change verified in the wrong place.
+- **`tools/prod_check.py`** is the net under all of the above: it proves
+  the pragmas are live by holding a write open and reading through it,
+  proves the ordering cannot tie by racing three writes, asks for the
+  cookie over both schemes, spoofs `X-Forwarded-Proto` from a LAN peer
+  and from a public address to prove only one of them is believed, and
+  changes a password to prove the generated one's plaintext file is
+  removed with it.
+
+## Deferred follow-ups (identified, not built — don't build unprompted)
+
+These came up while designing the Template Package system as the same
+pattern applied further. Worth revisiting if asked, but each is its own
+scoped feature, not part of "finish the refactor":
+
+- **Standalone color palettes**: every template now has a customizable
+  palette (real or `packages.DEFAULT_PALETTE`), but `COLOR_PRESETS` and a
+  package's `palette.json` — already just `[{slug,name,color}]` — could
+  still become their own shareable unit (a "Palette Library") independent
+  of a full template package, importable/exportable/reusable across
+  templates on its own.
+- **Blocks/patterns**: `BLOCK_LIBRARY` (starter content for tools) is
+  conceptually a Template Package scoped to one section instead of a
+  whole site — an admin could save a section they built as a reusable
+  pattern.
+- **AI Theme Generator ↔ Template Packages**: a Theme Generator layout
+  (`theme_layouts.LAYOUTS`) is structurally "a package with no content" —
+  could be unified into one system instead of two, if that duplication
+  ever becomes a real maintenance cost.
+
+## Refactor history
+
+The de-monolithing happened as a sequence of small, independently-verified
+commits (dead-code removal → Template Package system + zip import/export
+→ AI prompts to templates → service-layer extraction → blueprint package
+split → front-end script extraction). Each phase was verified against the
+actual running app (Docker rebuild + live clicks/fetches through the admin
+UI and public site, not just "it imports without error") before moving to
+the next.
+
+**This repository starts at a single commit**, so `git log` is NOT the
+design record here — the reasoning that would have been in those commit
+messages lives in this file and in BOW.md, which is why both are as long
+as they are. Keep it that way: a decision explained only in a commit
+message is a decision this project cannot read back. Going forward, write
+commits as design notes anyway — they will be the record for everything
+after today.
+
+A later pass unified Activate/Load Content/Save-as-template/per-page
+layout overrides into the single system described above (retiring
+`demo.py` and the `demo_active_pack` tracking it depended on), gave every
+template a customizable palette, made every template deletable, retired
+the separate Snapshots feature in favor of "Save as a new template"
+serving both jobs, and removed `admin/page_edit.html`'s legacy raw-HTML
+section editor — see the "Template Packages" and "Content tools"
+sections above for the resulting shape, not a separate commit-by-commit
+account here.

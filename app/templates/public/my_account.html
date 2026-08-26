@@ -1,0 +1,171 @@
+{% extends "public/checkout_shell.html" %}
+{% block title %}Your purchases{% endblock %}
+{% block checkout_content %}
+{% if not customer %}
+  <h1>This link doesn't work any more</h1>
+  <p>Links expire after a while, and each one only opens the purchases it was sent for. If you need a new one, reply to your order email and we'll send it.</p>
+{% else %}
+  <h1>Hello{{ ' ' ~ customer.name if customer.name }}</h1>
+  <p class="cms-account-sub">Everything you've bought from us, on one page. There's no password — this link is enough, so keep the email that brought you here.</p>
+
+  {% if booked %}
+  <p class="cms-account-flash ok">Booked{{ ' for ' ~ booked_label if booked_label }}. Check your email for the confirmation and the joining link.</p>
+  {% elif cancelled %}
+  <p class="cms-account-flash ok">Cancelled. That session is back on this page, ready to book again.</p>
+  {% elif booking_error %}
+  <p class="cms-account-flash bad">{{ booking_error }}</p>
+  {% endif %}
+
+  {% if cancelling %}
+  <section class="cms-account-block cms-confirm">
+    <h2>Cancel this booking?</h2>
+    <p class="cms-confirm-when">{{ cancelling.starts_at[:10] }} at {{ cancelling.starts_at[11:16] }}</p>
+    <p class="cms-account-sub">The session goes straight back to this page, so you can book another time whenever suits.</p>
+    <form method="post" action="{{ url_for('public.my_account_cancel', token=token) }}">
+      <input type="hidden" name="uid" value="{{ cancelling.provider_uid }}">
+      <div class="cms-confirm-actions">
+        <button type="submit" class="cms-action-btn" title="Cancel this booking and get the session back">Yes, cancel it</button>
+        <a class="cms-confirm-back" href="{{ url_for('public.my_account', token=token, tz=tz) }}" title="Keep this booking">Keep the booking</a>
+      </div>
+    </form>
+  </section>
+  {% elif confirm and booking_for %}
+  {# Nothing is spent until this form is submitted. A visitor who mis-taps
+     a time on a phone gets to read the day back and change their mind,
+     rather than discovering they have used a session they paid for. #}
+  <section class="cms-account-block cms-confirm">
+    <h2>Confirm your booking</h2>
+    <p class="cms-confirm-when">{{ confirm_label }}</p>
+    <p class="cms-account-sub">This uses one of your sessions. We'll email you the confirmation and the joining link.</p>
+    <form method="post" action="{{ url_for('public.my_account_book', token=token) }}">
+      <input type="hidden" name="start" value="{{ confirm }}">
+      <input type="hidden" name="entitlement_id" value="{{ booking_for.id }}">
+      <input type="hidden" name="tz" class="cms-tz-field" value="{{ tz }}">
+      <div class="cms-confirm-actions">
+        <button type="submit" class="cms-action-btn" title="Book this time and use one session">Confirm booking</button>
+        <a class="cms-confirm-back" href="{{ url_for('public.my_account', token=token, tz=tz) }}" title="Go back without using a session">Pick a different time</a>
+      </div>
+    </form>
+  </section>
+  {% elif credits %}
+  <section class="cms-account-block">
+    <h2>{{ credits }} session{{ 's' if credits != 1 }} to book</h2>
+
+    {% if not booking_for %}
+      <p>Booking isn't available just now — please get in touch and we'll arrange a time with you.</p>
+    {% elif slot_error %}
+      <p>We couldn't load available times just now. Please try again in a minute.</p>
+    {% elif not calendar %}
+      <p>There's nothing free in the next couple of weeks. Get in touch and we'll find you a time.</p>
+    {% else %}
+      <p class="cms-account-sub">Pick a day with free times, then choose a time. You'll confirm before any session is used.</p>
+      <div class="cms-cal" data-empty-note="Nothing free that day.">
+        <div class="cms-cal-head">
+          {% for w in weekdays %}<span>{{ w }}</span>{% endfor %}
+        </div>
+        {% for week in calendar %}
+        <div class="cms-cal-week">
+          {% for cell in week %}
+            {% if cell.times %}
+            <a class="cms-cal-day is-free" href="#day-{{ cell.iso }}" data-day="{{ cell.iso }}"
+               title="{{ cell.times|length }} free time{{ 's' if cell.times|length != 1 }} on {{ cell.label }}">
+              <span class="cms-cal-num">{{ cell.day }}</span>
+              <span class="cms-cal-count">{{ cell.times|length }}</span>
+            </a>
+            {% else %}
+            <span class="cms-cal-day {{ 'is-empty' if cell.bookable else 'is-out' }}"
+                  title="{{ cell.label ~ ' — nothing free' if cell.bookable else cell.label }}">{{ cell.day }}</span>
+            {% endif %}
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+
+      {% for week in calendar %}{% for cell in week %}{% if cell.times %}
+      <section class="cms-day-panel" id="day-{{ cell.iso }}" data-day="{{ cell.iso }}">
+        <h3>{{ cell.label }}</h3>
+        <div class="cms-slot-grid">
+          {% for when in cell.times %}
+          <a class="cms-slot-btn" href="{{ url_for('public.my_account', token=token, tz=tz, confirm=when) }}"
+             title="Choose {{ when[11:16] }} — you'll confirm before a session is used">{{ when[11:16] }}</a>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}{% endfor %}{% endfor %}
+    {% endif %}
+  </section>
+  {% endif %}
+
+  {% if bookings %}
+  <section class="cms-account-block">
+    <h2>Your booked session{{ 's' if bookings|length != 1 }}</h2>
+    <ul class="cms-booking-list">
+      {% for b in bookings %}
+      <li>
+        <span>{{ b.when }}</span>
+        <a class="cms-booking-cancel" href="{{ url_for('public.my_account', token=token, tz=tz, cancel=b.uid) }}"
+           title="Cancel this booking — the session comes back to you to rebook">Cancel</a>
+      </li>
+      {% endfor %}
+    </ul>
+    <p class="cms-account-sub">Cancel here and the session comes straight back for you to rebook. Deleting the invitation from your own calendar won't cancel it — we won't know, and you'd lose the session.</p>
+  </section>
+  {% endif %}
+
+  {% if past_bookings %}
+  <section class="cms-account-block">
+    <h2>Sessions you've had</h2>
+    <ul class="cms-account-list">
+      {% for b in past_bookings %}
+      <li>{{ b.when }}</li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  {% set downloads = entitlements | selectattr('kind', 'equalto', 'download') | list %}
+  {% if downloads %}
+  <section class="cms-account-block">
+    <h2>Your downloads</h2>
+    <ul class="cms-booking-list">
+      {% for d in downloads %}
+      <li>
+        <span>{{ d.file_name or 'Your file' }}
+          <small class="cms-account-sub">{{ d.granted - d.used }} download{{ 's' if (d.granted - d.used) != 1 }} left</small>
+        </span>
+        {% if d.granted > d.used %}
+        <a class="cms-action-btn" href="{{ url_for('public.my_account_download', token=token, entitlement_id=d.id) }}"
+           title="Download {{ d.file_name or 'your file' }}">Download now</a>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    <p class="cms-account-sub">Save it somewhere safe — you have a few downloads, not unlimited ones.</p>
+  </section>
+  {% endif %}
+
+  {% if not credits and not downloads %}
+  <section class="cms-account-block">
+    <p>There's nothing waiting for you here right now. If you've just ordered something physical, it's on its way.</p>
+  </section>
+  {% endif %}
+
+  {% if orders %}
+  <section class="cms-account-block">
+    <h2>Your orders</h2>
+    <ul class="cms-account-list">
+      {% for o in orders %}
+      <li>
+        {{ '%.2f'|format((o.amount_total or 0) / 100) }} {{ (o.currency or '').upper() }}
+        — {{ o.created_at[:10] }}
+        {% if o.status != 'paid' %}<em>({{ o.status }})</em>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+{% endif %}
+
+<script src="{{ static_url('js/booking-timezone.js') }}"></script>
+<script src="{{ static_url('js/booking-calendar.js') }}"></script>
+{% endblock %}

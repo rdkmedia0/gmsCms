@@ -1,0 +1,10 @@
+{# Finding a tool is the thing an admin does most, so the search for it is
+   in every panel's header rather than only the Tools one — type from
+   Colours or Fonts and tools-panel.js brings Tools forward already
+   filtered. Rendered per panel and matched by CLASS, never id: five
+   copies of one id would be invalid, and only one panel is ever on
+   screen anyway. All of them are kept showing the same text. #}
+<label class="cms-tools-search" title="Type to find a tool — the Tools panel opens showing only what matches">
+  <span class="cms-tools-search-icon" aria-hidden="true">&#128269;</span>
+  <input type="search" class="cms-tools-search-input" placeholder="Find a tool&hellip;" aria-label="Find a tool">
+</label>

@@ -1,0 +1,51 @@
+#!/bin/sh
+#  Refuses a commit that carries a credential.
+#
+#  This exists because a `git add -A` swept up an initpwd.txt somebody had
+#  dropped in the working directory to be READ, committed it, and pushed
+#  it to a remote. The fix for that is not "be more careful" -- care is
+#  what already failed. It is a check that runs whether anyone remembers
+#  it or not.
+#
+#  Enable it in a clone with:   git config core.hooksPath .githooks
+set -e
+
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+[ -z "$staged" ] && exit 0
+
+fail=0
+
+#  1. Files that are credentials by name, whatever they contain.
+for f in $staged; do
+    case "$(basename "$f" | tr "[:upper:]" "[:lower:]")" in
+        *password*|*passwd*|*secret*|*credential*|.env|id_rsa|id_ed25519|*.pem|*.pfx|*.p12)
+            #  .env.example and *.example are templates of empty values.
+            case "$f" in
+                *.example|*example.*) continue ;;
+            esac
+            echo "refused: $f is named like a credential" >&2
+            fail=1
+            ;;
+    esac
+done
+
+#  2. Content that is shaped like a key, in anything being added.
+#     Deliberately narrow: prefixes that only ever appear on real
+#     credentials, plus PEM headers. A wider net would cry wolf, and a
+#     check nobody believes is a check nobody keeps.
+pattern='sk_live_[A-Za-z0-9]\{16,\}\|whsec_[A-Za-z0-9]\{16,\}\|xox[baprs]-[A-Za-z0-9-]\{10,\}\|ghp_[A-Za-z0-9]\{30,\}\|AIza[A-Za-z0-9_-]\{30,\}\|-----BEGIN [A-Z ]*PRIVATE KEY-----'
+for f in $staged; do
+    [ -f "$f" ] || continue
+    if git show ":$f" 2>/dev/null | grep -qI "$pattern"; then
+        echo "refused: $f contains something shaped like a live key" >&2
+        fail=1
+    fi
+done
+
+if [ "$fail" = "1" ]; then
+    echo "" >&2
+    echo "Nothing was committed. Move the file out of the repository, or add" >&2
+    echo "it to .gitignore. If this is a false alarm: git commit --no-verify" >&2
+    exit 1
+fi
+exit 0

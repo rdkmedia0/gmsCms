@@ -1,0 +1,10 @@
+{# Grouped/ungrouped applies to the WHOLE dock, not just the Tools panel:
+   every panel is the same shape in the bottom bar — sections behind
+   foldable headings — so "show me one flat row instead" is one question
+   asked once, not a different switch per tab. Rendered in each panel's
+   header and matched by CLASS; side-panels.js keeps them all in step. #}
+<label class="cms-grouped-toggle"
+       title="Grouped: sections with headings you can fold away. Unticked: one flat row you scroll through.">
+  <input type="checkbox" class="cms-grouped-input" checked
+         aria-label="Group these into sections with headings you can fold away">
+</label>

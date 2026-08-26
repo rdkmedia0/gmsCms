@@ -1,0 +1,44 @@
+<h2>Privacy</h2>
+<p>{{ business }} collects as little as possible, and this page says exactly
+what and why. If anything here is unclear, ask us at
+<a href="mailto:{{ email }}">{{ email }}</a>.</p>
+
+<h3>What we hold</h3>
+<p>If you buy something: your name, email address{% if sells_physical %}, and the
+delivery address you give at checkout{% endif %}, along with what you bought and
+when. We keep this because we have to &mdash; it is the record of a sale, and tax
+rules require us to keep it{% if retention_years %} for {{ retention_years }} years{% endif %}.</p>
+<p>If you send us a message through this site: your name, email address and what
+you wrote, so we can reply.</p>
+{% if sells_services %}
+<p>If you book a session: the time you booked and the email address the
+confirmation goes to.</p>
+{% endif %}
+<p>We never see your card details. They go straight to our payment provider and
+never reach this website.</p>
+
+<h3>Who else is involved</h3>
+<ul>
+  <li><strong>Stripe</strong> takes the payment and holds the record of it.</li>
+  {% if sells_services %}<li><strong>Cal.com</strong> holds your booking and sends the confirmation.</li>{% endif %}
+  <li><strong>Our email provider</strong> carries the messages we send you.</li>
+</ul>
+<p>Each of them only gets what they need to do that job. We do not sell your
+details to anyone, and we do not use them for advertising.</p>
+
+<h3>Cookies</h3>
+<p>This site sets a cookie to remember what is in your basket, and one to keep
+the site owner signed in. Neither follows you anywhere else, and there is no
+tracking or advertising cookie on this site.</p>
+
+<h3>What you can ask for</h3>
+<p>You can ask what we hold about you, ask for a copy, ask us to correct it, or
+ask us to delete it. Email <a href="mailto:{{ email }}">{{ email }}</a> and we
+will answer within a month. We may have to keep sale records even after a
+deletion request, because tax law says so &mdash; we will tell you if that
+applies.</p>
+{% if in_eu or in_ch %}
+<p>If you think we have handled your information badly, you can complain to
+{% if in_ch %}the Federal Data Protection and Information Commissioner (edoeb.admin.ch){% else %}
+your national data protection authority{% endif %}.</p>
+{% endif %}

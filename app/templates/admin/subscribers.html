@@ -1,0 +1,125 @@
+{% extends "admin/base.html" %}
+{% block title %}Email list — My Site Admin{% endblock %}
+{% block content %}
+<h1>Email</h1>
+{#  One section, three screens: writing, who it goes to, and how it
+    leaves the building. They are separate screens because they are used
+    at different moments -- but they all stand or fall on the same mail
+    setup, so they are reachable from each other. #}
+{% set tabs = [
+  ("Newsletters", url_for('admin.newsletters'), request.endpoint == 'admin.newsletters'),
+  ("Email list", url_for('admin.subscriber_list'), request.endpoint == 'admin.subscriber_list'),
+  ("Sending email", url_for('admin.settings_email'), request.endpoint == 'admin.settings_email'),
+] %}
+{% include "partials/tabs.html" %}
+
+<p class="hint">Everyone who asked to hear from you through an Email sign-up block, and what each of them agreed to. Keeping the wording matters: "we had consent" is something you have to be able to show, and a list of addresses on its own shows nothing.</p>
+
+<div class="card">
+  <div class="integration-head">
+    <h2>{{ counts.active }} on the list</h2>
+    {#  Three numbers, because they mean three different things. "On the
+        list" is who has confirmed and can be sent to. "Waiting" typed
+        their address and never followed the link in the mail — they are
+        not subscribers and are never written to again. Left is left. #}
+    <span class="hint">
+      {%- if counts.pending %}{{ counts.pending }} waiting to confirm{% endif %}
+      {%- if counts.pending and counts.total - counts.active - counts.pending %} · {% endif %}
+      {%- set gone = counts.total - counts.active - counts.pending %}
+      {%- if gone > 0 %}{{ gone }} have unsubscribed{% endif %}
+    </span>
+  </div>
+  {% if counts.total %}
+  <div class="integration-actions">
+    <a class="btn btn-small" href="{{ url_for('admin.subscriber_export') }}" title="Download everything, including who left and what each person agreed to">Download as a spreadsheet</a>
+  </div>
+  {% endif %}
+</div>
+
+{% if not people %}
+<div class="card"><p>Nobody yet. Add an <strong>Email sign-up</strong> block to a page and addresses will appear here.</p></div>
+{% else %}
+<div class="card">
+  <div class="table-scroll">
+    <table class="simple-table">
+      <thead><tr><th>Email</th><th>Signed up</th><th>Confirmed</th><th>Customer</th><th>Agreed to</th><th class="col-icons">Action</th></tr></thead>
+      <tbody>
+        {% for p in people %}
+        {#  The whole sequence is on the row, because the sequence IS the
+            evidence: this address asked, in these words, from this
+            machine; it was invited; it answered, from this machine. The
+            times and the addresses sit in the tooltips so the row stays
+            readable on a phone, and all of it is in the download. #}
+        <tr {{ 'style=opacity:.55' | safe if p.unsubscribed_at }}>
+          <td>{{ p.email }}
+            {%- if not p.unsubscribed_at and not p.confirmed_at %}
+            <span class="badge" title="Sent a confirmation email{{ ' on ' ~ p.confirm_sent_at[:16] if p.confirm_sent_at }} and has not followed the link yet. Nothing further is sent to this address.">waiting to confirm</span>
+            {%- endif %}</td>
+          <td title="{{ p.created_at }}{{ ' from ' ~ p.ip if p.ip }}{{ ' · signed up on ' ~ p.source if p.source }}">{{ (p.created_at or '')[:10] }}</td>
+          <td title="{{ ('Confirmed ' ~ p.confirmed_at ~ (' from ' ~ p.confirm_ip if p.confirm_ip else '')) if p.confirmed_at else ('Invitation sent ' ~ p.confirm_sent_at if p.confirm_sent_at else 'No confirmation has been sent') }}">
+            {%- if p.confirmed_at %}{{ p.confirmed_at[:10] }}{% else %}<span class="hint">&mdash;</span>{% endif %}</td>
+          {#  Two ways to be a customer and they are shown apart, because
+              one is a fact the site can evidence and the other is
+              somebody's word. The orders win the label; the flag is a
+              star you can press. #}
+          {% set bought = orders.get(p.email) %}
+          <td>
+            {% if bought %}
+            <span class="badge" title="Has paid for {{ bought[0] }} order{{ 's' if bought[0] != 1 }}, most recently {{ bought[1][:10] }}. Worked out from your orders — nothing to keep up to date.">customer · {{ bought[0] }}</span>
+            {% elif p.is_customer %}
+            <span class="badge" title="You flagged this person as a customer. Your orders have nothing under this address.">customer · flagged</span>
+            {% else %}
+            <span class="hint">&mdash;</span>
+            {% endif %}
+          </td>
+          <td class="hint">{{ p.consent_text }}</td>
+          <td class="col-icons">
+            <span class="row-actions">
+              {% if p.unsubscribed_at %}<span class="hint" title="Unsubscribed {{ p.unsubscribed_at }}. The row is kept so you can show that the mail stopped.">left {{ p.unsubscribed_at[:10] }}</span>{% endif %}
+              {#  The owner's own answer, for the customer this site has
+                  no record of: a shop sale, a telephone order, an address
+                  they bought under and did not sign up with. #}
+              <form method="post" action="{{ url_for('admin.subscriber_customer', subscriber_id=p.id) }}">
+                <input type="hidden" name="flag" value="{{ '0' if p.is_customer else '1' }}">
+                <button type="submit" class="icon-btn"
+                        data-confirm="{{ ('You are about to remove your customer flag from ' ~ p.email ~ '.' ~ (' They have paid for orders on this site, so they stay a customer either way.' if bought else '')) if p.is_customer else ('You are about to flag ' ~ p.email ~ ' as a customer, so they are included when a newsletter is sent to customers only. Use this for somebody who bought from you in a way this site never saw — in person, by telephone, or under a different email address.') }}"
+                        title="{{ 'Remove your customer flag' if p.is_customer else 'Flag this person as a customer' }}">{{ '★' if p.is_customer else '☆' }}</button>
+              </form>
+              {#  Erasing is not unsubscribing, and the difference is
+                  worth a sentence at the moment it matters. #}
+              <form method="post" action="{{ url_for('admin.subscriber_erase', subscriber_id=p.id) }}">
+                <button type="submit" class="icon-btn icon-btn-danger"
+                        data-confirm="You are about to erase {{ p.email }} from this site completely — the address, when they signed up, and the record of what they agreed to. That record is what shows their consent was properly obtained, so erase somebody when they ask to be forgotten or when the address was never real. To stop the email but keep the proof, use their unsubscribe link instead."
+                        data-confirm-danger="1"
+                        title="Erase this person completely — address and consent record">&times;</button>
+              </form>
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="hint"><strong>Customers</strong> are worked out from your orders: anybody on this list whose address has paid for something is one, counted live so there is nothing to keep up to date. A refunded order stops counting. The star is for the ones this site never saw — a sale in person, an order by telephone, or somebody who signed up with one address and bought with another — and taking the star off somebody who HAS bought here leaves them a customer, because they are one. A newsletter can then be sent to everyone or to customers only.</p>
+  <p class="hint">To email this list, download it and use whatever you normally send email with. This site collects addresses and records consent; it deliberately isn't a mailing tool, and sending bulk email from your own mail account is how that account gets suspended.</p>
+</div>
+
+{% endif %}
+
+{#  Written down here rather than left as folklore, because the question
+    "what would I actually show somebody" is the one an owner has no way
+    to answer from a list of addresses. #}
+<div class="card">
+  <h2>If you are ever asked to account for this list</h2>
+  <p class="hint">Nobody is on this list without having answered an email. The site records each step, and the spreadsheet above is the whole record, one row per person:</p>
+  <ul class="hint">
+    <li><strong>They asked.</strong> The date, the page they were on, the machine they asked from, and <em>the exact wording they were shown</em> — kept per person, not looked up later, because the sign-up block will be edited and the promise made to somebody last spring is the one that counts.</li>
+    <li><strong>They were invited.</strong> The date the confirmation email was sent, stamped after the mail server accepted it.</li>
+    <li><strong>They answered.</strong> The date they followed the link, and the machine they followed it from. Until that happens the address is never written to again — not a newsletter, not anything.</li>
+    <li><strong>They left, if they did.</strong> The date. The row stays, which is what lets you show the mail stopped.</li>
+  </ul>
+  <p class="hint">Every message sent after they confirm carries an unsubscribe link that needs no password, in the footer and in the message's own headers so their mail program can offer its own button. The first one goes out the moment they confirm.</p>
+  <p class="hint"><strong>Erasing somebody</strong> (the red ×) is a different act from unsubscribing them and removes the consent record along with the address — right for a person asking to be forgotten or an address that was never real, wrong as a way to stop the email, since it takes the proof with it.</p>
+  <p class="hint">This is the mechanism, not legal advice — what your particular business has to keep, and for how long, is worth a lawyer's ten minutes.</p>
+</div>
+{% endblock %}

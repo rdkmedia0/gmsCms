@@ -1,0 +1,22 @@
+/* "Workshop" — a garage site should read like a printed job sheet:
+   condensed uppercase headings, a workhorse body face, steel grey, and
+   one signal orange used only where something needs doing. */
+:root {
+  --site-heading-font-family: "Oswald", "Arial Narrow", sans-serif;
+  --site-font-family: "Barlow", -apple-system, "Segoe UI", sans-serif;
+  --site-heading-weight: 600;
+  --site-body-bg: var(--primary-50, #f4f5f6);
+}
+body { background: var(--site-body-bg, #f4f5f6); color: var(--primary-600, #22292f); }
+.site-header { background: var(--primary-base, #26333f); border-bottom: 4px solid var(--wp--preset--color--accent, #d4652a); }
+.site-brand { color: var(--accent-50, #fff); text-transform: uppercase; letter-spacing: .06em; }
+.site-nav a { color: var(--secondary-100, #cfd6dc); text-transform: uppercase; letter-spacing: .05em; font-size: .85rem; }
+.site-nav a:hover { color: var(--wp--preset--color--accent, #d4652a); }
+.site-footer { background: var(--primary-700, #1c262f); color: var(--secondary-100, #cfd6dc); }
+.site-footer a { color: var(--secondary-100, #cfd6dc); }
+h2 { text-transform: uppercase; letter-spacing: .03em; }
+h2::after { content: ""; display: block; width: 48px; height: 3px; margin-top: 8px;
+  background: var(--wp--preset--color--accent, #d4652a); }
+.cms-banner-overlay h2 { text-transform: uppercase; }
+.cms-table th { background: var(--primary-base, #26333f); color: var(--accent-50, #fff); text-transform: uppercase;
+  letter-spacing: .04em; font-size: .82rem; }

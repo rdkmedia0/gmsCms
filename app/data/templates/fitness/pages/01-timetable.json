@@ -1,0 +1,26 @@
+{
+  "title": "Timetable",
+  "slug_suffix": "timetable",
+  "page_type": "standard",
+  "meta_description": "When classes run.",
+  "sections": [
+    [
+      "text",
+      "The week",
+      "<p>Book through the app or just turn up if there is space &mdash; the board by the door shows what is left.</p>",
+      {}
+    ],
+    [
+      "html",
+      "Classes",
+      "<table class=\"cms-table\"><thead><tr><th></th><th>Morning</th><th>Evening</th></tr></thead><tbody><tr><td>Monday</td><td>6:30 Strength</td><td>17:30 · 18:30 Strength</td></tr><tr><td>Tuesday</td><td>6:30 Conditioning</td><td>18:00 Beginners</td></tr><tr><td>Wednesday</td><td>6:30 Strength</td><td>17:30 · 18:30 Strength</td></tr><tr><td>Thursday</td><td>—</td><td>18:00 Beginners</td></tr><tr><td>Friday</td><td>6:30 Strength</td><td>17:00 Open gym</td></tr><tr><td>Saturday</td><td>9:00 · 10:00 Strength</td><td>—</td></tr></tbody></table>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-faq cms-faq-style-list\"><details class=\"cms-faq-item\" name=\"cms-faq-fitness-timetable-2\"><summary class=\"cms-faq-q\">I have never lifted anything. Is that a problem?</summary><div class=\"cms-faq-a\">It is the normal starting point here. Beginners classes exist for exactly this and nobody in them has been training long.</div></details><details class=\"cms-faq-item\" name=\"cms-faq-fitness-timetable-2\"><summary class=\"cms-faq-q\">Do I need to book?</summary><div class=\"cms-faq-a\">For classes yes, because of the cap of eight. Open gym you can just turn up.</div></details><details class=\"cms-faq-item\" name=\"cms-faq-fitness-timetable-2\"><summary class=\"cms-faq-q\">What if I have an injury?</summary><div class=\"cms-faq-a\">Tell us in the first session. Most things can be trained around, and we would rather work with it than find out about it in week three.</div></details></div>",
+      {}
+    ]
+  ]
+}

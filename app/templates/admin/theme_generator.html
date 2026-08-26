@@ -1,0 +1,69 @@
+{% extends "admin/base.html" %}
+{% block title %}AI Theme Generator — My Site Admin{% endblock %}
+{% block content %}
+<h1>AI Theme Generator</h1>
+<p class="hint">Describe your site, pick a layout, and the AI writes on-topic starter content into real, editable sections — Banner, Text, and Card, built the same way you'd build them by hand. Nothing existing is touched; this only adds new sections to the page you pick, so it's safe to try and easy to undo (just delete the sections it adds, or edit them like anything else).</p>
+
+{% if not ai_configured %}
+<div class="card"><p class="hint">⚠️ No AI provider is configured yet — <a href="{{ url_for('admin.settings_ai') }}">set one up</a> first, or generate with "Leave sections blank" below (layout only, no AI needed).</p></div>
+{% endif %}
+
+<form method="post" action="{{ url_for('admin.theme_generator') }}" class="card" id="theme-gen-form">
+  <div class="form-row">
+    <label for="tg-page">Generate into page</label>
+    <select name="page_id" id="tg-page">
+      {% for p in pages %}
+      <option value="{{ p.id }}">{{ p.title }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="form-row">
+    <label>Layout</label>
+    <div class="tg-layout-choices">
+      {% for key, layout in layouts.items() %}
+      <label class="tg-layout-choice">
+        <input type="radio" name="layout" value="{{ key }}" {{ 'checked' if loop.first }}>
+        <span class="tg-layout-name">{{ layout.label }}</span>
+        <span class="hint">{{ layout.description }}</span>
+      </label>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="form-row">
+    <label for="tg-brief">Describe your site / business</label>
+    <textarea name="brief" id="tg-brief" rows="4" placeholder="e.g. A family-owned bakery in Portland specializing in sourdough and custom celebration cakes, open Tue-Sat, focused on local ingredients and made-to-order service."></textarea>
+  </div>
+
+  <div class="form-row">
+    <label for="tg-fill">Content</label>
+    <select name="fill_scope" id="tg-fill">
+      <option value="all">Fill every section with AI-written copy</option>
+      <option value="none">Leave sections blank (layout only, no AI needed)</option>
+    </select>
+  </div>
+
+  <div class="form-row">
+    <label for="tg-color">Color collection (optional)</label>
+    <select name="color_preset" id="tg-color">
+      <option value="">Don't change colors</option>
+      {% for key, preset in color_presets.items() %}
+      <option value="{{ key }}">{{ preset.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="form-row">
+    <label class="tg-checkbox-label">
+      <input type="checkbox" name="use_ai_images" value="1" {{ 'disabled' if not image_gen_configured }}>
+      Generate an AI background image for the hero banner {{ '(no image generation provider configured)' if not image_gen_configured }}
+    </label>
+  </div>
+
+  <button type="submit" class="btn btn-primary" id="tg-submit">✨ Generate</button>
+</form>
+
+<script src="{{ static_url('js/admin/elapsed-timer.js') }}"></script>
+<script src="{{ static_url('js/admin/theme-generator.js') }}"></script>
+{% endblock %}

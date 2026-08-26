@@ -1,0 +1,15 @@
+{% extends "public/checkout_shell.html" %}
+{% block title %}Subscription confirmed{% endblock %}
+{% block checkout_content %}
+{% if ok %}
+<h1>You're on the list</h1>
+<p>{{ email }} is confirmed. Every email from here on carries a link to
+   leave again, and one click is all it takes.</p>
+{% else %}
+<h1>That link doesn't match anything</h1>
+<p>It may have already been used, in which case you're on the list and
+   there's nothing more to do. If you're not sure, sign up again — you'll
+   get a fresh link.</p>
+{% endif %}
+<p><a href="{{ url_for('public.home') }}">Back to the site</a></p>
+{% endblock %}

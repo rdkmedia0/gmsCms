@@ -1,0 +1,44 @@
+{
+  "name": "Trades / Home Services",
+  "icon": "🔩",
+  "slug": "trades",
+  "description": "A plumber, electrician or builder: what you do, what it costs, and how fast you answer.",
+  "google_fonts_url": "/static/fonts/choices.css",
+  "palette": [
+    {
+      "slug": "primary",
+      "name": "Navy",
+      "color": "#1c3d5a"
+    },
+    {
+      "slug": "secondary",
+      "name": "Steel",
+      "color": "#4f6b82"
+    },
+    {
+      "slug": "accent",
+      "name": "Copper",
+      "color": "#c1642b"
+    }
+  ],
+  "nav_layout": "topbar",
+  "page_layout": "publisher",
+  "footer_layout": "columns",
+  "shape_override": "sharp",
+  "shadow_override": "subtle",
+  "business_name": "Halloran & Sons",
+  "tagline": "Plumbing and heating, answered same day",
+  "footer_blurb": "Gas Safe registered. Two generations, same phone number.",
+  "footer_contact": {
+    "address": "Halloran & Sons, Unit 6, Feldweg",
+    "email": "office@halloran.example",
+    "phone": "+41 44 555 0199"
+  },
+  "has_content": true,
+  "pages": [
+    "home",
+    "services",
+    "team",
+    "contact"
+  ]
+}

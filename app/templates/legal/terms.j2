@@ -1,0 +1,36 @@
+<h2>Terms</h2>
+<p>These are the terms you agree to when you buy something from
+{{ business }}{% if address %}, {{ address }}{% endif %}.</p>
+
+<h3>Prices and payment</h3>
+<p>Prices are shown{% if currency %} in {{ currency }}{% endif %} on the page you
+buy from, and that is what you pay. Any tax is worked out at checkout. Payment is
+taken by Stripe on their own secure page &mdash; your card details never reach
+this website.</p>
+
+<h3>What you get</h3>
+{% if sells_physical %}<p>Physical items are sent to the address you give at
+checkout. We will tell you if anything is delayed.</p>{% endif %}
+{% if sells_digital %}<p>Downloads are available immediately after payment,
+through a link we email you. Keep that email &mdash; it is how you get back to
+your files.</p>{% endif %}
+{% if sells_services %}<p>Sessions are booked through the link we email you, at
+times we have available. Each booking uses one session.</p>{% endif %}
+
+<h3>Cancelling</h3>
+<p>See <a href="{{ refunds_href }}">{{ refunds_title }}</a> for when you can
+change your mind and how refunds work.</p>
+
+<h3>If we cannot deliver</h3>
+<p>If we cannot supply something you have paid for, we will tell you and refund
+you in full. That is the limit of what we owe you, except where the law says
+otherwise &mdash; nothing here removes rights you have by law.</p>
+
+<h3>Getting in touch</h3>
+<p>Email <a href="mailto:{{ email }}">{{ email }}</a>. We answer as quickly as we
+can, and always within a few working days.</p>
+{% if governing_law %}
+<h3>Which law applies</h3>
+<p>These terms are governed by the law of {{ governing_law }}. If you are buying
+as a consumer, you keep the protection of the law where you live.</p>
+{% endif %}

@@ -1,0 +1,32 @@
+{
+  "title": "Media",
+  "slug_suffix": "media",
+  "page_type": "standard",
+  "meta_description": "Behind the scenes at the roastery.",
+  "sections": [
+    [
+      "text",
+      "",
+      "<h2>From the roastery</h2><p>What actually happens between a sack of green coffee and the cup in front of you. Filmed on the roastery floor on ordinary weekday mornings — nothing staged, and the occasional batch we got wrong.</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-video-gallery cms-video-gallery-3\">\n<div class=\"cms-video-thumb\" data-video-src=\"/static/video/templates/coffee-shop-media-1.mp4\"><video src=\"/static/video/templates/coffee-shop-media-1.mp4#t=0.1\" preload=\"metadata\" muted playsinline></video><span class=\"cms-play-icon\">&#9658;</span><span class=\"cms-video-caption\">In the roaster</span></div>\n<div class=\"cms-video-thumb\" data-video-src=\"/static/video/templates/coffee-shop-media-2.mp4\"><video src=\"/static/video/templates/coffee-shop-media-2.mp4#t=0.1\" preload=\"metadata\" muted playsinline></video><span class=\"cms-play-icon\">&#9658;</span><span class=\"cms-video-caption\">Pulling a shot</span></div>\n<div class=\"cms-video-thumb\" data-video-src=\"/static/video/templates/coffee-shop-media-3.mp4\"><video src=\"/static/video/templates/coffee-shop-media-3.mp4#t=0.1\" preload=\"metadata\" muted playsinline></video><span class=\"cms-play-icon\">&#9658;</span><span class=\"cms-video-caption\">Latte art</span></div>\n</div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-timeline\" data-style=\"vertical\"><ol class=\"cms-timeline cms-timeline-vertical\"><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step1_when\">Monday</span><div class=\"cms-timeline-body\"><h3 data-field=\"step1_title\">Green arrives</h3><p data-field=\"step1_text\">Sacks are weighed, sampled and cupped before anything is roasted.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step2_when\">Tuesday</span><div class=\"cms-timeline-body\"><h3 data-field=\"step2_title\">Sample roasting</h3><p data-field=\"step2_text\">Small batches at four profiles, tasted side by side to find the one.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step3_when\">Thursday</span><div class=\"cms-timeline-body\"><h3 data-field=\"step3_title\">Production roast</h3><p data-field=\"step3_text\">The chosen profile, roasted to order, rested two days before it is sold.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step4_when\">Saturday</span><div class=\"cms-timeline-body\"><h3 data-field=\"step4_title\">Cupping class</h3><p data-field=\"step4_text\">Anyone can come and taste the difference between all four.</p></div></li></ol></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-cta\" data-tone=\"outline\"><div class=\"cms-cta cms-cta-outline\"><h2 data-field=\"heading\">Come and taste the difference</h2><p data-field=\"text\">Saturday cupping runs at ten. Six places, no experience needed.</p><a class=\"cms-cta-btn\" href=\"/classes\" data-href-field=\"link\"><span data-field=\"cta\">See the classes</span></a></div></div>",
+      {}
+    ]
+  ]
+}

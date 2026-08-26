@@ -1,0 +1,36 @@
+#  What a checkout is allowed to change, and what it is not.
+#
+#  Git on Windows converts line endings on checkout. For source that is
+#  read, that is harmless. For a file the KERNEL executes it is fatal and
+#  silent: docker-entrypoint.sh checked out with CRLF has a shebang
+#  reading "/bin/sh\r", and the container dies with
+#
+#      exec /usr/local/bin/docker-entrypoint.sh: no such file or directory
+#
+#  which names the file it just failed to find. The repository stored LF
+#  all along -- the damage happened between clone and build, so it could
+#  only ever be seen by building a CLONE rather than the tree it was
+#  authored in. A Linux host never converts and never sees it; anyone on
+#  Windows gets an image that cannot start.
+* text=auto
+
+#  Anything executed, in the container or out of it, keeps Unix endings
+#  on every platform.
+*.yml           text eol=lf
+*.sh            text eol=lf
+docker-entrypoint.sh text eol=lf
+Dockerfile      text eol=lf
+docker-compose.yml text eol=lf
+.env.example    text eol=lf
+
+#  And nothing gets to guess about these.
+*.woff2 binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.mp4   binary
+*.webm  binary
+*.zip   binary
+*.db    binary

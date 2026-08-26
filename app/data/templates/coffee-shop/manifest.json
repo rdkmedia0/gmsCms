@@ -1,0 +1,38 @@
+{
+  "name": "Coffee Shop",
+  "icon": "☕",
+  "description": "Cafe homepage, menu with prices, an about/story page, a media page, blog posts, and a contact page with a downloadable catering menu.",
+  "google_fonts_url": "/static/fonts/dmserif-worksans.css",
+  "palette": [
+    {
+      "slug": "primary",
+      "name": "Primary",
+      "color": "#4a3222"
+    },
+    {
+      "slug": "secondary",
+      "name": "Secondary",
+      "color": "#b5651d"
+    },
+    {
+      "slug": "accent",
+      "name": "Accent",
+      "color": "#c1440e"
+    }
+  ],
+  "nav_layout": "topbar",
+  "page_layout": "none",
+  "footer_layout": "columns",
+  "business_name": "Riverside Roasters",
+  "footer_contact": {
+    "email": "hello@riversideroasters.example",
+    "instagram": "https://instagram.com/riversideroasters",
+    "facebook": "https://facebook.com/riversideroasters"
+  },
+  "footer_blurb": "Small-batch coffee, roasted fresh on the riverside — stop by any morning.",
+  "slug": "coffee-shop",
+  "has_content": true,
+  "shape_override": "rounded",
+  "shadow_override": "raised",
+  "tagline": "Small-batch coffee, roasted here"
+}

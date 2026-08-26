@@ -1,0 +1,26 @@
+{
+  "title": "Programs",
+  "slug_suffix": "programs",
+  "page_type": "standard",
+  "meta_description": "Programs and pricing.",
+  "sections": [
+    [
+      "text",
+      "Programs",
+      "<p>Start where you are — every program is self-paced with optional live check-ins.</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<table class=\"cms-table\"><thead><tr><th>Program</th><th>Length</th><th>Price</th></tr></thead><tbody><tr><td>7-Day Reset</td><td>7 days</td><td>Free</td></tr><tr><td>30-Day Challenge</td><td>30 days</td><td>$49</td></tr><tr><td>1:1 Mentoring</td><td>8 weeks</td><td>$399</td></tr></tbody></table>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-timeline\" data-style=\"vertical\"><ol class=\"cms-timeline cms-timeline-vertical\"><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step1_when\">Weeks 1–2</span><div class=\"cms-timeline-body\"><h3 data-field=\"step1_title\">What is actually going on</h3><p data-field=\"step1_text\">Before changing anything, we get honest about the current shape of things. Most people skip this and it is why most attempts fail.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step2_when\">Weeks 3–5</span><div class=\"cms-timeline-body\"><h3 data-field=\"step2_title\">One change at a time</h3><p data-field=\"step2_text\">A single change, held for a fortnight, measured properly. Then the next.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step3_when\">Weeks 6–8</span><div class=\"cms-timeline-body\"><h3 data-field=\"step3_title\">Making it stick</h3><p data-field=\"step3_text\">The part nobody writes about: what happens when the novelty wears off and the week gets difficult.</p></div></li></ol></div>",
+      {}
+    ]
+  ]
+}

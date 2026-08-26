@@ -1,0 +1,91 @@
+{% extends "admin/base.html" %}
+{% block title %}Help — My Site Admin{% endblock %}
+{% block content %}
+<h1>Help</h1>
+<p class="hint">This is a custom-built, self-hosted CMS — not WordPress, not any other platform. There's no cPanel, no plugin marketplace, no host-provided admin panel. Everything about managing this site is on this one page — the 💬 AI Assistant is grounded on the same information, so you can ask it any of this in your own words too.</p>
+
+<div class="card">
+  <h2>Pages &amp; Content</h2>
+  <p>A page is made of <strong>sections</strong> — empty frames, nothing more. "+ Add Section" (on the live page, while editing) adds a blank frame with no content of its own.</p>
+  <ul>
+    <li>A section's own toolbar has a <strong>Divide</strong> control to split it into 1–6 side-by-side cells (columns); each cell can itself be split into rows.</li>
+    <li>Content only comes from <strong>Tools</strong>, dragged (or tapped) from the 🧰 Tools panel into a frame or a specific cell — this replaces just that cell, not the whole frame.</li>
+    <li>Frames/cells are reordered by dragging the ⠿ handle.</li>
+    <li>Every section can set its own width (Auto / Full width / Custom %) from its own toolbar, or inherit the site-wide default (Dashboard → Site Settings).</li>
+  </ul>
+
+  <h3>Default Tools</h3>
+  <ul>
+    <li><strong>Text</strong> — rich WYSIWYG: bold/italic/underline/lists/headings/links/align/fonts/colors/insert-image/insert-icon (a large curated emoji picker).</li>
+    <li><strong>Image</strong> — size/shape mask/link/animation, plus an AI ✨ Generate button.</li>
+    <li><strong>Media Player</strong> — YouTube link, or an uploaded video/audio file.</li>
+    <li><strong>File / Download</strong> — an uploaded file, displayed as a card/button/text-link/icon.</li>
+    <li><strong>Table (Data)</strong> — click any cell to type in it; the tool's own controls set the look (bordered/striped/colored header/plain), turn the header row on or off, and add or remove rows and columns.</li>
+    <li><strong>Video Gallery</strong> — a grid of YouTube clips: paste a link for each one, give it an optional caption, and choose how many sit side by side. Visitors play a clip in a popup without leaving the page.</li>
+    <li><strong>Image Accordion</strong> — five picture panels, each with its own image (upload or AI-generate) and caption. Three displays: Panels (hover to expand), Carousel (swipe or arrows), Masonry (staggered grid) — the same panels either way, so switching display never loses anything. Tick "Click to enlarge" and visitors can click any panel to see the full picture in a popup — that works with all three displays.</li>
+    <li><strong>Columns</strong> — splits a frame into side-by-side cells, each holding its own tool.</li>
+    <li><strong>Menu</strong> — pick pages to link, plus custom links, dividers, and per-item icons. Styles: Plain / Buttons / Dropdown (with submenus). Button style: Solid, Outline, Soft, Floating, Tabs, Fade. Submenu style (Dropdown only): Card, Minimal, Dark, Bordered, Pill.</li>
+    <li><strong>Breadcrumb</strong> — size/style.</li>
+    <li><strong>Banner</strong> — background image + overlay headline/text, optional shape mask, AI ✨ Generate button.</li>
+    <li><strong>Card</strong> — a background shape (rectangle/rounded/oval/circle/pill) with an optional custom color and/or AI-generated image, that you write text directly over.</li>
+    <li><strong>Divider</strong> — a styled horizontal rule: line style/width/spacing/color.</li>
+    <li><strong>Embed</strong> — raw HTML/script. Only for third-party widgets that need real embed code (a Cal.com booking calendar, a Stripe button) — never for styling or layout, which always has a dedicated tool instead.</li>
+  </ul>
+  <p class="hint">Default tools always exist and can't be removed and can't be created — but a custom tool from a Template Package, or one someone shares with you, can be imported via the Tools panel's "📦 Toolkits" section, and deleted again afterward.</p>
+</div>
+
+<div class="card">
+  <h2>The Live Page Edit Bar</h2>
+  <p>While logged in and editing, three tabs dock to the right edge of every page:</p>
+  <ul>
+    <li><strong>💬 AI Assistant</strong> — this chat. It can look at real page/section content and propose edits (nothing is ever applied without you clicking Apply), and can take an attached image (🖼️ button) as visual guidance.</li>
+    <li><strong>🧰 Tools</strong> — the tool palette described above.</li>
+    <li><strong>🎨 Colors</strong> — the active theme/template's colors: pick a curated preset collection, or fine-tune each color under "Advanced". Per the currently <em>active</em> template, not a Dashboard setting.</li>
+  </ul>
+  <p class="hint">Drag the small handle in a panel's top-left corner to resize it wider/taller — this is remembered across visits.</p>
+</div>
+
+<div class="card">
+  <h2>Dashboard</h2>
+  <ul>
+    <li><strong>Your Pages</strong> — add/rename/delete pages, set the home page, and <strong>Reset All Content</strong> (blanks every page's sections back to empty — pages/titles/addresses/blog posts are untouched). A theme and a page's own content are independent: switching themes never touches existing page content.</li>
+    <li><strong>Pages are just pages</strong> &mdash; what a page can do comes from the
+      tools on it, not from a kind chosen when it was made. Creating a page lets you
+      start it as a Blog, FAQ or Contact page, but that only decides which tools are
+      already on it: you can add a second blog beside the first, put an FAQ on your
+      home page, or move any of it later. The one exception is a
+      <strong>newsletter</strong>, which really is a different kind of page &mdash; it
+      stays out of your navigation, is listed in the public archive, and can be sent to
+      your mailing list.</li>
+    <li><strong>Blogs and FAQs belong to your site, not to a page</strong> &mdash; a blog
+      is a named set of posts, shown wherever you drop a Blog tool (on one page or
+      several, without copying anything). Questions work the same way: an FAQ Content
+      tool holds them, and an FAQ Reader elsewhere shows the ones you tick. Edit a
+      question where it was written and every page repeating it follows.</li>
+    <li><strong>Site Look (Templates)</strong> — pick which template/theme is active; a template's original layout can be "Insert"-ed into a chosen page.</li>
+    <li><strong>Site Settings</strong> — Email Settings (SMTP, for the Contact Form tool), AI Settings (below), and Default Section Width.</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h2>Account &amp; Admins</h2>
+  <p>All on the <strong>Account</strong> page (top nav).</p>
+  <ul>
+    <li><strong>Change Password</strong> — current password, new password, confirm. This <em>is</em> the password reset flow — there's no email-a-link option, no cPanel. If a password is forgotten entirely, another admin needs to remove and re-add that account.</li>
+    <li><strong>Sign-In Method</strong> — once Google Sign-In works, password sign-in can be disabled entirely (Google-only from then on), and re-enabled the same way.</li>
+    <li><strong>Admins</strong> — everyone who can sign in and fully manage the site (no limited/read-only role). Add an admin (username/password, optionally a linked Google account) or remove one. The last remaining admin can't be removed, and you can't remove your own account while logged in as it.</li>
+    <li><strong>Google Sign-In</strong> — Client ID/Secret for Google OAuth (encrypted once saved). Once set, admins can sign in with Google instead of a password.</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h2>AI Settings</h2>
+  <p>Dashboard → Site Settings → AI Settings.</p>
+  <ul>
+    <li><strong>Provider</strong> — Open WebUI, Ollama, or Google Gemini. Fill in its URL/key, then use "Load Models" to pick from a live list instead of typing a name. This is what powers the 💬 AI Assistant chat.</li>
+    <li><strong>Image generation</strong> (the ✨ Generate buttons on Image/Banner/Card) — works via Gemini (needs a <em>billing-enabled</em> account — the free tier doesn't support image output) or Open WebUI (proxies to whatever image backend it's configured with, e.g. ComfyUI — set an "Image Generation Model/Workflow" name if it needs one). Ollama has no image-generation API of its own.</li>
+    <li><strong>Video generation</strong> (the 🎥 Generate button on Media Player sections) — Open WebUI only, and only if a model there has a video-generation Tool attached (Workspace → Tools) — name that model as the "Video Generation Model". Runs as a background task on Open WebUI's side, so it can take several minutes, especially if its backend needs to wake up from idle first.</li>
+    <li>API keys are encrypted before being stored, and never displayed back once saved — only whether one is set.</li>
+  </ul>
+</div>
+{% endblock %}

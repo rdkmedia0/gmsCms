@@ -1,0 +1,40 @@
+{
+  "title": "Classes",
+  "slug_suffix": "classes",
+  "page_type": "standard",
+  "meta_description": "Barista classes above the shop — espresso, milk and home brewing.",
+  "sections": [
+    [
+      "text",
+      "Learn it properly",
+      "<p>We run classes upstairs on Tuesday and Thursday evenings, six people at a time, on the same machines we use downstairs. You will make a lot of coffee and throw quite a bit of it away, which is how anyone learns this.</p><p>No experience needed for the first two. Bring your own beans to the home brewing one if you like &mdash; half the point is working out what your kit is doing wrong.</p>",
+      {}
+    ],
+    [
+      "image",
+      "",
+      "media/coffee-shop-class.png",
+      {
+        "caption": "Thursday evening, six at a time"
+      }
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-pricing\" data-columns=\"3\"><div class=\"cms-price-grid\"><div class=\"cms-price-tier\"><h3 class=\"cms-price-name\" data-field=\"tier1_name\">Espresso evening</h3><p class=\"cms-price-amount\"><span data-field=\"tier1_price\">65</span><small data-field=\"tier1_period\">2 hours</small></p><ul class=\"cms-price-features\" data-field=\"tier1_features\"><li>Grind, dose and extraction</li><li>Tasting as you adjust</li><li>Why the same beans taste different every day</li><li>Six people, one machine each</li></ul><a class=\"cms-price-btn\" href=\"/contact\" data-href-field=\"tier1_link\"><span data-field=\"tier1_cta\">Book an evening</span></a></div><div class=\"cms-price-tier is-featured\" data-flag=\"tier2_featured\"><h3 class=\"cms-price-name\" data-field=\"tier2_name\">Espresso and milk</h3><p class=\"cms-price-amount\"><span data-field=\"tier2_price\">120</span><small data-field=\"tier2_period\">two evenings</small></p><ul class=\"cms-price-features\" data-field=\"tier2_features\"><li>Everything in the first evening</li><li>Steaming milk properly</li><li>Latte art, or at least the beginnings of it</li><li>A bag of beans to take home</li></ul><a class=\"cms-price-btn\" href=\"/contact\" data-href-field=\"tier2_link\"><span data-field=\"tier2_cta\">Book both</span></a></div><div class=\"cms-price-tier\"><h3 class=\"cms-price-name\" data-field=\"tier3_name\">Home brewing</h3><p class=\"cms-price-amount\"><span data-field=\"tier3_price\">45</span><small data-field=\"tier3_period\">90 minutes</small></p><ul class=\"cms-price-features\" data-field=\"tier3_features\"><li>Filter, French press and moka</li><li>Grind size and water</li><li>Bring your own kit if you have it</li><li>No machine required</li></ul><a class=\"cms-price-btn\" href=\"/contact\" data-href-field=\"tier3_link\"><span data-field=\"tier3_cta\">Book a place</span></a></div></div></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-faq cms-faq-style-cards\"><details class=\"cms-faq-item\" name=\"cms-faq-coffee-shop-classes-3\"><summary class=\"cms-faq-q\">Do I need my own machine?</summary><div class=\"cms-faq-a\">No. There is a machine each in the room upstairs. The home brewing class needs no equipment at all, though you are welcome to bring yours.</div></details><details class=\"cms-faq-item\" name=\"cms-faq-coffee-shop-classes-3\"><summary class=\"cms-faq-q\">Can I buy it for someone else?</summary><div class=\"cms-faq-a\">Yes, and most people do. Tell us at the counter and we will write a card &amp;mdash; they can pick whichever evening suits them.</div></details><details class=\"cms-faq-item\" name=\"cms-faq-coffee-shop-classes-3\"><summary class=\"cms-faq-q\">What if I have to miss it?</summary><div class=\"cms-faq-a\">Let us know a day ahead and we will move you to another evening. Later than that and we have already bought the milk.</div></details></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-cta\" data-tone=\"solid\"><div class=\"cms-cta cms-cta-solid\"><h2 data-field=\"heading\">Six places an evening</h2><p data-field=\"text\">Tuesdays and Thursdays, 6:30 till 8:30, upstairs. They go quickly in the run-up to Christmas.</p><a class=\"cms-cta-btn\" href=\"/contact\" data-href-field=\"link\"><span data-field=\"cta\">Ask about a place</span></a></div></div>",
+      {}
+    ]
+  ]
+}

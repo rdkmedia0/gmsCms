@@ -1,0 +1,116 @@
+{% extends "admin/base.html" %}
+{% block title %}{{ 'Edit Post' if post else 'New Post' }} — My Site Admin{% endblock %}
+{% block content %}
+<div class="page-edit-header">
+  <h1>{{ 'Editing: ' ~ post.title if post else 'New Post' }}</h1>
+  {% if post %}
+  <a href="{{ url_for('public.blog_post', slug=blog.slug, post_slug=post.slug) }}" target="_blank" class="btn">Preview Post ↗</a>
+  {% endif %}
+</div>
+
+<div class="card">
+  <form method="post">
+    {# Where to go when this is saved. Writing a post usually starts from
+       the page the blog is shown on, and that is where it should end —
+       being dropped in the admin area afterwards loses your place. #}
+    <input type="hidden" name="next" value="{{ next_url or '' }}">
+    <label for="title">Title</label>
+    <input type="text" id="title" name="title" value="{{ post.title if post else '' }}" required autofocus>
+
+    <label for="excerpt">Excerpt (shown on the blog card)</label>
+    <input type="text" id="excerpt" name="excerpt" value="{{ post.excerpt if post else '' }}" placeholder="A short one or two sentence summary">
+
+    <label for="published_at">Date shown on the post</label>
+    <input type="text" id="published_at" name="published_at" value="{{ post.published_at if post else '' }}"
+           placeholder="Leave blank for today's date"
+           title="The date readers see. Leave blank and today's date is used when you publish.">
+
+    <label for="content">Content</label>
+    <div class="cms-blog-content-tools">
+      <button type="button" class="btn cms-insert-icon-textarea-btn" data-target="content" title="Insert an icon at the cursor">{{ icon_svg(icon_choices[0][0] if icon_choices else '') | safe }} Insert Icon</button>
+    </div>
+    <textarea id="content" name="content" rows="14" placeholder="Write your post. Blank lines start a new paragraph.">{{ post.content if post else '' }}</textarea>
+
+    {# Saving and publishing are two halves of one decision — "is this
+       ready" is answered at the moment you put the work down, not three
+       fields further up the form. #}
+    <div class="cms-post-save-bar">
+      <button type="submit" class="btn btn-primary">{{ 'Save Post' if post else 'Create Post' }}</button>
+      <label class="cms-inline-label" title="Ticked, this post is public. Unticked, only you can see it.">
+        <input type="checkbox" id="publish" name="publish" value="1"
+               {{ 'checked' if post and post.published_at }}>
+        Published
+      </label>
+      <a href="{{ next_url or url_for('admin.blog_manage', blog_id=blog.id) }}" class="btn"
+         title="Go back without saving">Cancel</a>
+      {% if post %}
+      <form method="post" action="{{ url_for('admin.blog_post_delete', blog_id=blog.id, post_id=post.id) }}"
+            class="inline-form cms-post-delete"
+            data-confirm="You are about to delete this post. This cannot be undone."
+                data-confirm-danger="1">
+        <button type="submit" class="btn btn-danger btn-small" title="Delete this post for good">Delete post</button>
+      </form>
+      {% endif %}
+    </div>
+    <p class="hint">A draft is visible only to you while you are logged in.</p>
+  </form>
+</div>
+
+{% if post and newsletter_ready %}
+{#  Sending, where the writing is. Same three questions as a newsletter
+    page's own bar -- subject, who it goes to, what it will look like --
+    kept in the admin's own styles here because this screen is not the
+    live page. #}
+<div class="card">
+  <div class="card-header"><h2>Send this as a newsletter</h2></div>
+  <p class="hint">A post is already an issue: it has a date, a permanent address, and a copy people can read online. Sending it emails everyone who confirmed a subscription{% if counts.customers %}, or just the {{ counts.customers }} {{ 'customer' if counts.customers == 1 else 'customers' }} among them{% endif %}.</p>
+  <form method="post" action="{{ url_for('admin.newsletter_send_post', post_id=post.id) }}" class="inline-form">
+    <label for="subject">Subject line</label>
+    <input type="text" id="post-subject" name="subject" value="{{ post.title }}" maxlength="120"
+           title="What people see in their inbox. The post's title is used if you leave it.">
+    <label for="post-audience">To</label>
+    <select id="post-audience" name="audience"
+            title="Who this goes to. A customer is somebody on the list who has paid for something, or who you have flagged as one on the Email list screen.">
+      {% for key, label in audiences %}
+      <option value="{{ key }}">{{ label }} ({{ audience_counts[key] }})</option>
+      {% endfor %}
+    </select>
+    <a class="btn btn-small" target="_blank" rel="noopener"
+       href="{{ url_for('admin.newsletter_preview_post', post_id=post.id) }}"
+       title="See exactly what lands in an inbox — plainer than the post, on purpose">Preview the email</a>
+    <button type="submit" class="btn btn-primary btn-small"
+            {{ 'disabled' if not newsletter_ready.can_send }}
+            data-confirm="You are about to email &quot;{{ post.title }}&quot; to the audience chosen beside it. It cannot be taken back.{% if not post.published_at %} This post is a draft, so it will be published first — otherwise the “read it online” link in the email would not work.{% endif %}"
+            data-confirm-danger="1"
+            title="{{ 'Publish this post and send it to the list' if not post.published_at else 'Send this post to the list' }}">
+      {{ 'Publish and send' if not post.published_at else ('Send again' if last_send else 'Send to the list') }}
+    </button>
+  </form>
+  <p class="hint">
+    {%- if not newsletter_ready.email_ready %}Email isn't set up yet, so nothing can go out.
+    {%- elif not newsletter_ready.has_address %}Add your postal address on the Legal pages screen first — an email to a list has to carry it.
+    {%- elif not counts.active %}Nobody has confirmed a subscription yet.
+    {%- elif last_send %}Last sent {{ last_send.sent_at[:16] }} to {{ last_send.recipients }}{% if last_send.audience == 'customers' %} (customers only){% endif %}.
+    {%- else %}Not sent yet.
+    {%- endif %}
+  </p>
+</div>
+{% endif %}
+
+{% from "partials/icon_picker.html" import icon_picker_grid with context %}
+{{ icon_picker_grid(include_none=false) }}
+<script src="{{ static_url('js/admin/icon-picker-textarea.js') }}"></script>
+
+{% if post %}
+<div class="card">
+  <h2>Featured Image</h2>
+  {% if post.featured_image %}
+  <img class="preview-img" src="{{ post.featured_image }}" alt="{{ post.title }}">
+  {% endif %}
+  <form method="post" action="{{ url_for('admin.blog_post_image_upload', blog_id=blog.id, post_id=post.id) }}" enctype="multipart/form-data" class="inline-form">
+    <input type="file" name="image" accept="image/*" required>
+    <button type="submit" class="btn">Upload</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,44 @@
+{
+  "name": "Shop",
+  "icon": "🛍️",
+  "slug": "shop",
+  "description": "A small retail shop: products, prices and a basket, with the Stripe checkout wired in.",
+  "google_fonts_url": "/static/fonts/choices.css",
+  "palette": [
+    {
+      "slug": "primary",
+      "name": "Sage",
+      "color": "#5a6b57"
+    },
+    {
+      "slug": "secondary",
+      "name": "Clay",
+      "color": "#b08968"
+    },
+    {
+      "slug": "accent",
+      "name": "Ink",
+      "color": "#2f3733"
+    }
+  ],
+  "nav_layout": "topbar",
+  "page_layout": "none",
+  "footer_layout": "columns",
+  "shape_override": "rounded",
+  "shadow_override": "subtle",
+  "business_name": "Foxglove & Fern",
+  "tagline": "Homeware, made by people we know",
+  "footer_blurb": "A small shop of useful things, most of them made within a hundred miles.",
+  "footer_contact": {
+    "address": "Foxglove & Fern, 22 High Street",
+    "email": "hello@foxgloveandfern.example",
+    "instagram": "https://instagram.com/foxgloveandfern"
+  },
+  "has_content": true,
+  "pages": [
+    "home",
+    "products",
+    "about",
+    "contact"
+  ]
+}

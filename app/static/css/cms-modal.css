@@ -1,0 +1,87 @@
+/* The shared confirm/prompt modal (see static/js/admin/modal.js and
+   partials/cms_modal.html) — its own small stylesheet, not bundled into
+   inline-editor.css, because the modal is used from every admin page
+   (Dashboard, page editors, ...) via admin/base.html, not just the
+   live-page inline editor. */
+/*  Declared here as well as in inline-editor.css, the same way
+    --cms-ui-accent is declared in both admin.css and cms-sidepanel.css:
+    this dialog is used on the admin screens too, where the editor's
+    stylesheet is not loaded at all, and a token that resolves on one page
+    and not the other is worse than no token. */
+:root { --cms-ui-text: #111827; }
+
+/*  The corner scale, declared here too for the same reason as
+    --cms-ui-accent: this stylesheet is loaded on pages where the others
+    are not, and a token that resolves on one page and not the other is
+    worse than no token. The rule behind the two values is in
+    inline-editor.css. */
+:root { --cms-ui-radius-control: 4px; --cms-ui-radius-surface: 8px; }
+
+/*  Its own text colour, not the site's. A chrome surface states what
+    colour text on it is; it never takes the site's, which on a live page
+    is whatever the template or the owner's palette says. See
+    --cms-ui-text in inline-editor.css for the whole argument. */
+.cms-modal-backdrop {
+  color: var(--cms-ui-text);
+  /* Must outrank every dock side-panel — those bump their own z-index up
+     to 10010+ while stacking/reordering (see side-panels.js), and this
+     modal is routinely triggered BY a click inside an open panel (demo
+     data, snapshots, sidebar/footer presets, ...), so it has to render
+     above whichever panel is currently frontmost or its Confirm/Cancel
+     buttons are there but genuinely unclickable — visually behind the
+     panel, receiving no pointer events. */
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100000;
+  display: flex; align-items: center; justify-content: center;
+  /*  Room to breathe at the edges, and a way out when the contents are
+      taller than the screen. A flex-centred child that outgrows its
+      container is clipped at BOTH ends and cannot be scrolled to — which
+      is what happened to the picture picker on a phone: it opened full of
+      images with the top and bottom cut off and no way to reach either.
+      The padding here and the max-height below are the pair that fixes
+      it; neither works alone. */
+  padding: 16px; overflow-y: auto;
+}
+.cms-modal-backdrop[hidden] { display: none; }
+.cms-modal {
+  background: #fff; color: var(--cms-ui-text); border-radius: var(--cms-ui-radius-surface); padding: 24px; max-width: 380px; width: 90%;
+  font-family: -apple-system, sans-serif;
+  /*  Never taller than the screen it is shown on. dvh so a phone's
+      address bar sliding away does not leave the dialog overhanging,
+      with vh for anything that does not know dvh. */
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+}
+.cms-modal p { font-size: 16px; margin: 0 0 16px; color: #1f2430; }
+.cms-modal input[type="text"] {
+  width: 100%; padding: 10px; font-size: 16px; border: 2px solid #e2e4e9;
+  border-radius: var(--cms-ui-radius-control); margin-bottom: 16px; box-sizing: border-box;
+}
+/*  Three buttons is the normal case here, not the exception — every
+    template confirm offers Cancel / Just the look / Take everything — and
+    on a phone they did not fit. The row could not wrap and the buttons
+    could shrink, so instead of moving to a second line they squeezed:
+    "Just the look" broke across three lines and the three buttons came
+    out different heights and ragged.
+
+    So the row wraps and the buttons do not shrink. Each keeps its label
+    on one line at its natural width, and whichever does not fit moves
+    down a line, still right-aligned. What a button says is what decides
+    its width; the dialog is what has to give. */
+.cms-modal-actions {
+  display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px;
+}
+.cms-modal-actions button {
+  padding: 8px 18px; border-radius: var(--cms-ui-radius-control); border: 2px solid #e2e4e9;
+  background: #fff; cursor: pointer; font-weight: 600;
+  flex: 0 0 auto; white-space: nowrap;
+}
+.cms-modal-actions button.cms-danger { background: #dc2626; color: #fff; border-color: #dc2626; }
+
+.cms-modal-count-label {
+  display: block; font-size: 14px; font-weight: 600; color: #1f2430; margin-bottom: 16px;
+}
+.cms-modal-count-label[hidden] { display: none; }
+.cms-modal-count-label select {
+  margin-left: 8px; padding: 6px 10px; font-size: 15px; border: 2px solid #e2e4e9; border-radius: var(--cms-ui-radius-control);
+}

@@ -1,0 +1,12 @@
+{% extends "public/checkout_shell.html" %}
+{% block title %}Unsubscribed{% endblock %}
+{% block checkout_content %}
+{% if ok %}
+<h1>Done — you're off the list</h1>
+<p>You won't get any more emails from us. Nothing else changes, and if you've bought something from us you still have it.</p>
+{% else %}
+<h1>That link doesn't match anything</h1>
+<p>It may already have been used. Either way, if you're still getting emails you don't want, reply to one and we'll take you off by hand.</p>
+{% endif %}
+<p><a href="{{ url_for('public.home') }}">Back to the site</a></p>
+{% endblock %}

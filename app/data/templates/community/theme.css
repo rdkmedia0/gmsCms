@@ -1,0 +1,20 @@
+/* "Meadowbank" — warm, plain and a little untidy on purpose. A
+   community group that looks like a corporate brochure puts people off;
+   a rounded friendly sans, leaf green, and a sunflower yellow used
+   without embarrassment. */
+:root {
+  --site-heading-font-family: "Nunito", -apple-system, "Segoe UI", sans-serif;
+  --site-font-family: "Nunito Sans", -apple-system, "Segoe UI", sans-serif;
+  --site-heading-weight: 700;
+  --site-body-bg: var(--accent-50, #fdfcf7);
+}
+body { background: var(--site-body-bg, #fdfcf7); color: #33372c; }
+.site-header { background: var(--primary-base, #4a7c3f); }
+.site-brand { color: var(--accent-50, #fff); font-weight: 800; }
+.site-nav a { color: var(--neutral-200, #e3ecdd); font-weight: 600; }
+.site-nav a:hover { color: var(--wp--preset--color--accent, #d9a520); }
+.site-footer { background: #33372c; color: var(--neutral-200, #e3ecdd); }
+.site-footer a { color: var(--neutral-200, #e3ecdd); }
+h2 { color: var(--primary-600, #3d6634); }
+.cms-cta-soft { border: 2px dashed var(--wp--preset--color--accent, #d9a520); }
+.cms-stat-value { color: var(--wp--preset--color--accent, #d9a520); }

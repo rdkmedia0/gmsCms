@@ -1,0 +1,51 @@
+{
+  "title": "Home",
+  "slug_suffix": "home",
+  "page_type": "standard",
+  "meta_description": "Plumbing and heating. Same-day answer, Gas Safe registered.",
+  "sections": [
+    [
+      "banner",
+      "",
+      "<div class=\"cms-banner\" style=\"background-image:url('media/trades-banner.png')\"><div class=\"cms-banner-overlay\"><h2>Someone answers the phone</h2><p>Plumbing, heating and bathrooms. Same-day call-back, always a price first.</p></div></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-stats\" data-count=\"3\"><div class=\"cms-stat-row\"><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat1_value\">Same day</span><span class=\"cms-stat-label\" data-field=\"stat1_label\">We call you back</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat2_value\">1987</span><span class=\"cms-stat-label\" data-field=\"stat2_label\">Trading since</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat3_value\">Gas Safe</span><span class=\"cms-stat-label\" data-field=\"stat3_label\">Registered, number on request</span></div></div></div>",
+      {
+        "bg_color": "#aebdc9"
+      }
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-logos\" data-muted=\"1\"><div class=\"cms-logo-row is-muted\"><div class=\"cms-logo\"><span class=\"cms-logo-name\" data-field=\"logo1_name\">Gas Safe Registered</span></div><div class=\"cms-logo\"><span class=\"cms-logo-name\" data-field=\"logo2_name\">NICEIC Approved</span></div><div class=\"cms-logo\"><span class=\"cms-logo-name\" data-field=\"logo3_name\">TrustMark</span></div><div class=\"cms-logo\"><span class=\"cms-logo-name\" data-field=\"logo4_name\">Which? Trusted Trader</span></div></div></div>",
+      {}
+    ],
+    [
+      "text",
+      "What you get",
+      "<p>A price before we start, in writing, and the same person who quoted it doing the work. If we find something worse behind the wall, you get a phone call and a choice — not a bigger invoice at the end.</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-cta\" data-tone=\"solid\"><div class=\"cms-cta cms-cta-solid\"><h2 data-field=\"heading\">Leaking now?</h2><p data-field=\"text\">Ring and someone will pick up. If it is out of hours, leave a message and you will get a call back within the hour.</p><a class=\"cms-cta-btn\" href=\"/contact\" data-href-field=\"link\"><span data-field=\"cta\">Call the office</span></a></div></div>",
+      {
+        "bg_image": "media/trades-band.png",
+        "bg_overlay": "tint",
+        "bg_position": "center",
+        "bg_color": "#e3baa1"
+      }
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-testimonial\" data-style=\"card\"><figure class=\"cms-quote cms-quote-card\"><blockquote data-field=\"quote\">Boiler died on the coldest week of the year. They lent us two heaters the same afternoon and fitted the new one on the Thursday.</blockquote><figcaption><span class=\"cms-quote-name\" data-field=\"name\">Marta Iten</span><span class=\"cms-quote-role\" data-field=\"role\">Oberdorf</span></figcaption></figure></div>",
+      {}
+    ]
+  ]
+}

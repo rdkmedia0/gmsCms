@@ -1,0 +1,151 @@
+#  gmsCms -- behind nginx on the same machine.
+#
+#  Everything uncommented below is needed. Everything commented out is
+#  optional and is read ONCE, on the very first boot, then copied into the
+#  site's own database (secrets encrypted) -- after that the admin screens
+#  are the authority and editing this file does nothing. So you can leave
+#  it all commented and set the lot in the browser.
+#
+#      docker compose pull && docker compose up -d
+#
+#  Upgrading later is the same two commands. Your site lives in the three
+#  directories below, not in the image.
+
+services:
+  web:
+    image: ghcr.io/rdkmedia0/gmscms:latest
+
+    #  Reachable ONLY from this machine, because nginx is on it. Nothing
+    #  from outside can touch the app directly, so the firewall is not the
+    #  only thing standing between port 5000 and the internet.
+    #
+    #  If nginx runs on a DIFFERENT machine, this has to be "5000:5000"
+    #  and the port closed to the public internet at the firewall instead.
+    ports:
+      - "127.0.0.1:5000:5000"
+
+    #  The whole of your website. Losing these loses everything; losing
+    #  the image loses nothing.
+    #
+    #    data/     the database, the encryption key, the session key, backups
+    #    uploads/  every picture and file you have uploaded
+    #    themes/   installed and saved templates
+    volumes:
+      - ./data:/app/data
+      - ./uploads:/app/app/static/uploads
+      - ./themes:/app/app/static/themes
+
+    #  Back after a reboot, a crash, or a failed health check.
+    restart: unless-stopped
+
+    #  It logs a line per request, and Docker's default keeps every line
+    #  for ever -- a disk filling up over months and taking the site with
+    #  it, for a reason that has nothing to do with the site.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    #  The app drops to an unprivileged user itself. These make the
+    #  container a poorer place to land regardless: no route back to
+    #  privilege, and only the four capabilities the startup actually
+    #  needs to hand the three directories above to that user.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+
+    # ------------------------------------------------------------------
+    # Everything below is optional. Uncomment what you want set before the
+    # first boot; leave it out and set it in the admin screens instead.
+    # ------------------------------------------------------------------
+    # environment:
+
+      # --- signing in --------------------------------------------------
+      # What you sign in as. Blank means "admin".
+      # ADMIN_USERNAME: ""
+      #
+      # Choose your own password. Leave it out and one is generated on the
+      # first boot, printed in this container's log and written to
+      # data/initial-admin-password.txt -- which is deleted for you the
+      # moment you set your own, which the app makes you do before
+      # anything else opens.
+      # ADMIN_PASSWORD: ""
+      #
+      # Sign in with Google instead. Set all three and password sign-in
+      # switches itself off: there is a safer way in, so the password
+      # stops being a way in at all.
+      # ADMIN_GOOGLE_EMAIL: ""
+      # GOOGLE_CLIENT_ID: ""
+      # GOOGLE_CLIENT_SECRET: ""
+      #
+      # Force username/password sign-in on (1) or off (0) on every
+      # restart. 0 is refused unless Google sign-in can actually take
+      # over, so this cannot lock you out.
+      # PASSWORD_LOGIN: ""
+
+      # --- sending email -----------------------------------------------
+      # Contact forms, newsletters, order receipts and the link a buyer
+      # uses to reach what they paid for. Gmail needs an App Password,
+      # not your normal one. Host and port default to smtp.gmail.com:587.
+      # SMTP_HOST: ""
+      # SMTP_PORT: ""
+      # SMTP_USERNAME: ""
+      # SMTP_PASSWORD: ""
+      # SMTP_FROM_EMAIL: ""
+      # CONTACT_TO_EMAIL: ""
+
+      # --- taking payments ---------------------------------------------
+      # sk_test_... charges nobody and accepts Stripe's test cards.
+      # STRIPE_SECRET_KEY: ""
+      # STRIPE_WEBHOOK_SECRET: ""
+
+      # --- bookings ----------------------------------------------------
+      # A personal API key from app.cal.com is enough.
+      # CALCOM_API_KEY: ""
+
+      # --- AI (optional everywhere) ------------------------------------
+      # Leave out to hide it. Needs an Open WebUI instance this container
+      # can reach and an API key from its Settings -> Account -> API Keys.
+      # OPEN_WEBUI_URL: ""
+      # OPEN_WEBUI_API_KEY: ""
+      # OPEN_WEBUI_MODEL: ""
+      # OPEN_WEBUI_IMAGE_MODEL: ""
+      # OPEN_WEBUI_VIDEO_MODEL: ""
+
+      # --- things you should not need ----------------------------------
+      # The site learns its own web address from your first admin request
+      # and uses it for payment returns, emailed links and previews. Set
+      # this only to override that.
+      # SITE_PUBLIC_URL: ""
+      #
+      # Who may say what the original request looked like. The default
+      # believes X-Forwarded-* only from a private or loopback peer, which
+      # is exactly what nginx on this machine is, and strips those headers
+      # from anyone else. Set "always" only if your proxy reaches this
+      # container from a PUBLIC address.
+      # TRUST_PROXY: ""
+      #
+      # The session cookie is marked Secure automatically on any request
+      # that arrived over https -- nginx's X-Forwarded-Proto is how it
+      # knows -- so this is already right. 1 pins it on for plain http too,
+      # which locks you out of a site you reach over http.
+      # FORCE_SECURE_COOKIES: ""
+      #
+      # Serving HTTPS from this container instead of from nginx. Not this
+      # setup -- leave these out.
+      # TLS_CERT_FILE: ""
+      # TLS_KEY_FILE: ""
+      #
+      # By default the key that decrypts your saved API keys sits in
+      # data/ beside the database, so anyone who copies that folder has
+      # both halves. Put the contents of data/.encryption_key here and
+      # delete the file, and the two live in different places. An invalid
+      # value stops the site rather than starting with the wrong key.
+      # ENCRYPTION_KEY: ""

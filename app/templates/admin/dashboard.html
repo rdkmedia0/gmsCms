@@ -1,0 +1,406 @@
+{% extends "admin/base.html" %}
+{% block title %}Dashboard — My Site Admin{% endblock %}
+{% block content %}
+<h1>Dashboard</h1>
+<p class="hint">Tip: to edit your page content, click "View Site" and edit directly on the page — headings, text, images, and sections are all editable right there while you're logged in.</p>
+
+<div class="card">
+  <h2>Your Blogs</h2>
+  <p class="hint">A blog is a set of posts. Show one anywhere by adding a <strong>Blog</strong>
+    tool to a page &mdash; on more than one page if you like, without copying anything. Posts are
+    normally written on the site itself; this is the list view if you would rather work here.</p>
+  {% if blogs %}
+  {#  A blog and its posts, as the tree they actually are: a blog IS a set
+      of posts, and listing blogs here and posts on another screen made
+      you hold that relationship in your head. Every row carries the same
+      two actions -- a pencil to change it, a red × to remove it. #}
+  <ul class="blog-tree">
+    {% for b in blogs %}
+    <li>
+      <div class="tree-row">
+        <span class="tree-name">{{ b.name }}</span>
+        <code class="blog-address" title="Where posts in this blog live. Renaming does not change it.">/blog/{{ b.slug }}/&hellip;</code>
+        <span class="row-actions">
+          <a class="icon-btn" href="{{ url_for('admin.blog_post_new', blog_id=b.id) }}"
+             data-confirm="You are about to start writing a new post in &quot;{{ b.name }}&quot;."
+             title="Write a new post in this blog">+</a>
+          {#  The pencil opens the rename without a line of script: the
+              summary IS the button, and what it reveals sits under the
+              row it belongs to. #}
+          <details class="tree-edit">
+            <summary class="icon-btn" title="Rename this blog. Its web address does not change, so links to its posts keep working.">✎</summary>
+            <form method="post" action="{{ url_for('admin.blog_rename', blog_id=b.id) }}" class="tree-edit-body">
+              <input type="text" name="name" value="{{ b.name }}" aria-label="Blog name"
+                     title="What this blog is called. Its web address does not change — post links keep working.">
+              <button type="submit" class="btn btn-small">Save</button>
+            </form>
+          </details>
+          <form method="post" action="{{ url_for('admin.blog_delete', blog_id=b.id) }}">
+            <button type="submit" class="icon-btn icon-btn-danger"
+                    data-confirm="You are about to delete the blog &quot;{{ b.name }}&quot; and its {{ b.posts }} post{{ 's' if b.posts != 1 }}. A blog is a set of posts, so the posts go with it. This cannot be undone."
+                    data-confirm-danger="1"
+                    title="Delete this blog and every post in it">&times;</button>
+          </form>
+        </span>
+      </div>
+      <ul class="tree-children">
+        {% for post in b.post_list %}
+        <li class="tree-row">
+          <span class="tree-name">{{ post.title }}</span>
+          {% if not post.published_at %}<span class="hint" title="Written but not published — nobody else can see it yet">draft</span>{% endif %}
+          <span class="row-actions">
+            <a class="icon-btn" href="{{ url_for('admin.blog_post_edit', blog_id=b.id, post_id=post.id) }}"
+               data-confirm="You are about to open the post &quot;{{ post.title }}&quot; to edit it."
+               title="Edit this post">✎</a>
+            <form method="post" action="{{ url_for('admin.blog_post_delete', blog_id=b.id, post_id=post.id) }}">
+              <button type="submit" class="icon-btn icon-btn-danger"
+                      data-confirm="You are about to delete the post &quot;{{ post.title }}&quot;. This cannot be undone."
+                      data-confirm-danger="1"
+                      title="Delete this post">&times;</button>
+            </form>
+          </span>
+        </li>
+        {% else %}
+        <li class="tree-empty">No posts yet &mdash; the + above writes the first one.</li>
+        {% endfor %}
+      </ul>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted">No blogs yet.</p>
+  {% endif %}
+  {#  Making one was the gap: the Dashboard could list blogs and open
+      them, but the only way to CREATE one was to drop a Blog tool on a
+      page and let it make one for you. A fine shortcut; a poor only
+      route. #}
+  <form method="post" action="{{ url_for('admin.blog_new') }}" class="inline-form">
+    <input type="text" name="name" placeholder="Journal, News, Recipes&hellip;"
+           title="What to call the new blog. Its web address is made from this.">
+    <button type="submit" class="btn btn-small" title="Start a new blog">+ Add a blog</button>
+  </form>
+</div>
+
+<section class="card">
+  {#  There used to be a card here listing "pages from templates you are
+      not using", with its own Remove button. It said the same thing Your
+      Pages says, in a second place, about rows that are already in that
+      list -- and a page is deleted from the page, or from the row that
+      names it, not from a separate box that has opinions about which
+      pages count. What it knew that was worth keeping is which template a
+      page arrived with, and that now sits on the page's own row. #}
+
+  <div class="card-header">
+    <h2>Settings</h2>
+  </div>
+  {#  One flat row. Headings over four groups of two were more structure
+      than eight buttons can carry -- the labels took as much reading as
+      the things they were labelling. What survives from that attempt is
+      the ORDER: related things sit next to each other, which does the
+      grouping quietly and costs nothing.
+
+      The real consolidation was not a heading either. AI Settings and
+      Integrations became one page (see partials/ai_settings_card.html),
+      which is why this row is eight buttons rather than ten. #}
+  <div class="settings-row">
+    <a href="{{ url_for('admin.settings_integrations') }}" class="btn" title="Stripe for payments, Cal.com for bookings, and an AI provider — every key this site holds, on one page">🔌 Connections</a>
+    <a href="{{ url_for('admin.newsletters') }}" class="btn" title="Newsletters, who is on the list, and the mail server it all sends through">✉️ Email</a>
+    <a href="{{ url_for('admin.commerce_fulfilment') }}" class="btn" title="Add and price what you sell, and say what each sale delivers">🛍️ Products</a>
+    <a href="{{ url_for('admin.commerce_orders') }}" class="btn" title="Every sale, who made it, and resend their access link">📦 Orders</a>
+    <a href="{{ url_for('admin.commerce_bookings') }}" class="btn" title="Your diary — who booked what, and how many sessions they have left">📅 Bookings</a>
+    <a href="{{ url_for('admin.legal_pages') }}" class="btn" title="Refunds, terms, privacy and site details — written from your own information">⚖️ Legal pages</a>
+    <a href="{{ url_for('admin.backups') }}" class="btn" title="Copy everything, restore it, and set automatic backups">💾 Backups</a>
+  </div>
+  <p class="muted">Site Name — shown in the header, browser tab, and page titles across the whole site.</p>
+  <form method="post" action="{{ url_for('admin.settings_site') }}" class="inline-form">
+    <input type="text" name="site_title" value="{{ site_settings.site_title }}" placeholder="My Site" maxlength="80" title="Your site/business name">
+    <input type="text" name="site_tagline" value="{{ site_settings.site_tagline }}" placeholder="Tagline (optional)" maxlength="140" title="A short tagline, shown next to your site name in the browser tab title">
+    <button type="submit" class="btn btn-small btn-primary">Save</button>
+  </form>
+  <p class="muted" style="margin-top:16px;">Site address &mdash; where this site lives on the internet. Used for every link that has to work somewhere else: the address Stripe sends buyers back to, the link we email with someone's purchases, the pictures Stripe shows on its payment page, and the address Stripe calls back on when a payment succeeds.</p>
+  <form method="post" action="{{ url_for('admin.settings_site_address') }}" class="inline-form">
+    <input type="text" name="site_public_url" value="{{ site_base }}"
+           placeholder="{{ detected_base }}" size="34"
+           title="The address people type to reach this site, e.g. https://shop.example.com. Change it here whenever the domain changes and everything follows.">
+    <button type="submit" class="btn btn-small btn-primary" title="Save the site address and re-point Stripe's callback at it">Save</button>
+  </form>
+  {% if not site_base %}
+  <p class="hint">Not set. Links are built from whatever address you happen to be using ({{ detected_base }}), which won't work for anyone else if that's a local one.</p>
+  {% elif not site_is_public %}
+  <p class="hint">This address only works on this machine or network. Emailed links and Stripe's return address won't work for a buyer elsewhere.</p>
+  {% endif %}
+
+  <p class="muted" style="margin-top:16px;">Favicon — shown in the browser tab, bookmarks, and search results.</p>
+  <div class="favicon-row">
+    <div class="favicon-preview">
+      {% if site_settings.favicon_url %}
+      <img src="{{ site_settings.favicon_url }}" alt="Current favicon">
+      <form method="post" action="{{ url_for('admin.settings_favicon_clear') }}" class="favicon-remove-form">
+        <button type="submit" class="favicon-remove-btn" title="Remove favicon">&times;</button>
+      </form>
+      {% else %}<span class="favicon-preview-empty" title="No favicon set">?</span>{% endif %}
+    </div>
+
+    <form method="post" action="{{ url_for('admin.settings_favicon_upload') }}" enctype="multipart/form-data" class="inline-form favicon-upload-form">
+      <button type="button" class="favicon-text-btn favicon-upload-trigger" title="Upload an image file">⬆️ Upload</button>
+      <input type="file" name="image" accept="image/*" class="favicon-upload-input" hidden>
+    </form>
+
+    <details class="favicon-emoji-picker">
+      <summary class="favicon-text-btn" title="Pick an emoji">🙂 Emoji</summary>
+      <div class="favicon-emoji-grid">
+        {% for emoji in favicon_emoji_choices %}
+        <form method="post" action="{{ url_for('admin.settings_favicon_emoji') }}" class="inline-form">
+          <input type="hidden" name="emoji" value="{{ emoji }}">
+          <button type="submit" class="favicon-emoji-btn" title="Use {{ emoji }} as favicon">{{ emoji }}</button>
+        </form>
+        {% endfor %}
+      </div>
+    </details>
+
+    <details class="favicon-ai-gen">
+      <summary class="favicon-text-btn" title="Generate a favicon with AI">✨ AI</summary>
+      <form method="post" action="{{ url_for('admin.settings_favicon_generate') }}" class="inline-form">
+        <input type="text" name="prompt" placeholder="e.g. a coffee bean" maxlength="200" title="Describe the icon you want">
+        <button type="submit" class="btn btn-small btn-primary">Generate</button>
+      </form>
+    </details>
+  </div>
+  <p class="muted" style="margin-top:16px;">Default Section Width — applies to any section that hasn't had its own width set (via the section's own "Section width" control) — that's every section until it's touched individually.</p>
+  <form method="post" action="{{ url_for('admin.settings_layout') }}" class="inline-form">
+    <select name="default_section_width" id="default-width-select">
+      <option value="auto" {{ 'selected' if layout_settings.default_section_width == 'auto' }}>Auto</option>
+      <option value="full" {{ 'selected' if layout_settings.default_section_width == 'full' }}>Full width</option>
+      <option value="custom" {{ 'selected' if layout_settings.default_section_width == 'custom' }}>Custom %</option>
+    </select>
+    <input type="number" name="default_section_width_pct" min="10" max="100" value="{{ layout_settings.default_section_width_pct }}" title="Width as a % of the full viewport (100% = same as Full width)" {{ 'hidden' if layout_settings.default_section_width != 'custom' }} id="default-width-pct-input">
+    <button type="submit" class="btn btn-small btn-primary">Save</button>
+  </form>
+  <p class="hint" style="margin-top:14px;">Managing who can sign in (admins, Google Sign-In)? That's on your <a href="{{ url_for('auth.account') }}">Account</a> page now, not here.</p>
+</section>
+
+<section class="card">
+  <div class="card-header">
+    <h2>Your Pages</h2>
+    <a href="{{ url_for('admin.page_new') }}" class="btn btn-primary">+ Add New Page</a>
+  </div>
+  <div class="table-scroll">
+    <table class="simple-table">
+      {#  "Home" alone: the tick under it says which one, so the word does
+          not have to be repeated in every row. #}
+      {#  "Home" and "Action" over the two icon columns: a column of
+            symbols with nothing above it leaves you guessing at all of
+            them at once. #}
+      <thead><tr><th>Page</th><th>Web Address</th><th class="col-icons">Home</th><th class="col-icons">Action</th></tr></thead>
+      <tbody>
+        {% for page in pages %}
+        <tr{% if page.source_template %} title="This page came with the {{ template_names.get(page.source_template, page.source_template) }} template{{ ', the one this site is using.' if page.source_template == active_template_slug else ', which is not the one this site is using now.' }}"{% endif %}>
+          <td>
+            {{ page.title }}
+            {#  Where this page came from, on the page's own row. A page you
+                wrote yourself says nothing; one that arrived with a
+                template says which, and whether that template is still the
+                one in use -- which is the whole of what the removed card
+                was for. #}
+            {#  Only when it is news. A line under every page saying it
+                came with the template that is in use says nothing at all
+                -- that is where pages normally come from -- and it read
+                as an accusation: every row on this site said "not in
+                use" because the site had taken its own copy of the
+                built-in it started from, which is the one moment the
+                pages are MOST in use. The tooltip on the row carries the
+                answer either way, for the case where you do want to ask. #}
+            {% if page.source_template and page.source_template != active_template_slug %}
+            <br><span class="hint" title="This page arrived with the {{ template_names.get(page.source_template, page.source_template) }} template, which is not the one this site is using now. It is still a page like any other — this is only here so a page you have forgotten about does not look like one you made.">from {{ template_names.get(page.source_template, page.source_template) }} · not in use</span>
+            {% endif %}
+          </td>
+          <td><code>{{ '/' if page.is_home else '/' + page.slug }}</code></td>
+          <td class="col-icons">
+            {% if page.is_home %}
+              <span class="icon-state" title="This is your home page — the one a visitor lands on">✔</span>
+            {% else %}
+              <form method="post" action="{{ url_for('admin.page_set_home', page_id=page.id) }}">
+                <button type="submit" class="icon-btn"
+                        data-confirm="You are about to make &quot;{{ page.title }}&quot; the home page — the page a visitor lands on at your site's own address. The page that is home now moves to its own address."
+                        title="Make this the home page — the one a visitor lands on">⌂</button>
+              </form>
+            {% endif %}
+          </td>
+          <td class="col-icons">
+            <span class="row-actions">
+              {#  A pencil edits and a red × deletes, here as everywhere
+                  else. The words they replace -- "Edit on Page", "Delete" --
+                  were four times the width of the thing they named, and in
+                  an 85px column one of them broke across three lines and
+                  made a button taller than its own row. #}
+              <a class="icon-btn"
+                 data-confirm="You are about to open &quot;{{ page.title }}&quot; to edit it — its headings, text, pictures and sections, on the page itself."
+                 title="Open this page and edit it there — headings, text, pictures and sections, on the page itself"
+                 href="{{ url_for('public.home') if page.is_home else url_for('public.page', slug=page.slug) }}">✎</a>
+              {% if not page.is_home %}
+              <form method="post" action="{{ url_for('admin.page_delete', page_id=page.id) }}">
+                <button type="submit" class="icon-btn icon-btn-danger"
+                        data-confirm="You are about to delete the page &quot;{{ page.title }}&quot; and everything on it. This cannot be undone."
+                        data-confirm-danger="1"
+                        title="Delete this page and everything on it">&times;</button>
+              </form>
+              {% endif %}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <details style="margin-top: 16px;">
+    <summary class="hint" style="cursor:pointer;">Reset all page content</summary>
+    <p class="hint">A theme's colors/fonts/header/footer and a page's own content (sections) are independent — switching or deleting a theme never touches what's already on your pages. If you want every page blanked back to empty (e.g. to start fresh with a different theme or demo), do it here. Pages themselves, their titles/addresses, and your blog posts are not affected.</p>
+    <form method="post" action="{{ url_for('admin.content_reset_all') }}"
+          data-confirm="You are about to clear the content of every page on this site. The pages themselves and your blog posts are kept, but every section on every one of them is deleted. This cannot be undone."
+          data-confirm-danger="1">
+      <button type="submit" class="btn btn-danger">Reset All Content</button>
+    </form>
+  </details>
+</section>
+
+<section class="card">
+  <div class="card-header">
+    <h2>AI Theme Generator</h2>
+    <a href="{{ url_for('admin.theme_generator') }}" class="btn btn-primary">✨ Generate Page Content</a>
+  </div>
+  <p class="muted">Describe your site in plain text and the AI builds real, editable sections (Banner/Text/Cards) onto a page you pick — never raw HTML. Nothing is deleted; it only adds to whatever's already there.</p>
+</section>
+
+{% from "partials/nav_layout_diagram.html" import nav_layout_diagram, sidebar_layout_diagram, footer_layout_diagram %}
+{% set active_tpl = templates | selectattr('is_active') | first %}
+
+<section class="card">
+  <h2>Templates</h2>
+  <p class="muted">A template is a <strong>complete package</strong> — colors, fonts, and (if it has any) ready-made page content. Activate one here to apply all of it at once; the Layout section below then lets you customize whichever template is active, without switching templates.</p>
+  {#  Always here, always re-runnable: somebody changing template a year
+      later wants the same walk-through, and running it again changes
+      nothing they have already set. #}
+  <form method="post" action="{{ url_for('admin.setup_restart') }}" class="inline-form">
+    <button type="submit" class="btn btn-small"
+            data-confirm="You are about to start the setup walk-through from the beginning. Nothing you have already set is changed or cleared — it asks again, with your answers filled in."
+            title="Six short steps: the site's name, its look, your details, and what you have not set up yet">Walk me through setting this up</button>
+  </form>
+  <div class="table-scroll">
+    <table class="simple-table">
+      {#  "Active" was a column of its own beside "Type", and on a narrow
+          screen the badge sat on top of the word next to it. It is not a
+          type, it is a state, and it belongs with the name of the thing it
+          is a state of. Three columns instead of four also gives the rest
+          room to breathe. #}
+      <thead><tr><th>Template</th><th>Type</th><th class="col-icons">Action</th></tr></thead>
+      <tbody>
+        {% for t in templates %}
+        <tr>
+          <td>
+            {{ t.name }}
+            {% if t.is_active %} <span class="badge">✔ Active</span>{% endif %}
+            {% if t.header_sections or t.footer_sections %}<br><span class="hint">includes header/footer</span>{% endif %}
+          </td>
+          <td>{{ 'Built-in' if t.is_builtin else 'Imported/Saved' }}</td>
+          <td class="col-icons">
+            <span class="row-actions">
+              {#  Same four actions, same four words' worth of room: use it,
+                  take a copy away with you, reload what it ships, remove it. #}
+              {% if not t.is_active %}
+              <button type="button" class="icon-btn cms-tpl-activate-btn" data-activate-url="{{ url_for('admin.template_activate', template_id=t.id) }}" data-conflict="{{ 'true' if activate_conflict_map.get(t.id) else 'false' }}" title="Use this look — its colours, fonts, layout and content">▶</button>
+              {% endif %}
+              <a href="{{ url_for('admin.template_export', template_id=t.id) }}" class="icon-btn"
+                 data-confirm="You are about to download &quot;{{ t.name }}&quot; as a .zip file — its look, and any pages it carries. It can be imported into another site running this same CMS."
+                 title="Download this template as a .zip — reusable on another install running this same CMS">⤓</a>
+              {% if not t.is_active %}
+              {% set confirm_msg = 'You are about to remove the built-in template &quot;' ~ t.name ~ '&quot; from your library. It ships with the app, so it comes back the next time the app restarts.' if t.is_builtin else 'You are about to delete the template &quot;' ~ t.name ~ '&quot;. Your pages keep their content — this removes the saved look from your library.' %}
+              <form method="post" action="{{ url_for('admin.template_delete', template_id=t.id) }}">
+                <button type="submit" class="icon-btn icon-btn-danger"
+                        data-confirm="{{ confirm_msg }}"
+                        data-confirm-danger="1"
+                        title="Remove this template from your library">&times;</button>
+              </form>
+              {% elif active_content and active_content.template_id == t.id %}
+              <button type="button" class="icon-btn cms-load-content-btn" data-url="{{ url_for('admin.template_load_content', template_id=active_content.template_id) }}" title="Reload all of this template's pages, overwriting any of them you have since changed">↻</button>
+              {% endif %}
+            </span>
+          </td>
+        </tr>
+        {% if t.palette_json and t.is_active %}
+        <tr>
+          <td colspan="3">
+            <p class="hint">🎨 This look's colors — presets and per-color pickers — are set from the 🎨 Colors panel on the edit bar at the top of any page while editing, not here.</p>
+          </td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <details style="margin-top: 16px;">
+    <summary class="hint" style="cursor:pointer;">Import Template Package</summary>
+    <p class="hint">Upload a .zip exported from "Export" above (from this site or another install running this same CMS). Installs its theme immediately; if it also carries page content, that's merged into your site's matching pages the same way "Load Content" above works. If you already have that template you'll be asked what to do: <strong>Overwrite</strong> keeps one template and puts the uploaded files in place of the ones with the same name, <strong>Keep both</strong> installs this one beside the original under its own numbered name, and <strong>Cancel</strong> changes nothing. A built-in template is reinstalled on every restart, so it can't be overwritten — for those, Keep both is the only choice offered.</p>
+    <form method="post" action="{{ url_for('admin.package_import') }}" enctype="multipart/form-data" class="inline-form cms-import-package-form">
+      <input type="file" name="package" accept=".zip" required title="Choose a .zip file exported from this or another install.">
+      <button type="submit" class="btn btn-small" title="Install the uploaded package. If you already have this template, you'll be asked whether to overwrite it, keep both, or cancel.">Import</button>
+    </form>
+  </details>
+  <details style="margin-top: 16px;">
+    <summary class="hint" style="cursor:pointer;">Save current site as a new template</summary>
+    <p class="hint">Captures the active template's look, layout, and every page's content as a brand new, independent template — saved into your library immediately, right alongside built-in and imported ones. This is also your "get back to this later" point: save one before a risky change, then activate it again to restore everything. Leave the name blank to use a timestamped default you can rename later; exporting a .zip (above) stays a separate action.</p>
+    <form method="post" action="{{ url_for('admin.template_save_current') }}" class="inline-form">
+      <input type="text" name="name" placeholder="New template name (optional)" maxlength="80" title="What to call this new template in your library. Leave blank to use a timestamped default you can rename later.">
+      <button type="submit" class="btn btn-small" title="Save the active look, layout, and every page's content as a brand new template.">Save as New Template</button>
+      {% if active_tpl and not active_tpl.is_builtin %}
+      {# Once the first edit has given the site a template of its own,
+         "save my work" usually means updating that one rather than
+         collecting another copy. Offered only for a template the site
+         owns: a built-in comes back from the image on every boot, so
+         overwriting one would not survive a restart. #}
+      <button type="submit" name="overwrite" value="1" class="btn btn-small"
+              title="Update &quot;{{ active_tpl.name }}&quot; so it matches the site as it is now, instead of making another copy.">Update "{{ active_tpl.name }}"</button>
+      {% endif %}
+    </form>
+  </details>
+</section>
+
+<section class="card">
+  <h2>Layout</h2>
+  <p class="muted">Customizations layered on top of whichever template is active above — not templates of their own. Structure — where the logo/navigation sit, and what shape the sidebars start in. One site-wide choice each, reused by whichever template is active. Click to apply (saves immediately).</p>
+  <div class="nav-layout-picker" id="cms-tpl-structure-grid" data-has-sidebar-content="{{ 'true' if has_sidebar_content else 'false' }}">
+    {% for key, info in nav_layouts.items() %}
+    <button type="button" class="nav-layout-option {{ 'nav-layout-option-selected' if nav_layout == key }}"
+            data-nav-url="{{ url_for('admin.settings_nav_layout') }}" data-nav-layout="{{ key }}" title="{{ info[0] }} — {{ info[1] }}">
+      {{ nav_layout_diagram(key) }}
+      <span class="nav-layout-option-label">{{ info[0] }}</span>
+    </button>
+    {% endfor %}
+  </div>
+  {% if active_tpl %}
+  <p class="cms-tpl-section-label" style="margin-top:14px;">Page layout <span class="hint">— the page's structural shape: sidebars (or none); asks first if a side already has one</span></p>
+  <div class="nav-layout-picker" id="cms-tpl-sidebar-grid">
+    {% for key, preset in sidebar_layout_presets.items() %}
+    <button type="button" class="nav-layout-option"
+            data-sidebar-url="{{ url_for('admin.template_apply_sidebar_layout', template_id=active_tpl.id) }}" data-preset="{{ key }}" title="{{ preset.name }} — {{ preset.description }}">
+      {{ sidebar_layout_diagram(key) }}
+      <span class="nav-layout-option-label">{{ preset.name }}</span>
+    </button>
+    {% endfor %}
+  </div>
+
+  <p class="cms-tpl-section-label" style="margin-top:14px;">Footer layout <span class="hint">— drops ordinary, editable sections (menu, contact icons, columns) into the footer; replaces what's there if it isn't empty</span></p>
+  <div class="nav-layout-picker" id="cms-tpl-footer-grid">
+    {% for key, preset in footer_layout_presets.items() %}
+    <button type="button" class="nav-layout-option"
+            data-footer-url="{{ url_for('admin.template_apply_footer_layout', template_id=active_tpl.id) }}" data-preset="{{ key }}" title="{{ preset.name }} — {{ preset.description }}">
+      {{ footer_layout_diagram(key) }}
+      <span class="nav-layout-option-label">{{ preset.name }}</span>
+    </button>
+    {% endfor %}
+  </div>
+  {% endif %}
+</section>
+
+<script src="{{ static_url('js/admin/dashboard.js') }}"></script>
+<script src="{{ static_url('js/admin/template-panel.js') }}"></script>
+{% endblock %}

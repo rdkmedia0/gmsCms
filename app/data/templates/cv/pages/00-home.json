@@ -1,0 +1,54 @@
+{
+  "title": "Home",
+  "slug_suffix": "home",
+  "page_type": "standard",
+  "meta_description": "Product designer with 8 years of experience building B2B software.",
+  "sections": [
+    [
+      "banner",
+      "",
+      "<div class=\"cms-banner\" style=\"background-image:url('media/cv-banner.png')\"><div class=\"cms-banner-overlay\"><h2>Jordan Avery</h2><p>Product Designer — 8 years building B2B software people actually enjoy using.</p></div></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-stats\" data-count=\"3\"><div class=\"cms-stat-row\"><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat1_value\">8</span><span class=\"cms-stat-label\" data-field=\"stat1_label\">Years designing product</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat2_value\">4</span><span class=\"cms-stat-label\" data-field=\"stat2_label\">Teams worked in</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat3_value\">2</span><span class=\"cms-stat-label\" data-field=\"stat3_label\">Design systems built from nothing</span></div></div></div>",
+      {
+        "bg_color": "#e799a6"
+      }
+    ],
+    [
+      "text",
+      "Profile",
+      "<p>I'm a product designer focused on turning complex workflows into interfaces people barely have to think about. I've led design at two Series B startups and shipped products used by thousands of teams daily.</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<table class=\"cms-table\"><thead><tr><th>Role</th><th>Company</th><th>Years</th></tr></thead><tbody><tr><td>Senior Product Designer</td><td>Northwind Software</td><td>2021 – Present</td></tr><tr><td>Product Designer</td><td>Lattice Labs</td><td>2018 – 2021</td></tr><tr><td>UI Designer</td><td>Studio Ferro</td><td>2016 – 2018</td></tr></tbody></table>",
+      {}
+    ],
+    [
+      "columns",
+      "",
+      "{\"columns\": [{\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>Product Design</h3><p>Figma, design systems, prototyping</p></div>\", \"tool_name\": \"Card\"}, {\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>Research</h3><p>User interviews, usability testing</p></div>\", \"tool_name\": \"Card\"}, {\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>Front-end</h3><p>HTML/CSS, basic React</p></div>\", \"tool_name\": \"Card\"}]}",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-testimonial\" data-style=\"plain\"><figure class=\"cms-quote cms-quote-plain\"><img class=\"cms-quote-photo\" src=\"media/cv-quote-petra.png\" alt=\"\" data-field=\"photo\"><blockquote data-field=\"quote\">Jordan is the rare designer who will tell you the feature you asked for is not the one you need, show you why, and be right.</blockquote><figcaption><span class=\"cms-quote-name\" data-field=\"name\">Dr. Petra Vogel</span><span class=\"cms-quote-role\" data-field=\"role\">Head of Product, Northwind Software</span></figcaption></figure></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-cta\" data-tone=\"outline\"><div class=\"cms-cta cms-cta-outline\"><h2 data-field=\"heading\">Open to the right thing</h2><p data-field=\"text\">Not actively looking, but always glad to hear about work that sounds interesting.</p><a class=\"cms-cta-btn\" href=\"/contact\" data-href-field=\"link\"><span data-field=\"cta\">Get in touch</span></a></div></div>",
+      {
+        "bg_color": "#a8c1f0"
+      }
+    ]
+  ]
+}

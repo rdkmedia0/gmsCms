@@ -1,0 +1,38 @@
+{
+  "title": "About",
+  "slug_suffix": "about",
+  "page_type": "standard",
+  "meta_description": "A bit more about me and how I work.",
+  "sections": [
+    [
+      "html",
+      "",
+      "<nav class=\"cms-breadcrumb cms-breadcrumb-medium cms-breadcrumb-style-pill\">%%CMS_BREADCRUMB%%</nav>",
+      {}
+    ],
+    [
+      "banner",
+      "",
+      "<div class=\"cms-banner\" style=\"background-image:url('media/personal-banner.png')\"><div class=\"cms-banner-overlay\"><h2>A Bit More About Me</h2><p>How a decade of road trips turned into a full-time habit.</p></div></div>",
+      {}
+    ],
+    [
+      "text",
+      "My Story",
+      "<p>I picked up a camera on a cross-country road trip a decade ago and never really put it down. What started as trip photos turned into paid editorial work, then a slow migration into writing about the places themselves, not just photographing them.</p><p>These days about half my time is client work — editorial and travel commissions — and half is this site: long-form essays and images from wherever I've been most recently.</p>",
+      {}
+    ],
+    [
+      "columns",
+      "",
+      "{\"columns\": [{\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>Editorial Clients</h3><p>Travel and outdoor publications, mostly.</p></div>\", \"tool_name\": \"Card\"}, {\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>Gear</h3><p>One camera body, three lenses \\u2014 kept deliberately simple.</p></div>\", \"tool_name\": \"Card\"}, {\"type\": \"card\", \"content\": \"<div class=\\\"cms-card-shape\\\"><h3>Based In</h3><p>Portland, Oregon \\u2014 often not there.</p></div>\", \"tool_name\": \"Card\"}]}",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-stats\" data-count=\"3\"><div class=\"cms-stat-row\"><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat1_value\">9</span><span class=\"cms-stat-label\" data-field=\"stat1_label\">Years shooting</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat2_value\">120+</span><span class=\"cms-stat-label\" data-field=\"stat2_label\">Commissions</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat3_value\">4</span><span class=\"cms-stat-label\" data-field=\"stat3_label\">Published series</span></div></div></div>",
+      {}
+    ]
+  ]
+}

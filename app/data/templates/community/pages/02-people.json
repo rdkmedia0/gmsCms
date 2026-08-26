@@ -1,0 +1,26 @@
+{
+  "title": "The people",
+  "slug_suffix": "people",
+  "page_type": "standard",
+  "meta_description": "Who keeps it going.",
+  "sections": [
+    [
+      "text",
+      "No staff, no salaries",
+      "<p>Everyone here is a volunteer, including the committee.</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-team\" data-count=\"2\"><div class=\"cms-team-grid\"><div class=\"cms-person\"><img class=\"cms-person-photo\" src=\"media/community-team-1.png\" alt=\"\" loading=\"lazy\" data-field=\"person1_photo\"><h3 class=\"cms-person-name\" data-field=\"person1_name\">Brigitte</h3><p class=\"cms-person-role\" data-field=\"person1_role\">Chair, and the compost</p><p class=\"cms-person-bio\" data-field=\"person1_bio\">Here since the first year. Knows what will grow in the shaded corner, which is almost nothing.</p></div><div class=\"cms-person\"><img class=\"cms-person-photo\" src=\"media/community-team-2.png\" alt=\"\" loading=\"lazy\" data-field=\"person2_photo\"><h3 class=\"cms-person-name\" data-field=\"person2_name\">Kwame</h3><p class=\"cms-person-role\" data-field=\"person2_role\">Saturdays</p><p class=\"cms-person-bio\" data-field=\"person2_bio\">Came for one afternoon in 2022 and has not stopped. Runs the seed swap.</p></div></div></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-testimonial\" data-style=\"large\"><figure class=\"cms-quote cms-quote-large\"><blockquote data-field=\"quote\">I moved here knowing nobody. Six months later I knew forty people, all of them because of a shared wheelbarrow.</blockquote><figcaption><span class=\"cms-quote-name\" data-field=\"name\">Hanna Lüthi</span><span class=\"cms-quote-role\" data-field=\"role\">Volunteer</span></figcaption></figure></div>",
+      {}
+    ]
+  ]
+}

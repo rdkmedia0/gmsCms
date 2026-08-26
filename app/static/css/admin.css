@@ -1,0 +1,709 @@
+/*  The editor's own accent. Every control in this app looks the same on
+    every install: these are the app's buttons, focus rings and selected
+    states, not the site's, and a control that changes colour with the
+    template is a control whose legibility is decided by somebody's brand.
+    That was not hypothetical -- the self-help template ships #7c8c74,
+    which gave the admin's own primary buttons 3.58:1 for their white
+    text, and an owner can override the palette to anything at all. The
+    site's colours still reach everything the site owns; see
+    site-base.css. */
+:root { --cms-ui-accent: #2563eb; --cms-ui-accent-dark: #1d4ed8; }
+
+/*  The corner scale, declared here too for the same reason as
+    --cms-ui-accent: this stylesheet is loaded on pages where the others
+    are not, and a token that resolves on one page and not the other is
+    worse than no token. The rule behind the two values is in
+    inline-editor.css. */
+:root { --cms-ui-radius-control: 4px; --cms-ui-radius-surface: 8px; }
+
+:root {
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --danger: #dc2626;
+  --bg: #f5f6f8;
+  --card-bg: #ffffff;
+  --border: #e2e4e9;
+  --text: #1f2430;
+  --muted: #6b7280;
+
+  /* Same typography scale as the public site (app/static/css/site-base.css)
+     so backend headers/menus keep the same size and feel as the front end.
+     Redefined here (not just linked) so admin.css works even if a future
+     page forgets to load site-base.css first. */
+  --site-font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  --site-heading-font-family: var(--site-font-family);
+  --site-brand-size: 22px;
+  --site-nav-size: 16px;
+  --site-nav-weight: 600;
+  --site-heading-weight: 700;
+  --site-h1-size: 42px;
+  --site-h2-size: 32px;
+  --site-h3-size: 24px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--site-font-family);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+.admin-header {
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 24px;
+}
+.admin-header .brand {
+  font-family: var(--site-heading-font-family);
+  font-weight: var(--site-heading-weight);
+  font-size: var(--site-brand-size);
+  text-decoration: none;
+  color: var(--text);
+}
+.admin-header nav a {
+  margin-left: 20px;
+  text-decoration: none;
+  color: var(--cms-ui-accent);
+  font-weight: var(--site-nav-weight);
+  font-size: var(--site-nav-size);
+}
+
+.admin-main { max-width: 900px; margin: 0 auto; padding: 24px; }
+
+h1 { font-family: var(--site-heading-font-family); font-weight: var(--site-heading-weight); font-size: 30px; margin-bottom: 16px; }
+h2 { font-family: var(--site-heading-font-family); font-weight: var(--site-heading-weight); font-size: 22px; margin: 0; }
+h3 { font-family: var(--site-heading-font-family); font-weight: var(--site-heading-weight); font-size: 18px; }
+
+.muted { color: var(--muted); }
+.hint { color: var(--muted); font-size: 15px; }
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--cms-ui-radius-surface);
+  padding: 20px 24px;
+  margin-bottom: 24px;
+}
+.card-header { display: flex; justify-content: space-between; align-items: center;
+  gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+
+.empty-state { text-align: center; color: var(--muted); }
+
+label { display: block; font-weight: 600; margin: 14px 0 6px; }
+input[type=text], input[type=password], input[type=file], select, textarea {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 17px;
+  border: 2px solid var(--border);
+  border-radius: var(--cms-ui-radius-control);
+  font-family: inherit;
+}
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--cms-ui-accent); }
+
+.btn {
+  display: inline-block;
+  padding: 10px 18px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: var(--cms-ui-radius-control);
+  border: 2px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text);
+  cursor: pointer;
+  text-decoration: none;
+  margin-top: 14px;
+}
+.btn:hover { border-color: var(--cms-ui-accent); }
+.btn-primary { background: var(--cms-ui-accent); border-color: var(--cms-ui-accent); color: white; }
+.btn-primary:hover { background: var(--cms-ui-accent-dark); }
+.btn-danger { color: var(--danger); border-color: var(--danger); }
+.btn-danger:hover { background: var(--danger); color: white; }
+.btn-small { padding: 6px 12px; font-size: 14px; margin-top: 0; }
+.btn-block { display: block; width: 100%; text-align: center; }
+
+.media-library-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; margin-top: 16px; }
+.media-library-item { position: relative; aspect-ratio: 1; border-radius: var(--cms-ui-radius-surface); overflow: hidden; background: var(--bg-alt, #f3f3f3); }
+.media-library-thumb-btn {
+  display: block; width: 100%; height: 100%; padding: 0; border: none; cursor: pointer;
+  background: var(--bg-alt, #f3f3f3);
+}
+.media-library-thumb-btn img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.media-library-thumb-btn.media-library-file {
+  display: flex; align-items: center; justify-content: center; font-size: 32px; text-decoration: none;
+}
+.media-library-delete {
+  position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; line-height: 20px;
+  border: none; border-radius: 50%; background: rgba(0, 0, 0, 0.6); color: #fff;
+  font-size: 15px; text-align: center; cursor: pointer; padding: 0;
+}
+.media-library-delete:hover { background: var(--danger); }
+
+.media-lightbox {
+  position: fixed; inset: 0; z-index: 3000; background: rgba(0, 0, 0, 0.85);
+  display: flex; align-items: center; justify-content: center; flex-direction: column;
+}
+.media-lightbox[hidden] { display: none; }
+.media-lightbox-inner { max-width: 90vw; max-height: 78vh; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.media-lightbox-inner img { max-width: 90vw; max-height: 70vh; object-fit: contain; border-radius: var(--cms-ui-radius-surface); }
+.media-lightbox-caption { color: #eee; font-size: 13px; max-width: 80vw; text-align: center; }
+.media-lightbox-nav {
+  position: fixed; top: 50%; transform: translateY(-50%); background: rgba(255, 255, 255, 0.12);
+  color: #fff; border: none; width: 48px; height: 48px; border-radius: 50%; font-size: 28px;
+  cursor: pointer; line-height: 1;
+}
+.media-lightbox-nav:hover { background: rgba(255, 255, 255, 0.25); }
+.media-lightbox-prev { left: 20px; }
+.media-lightbox-next { right: 20px; }
+.media-lightbox-close {
+  position: fixed; top: 16px; right: 20px; background: none; border: none; color: #fff;
+  font-size: 32px; cursor: pointer; line-height: 1;
+}
+.media-lightbox-actions { display: flex; gap: 10px; margin-top: 12px; }
+
+.favicon-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.favicon-preview {
+  position: relative;
+  width: 32px; height: 32px; border-radius: var(--cms-ui-radius-surface); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center; overflow: visible; flex-shrink: 0;
+  background: var(--bg-alt, #f3f3f3); box-sizing: border-box;
+}
+.favicon-preview img { width: 100%; height: 100%; object-fit: cover; border-radius: var(--cms-ui-radius-surface); }
+.favicon-preview-empty { font-size: 13px; color: var(--muted); text-align: center; }
+.favicon-remove-form { margin: 0; }
+.favicon-remove-btn {
+  position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; line-height: 16px;
+  border: 1px solid var(--card-bg, #fff); border-radius: 50%; background: rgba(0, 0, 0, 0.65); color: #fff;
+  font-size: 13px; text-align: center; cursor: pointer; padding: 0;
+}
+.favicon-remove-btn:hover { background: var(--danger); }
+.favicon-text-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  height: 32px; padding: 0 10px; font-size: 13px; font-weight: 600; white-space: nowrap;
+  border: 1px solid var(--border); border-radius: var(--cms-ui-radius-control); box-sizing: border-box;
+  background: var(--card-bg, #fff); color: var(--text); cursor: pointer; list-style: none;
+}
+.favicon-text-btn:hover { border-color: var(--cms-ui-accent); }
+.favicon-row .favicon-upload-form { margin: 0; display: contents; }
+.favicon-emoji-picker, .favicon-ai-gen { position: relative; }
+.favicon-emoji-picker summary, .favicon-ai-gen summary { list-style: none; cursor: pointer; }
+.favicon-emoji-picker summary::-webkit-details-marker, .favicon-ai-gen summary::-webkit-details-marker { display: none; }
+.favicon-text-btn::-webkit-details-marker { display: none; }
+.favicon-emoji-grid {
+  position: absolute; top: 100%; left: 0; z-index: 20; margin-top: 6px;
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px;
+  background: var(--card-bg, #fff); border: 1px solid var(--border); border-radius: var(--cms-ui-radius-surface);
+  padding: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); width: 220px;
+}
+.favicon-emoji-grid form { margin: 0; }
+.favicon-emoji-btn {
+  width: 32px; height: 32px; font-size: 17px; border: 1px solid transparent; border-radius: var(--cms-ui-radius-control);
+  background: none; cursor: pointer;
+}
+.favicon-emoji-btn:hover { border-color: var(--cms-ui-accent); background: var(--bg-alt, #f3f3f3); }
+.favicon-ai-gen form {
+  position: absolute; top: 100%; left: 0; z-index: 20; margin-top: 6px; display: flex; gap: 6px;
+  background: var(--card-bg, #fff); border: 1px solid var(--border); border-radius: var(--cms-ui-radius-surface);
+  padding: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); width: 260px;
+}
+.favicon-ai-gen input[type="text"] { flex: 1; min-width: 0; }
+
+.nav-layout-picker { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.nav-layout-option-form { margin: 0; }
+.nav-layout-option {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  width: 88px; padding: 6px; border: 2px solid var(--border); border-radius: var(--cms-ui-radius-control);
+  background: var(--card-bg, #fff); cursor: pointer;
+}
+.nav-layout-option:hover { border-color: var(--cms-ui-accent); }
+.nav-layout-option-selected { border-color: var(--cms-ui-accent); background: color-mix(in srgb, var(--cms-ui-accent) 8%, var(--card-bg, #fff)); }
+.nav-diagram-svg { width: 100%; height: auto; display: block; }
+.nd-header { fill: var(--bg-alt, #eef0f3); stroke: var(--border); stroke-width: 1; }
+.nd-footer { fill: var(--bg-alt, #eef0f3); stroke: var(--border); stroke-width: 1; }
+.nd-content { fill: none; stroke: var(--border); stroke-width: 1; }
+.nd-mark { fill: var(--muted); opacity: 0.55; }
+.nd-mark-dim { opacity: 0.3; }
+.nd-mark-dashed { fill: none; stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 2; opacity: 0.5; }
+.nav-layout-option-selected .nd-header { fill: color-mix(in srgb, var(--cms-ui-accent) 18%, white); stroke: var(--cms-ui-accent); }
+.nav-layout-option-selected .nd-footer { fill: color-mix(in srgb, var(--cms-ui-accent) 18%, white); stroke: var(--cms-ui-accent); }
+.nav-layout-option-selected .nd-mark { fill: var(--cms-ui-accent); opacity: 0.8; }
+.nd-rail { fill: var(--muted); opacity: 0.35; stroke: var(--border); stroke-width: 1; }
+.nav-layout-option-selected .nd-rail { fill: var(--cms-ui-accent); opacity: 0.55; stroke: var(--cms-ui-accent); }
+.nav-layout-option-label { font-size: 11px; font-weight: 600; color: var(--text); }
+
+.sidebar-layout-presets { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 8px; }
+.sidebar-layout-preset-form { margin: 0; }
+.sidebar-layout-preset-btn {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px; width: 100%;
+  padding: 12px 14px; border: 2px solid var(--border); border-radius: var(--cms-ui-radius-control);
+  background: var(--card-bg, #fff); cursor: pointer; text-align: left;
+}
+.sidebar-layout-preset-btn:hover { border-color: var(--cms-ui-accent); }
+.sidebar-layout-preset-name { font-size: 13px; font-weight: 700; color: var(--text); }
+.sidebar-layout-preset-desc { font-size: 12px; color: var(--muted); line-height: 1.4; }
+
+.form-row { margin-bottom: 6px; }
+.tg-layout-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.tg-layout-choice {
+  display: flex; flex-direction: column; gap: 4px; font-weight: normal; margin: 0;
+  padding: 12px 14px; border: 2px solid var(--border); border-radius: var(--cms-ui-radius-control); cursor: pointer;
+}
+.tg-layout-choice:has(input:checked) { border-color: var(--cms-ui-accent); background: var(--bg-alt, #f7f8fa); }
+.tg-layout-choice input { width: auto; margin-right: 6px; }
+.tg-layout-name { font-weight: 700; }
+.tg-checkbox-label { display: flex; align-items: center; gap: 8px; font-weight: normal; }
+.tg-checkbox-label input { width: auto; }
+
+.simple-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+.simple-table th, .simple-table td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); }
+/*  Wrap rather than force the row wider — table-layout:fixed above gives
+    this cell a fixed share of the table's width, and a row of buttons
+    that refuses to shrink (flexbox's own default) pushes straight past
+    it, dragging the whole table into its own horizontal scrollbar even
+    when the page has plenty of spare width either side of the table. */
+.simple-table .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+/*  width: 1% is the old trick for "as narrow as your content and not one
+    pixel more" in an auto-layout table: the browser hands the column its
+    minimum, and nowrap makes that minimum the icons in a row. Every row
+    then has its icons in the same place, which is the whole ask. */
+.simple-table .col-icons { width: 1%; white-space: nowrap; text-align: left; }
+.simple-table td { vertical-align: middle; }
+.simple-table form { display: inline; }
+
+.badge { background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 999px; font-size: 14px; font-weight: 600; }
+/*  A badge says yes by default -- it was only ever used for "active",
+    "home", "customer". Saying NO in the same green reads as a tick until
+    you look twice, which the setup summary made obvious: a row of green
+    dashes for the things that are not set up.
+
+    Not-set has two meanings and they are not the same news. Amber is
+    "you have not set this up", which for most of the list is a perfectly
+    fine way to run a website -- nobody needs Stripe on a site that sells
+    nothing. Red is "this site needs it and does not have it": there is a
+    Shop on a page and no way to pay, a contact form and no way to send.
+    Which one a row gets is decided by what the site actually contains,
+    not by a fixed opinion about what a website ought to have. */
+.badge.is-off { background: #fdf1d8; color: #8a5a10; }
+.badge.is-critical { background: #fee2e2; color: #991b1b; }
+/*  The line under a red row: what on this site is broken by the gap. */
+.wizard-summary .needed-because { color: #991b1b; font-weight: 600; margin: 4px 0 8px; }
+
+/*  Warnings had no colour at all -- `.flash-warning` was never written,
+    so every warning in this app rendered as a plain box and read as a
+    remark. The two on a new install (the site is still called somebody
+    else's business, you are still on the generated password) are the
+    ones that most needed to look like warnings. */
+.flash-warning { background: #fdf1d8; color: #8a5a10; }
+
+/*  The part of every newsletter the owner does not get to write. Shown
+    rather than hidden: somebody who cannot see the unsubscribe line
+    assumes it is missing, and somebody who wants it gone should be told
+    plainly that it is not going. */
+.cms-newsletter-fixed {
+  margin: 10px 0; padding: 8px 12px;
+  border-left: 3px solid var(--border, #e2e4e9); background: #f7f8fa;
+  border-radius: var(--cms-ui-radius-control);
+}
+.cms-newsletter-fixed p { margin: 0 0 4px; }
+.cms-newsletter-fixed p:last-child { margin-bottom: 0; }
+
+/*  The setup walk-through. One question per screen, so the screen is
+    narrow on purpose -- a form the width of a desk is a form nobody
+    reads. */
+.wizard { max-width: 640px; margin: 0 auto; }
+.wizard-head h1 { margin-bottom: 2px; }
+.wizard-count { margin: 0 0 14px; color: var(--muted, #6b7480); font-size: .9rem; }
+/*  Where you are and what is coming: a walk you can see the end of is a
+    walk somebody finishes. */
+.wizard-steps {
+  display: flex; flex-wrap: wrap; gap: 6px; list-style: none;
+  margin: 0 0 18px; padding: 0; font-size: .8rem;
+}
+.wizard-steps li {
+  padding: 3px 10px; border-radius: 999px; background: #f1f3f6; color: var(--muted, #6b7480);
+}
+.wizard-steps li a { color: inherit; text-decoration: none; }
+.wizard-steps li.is-done { background: #e7f3ea; color: #166534; }
+.wizard-steps li.is-here { background: var(--cms-ui-accent, #2563eb); color: #fff; font-weight: 600; }
+.wizard-form label { display: block; margin: 14px 0 4px; font-weight: 600; }
+.wizard-form input[type="text"], .wizard-form input[type="email"],
+.wizard-form input[type="password"], .wizard-form select, .wizard-form textarea {
+  width: 100%; box-sizing: border-box;
+}
+.wizard-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 20px; }
+.wizard-actions .btn-primary { margin-right: auto; }
+.wizard-leave { margin-top: 14px; text-align: center; }
+.wizard-summary, .wizard-extras { list-style: none; margin: 0; padding: 0; }
+.wizard-summary li, .wizard-extras li {
+  padding: 10px 0; border-top: 1px solid var(--border, #e2e4e9);
+}
+.wizard-summary li:first-child, .wizard-extras li:first-child { border-top: 0; }
+.wizard-summary code { margin-left: 6px; font-size: .85rem; }
+.wizard-summary .hint, .wizard-extras .hint { margin: 4px 0 8px; }
+
+/*  An action is an icon with a tooltip, the same as everywhere in the
+    editor: a pencil edits, a red × deletes, a tick is a state rather than
+    a button. The admin screens were the last place still spelling those
+    out in words, and a word is four times the width of the thing it
+    names -- which is why a four-column table on a phone had buttons
+    taller than the rows they sat in.
+
+    The tooltip carries the sentence. Every one of these has a title, and
+    that is not decoration: it is the only text, so it is the only
+    explanation. */
+.icon-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; padding: 0; flex: 0 0 auto;
+  border: 1px solid var(--border); border-radius: 999px;
+  background: #fff; color: var(--cms-ui-text);
+  font-size: 15px; line-height: 1; cursor: pointer; text-decoration: none;
+}
+.icon-btn:hover, .icon-btn:focus-visible { border-color: var(--cms-ui-accent); }
+/*  Red, and only for the thing that cannot be undone. */
+.icon-btn-danger { color: #dc2626; font-size: 20px; }
+.icon-btn-danger:hover, .icon-btn-danger:focus-visible { border-color: #dc2626; background: #fef2f2; }
+/*  A state, not a control: no border, nothing to press. */
+.icon-state {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; color: #166534; font-size: 17px;
+}
+/*  Never wrap. Wrapping is what made the tables look disordered: the
+    columns size to their content, so a row with a long page name left
+    less room and pushed one icon onto a second line -- and the next row
+    kept all three together. Every row then had its actions in a
+    different arrangement, some in a line and some in an L.
+
+    They stay on one line and the column takes exactly the width they
+    need (see .col-icons); if the whole table then will not fit, the
+    table scrolls, which it already does. */
+.row-actions { display: inline-flex; align-items: center; gap: 6px; flex-wrap: nowrap; }
+.row-actions form { display: inline; margin: 0; }
+
+/*  A pencil that opens the thing it edits, with no script: the summary IS
+    the button, and what it reveals sits under the row it belongs to. */
+.tree-edit { display: inline; }
+.tree-edit > summary { list-style: none; }
+.tree-edit > summary::-webkit-details-marker { display: none; }
+.tree-edit[open] > summary { border-color: var(--cms-ui-accent); }
+.tree-edit-body { display: flex; gap: 8px; align-items: center; margin: 8px 0 0 8px; }
+.tree-edit-body input { flex: 1 1 auto; min-width: 0; }
+
+/*  Blogs as a tree: a blog, and the posts that belong to it indented
+    under it, because that is the shape of the thing -- a blog IS a set of
+    posts, and a list of blogs beside a separate list of posts made you
+    hold that relationship in your head. */
+.blog-tree, .blog-tree ul { list-style: none; margin: 0; padding: 0; }
+.blog-tree > li { border-top: 1px solid var(--border); padding: 10px 0; }
+.blog-tree > li:first-child { border-top: 0; }
+.tree-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tree-row .tree-name { font-weight: 600; }
+.tree-row .row-actions { margin-left: auto; }
+.tree-children { margin: 6px 0 0 18px; border-left: 2px solid var(--border); padding-left: 12px; }
+.tree-children .tree-row { padding: 4px 0; font-size: .95rem; }
+.tree-children .tree-name { font-weight: 400; }
+.tree-empty { color: var(--muted); font-size: .9rem; padding: 4px 0; }
+
+/*  The blog list. Its own layout rather than .inline-form's, which is
+    built for a row of controls that may wrap and gives its input a 180px
+    minimum -- fine for a settings row, wrong here, where it meant the
+    Rename button could never sit beside the name and dropped to a
+    full-width line of its own.
+
+    min-width: 0 on the input is the load-bearing part: a flex item will
+    not shrink below its content width without it, which is what pushes
+    everything else onto new lines. */
+.blog-list { list-style: none; margin: 12px 0 0; padding: 0; }
+.blog-row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  padding: 12px 0; border-top: 1px solid var(--border);
+}
+.blog-row:first-child { border-top: 0; }
+.blog-name { display: flex; align-items: center; gap: 8px; margin: 0; flex: 1 1 240px; }
+.blog-name input { flex: 1 1 auto; min-width: 0; width: auto; }
+.blog-address { color: var(--muted); font-size: .9rem; overflow-wrap: anywhere; }
+/*  Pushed to the far end on a wide row, and simply next in line once the
+    row wraps -- never a column of full-width buttons. */
+.blog-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+.blog-actions form { display: inline; margin: 0; }
+
+.inline-form { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+.inline-form input, .inline-form select { width: auto; flex: 1; min-width: 180px; }
+
+.color-picker-form { display: flex; flex-wrap: wrap; gap: 12px 20px; margin: 12px 0; }
+.color-picker-item { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; }
+.color-picker-item input[type="color"] { width: 36px; height: 36px; padding: 2px; border: 2px solid var(--border); border-radius: var(--cms-ui-radius-control); cursor: pointer; }
+
+.preset-gallery { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0; }
+.preset-swatch {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  background: var(--card-bg); border: 2px solid var(--border); border-radius: var(--cms-ui-radius-control);
+  padding: 10px 14px; cursor: pointer; font-family: inherit;
+}
+.preset-swatch:hover { border-color: var(--cms-ui-accent); }
+.preset-dots { display: flex; }
+.preset-dot { width: 18px; height: 18px; border-radius: 50%; margin-left: -6px; border: 2px solid var(--card-bg); }
+.preset-dot:first-child { margin-left: 0; }
+.preset-label { font-size: 12px; font-weight: 600; color: var(--text); }
+.advanced-colors { margin-top: 14px; }
+
+.login-box { max-width: 400px; margin: 60px auto; background: var(--card-bg); padding: 32px; border-radius: var(--cms-ui-radius-surface); border: 1px solid var(--border); }
+.btn-google {
+  display: flex; align-items: center; justify-content: center;
+  background: #fff; border: 2px solid var(--border); color: var(--text); font-weight: 600;
+}
+.btn-google:hover { border-color: #4285F4; }
+.login-divider { display: flex; align-items: center; gap: 12px; margin: 18px 0; color: var(--muted); font-size: 13px; }
+.login-divider::before, .login-divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+.chat-log {
+  max-height: 420px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
+  padding: 12px; background: var(--bg); border-radius: var(--cms-ui-radius-surface); margin-bottom: 12px; min-height: 120px;
+}
+.chat-msg { padding: 10px 14px; border-radius: var(--cms-ui-radius-surface); max-width: 80%; white-space: pre-wrap; }
+.chat-msg-user { align-self: flex-end; background: var(--cms-ui-accent); color: #fff; }
+.chat-msg-assistant { align-self: flex-start; background: var(--card-bg); border: 1px solid var(--border); }
+.chat-proposal {
+  background: #fffbeb; border: 2px solid #fbbf24; border-radius: var(--cms-ui-radius-surface); padding: 16px; margin-bottom: 12px;
+}
+.chat-proposal pre {
+  white-space: pre-wrap; word-break: break-word; background: #fff; padding: 10px;
+  border-radius: var(--cms-ui-radius-surface); border: 1px solid var(--border); max-height: 240px; overflow-y: auto; font-size: 13px;
+}
+
+.flash-list { margin-bottom: 20px; }
+.flash { padding: 12px 16px; border-radius: var(--cms-ui-radius-surface); margin-bottom: 10px; font-weight: 600; }
+.flash-success { background: #dcfce7; color: #166534; }
+.flash-error { background: #fee2e2; color: #991b1b; }
+
+.page-edit-header { display: flex; justify-content: space-between; align-items: center; }
+
+.preview-img { max-width: 100%; margin-top: 12px; border-radius: var(--cms-ui-radius-surface); border: 1px solid var(--border); }
+
+.cms-menu-item-list { list-style: none; padding: 0; margin: 12px 0; }
+.cms-menu-item-list li {
+  display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+  border: 1px solid var(--border); border-radius: var(--cms-ui-radius-surface); margin-bottom: 6px; background: var(--bg);
+}
+.cms-menu-item-list li form { margin-left: auto; }
+.cms-menu-item-list .cms-drag-handle { cursor: grab; }
+.cms-menu-item-list .cms-dragging { opacity: 0.4; }
+.cms-menu-item-list .cms-danger { background: none; border: none; color: var(--danger); font-size: 16px; cursor: pointer; }
+
+/* Emoji icon preview (Dashboard) — mirrors .cms-icon in site-base.css,
+   duplicated here rather than pulling in that whole (public-site-focused)
+   stylesheet just for this one preview. */
+.cms-icon { font-size: 20px; line-height: 1; }
+.cms-icon-style-preview { display: flex; flex-wrap: wrap; gap: 10px; padding: 8px 0; }
+
+/* The icon picker dropdown (also used on the live public page — see
+   inline-editor.css — duplicated here since blog_post_edit.html only
+   loads admin.css). Opens right below whichever "insert icon" button was
+   clicked, positioned via JS. */
+.cms-blog-content-tools { margin-bottom: 6px; }
+.cms-icon-grid-view {
+  position: absolute; z-index: 20; background: #fff; border: 1px solid var(--border);
+  border-radius: var(--cms-ui-radius-surface); box-shadow: 0 4px 14px rgba(0,0,0,0.14); padding: 6px;
+  width: 220px;
+}
+.cms-icon-grid {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px;
+  max-height: 180px; overflow-y: auto;
+}
+.cms-icon-grid-btn {
+  width: 36px; height: 36px; border: 1px solid var(--border); border-radius: var(--cms-ui-radius-control);
+  background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  padding: 0;
+}
+.cms-icon-grid-btn:hover { border-color: var(--cms-ui-accent); background: #eff6ff; }
+
+/* Integrations panel — the live/test badge is the important element on
+   the page: an admin must never wonder which mode a key is in, so it is
+   read from the key prefix and stated in words, not a colour alone. */
+.integration-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.integration-head h2 { margin: 0; }
+.integration-badge {
+  font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  padding: 3px 9px; border-radius: var(--cms-ui-radius-control); white-space: nowrap;
+}
+.integration-badge.is-live { background: #fde8e6; color: #a3271b; border: 1px solid #f0b4ac; }
+.integration-badge.is-test { background: #fdf3dd; color: #7a5a12; border: 1px solid #e8cd8e; }
+.integration-badge.is-on   { background: #e3efe7; color: #2f6647; border: 1px solid #a9cdb8; }
+.integration-badge.is-off  { background: #eceef2; color: #6b7280; border: 1px solid #d5d8de; }
+/*  A section that holds several screens shows them as tabs. Chrome, so
+    it takes the editor's own colours and corners and never the site's
+    (see CLAUDE.md): a rule under the row, and the open tab sitting on
+    top of that rule rather than being a filled block, which is what
+    tells you it is the page you are on rather than a button to press. */
+.tabs {
+  display: flex; flex-wrap: wrap; gap: 2px; margin: 0 0 20px;
+  border-bottom: 1px solid var(--border, #e2e4e9);
+}
+.tab {
+  padding: 9px 16px; text-decoration: none; font-weight: 600; font-size: 15px;
+  color: var(--muted, #6b7480); border: 1px solid transparent;
+  border-radius: var(--cms-ui-radius-surface, 8px) var(--cms-ui-radius-surface, 8px) 0 0;
+  margin-bottom: -1px;
+}
+.tab:hover { color: var(--cms-ui-text, #1f2430); background: #f1f3f6; }
+.tab.is-here {
+  color: var(--cms-ui-text, #1f2430); background: #fff;
+  border-color: var(--border, #e2e4e9); border-bottom-color: #fff;
+}
+
+/*  The Dashboard's settings: one row that wraps. It was briefly four
+    labelled groups of two, which was more structure than eight buttons
+    can carry -- the headings took as much reading as the buttons did. */
+.settings-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+
+.integration-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 14px; }
+/*  Pushed to the far end of the row, away from the primary. Undoing a
+    connection is not the neighbour of saving one, and a button that
+    cannot be taken back should not be where the pointer already is. */
+.integration-disconnect { margin-left: auto; }
+/*  Wrapped onto its own line on a narrow screen, margin-left:auto no
+    longer separates anything -- so give it a gap of its own instead. */
+@media (max-width: 480px) {
+  .integration-disconnect { margin-left: 0; margin-top: 6px; }
+}
+.integration-result { margin-top: 10px; padding: 9px 12px; border-radius: var(--cms-ui-radius-surface); font-size: 14px; }
+.integration-result.ok { background: #e3efe7; color: #2f6647; }
+.integration-result.bad { background: #fde8e6; color: #a3271b; }
+
+/* Fulfilment: one question per product, and only the fields that
+   question needs. */
+.fulfilment-card .fulfilment-form { margin-top: 8px; }
+.fulfilment-fields { padding: 12px 14px; margin: 10px 0; border-left: 3px solid #d5d8de; background: #f7f8fa; border-radius: var(--cms-ui-radius-surface); }
+.fulfilment-fields[hidden] { display: none; }
+.fulfilment-fields input[type="number"] { max-width: 8rem; }
+
+.product-price-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.product-price-row input[type="number"] { max-width: 140px; }
+.product-thumb { width: 120px; height: 90px; object-fit: cover; border-radius: var(--cms-ui-radius-surface); margin-bottom: 8px; }
+.section-heading { margin: 32px 0 4px; }
+
+
+/* ---------------------------------------------------------------------
+   Small screens.
+   The admin was built at desktop width and never checked at phone width,
+   where it scrolled sideways on three screens. Everything below is about
+   one rule: nothing may be wider than the screen it is on. Each fix is
+   the smallest one that holds — a row that wraps, a table that scrolls
+   inside its own box, a long URL that breaks — rather than a separate
+   mobile layout to keep in step with the real one.
+   --------------------------------------------------------------------- */
+
+/*  The editor's side panels park off-screen with a transform, and a
+    transform still counts toward the page's scrollable width — which is
+    why the dashboard scrolled 941px wide on a 375px phone. `clip` rather
+    than `hidden`: it stops the scroll without turning the body into a
+    scroll container, so sticky headers keep working. */
+body:has(.cms-dock-panel) { overflow-x: clip; }
+
+/*  A table cannot be made narrow without making it unreadable, so the BOX
+    AROUND IT scrolls instead of the table dragging the page with it.
+
+    The box, and not the table itself. Making `.simple-table` display:
+    block used to be the trick, with `tr { display: table; width: 100% }`
+    to put the rows back -- and that is what made every admin table look
+    disordered, because **a row that is its own table works out its own
+    column widths**. Nothing lined up with the row above it: three icons
+    in a line here, two and one there, a column starting 32px further
+    across on the next row down. A table's columns are shared between its
+    rows, which is the entire reason to use one. */
+.table-scroll { display: block; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/*  Webhook addresses, redirect URIs and file paths are single unbroken
+    strings that would otherwise set the width of the whole page. */
+code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
+
+@media (max-width: 720px) {
+  main { padding: 14px 12px; }
+
+  /*  On a phone the buttons are the page. A table of four columns on a
+      375px screen gives each about 85px, and a 16px "Edit on Page" in
+      that space becomes three stacked lines with a border round them --
+      three rows of furniture for one action. Smaller type and tighter
+      padding put each back on one or two lines and give the words in the
+      first column somewhere to go.
+
+      Table buttons only: a full-width primary action like "+ Add New
+      Page" is meant to be large and stays that way. */
+  .simple-table .btn, .blog-row .btn { padding: 5px 9px; font-size: 13px; }
+  /*  Smaller circles on a phone, so three of them still fit beside the
+      widest page name without the column stealing the row. */
+  .icon-btn, .icon-state { width: 28px; height: 28px; font-size: 14px; }
+  .icon-btn-danger { font-size: 18px; }
+  .row-actions { gap: 4px; }
+  .simple-table .actions { gap: 6px; }
+
+  /*  Fixed layout divides the width equally and squeezes every column to
+      the same narrow share whatever is in it. Auto lets a column take
+      what it needs -- the table already scrolls inside its own box when
+      the total will not fit, which is the honest answer on a small
+      screen. */
+  .simple-table { table-layout: auto; }
+
+  /*  A slug is not a paragraph. `code` breaks anywhere by default here so
+      that a webhook URL cannot set the page width, but in a table cell
+      that turns "/contact" into "/conta ct". The table scrolls instead. */
+  .simple-table code { overflow-wrap: normal; word-break: keep-all; white-space: nowrap; }
+
+  .card { padding: 16px 14px; }
+
+  /*  Rows of buttons and label+field pairs stack instead of running off
+      the side. */
+  .card-header, .inline-form, .integration-head, .integration-actions,
+  .fulfilment-form, .cms-backup-actions { flex-wrap: wrap; }
+  .card-header h2 { flex: 1 1 100%; }
+
+  /*  A field that is 100% of a container which is itself too wide is
+      still too wide; min-width:0 lets flex items actually shrink. */
+  input[type=text], input[type=password], input[type=file], input[type=number],
+  input[type=email], select, textarea { max-width: 100%; min-width: 0; }
+  .inline-form > * { min-width: 0; }
+
+  /*  Full-width tap targets: a 44px row is the smallest thing a thumb
+      hits reliably, and there is no reason to be dainty with the width
+      on a phone. */
+  .btn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+  .card-header .btn, .inline-form > .btn { flex: 1 1 auto; }
+
+  /*  Anything meant to be tapped gets a thumb-sized target. The panel
+      close buttons were 18px squares, which on a phone is a game of
+      chance rather than a control. */
+  .cms-assistant-close, .cms-dock-close, .cms-panel-close,
+  .favicon-emoji-btn, .favicon-text-btn, .cms-color-preset-swatch {
+    min-width: 44px; min-height: 44px;
+  }
+
+  h1 { font-size: 1.5rem; }
+  h2 { font-size: 1.2rem; }
+}
+
+@media (max-width: 480px) {
+  /*  Below this there is no room for two of anything side by side. */
+  .card-header .btn, .inline-form > .btn, .fulfilment-form .btn { flex: 1 1 100%; }
+  .simple-table th, .simple-table td { padding: 8px 6px; font-size: .9rem; }
+}
+
+/*  The post editor's save bar: the decision to keep the work and the
+    decision that it is ready, together, because they are made together. */
+.cms-post-save-bar {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  margin-top: 12px;
+}
+.cms-post-save-bar .cms-inline-label { display: inline-flex; align-items: center; gap: 6px; }
+/*  Delete sits apart from the rest — the same reasoning as the section
+    toolbar's delete: not just another button in the row. */
+.cms-post-delete { margin-left: auto; }
+
+/*  The legal pages' one-page-or-several choice. A fieldset because the
+    two options are one decision, and it should read as one. */
+.legal-layout { border: 1px solid var(--border, #e2e4e9); border-radius: var(--cms-ui-radius-surface); padding: 10px 12px; margin: 12px 0; }
+.legal-layout legend { font-size: 12px; font-weight: 700; padding: 0 6px; }

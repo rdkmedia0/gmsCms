@@ -1,0 +1,240 @@
+{% from "partials/panel_help.html" import panel_help, panel_section with context %}
+{# The site's color controls — presets + per-color pickers — live here, on
+   the live page's edit bar, rather than buried in a per-template row on the
+   Dashboard. They apply to `template` (the currently ACTIVE template only):
+   that's the one actually painting the page you're looking at, so seeing
+   and changing its colors from right here (instead of hunting through a
+   Dashboard table of every imported theme) is the natural place for it.
+   The 8 preset "collections" (Forest, Summer, ...) are a generic curated
+   set (see COLOR_PRESETS in admin.py) — not derived from the theme itself,
+   just a quick-start applied on top of whichever palette roles (primary/
+   secondary/accent) the theme happens to have. #}
+<button type="button" class="cms-dock-tab-btn cms-dock-tab-colors" id="cms-colors-tab" data-panel="colors" title="Colors">🎨</button>
+
+<div class="cms-dock-panel" id="cms-colors-panel" data-panel="colors">
+  <div class="cms-dock-resize-handle" title="Drag to resize"></div>
+  <div class="cms-dock-resize-edge" title="Drag to resize width"></div>
+  <div class="cms-dock-header">
+    <span class="cms-dock-title">🎨 Colors</span>
+    <span class="cms-dock-header-actions">
+      {% include "partials/dock_position_toggle.html" %}
+      <button type="button" class="cms-assistant-close" id="cms-colors-close">&times;</button>
+    </span>
+    <div class="cms-dock-header-filters">
+      {% include "partials/dock_tool_search.html" %}
+      {% include "partials/dock_grouped_toggle.html" %}
+    </div>
+  </div>
+  <div class="cms-dock-content">
+    {# A disclosure, not a plain block. Picking a section on the page turns
+       on a dozen controls that apply to that one section — colours, a
+       background picture and how it is dimmed, corners, depth — which is
+       a panel's worth of form. Behind a summary it is one labelled
+       control that opens what it needs: down the side that is a fold, in
+       the bottom bar it is a spine that opens a panel over the page.
+       inline-editor.js still shows and hides this by its id, and still
+       writes the selected section's name into the summary. #}
+    <details class="cms-selected-style" id="cms-selected-style" hidden>
+      <summary id="cms-selected-style-label">Selection{{ panel_help("Colours, a background picture and how much it is dimmed, corner style and depth — for the one section you picked on the page, overriding the site-wide settings for it alone.") }}</summary>
+      <label class="cms-color-label" title="Background — overrides the theme/site default for just this selection">▧
+        <input type="color" class="cms-selected-bg-input" id="cms-selected-bg-input">
+      </label>
+      <button type="button" class="cms-selected-bg-reset" id="cms-selected-bg-reset" hidden>⟲▧</button>
+      <label class="cms-color-label" title="Border color — overrides the theme/site default for just this selection">▢
+        <input type="color" class="cms-selected-border-input" id="cms-selected-border-input">
+      </label>
+      <button type="button" class="cms-selected-border-reset" id="cms-selected-border-reset" hidden>⟲▢</button>
+      {# A picture behind this section, from the Image Library, with how
+         much to dim it. Dimming is offered as named strengths rather than
+         a slider because "how dark" only matters in terms of whether the
+         words on top can be read. #}
+      <select class="cms-selected-bgimg-select" id="cms-selected-bgimg-select" hidden
+              title="Put a picture behind this section — choose from your Image Library">
+        <option value="">Background picture: none</option>
+        {% for img in media_images or [] %}
+        <option value="{{ img.url }}">{{ img.name }}</option>
+        {% endfor %}
+      </select>
+      <select class="cms-selected-bgoverlay-select" id="cms-selected-bgoverlay-select" hidden
+              title="How much to dim the picture so the words on top stay readable">
+        <option value="medium">Dim: medium (light text)</option>
+        <option value="dark">Dim: strong (light text)</option>
+        <option value="light">Dim: pale wash (dark text)</option>
+        <option value="tint">Dim: your brand colour</option>
+      </select>
+      <select class="cms-selected-bgpos-select" id="cms-selected-bgpos-select" hidden
+              title="Which part of the picture to show, and whether it drifts as the page scrolls">
+        <option value="center">Picture: centred</option>
+        <option value="top">Picture: top</option>
+        <option value="bottom">Picture: bottom</option>
+        <option value="fixed">Picture: stays put (parallax)</option>
+      </select>
+      <select class="cms-selected-corner-select" id="cms-selected-corner-select" hidden title="Corner style for this selection — overrides the site-wide Shape setting">
+        <option value="">Corner: Site default</option>
+        {% for key, preset in shape_presets.items() %}
+        <option value="{{ key }}">Corner: {{ preset.name }}</option>
+        {% endfor %}
+      </select>
+      <select class="cms-selected-shadow-select" id="cms-selected-shadow-select" title="Depth for this selection — overrides the site-wide Depth setting">
+        <option value="">Depth: Site default</option>
+        {% for key, preset in shadow_presets.items() %}
+        <option value="{{ key }}">Depth: {{ preset.name }}</option>
+        {% endfor %}
+      </select>
+    </details>
+    {# Heads the palette controls so this section groups and folds away
+       like Corner Style and Depth below it — without it the whole run of
+       colour controls was the one part of the panel with no heading, so
+       it was also the one part that could not be collapsed. #}
+    {{ panel_section("Palette", "The site-wide colour scheme. Pick a section on the page first to colour just that one instead.") }}
+    <p class="hint" id="cms-selected-style-hint">Click a section or zone on the page to color just that one, or use the site-wide controls below.</p>
+    {% if not template %}
+    <p class="hint">No active theme to color.</p>
+    {% elif not template.palette_json %}
+    <p class="hint">"{{ template.name }}" doesn't have an editable color palette.</p>
+    {% else %}
+    <p class="hint">Colors for "{{ template.name }}" — your site's current look.</p>
+    <div class="cms-color-preset-gallery">
+      {% for key, preset in color_presets.items() %}
+      <form method="post" action="{{ url_for('admin.template_colors_preset', template_id=template.id) }}">
+        <input type="hidden" name="next" value="{{ current_path }}">
+        <input type="hidden" name="preset" value="{{ key }}">
+        {# A template's own scheme sits in the same gallery as the built-in
+           ones — the point is being able to put the Bakery colours on a
+           Clinic site without activating Bakery and taking its layout and
+           content with it. Named by its template so where it came from is
+           obvious. #}
+        <button type="submit" class="cms-color-preset-swatch" title="{{ ('Use the colours from the ' ~ preset.name ~ ' template') if preset.source == 'template' else ('Use ' ~ preset.name) }}">
+          <span class="cms-color-preset-dots">
+            <span class="cms-color-preset-dot" style="background:{{ preset.primary }}"></span>
+            <span class="cms-color-preset-dot" style="background:{{ preset.secondary }}"></span>
+            <span class="cms-color-preset-dot" style="background:{{ preset.accent }}"></span>
+          </span>
+          <span class="cms-color-preset-label">{{ preset.name }}</span>
+        </button>
+      </form>
+      {% endfor %}
+    </div>
+    {% if template.color_overrides %}
+    <form method="post" action="{{ url_for('admin.template_colors_reset', template_id=template.id) }}">
+      <input type="hidden" name="next" value="{{ current_path }}">
+      <button type="submit" class="btn btn-small" title="Put every colour back to the ones this template ships with">Reset</button>
+    </form>
+    {% endif %}
+    {% if role_color_ramps %}
+    <details class="cms-color-advanced">
+      <summary>Full range{{ panel_help("Every colour you pick becomes eleven shades, from a near-white tint for page backgrounds down to a near-black for text. Anything you build picks from these automatically, so one colour choice stays consistent across the whole site. Hover a square to see the shade it is.") }}</summary>
+      <p class="hint">Every colour you pick becomes eleven shades, from a near-white tint for page backgrounds down to a near-black for text. Anything you build with picks from these automatically, so a single colour choice stays consistent across the whole site. Hover a square to see the shade it is.</p>
+      {% set step_order = ['50','100','200','300','400','base','600','700','800','900','950'] %}
+      {% for role, shades in role_color_ramps.items() %}
+      <div class="cms-ramp-row">
+        <span class="cms-ramp-label">{{ role }}</span>
+        <div class="cms-ramp-strip">
+          {% for step in step_order %}
+          {% set value = shades.get(step) %}
+          {% if value %}
+          <span class="cms-ramp-swatch{{ ' is-base' if step == 'base' }}"
+                style="background: {{ value }};"
+                title="{{ role }} {{ '500 — the colour you picked' if step == 'base' else step }} · {{ value }}"></span>
+          {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </details>
+    {% endif %}
+
+    <details class="cms-color-advanced">
+      <summary>Customize{{ panel_help("Set each palette colour by hand instead of picking a ready-made scheme. Everything on the site that uses that role follows the colour you choose here.") }}</summary>
+      {% set overrides = (template.color_overrides | from_json) if template.color_overrides else {} %}
+      <form method="post" action="{{ url_for('admin.template_colors', template_id=template.id) }}" class="cms-color-picker-form">
+        <input type="hidden" name="next" value="{{ current_path }}">
+        {% for c in (template.palette_json | from_json) %}
+        <label class="cms-color-picker-item">
+          <input type="color" name="color_{{ c.slug }}" value="{{ overrides.get(c.slug, c.color) }}">
+          {{ c.name }}
+        </label>
+        {% endfor %}
+        <button type="submit" class="btn btn-small btn-primary">Save Colors</button>
+      </form>
+    </details>
+
+    {# Shades belongs with Full range and Customize, not out in the open
+       beside Corners and Depth: all three are about the scale DERIVED from
+       the palette above rather than a site-wide choice of their own, and
+       in the bottom bar a disclosure opens as a popover, which is the room
+       three preview tiles need. #}
+    <details class="cms-color-advanced">
+      <summary>Shades{{ panel_help("Every colour above becomes eleven shades, and this is how much colour they keep as they get lighter and darker. Subtle gives pale, almost-neutral tints; Bold keeps the colour all the way out. It never changes how readable the page is.") }}</summary>
+      <p class="hint">How much colour the eleven shades keep as they get lighter and darker. Each tile is drawn in your own colour, so it shows what it would do.</p>
+      <div class="cms-color-preset-gallery">
+        {% for key, preset in shade_spreads.items() %}
+        <form method="post" action="{{ url_for('admin.template_shades_preset', template_id=template.id) }}">
+          <input type="hidden" name="next" value="{{ current_path }}">
+          <input type="hidden" name="preset" value="{{ key }}">
+          <button type="submit" class="cms-color-preset-swatch{{ ' is-current' if (template.shade_spread or 'balanced') == key }}" title="{{ preset.name }} shades">
+            {# Each tile drawn from ITS OWN ramp, worked out server-side (see
+               _shade_previews). Reading var(--primary-100) here would read
+               whichever setting is already active, so all three tiles showed
+               the same thing and the picker told you nothing. #}
+            {% set preview = shade_previews.get(key) %}
+            <span class="cms-color-preset-dots">
+              <span class="cms-color-preset-dot" style="background:{{ preview[0] if preview else '#ddd' }}"></span>
+              <span class="cms-color-preset-dot" style="background:{{ preview[1] if preview else '#888' }}"></span>
+              <span class="cms-color-preset-dot" style="background:{{ preview[2] if preview else '#333' }}"></span>
+            </span>
+            <span class="cms-color-preset-label">{{ preset.name }}</span>
+          </button>
+        </form>
+        {% endfor %}
+      </div>
+      {% if template.shade_spread %}
+      <form method="post" action="{{ url_for('admin.template_shades_reset', template_id=template.id) }}">
+        <input type="hidden" name="next" value="{{ current_path }}">
+        <button type="submit" class="btn btn-small" title="Back to Balanced, the shades every site had before this control existed">Reset</button>
+      </form>
+      {% endif %}
+    </details>
+
+    {{ panel_section("Corners", "Shapes Banner/Card boxes and section corners site-wide — not text, which has no corners to round.") }}
+    <div class="cms-color-preset-gallery">
+      {% for key, preset in shape_presets.items() %}
+      <form method="post" action="{{ url_for('admin.template_shape_preset', template_id=template.id) }}">
+        <input type="hidden" name="next" value="{{ current_path }}">
+        <input type="hidden" name="preset" value="{{ key }}">
+        <button type="submit" class="cms-color-preset-swatch" title="Use {{ preset.name }}">
+          <span class="cms-shape-preset-swatch" style="border-radius: {{ preset.radius }};"></span>
+          <span class="cms-color-preset-label">{{ preset.name }}</span>
+        </button>
+      </form>
+      {% endfor %}
+    </div>
+    {% if template.shape_override %}
+    <form method="post" action="{{ url_for('admin.template_shape_reset', template_id=template.id) }}">
+      <input type="hidden" name="next" value="{{ current_path }}">
+      <button type="submit" class="btn btn-small" title="Put the corner style back to the one this template ships with">Reset</button>
+    </form>
+    {% endif %}
+
+    {{ panel_section("Depth", "Raises Cards, Images, Banners and file cards off the page with a soft shadow, tinted from your palette rather than black — black goes invisible on a dark theme. A full-width section stays flat on purpose: a shadow says 'this sits above the page', which reads as a mistake on something that IS the page.") }}
+    <div class="cms-color-preset-gallery">
+      {% for key, preset in shadow_presets.items() %}
+      <form method="post" action="{{ url_for('admin.template_shadow_preset', template_id=template.id) }}">
+        <input type="hidden" name="next" value="{{ current_path }}">
+        <input type="hidden" name="preset" value="{{ key }}">
+        <button type="submit" class="cms-color-preset-swatch" title="Use {{ preset.name }}">
+          <span class="cms-shadow-preset-swatch" style="box-shadow: {{ preset.shadow }};"></span>
+          <span class="cms-color-preset-label">{{ preset.name }}</span>
+        </button>
+      </form>
+      {% endfor %}
+    </div>
+    {% if template.shadow_override %}
+    <form method="post" action="{{ url_for('admin.template_shadow_reset', template_id=template.id) }}">
+      <input type="hidden" name="next" value="{{ current_path }}">
+      <button type="submit" class="btn btn-small" title="Put the depth back to the one this template ships with">Reset</button>
+    </form>
+    {% endif %}
+    {% endif %}
+  </div>
+</div>

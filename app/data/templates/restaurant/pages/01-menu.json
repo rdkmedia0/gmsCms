@@ -1,0 +1,26 @@
+{
+  "title": "The menu",
+  "slug_suffix": "menu",
+  "page_type": "standard",
+  "meta_description": "What five courses looks like, and what it costs.",
+  "sections": [
+    [
+      "text",
+      "This week",
+      "<p>An example rather than a promise — it changes daily and is written the same afternoon.</p>",
+      {}
+    ],
+    [
+      "html",
+      "Five courses, 95",
+      "<table class=\"cms-table\"><thead><tr><th></th><th></th></tr></thead><tbody><tr><td>To start</td><td>Bread, cultured butter, salted anchovy</td></tr><tr><td>Then</td><td>Raw scallop, apple, dill oil</td></tr><tr><td>Then</td><td>Celeriac cooked in the embers, hazelnut</td></tr><tr><td>Main</td><td>Whatever the boat brought in, or hogget</td></tr><tr><td>To finish</td><td>Burnt honey custard</td></tr></tbody></table>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-faq cms-faq-style-plain\"><details class=\"cms-faq-item\" name=\"cms-faq-restaurant-menu-2\"><summary class=\"cms-faq-q\">Can you do vegetarian?</summary><div class=\"cms-faq-a\">Yes, and properly — not the same plate with the fish removed. Tell us when you book.</div></details><details class=\"cms-faq-item\" name=\"cms-faq-restaurant-menu-2\"><summary class=\"cms-faq-q\">Is there a wine list?</summary><div class=\"cms-faq-a\">Six bottles, all of them natural, all of them open. Or a pairing at 55 if you would rather not choose.</div></details><details class=\"cms-faq-item\" name=\"cms-faq-restaurant-menu-2\"><summary class=\"cms-faq-q\">How long does it take?</summary><div class=\"cms-faq-a\">Around two and a half hours. It is not a quick dinner and is not trying to be.</div></details></div>",
+      {}
+    ]
+  ]
+}

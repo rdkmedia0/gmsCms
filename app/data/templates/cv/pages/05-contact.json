@@ -1,0 +1,35 @@
+{
+  "title": "Contact",
+  "slug_suffix": "contact",
+  "page_type": "standard",
+  "meta_description": "Download my resume or get in touch.",
+  "sections": [
+    [
+      "text",
+      "Get In Touch",
+      "<p>Download my full resume below, or reach out directly.</p>",
+      {}
+    ],
+    [
+      "file",
+      "Jordan Avery - Resume.pdf",
+      "/static/demo/sample-download.pdf",
+      {
+        "file_display": "card",
+        "file_size": 2400000
+      }
+    ],
+    [
+      "card",
+      "",
+      "<div class=\"cms-card-shape\"><h3>jordan.avery@example.com</h3><p>linkedin.com/in/jordanavery</p></div>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-contact-form-tool\"></div>",
+      {}
+    ]
+  ]
+}

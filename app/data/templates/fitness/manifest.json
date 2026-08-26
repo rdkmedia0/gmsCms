@@ -1,0 +1,45 @@
+{
+  "name": "Fitness Studio",
+  "icon": "🏋️",
+  "slug": "fitness",
+  "description": "A gym or studio: classes, memberships, coaches and a timetable.",
+  "google_fonts_url": "/static/fonts/choices.css",
+  "palette": [
+    {
+      "slug": "primary",
+      "name": "Ink",
+      "color": "#15181c"
+    },
+    {
+      "slug": "secondary",
+      "name": "Graphite",
+      "color": "#3c444d"
+    },
+    {
+      "slug": "accent",
+      "name": "Volt",
+      "color": "#c8d92a"
+    }
+  ],
+  "nav_layout": "split",
+  "page_layout": "app-shell",
+  "footer_layout": "simple",
+  "shape_override": "sharp",
+  "shadow_override": "raised",
+  "business_name": "Groundwork Strength",
+  "tagline": "Small classes, actual coaching",
+  "footer_blurb": "A strength gym for people who were not athletes. Classes capped at eight.",
+  "footer_contact": {
+    "address": "Groundwork Strength, Hall 4, Werkgasse 22",
+    "email": "train@groundwork.example",
+    "instagram": "https://instagram.com/groundworkstrength"
+  },
+  "has_content": true,
+  "pages": [
+    "home",
+    "timetable",
+    "membership",
+    "coaches",
+    "contact"
+  ]
+}

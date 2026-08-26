@@ -1,0 +1,135 @@
+{% extends "admin/base.html" %}
+{% block title %}Connections — My Site Admin{% endblock %}
+{% block content %}
+<h1>Connections</h1>
+{#  One tab per provider, so the page is the length of one card rather
+    than the sum of all of them. The tab is a query on the same address,
+    which keeps this one route and one template. #}
+{% set tabs = [
+  ("💳 Stripe", url_for('admin.settings_integrations', tab='stripe'), tab == 'stripe'),
+  ("📅 Cal.com", url_for('admin.settings_integrations', tab='calcom'), tab == 'calcom'),
+  ("✨ AI", url_for('admin.settings_integrations', tab='ai'), tab == 'ai'),
+] %}
+{% include "partials/tabs.html" %}
+
+{% if key_source == 'file' %}
+<p class="hint">The key these credentials are encrypted with lives in the same folder as the database, so anyone with a copy of that folder has both halves. To separate them, set <code>ENCRYPTION_KEY</code> in your compose file to the contents of <code>data/.encryption_key</code> and delete the file &mdash; the credentials keep working, and a copied volume no longer carries the key that opens them.</p>
+{% elif key_source == 'environment' %}
+<p class="hint">Credentials are encrypted with a key supplied by the environment, so a copy of the data volume doesn't contain it.</p>
+{% endif %}
+
+{% if storage_problem %}
+<p class="flash flash-error">{{ storage_problem }}</p>
+{% endif %}
+<p class="hint">Everything this site talks to, and the key it talks with: payments, bookings, and AI. Keys are encrypted before they're stored — this page never shows a saved key back to you, only whether one is set. Use <strong>Test connection</strong> after saving: it reads something you'll recognise from your own account, so a pass proves the key reaches the right place.</p>
+
+{% for key, provider in providers.items() if key == tab %}
+<div class="card">
+  <div class="integration-head">
+    <h2>{{ provider.icon }} {{ provider.name }}</h2>
+    {% if configured[key] %}
+      {% if key == 'stripe' and stripe_mode == 'live' %}
+      <span class="integration-badge is-live" title="This key takes real payments from real cards">LIVE — real money</span>
+      {% elif key == 'stripe' and stripe_mode == 'test' %}
+      <span class="integration-badge is-test" title="This key only accepts Stripe's test cards — nothing is charged">Test mode</span>
+      {% else %}
+      <span class="integration-badge is-on" title="This provider is connected">Connected</span>
+      {% endif %}
+    {% else %}
+      <span class="integration-badge is-off" title="Not connected yet">Not connected</span>
+    {% endif %}
+  </div>
+  <p class="hint">{{ provider.blurb }} <a href="{{ provider.docs }}" target="_blank" rel="noopener">Where to find your key ↗</a></p>
+
+  <form method="post" action="{{ url_for('admin.settings_integration_save', provider=key) }}">
+    {% for field in provider.fields %}
+    <label for="{{ key }}_{{ field.key }}">{{ field.label }}</label>
+    <input type="{{ 'password' if field.secret else 'text' }}"
+           id="{{ key }}_{{ field.key }}"
+           name="{{ field.key }}"
+           autocomplete="new-password"
+           placeholder="{{ 'Leave blank to keep the saved key' if field.secret and values[key][field.key] else field.placeholder }}"
+           title="{{ field.hint }}"
+           value="{{ '' if field.secret else values[key][field.key] }}">
+    <p class="hint">{{ field.hint }}</p>
+    {% endfor %}
+    {#  One row for everything you can do to this provider. Disconnect
+        posts to a different place, so it belongs to a different form --
+        which is exactly why it used to fall out of this row and sit
+        underneath at a smaller size, directly beneath the primary
+        button where the pointer already is. `form="..."` lets a button
+        name its form from anywhere on the page, so the row stays whole
+        and the destructive act keeps its distance. #}
+    <div class="integration-actions">
+      <button type="submit" class="btn btn-primary" title="Save these credentials, encrypted">Save {{ provider.name }}</button>
+      {% if configured[key] %}
+      <button type="button" class="btn cms-test-integration" data-url="{{ url_for('admin.settings_integration_test', provider=key) }}"
+              title="Make a real call to {{ provider.name }} and report what came back">Test connection</button>
+      <button type="submit" form="disconnect-{{ key }}" class="btn btn-danger integration-disconnect"
+              title="Remove the stored credentials for {{ provider.name }}">Disconnect</button>
+      {% endif %}
+    </div>
+    <p class="integration-result" hidden></p>
+  </form>
+
+  {% if configured[key] %}
+  {#  Carries the action and the confirmation; its button is up in the row
+      above. Nothing renders here. #}
+  <form id="disconnect-{{ key }}" method="post"
+        action="{{ url_for('admin.settings_integration_disconnect', provider=key) }}"
+        data-confirm="You are about to disconnect {{ provider.name }}. Anything on the site that uses it stops working until you connect it again, and the key it is holding cannot be read back afterwards."
+        data-confirm-danger="1"></form>
+  {% endif %}
+</div>
+{% endfor %}
+
+{% if tab == 'ai' %}{% include "partials/ai_settings_card.html" %}{% endif %}
+
+{% if tab == 'stripe' and configured['stripe'] %}
+<div class="card">
+  <h2>Webhook</h2>
+  <p class="hint">Stripe confirms a payment by calling this site. Until that works, a buyer can pay and no order appears — the browser returning to the thank-you page is not proof, because it can be reached without paying, and a real payer can close the tab before it loads.</p>
+
+  {% set live_hooks = stripe_webhooks | selectattr('url', 'equalto', webhook_url) | list %}
+  {% if live_hooks %}
+  <p class="integration-result ok">Stripe is already sending events to <code>{{ webhook_url }}</code>.</p>
+  {% elif stripe_webhooks %}
+  <p class="hint">This Stripe account sends events elsewhere ({{ stripe_webhooks | map(attribute='url') | join(', ') }}) but not yet to this address.</p>
+  {% endif %}
+
+  <label for="webhook_url">This site's webhook address</label>
+  <input type="text" id="webhook_url" name="webhook_url" value="{{ webhook_url }}"
+         title="Stripe must be able to reach this from the internet — an https address, not localhost">
+  <p class="hint">Must be reachable from the internet over https. While developing, run <code>cloudflared tunnel --url http://localhost:5000</code> and paste the address it prints, with <code>/stripe/webhook</code> on the end.</p>
+  <div class="integration-actions">
+    <button type="button" class="btn btn-primary cms-create-webhook"
+            data-url="{{ url_for('admin.settings_stripe_webhook') }}"
+            title="Create the webhook in Stripe and save its signing secret here automatically">Create webhook in Stripe</button>
+  </div>
+  <p class="integration-result" hidden></p>
+  <p class="hint">Stripe reveals a signing secret only once, when the webhook is created — so creating it here saves it for you rather than asking you to copy it across.</p>
+
+  <h3>No public address yet?</h3>
+  <p class="hint">You don't need one to start selling. A buyer landing back on the thank-you page has their order recorded there and then, and the button below pulls in anything else — an order from someone who closed the tab, or one taken while this site was offline. A webhook simply makes that automatic.</p>
+  <div class="integration-actions">
+    <button type="button" class="btn cms-sync-orders" data-url="{{ url_for('admin.settings_stripe_sync') }}"
+            title="Fetch recent paid checkouts from Stripe and record any this site has missed">Sync orders from Stripe</button>
+  </div>
+  <p class="integration-result" hidden></p>
+</div>
+{% endif %}
+
+{% if tab == 'stripe' %}
+<div class="card">
+  <h2>Before taking real payments</h2>
+  <p class="hint">Two things this site cannot do for you, both of which are quick:</p>
+  <ul class="hint">
+    <li><strong>Add the webhook in Stripe.</strong> A payment is only confirmed when Stripe tells this site it succeeded — the buyer returning to the thank-you page is not proof, because they can arrive there without paying, or pay and close the tab. Point a Stripe webhook at{% if webhook_url %} <code>{{ webhook_url }}</code>{% else %} this site's <code>/stripe/webhook</code> address{% endif %} and paste its signing secret above.</li>
+    <li><strong>Start in test mode.</strong> A key beginning <code>sk_test_</code> accepts Stripe's test cards and charges nobody. Switch to the live key once you've bought something from your own shop and watched the order appear.</li>
+  </ul>
+</div>
+{% endif %}
+<script src="{{ static_url('js/admin/modal.js') }}"></script>
+<script src="{{ static_url('js/admin/integrations.js') }}"></script>
+<script src="{{ static_url('js/admin/settings-ai.js') }}"></script>
+{% endblock %}

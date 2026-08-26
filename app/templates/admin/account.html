@@ -1,0 +1,119 @@
+{% extends "admin/base.html" %}
+{% block title %}Account — My Site Admin{% endblock %}
+{% block content %}
+<h1>Account &amp; Admin Settings</h1>
+<p class="hint">Who can sign in and manage this site, and how — everyone listed below has full access, there's no limited/read-only role.</p>
+<div class="card">
+  <h2>Change Password</h2>
+  <form method="post">
+    <label for="current_password">Current Password</label>
+    <input type="password" id="current_password" name="current_password" required>
+
+    <label for="new_password">New Password</label>
+    <input type="password" id="new_password" name="new_password" required minlength="6">
+
+    <label for="confirm_password">Confirm New Password</label>
+    <input type="password" id="confirm_password" name="confirm_password" required minlength="6">
+
+    <button type="submit" class="btn btn-primary">Update Password</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Sign-In Method</h2>
+  {% if password_login_env is not none %}
+  <p class="flash flash-warning">Your compose file sets <code>PASSWORD_LOGIN</code>, which switches username/password sign-in
+    <strong>{{ 'on' if password_login_env else 'off' }}</strong> every time this site restarts. A change made here lasts until then &mdash; remove that line to decide it from this screen.</p>
+  {% endif %}
+  {% if password_login_disabled %}
+  <p class="hint">Username/password sign-in is currently <strong>disabled</strong> — Google Sign-In is the only way in.</p>
+  <form method="post" action="{{ url_for('auth.toggle_password_login') }}">
+    <input type="hidden" name="disable" value="0">
+    <button type="submit" class="btn">Re-enable Password Sign-In</button>
+  </form>
+  {% else %}
+  <p class="hint">Once Google Sign-In is set up and you've confirmed it works, you can turn off username/password sign-in entirely so Google is the only way in. If Google is ever unreachable, the login page can check that and let your password back in for an hour &mdash; it verifies with Google directly, so a failed sign-in attempt by somebody else opens nothing.</p>
+  {% if using_generated_password %}
+  <p class="hint">Change your password above first &mdash; the generated one is still in the container log and the data volume.</p>
+  {% elif google_oauth_configured %}
+  <form method="post" action="{{ url_for('auth.toggle_password_login') }}"
+        data-confirm="You are about to turn off password sign-in. From then on the only way in is with Google."
+        data-confirm-danger="1">
+    <input type="hidden" name="disable" value="1">
+    <button type="submit" class="btn btn-danger">Disable Password Sign-In</button>
+  </form>
+  {% else %}
+  <p class="hint">Set up Google Sign-In below and link your own Google address first — this stays on until then, so you can't be locked out.</p>
+  {% endif %}
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Admins</h2>
+  <div class="table-scroll">
+    <table class="simple-table">
+      <thead><tr><th>Username</th><th>Google Account</th><th></th></tr></thead>
+      <tbody>
+        {% for u in admin_users %}
+        <tr>
+          <td>{{ u.username }}</td>
+          <td>{{ u.google_email or '—' }}</td>
+          <td class="actions">
+            <form method="post" action="{{ url_for('admin.admin_delete', user_id=u.id) }}"
+                  data-confirm="You are about to remove the administrator &quot;{{ u.username }}&quot;. They will no longer be able to sign in."
+                  data-confirm-danger="1">
+              <button type="submit" class="btn btn-small btn-danger">Remove</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <details style="margin-top: 16px;">
+    <summary class="hint" style="cursor:pointer;">+ Add an admin</summary>
+    <form method="post" action="{{ url_for('admin.admins') }}">
+      <label for="new_admin_username">Username</label>
+      <input type="text" id="new_admin_username" name="username" required>
+
+      <label for="new_admin_password">Password</label>
+      <input type="password" id="new_admin_password" name="password" required minlength="6" autocomplete="new-password">
+
+      <label for="new_admin_google_email">Google Account (optional)</label>
+      <input type="text" id="new_admin_google_email" name="google_email" placeholder="them@gmail.com" autocomplete="off">
+      <p class="hint">Lets them sign in with Google instead of the password above — only needed if Google Sign-In is set up below.</p>
+
+      <button type="submit" class="btn btn-primary">Add Admin</button>
+    </form>
+  </details>
+</div>
+
+<div class="card">
+  <h2>Google Sign-In</h2>
+  <p class="hint">Two parts: which Google address is yours, and the Google Cloud credentials that let this site check it. Both can be done here &mdash; nothing needs editing on the server.</p>
+
+  <form method="post" action="{{ url_for('auth.set_own_google_address') }}" class="inline-form">
+    <label for="my_google_email">Your Google address{% if me and me.google_email %} <span class="badge">linked</span>{% endif %}</label>
+    <input type="text" id="my_google_email" name="google_email" value="{{ me.google_email or '' if me }}"
+           placeholder="you@gmail.com" size="28"
+           title="Sign in as yourself with this Google account. Clear the box to unlink it.">
+    <button type="submit" class="btn btn-small btn-primary" title="Link this Google address to your admin account">Save</button>
+  </form>
+  {% if me and me.google_email and not google_oauth_configured %}
+  <p class="hint">Linked, but Google sign-in isn't switched on yet &mdash; add the Client ID and Secret below.</p>
+  {% endif %}
+
+  <p class="hint">Set up a Google Cloud OAuth Client ID (type "Web application") and paste its details below. Neither field is ever shown back to you once saved, only whether it's set &mdash; leave a field blank to keep what's already there.</p>
+  <form method="post" action="{{ url_for('admin.settings_google') }}">
+    <label for="google_client_id">Client ID {% if google_settings.client_id_set %}<span class="badge">already set</span>{% endif %}</label>
+    <input type="text" id="google_client_id" name="google_client_id" autocomplete="off" placeholder="{{ 'Leave blank to keep the saved Client ID' if google_settings.client_id_set else '...apps.googleusercontent.com' }}">
+
+    <label for="google_client_secret">Client Secret {% if google_settings.client_secret_set %}<span class="badge">already set</span>{% endif %}</label>
+    <input type="password" id="google_client_secret" name="google_client_secret" autocomplete="new-password" placeholder="{{ 'Leave blank to keep the saved secret' if google_settings.client_secret_set else 'GOCSPX-...' }}">
+
+    <p class="hint">Authorized redirect URI to add in Google Cloud Console: <code>{{ url_for('auth.google_callback', _external=True) }}</code></p>
+
+    <button type="submit" class="btn btn-primary">Save Google Settings</button>
+  </form>
+</div>
+{% endblock %}

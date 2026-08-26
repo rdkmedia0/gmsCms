@@ -1,0 +1,74 @@
+{% extends "admin/base.html" %}
+{% block title %}Bookings — My Site Admin{% endblock %}
+{% block content %}
+<h1>Bookings</h1>
+<p class="hint">Everything in your diary, whoever booked it — through this site or straight from your own Cal.com page. Cal.com keeps your Google or Outlook calendar in step, so this page adds the part it can't know: which bookings came from a purchase, and how many sessions that person still has.</p>
+
+{% if not calcom_ready %}
+<div class="card">
+  <p>Connect Cal.com and your bookings appear here. <a href="{{ url_for('admin.settings_integrations') }}">Open Integrations →</a></p>
+</div>
+{% elif error %}
+<div class="card"><p class="flash flash-error">Couldn't read your diary from Cal.com — {{ error }}</p></div>
+{% elif not bookings %}
+<div class="card"><p>Nothing booked yet. When someone books a time, it appears here.</p></div>
+{% else %}
+{% for b in bookings %}
+<div class="card">
+  <div class="integration-head">
+    <h2>{{ b.when }}</h2>
+    <span class="integration-badge {{ 'is-on' if b.from_purchase else 'is-off' }}"
+          title="{{ 'Booked with sessions someone paid for' if b.from_purchase else 'Booked directly, not against a purchase' }}">
+      {{ 'from a purchase' if b.from_purchase else 'direct booking' }}
+    </span>
+  </div>
+  <p class="hint">
+    {{ b.title }}
+    {%- if b.name or b.email %} · <strong>{{ b.name or b.email }}</strong>{% endif %}
+    {%- if b.name and b.email %} ({{ b.email }}){% endif %}
+    {%- if b.sessions_left is not none %} · {{ b.sessions_left }} session{{ 's' if b.sessions_left != 1 }} left{% endif %}
+  </p>
+  <div class="integration-actions">
+    <button type="button" class="btn btn-small cms-cancel-booking"
+            data-url="{{ url_for('admin.commerce_booking_cancel', uid=b.uid) }}"
+            data-when="{{ b.when }}"
+            title="Cancel this booking — Cal.com emails everyone and the session goes back to whoever paid">Cancel booking</button>
+    {% if b.url %}
+    <a class="btn btn-small" href="{{ b.url }}" target="_blank" rel="noopener"
+       title="Reschedule or edit this booking in Cal.com">Reschedule in Cal.com</a>
+    {% endif %}
+  </div>
+  <p class="integration-result" hidden></p>
+</div>
+{% endfor %}
+<p class="hint"><strong>Cancel here or in Cal.com — not in Google Calendar.</strong> Cal.com writes meetings into your calendar, but deleting one there doesn't come back the other way: the booking stays live, the buyer keeps expecting you, and their session stays used up.</p>
+{% endif %}
+
+{% if gone %}
+<div class="card">
+  <h2>No longer in your calendar</h2>
+  <p class="hint">Bookings that were cancelled or deleted, and what happened to the session they used.</p>
+  <ul class="hint order-entitlements">
+    {% for g in gone %}
+    <li>
+      {{ g.starts_at[:10] }} at {{ g.starts_at[11:16] }}
+      {%- if g.email %} · {{ g.email }}{% endif %}
+      —
+      {% if g.credit_returned %}
+        {{ 'cancelled' if g.status == 'cancelled' else 'deleted' }}, session returned
+      {% else %}
+        entry gone after the meeting had started — <strong>session not returned</strong>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  <p class="hint">A booking that disappears after its start time is treated as delivered, so the session stays used. If one of these should be given back, say so and it can be granted.</p>
+</div>
+{% endif %}
+
+{#  The same mistake as the Dashboard's: this was appended inside
+    {% block title %}, where a browser reads it as the title's text and
+    never runs it. Here it is worse — bookings.js IS the Cancel button's
+    click handler, so the button did nothing at all when pressed. #}
+<script src="{{ static_url('js/admin/bookings.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,74 @@
+{% from "partials/panel_help.html" import panel_help, panel_section with context %}
+<link rel="stylesheet" href="{{ static_url('css/cms-sidepanel.css') }}">
+
+<button type="button" class="cms-dock-tab-btn cms-dock-tab-tools" id="cms-tools-tab" data-panel="tools" title="Tools">🧰</button>
+
+<div class="cms-dock-panel" id="cms-tools-panel" data-panel="tools" data-current-path="{{ current_path }}">
+  <div class="cms-dock-resize-handle" title="Drag to resize"></div>
+  <div class="cms-dock-resize-edge" title="Drag to resize width"></div>
+  {# Search and the grouping switch live in the HEADER, not in the body.
+     They are what you reach for BEFORE the tools, they are two controls
+     rather than a section, and in the bottom bar every row they took from
+     the body was a row the tools themselves did not get. The category
+     pills that used to sit here are gone: with the tools grouped under
+     headings you can collapse, a second way to narrow the same list by
+     the same categories was the same job done twice. #}
+  <div class="cms-dock-header">
+    <span class="cms-dock-title">🧰 Tools</span>
+    <span class="cms-dock-header-actions">
+      {% include "partials/dock_position_toggle.html" %}
+      <button type="button" class="cms-assistant-close" id="cms-tools-close">&times;</button>
+    </span>
+    <div class="cms-dock-header-filters">
+      {% include "partials/dock_tool_search.html" %}
+      {% include "partials/dock_grouped_toggle.html" %}
+    </div>
+  </div>
+  <div class="cms-dock-content">
+    <p class="hint" id="cms-tools-hint">Click a tool, then click the section (or cell) you want it in. Drag a tool onto the page to place it, or drag it within this list to reorder the panel.</p>
+    <p class="hint cms-tools-no-match" id="cms-tools-no-match" hidden>No tool matches that.</p>
+
+    {# Rendered already grouped, one .cms-tools-group per category, so the
+       default view needs no JavaScript to arrange it — tools-panel.js
+       rebuilds these same groups when the switch above is toggled. #}
+    <div class="cms-tools-grid" id="cms-tools-grid" data-reorder-url="{{ url_for('admin.tools_reorder') }}">
+      {% set ns = namespace(previous='') %}
+      {% for tool in content_tools %}
+      {% if tool.category != ns.previous %}
+      {% if not loop.first %}</div></div>{% endif %}
+      <div class="cms-tools-group" data-category="{{ tool.category }}">
+        <div class="cms-tools-group-head" title="Click to fold this group away">{{ tool_category_labels.get(tool.category, 'Your tools') }}</div>
+        <div class="cms-tools-group-chips">
+      {% set ns.previous = tool.category %}
+      {% endif %}
+      <button type="button" class="cms-tool-chip" draggable="true" data-tool-id="{{ tool.id }}" data-tool-name="{{ tool.name }}" data-tool-icon="{{ tool.icon }}" data-tool-category="{{ tool.category }}" title="Select {{ tool.name }} &mdash; drag onto the page to place it, or drag within this list to reorder">
+        <span class="cms-tool-icon">{{ tool.icon }}</span>
+        <span class="cms-tool-name">{{ tool.name }}</span>
+        {% if not tool.is_builtin %}
+        <a class="cms-tool-export" href="{{ url_for('admin.tools_export', ids=tool.id) }}" title="Export this tool as a toolkit file" onclick="event.stopPropagation()">⭳</a>
+        <span class="cms-tool-delete" data-tool-id="{{ tool.id }}" title="Delete this custom tool">&times;</span>
+        {% endif %}
+      </button>
+      {% if loop.last %}</div></div>{% endif %}
+      {% endfor %}
+    </div>
+
+    {% set has_custom_tools = content_tools | selectattr('is_builtin', 'equalto', 0) | list %}
+    <details class="cms-tool-new">
+      <summary title="Export every custom tool as one file, or import one somebody shared">Toolkits{{ panel_help("Export every custom tool on this site as one file, to reuse on another install. Importing only adds tools whose name doesn't already exist — nothing already installed is ever changed or duplicated.") }}</summary>
+      {% if has_custom_tools %}
+      <a class="btn btn-small" href="{{ url_for('admin.tools_export', ids='all') }}">Export All Custom Tools</a>
+      {% else %}
+      <p class="hint">No custom tools yet — import a toolkit someone shared with you, or one bundled in a Template Package.</p>
+      {% endif %}
+      <form method="post" action="{{ url_for('admin.tools_import') }}" enctype="multipart/form-data" class="cms-toolkit-import-form">
+        <input type="file" name="toolkit" accept="application/json,.json" required>
+        <button type="submit" class="btn btn-small">Import Toolkit</button>
+      </form>
+          </details>
+  </div>
+</div>
+
+<form id="cms-tool-delete-form" method="post" hidden></form>
+
+<script src="{{ static_url('js/admin/tools-panel.js') }}"></script>

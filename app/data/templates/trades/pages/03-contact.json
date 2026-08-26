@@ -1,0 +1,26 @@
+{
+  "title": "Contact",
+  "slug_suffix": "contact",
+  "page_type": "standard",
+  "meta_description": "Ring us, or ask for a quote.",
+  "sections": [
+    [
+      "text",
+      "Getting hold of us",
+      "<p>The office phone is answered between seven and six. Outside that, leave a message.</p>",
+      {}
+    ],
+    [
+      "text",
+      "Opening hours",
+      "<p>Monday to Friday, 7 till 6</p><p>Emergencies out of hours</p>",
+      {}
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-contact-form-tool\"></div>",
+      {}
+    ]
+  ]
+}

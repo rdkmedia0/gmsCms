@@ -1,0 +1,64 @@
+{% extends "admin/base.html" %}
+{% block title %}Setting up — My Site Admin{% endblock %}
+{% block content %}
+{#  The walk-through. One question per screen, every one of them
+    skippable, and each step's own fields in their own partial so this
+    file stays the shape of the walk rather than the sum of its steps. #}
+<div class="wizard">
+  <div class="wizard-head">
+    <h1>{{ title }}</h1>
+    {% if step != 'done' %}
+    <p class="wizard-count">Step {{ state.index + 1 }} of {{ state.count }}</p>
+    {% endif %}
+  </div>
+
+  {#  Where you are, and what is still coming. A walk you can see the end
+      of is a walk somebody finishes. #}
+  <ol class="wizard-steps">
+    {% for key, label in steps %}
+    {% if key != 'done' %}
+    <li class="{{ 'is-here' if key == step }}{{ ' is-done' if loop.index0 < state.index }}"
+        title="{{ label }}">
+      {% if loop.index0 < state.index %}
+      <a href="{{ url_for('admin.setup_step', step=key) }}" title="Go back to: {{ label }}">{{ label }}</a>
+      {% else %}{{ label }}{% endif %}
+    </li>
+    {% endif %}
+    {% endfor %}
+  </ol>
+
+  {% if not fresh and step == 'name' %}
+  {#  A site with real content on it is not a fresh install, and every
+      step from here can change what is on it. Said before anything is
+      touched, not after. #}
+  <p class="flash flash-warning">This site already has orders, subscribers or sent newsletters on it.
+    Nothing here changes those, but the look step can replace page content &mdash; save the current
+    setup as a template first from the Dashboard if you want a way back.</p>
+  {% endif %}
+
+  <div class="card">
+    {% if step == 'done' %}
+      {% include "partials/wizard/done.html" %}
+    {% else %}
+    <form method="post" action="{{ url_for('admin.setup_save', step=step) }}" class="wizard-form">
+      {% include "partials/wizard/" ~ step ~ ".html" %}
+      <div class="wizard-actions">
+        {% if state.index > 0 %}
+        <a class="btn" href="{{ url_for('admin.setup_step', step=steps[state.index - 1][0]) }}"
+           title="Back to the previous step. Nothing you have saved is lost.">Back</a>
+        {% endif %}
+        <button type="submit" class="btn btn-primary"
+                title="Save this and go to the next step">Save and continue</button>
+        <button type="submit" name="skip" value="1" class="btn"
+                title="Leave this as it is and go to the next step — you can come back to it any time">Skip this</button>
+      </div>
+    </form>
+    {% endif %}
+  </div>
+
+  <p class="hint wizard-leave">
+    You can leave at any point &mdash; this remembers where you were, and everything you have
+    chosen is already saved. <a href="{{ url_for('admin.dashboard') }}" title="Leave the walk-through and go to the Dashboard">Go to the Dashboard</a>.
+  </p>
+</div>
+{% endblock %}

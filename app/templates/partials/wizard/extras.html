@@ -1,0 +1,35 @@
+{#  Not a copy of the integration screens -- a statement of which of them
+    are on, and a door to each. The point of the step is that somebody
+    finishes the walk KNOWING what they have not set up. #}
+<p class="hint">None of these is required in itself. They are here so you know they exist and
+  know which of them you have not set up &mdash; each opens its own screen, and you can come
+  straight back. A <strong>red</strong> one is different: it means something is already on your
+  site that needs it.</p>
+
+<ul class="wizard-extras">
+  <li>
+    <strong>Taking payments</strong>
+    <span class="badge {{ 'is-on' if summary[4].set else ('is-critical' if summary[4].needed else 'is-off') }}">{{ 'connected' if summary[4].set else ('needed — not set up' if summary[4].needed else 'not set up') }}</span>
+    {% if summary[4].needed and not summary[4].set %}<p class="needed-because">{{ summary[4].because }}</p>{% endif %}
+    <p class="hint">{{ summary[4].why }}</p>
+    <a class="btn btn-small" href="{{ url_for('admin.settings_integrations') }}"
+       title="Connect Stripe, or see what connecting it would give you">Open Integrations</a>
+  </li>
+  <li>
+    <strong>Taking bookings</strong>
+    <span class="badge {{ 'is-on' if summary[5].set else ('is-critical' if summary[5].needed else 'is-off') }}">{{ 'connected' if summary[5].set else ('needed — not set up' if summary[5].needed else 'not set up') }}</span>
+    {% if summary[5].needed and not summary[5].set %}<p class="needed-because">{{ summary[5].because }}</p>{% endif %}
+    <p class="hint">{{ summary[5].why }}</p>
+    <a class="btn btn-small" href="{{ url_for('admin.settings_integrations') }}"
+       title="Connect Cal.com, or see what connecting it would give you">Open Integrations</a>
+  </li>
+  <li>
+    <strong>AI help</strong>
+    <span class="badge {{ 'is-on' if summary[6].set else ('is-critical' if summary[6].needed else 'is-off') }}">{{ 'connected' if summary[6].set else ('needed — not set up' if summary[6].needed else 'not set up') }}</span>
+    {% if summary[6].needed and not summary[6].set %}<p class="needed-because">{{ summary[6].because }}</p>{% endif %}
+    <p class="hint">{{ summary[6].why }} It is never used unless you ask for it, and it always shows
+      you what it made before anything lands on your site.</p>
+    <a class="btn btn-small" href="{{ url_for('admin.settings_ai') }}"
+       title="Connect an AI provider, or see what connecting one would give you">Open AI Settings</a>
+  </li>
+</ul>
