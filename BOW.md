@@ -4692,3 +4692,40 @@ Three things to settle while building:
   * The library shows the two groups apart, so an owner can see at a
     glance what is a starting point and what is theirs in progress.
 
+### Packaging happens at promotion, not before (2026-08-27)
+
+A custom template is not packaged and cannot be exported. Promoting it to
+a source is what packages it, and only then is it distributable.
+
+This is the piece the model was missing, because packaging currently has
+no moment. `export_package_zip()` is offered on any library entry at any
+time, so a half-finished custom template -- one an owner is still moving
+things around in -- can be handed to somebody else as though it were a
+thing. It isn't. It is a draft.
+
+Tying the two together gives each a job:
+
+  * **Custom**: live, editable, private to this install. No zip, no
+    export, no inventory. Nothing to keep in step with the edits,
+    because there is no artefact yet.
+  * **Promotion**: the moment the artefact is built. Write the zip,
+    compute the `install.json` inventory -- every page and its section
+    count, every picture with size and checksum -- and freeze it.
+  * **Source**: immutable, packaged, exportable, distributable.
+
+**Promotion is also the right place for the completeness check**, and
+this is the strongest argument for the whole arrangement. A package once
+went out silently missing its pages and pictures, which is why the seed
+now installs all sixteen builtins through the same import path on every
+boot. Promotion is a deliberate act with a person waiting on it -- the one
+moment where "this template references four pictures and three of them
+exist" can be reported and refused, rather than discovered by whoever
+installs it later.
+
+**Note for whoever builds it**: this supersedes CLAUDE.md's "Exporting to
+a .zip stays a separate, always-available action on any library entry,
+builtin or not" (in the Template Packages section). Export stops being
+always-available and becomes a property of being a source. Update that
+line in the same change, or the two documents will disagree about
+something a reader has no way to test.
+
