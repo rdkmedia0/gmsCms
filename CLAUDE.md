@@ -753,6 +753,20 @@ security-relevant, not just the ones that look risky:
   server-side test can see a CSP refusal. `tools/prod_check.py` asserts
   the directive admits Stripe and has not been widened to `*` while doing
   it.
+- **A public form that sends email is rate limited, and the two are not
+  equally dangerous** (`services/ratelimit.py`). `captcha.py` has always
+  said a sum "will not stop a determined attacker... the rate limit on
+  the route is what bounds the damage" -- and that limit did not exist,
+  which is worse than documenting none, because it is the reason nobody
+  went looking. The contact form mails the OWNER; a flood is a nuisance.
+  The sign-up form mails **whatever address was typed into it**, so a
+  flood is a confirmation message to a stranger who did not ask, at an
+  address the attacker chose -- so it gets a tighter allowance, plus the
+  same honeypot, using the SAME field name as the contact form's (one
+  trap, not two that can disagree). Counted on the way IN, because
+  counting only successes means the way past is to make each attempt
+  fail; and with no client address to count against it fails OPEN, since
+  a contact form nobody can use is worse than one that can be spammed.
 - **Auth/CSRF**: every state-changing admin route stays behind
   `@login_required` and the existing CSRF middleware (`app/csrf.py`,
   Origin/Referer-based, not a hidden-token scheme — see its own docstring
@@ -1222,6 +1236,8 @@ part that constrains the CODE.
   `template_check.py` (that no look-changing route escapes the fork
   guard, that only a source can be exported, and that a page somebody
   wrote in survives a template change),
+  `abuse_check.py` (that both public forms that send email are bounded,
+  and that the limiter is actually called),
   `schedule_check.py` (that a send put on the clock goes exactly once
   even when two workers claim it together, and refuses for the same
   reasons a live send refuses), and

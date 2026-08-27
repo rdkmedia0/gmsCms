@@ -1,0 +1,143 @@
+"""The two public forms that send email are bounded.
+
+`services/captcha.py` has always ended by saying, correctly, that a sum
+"will not stop a determined attacker who reads the page and does the sum.
+It is not meant to: the rate limit on the route is what bounds the
+damage." **That rate limit did not exist.** The only limiter in the app
+guarded the password on a purchases page. A module that documents a
+defence it does not have is worse than one documenting none, because it
+is the reason nobody goes looking -- the same shape as the check that
+could never fail.
+
+The two forms are not equally dangerous, and the checks below say so:
+
+  * the contact form mails the OWNER; a flood is a nuisance.
+  * the sign-up form mails **whatever address was typed into it**, so a
+    flood is a confirmation message sent to a stranger who did not ask,
+    at an address the attacker chose. Double opt-in bounds the harm at
+    one message each; the limit bounds how many strangers get one.
+
+Run inside the container:
+
+    docker compose exec -T web python tools/abuse_check.py
+"""
+import os
+import shutil
+import sys
+import tempfile
+
+sys.path.insert(0, "/app")
+
+DATA_DIR = tempfile.mkdtemp(prefix="abuse-check-")
+os.environ["DATA_DIR"] = DATA_DIR
+
+from app import create_app                                    # noqa: E402
+from app.db import get_db                                     # noqa: E402
+from app import mailer                                        # noqa: E402
+from app.services import captcha, ratelimit                   # noqa: E402
+
+SENT = []
+mailer.is_configured = lambda settings: True
+mailer.send_html = lambda settings, to, subject, html, text, from_name=None, headers=None: \
+    SENT.append(to)
+
+failures = []
+passed = 0
+
+
+def check(name, ok, detail=""):
+    global passed
+    print("  %-58s %s%s" % (name, "ok" if ok else "FAILED",
+                            "  " + detail if detail and not ok else ""))
+    if ok:
+        passed += 1
+    else:
+        failures.append(name)
+
+
+app = create_app()
+
+with app.app_context():
+    db = get_db()
+
+    print()
+    print("A limit exists, and it is tighter where the risk is somebody else's")
+    print("-" * 70)
+    check("both forms that send email are limited",
+          set(ratelimit.LIMITS) == {"contact", "signup"}, str(set(ratelimit.LIMITS)))
+    contact_n, _ = ratelimit.LIMITS["contact"]
+    signup_n, _ = ratelimit.LIMITS["signup"]
+    #  The sign-up form mails a stranger. It gets less rope.
+    check("sign-up is tighter than contact", signup_n < contact_n,
+          "%d vs %d" % (signup_n, contact_n))
+
+    ip = "203.0.113.7"
+    check("nothing is limited to begin with", not ratelimit.too_many(db, "signup", ip))
+    for _ in range(signup_n):
+        ratelimit.record(db, "signup", ip)
+    db.commit()
+    check("it stops after its allowance", ratelimit.too_many(db, "signup", ip))
+    check("...and only for that address",
+          not ratelimit.too_many(db, "signup", "198.51.100.4"))
+    check("...and only for that form",
+          not ratelimit.too_many(db, "contact", ip))
+
+    #  A proxy that strips the header must not lock out every visitor at
+    #  once: a contact form nobody can use is worse than one that can be
+    #  spammed.
+    check("with no address to count, it fails OPEN",
+          not ratelimit.too_many(db, "signup", ""))
+    ratelimit.record(db, "signup", "")
+    check("...and records nothing", db.execute(
+        "SELECT COUNT(*) c FROM login_attempts WHERE ip = ''").fetchone()["c"] == 0)
+
+    print()
+    print("...and it says so without accusing anybody")
+    print("-" * 70)
+    for kind in ratelimit.LIMITS:
+        words = ratelimit.wait_message(kind)
+        check("%s: there are words for it" % kind, bool(words and words.strip()))
+        check("%s: they do not say 'rate limit'" % kind,
+              "rate limit" not in words.lower() and "blocked" not in words.lower(),
+              words)
+
+    print()
+    print("The sign-up form sets the same trap the contact form does")
+    print("-" * 70)
+    from app.services import blocks
+    markup = blocks.build_newsletter({"heading": "H", "text": "T"})
+    check("it has a honeypot", 'name="website"' in markup, markup[:120])
+    check("...and it is the SAME field the contact form uses",
+          captcha.HONEYPOT_FIELD == "website",
+          "a bot that learned one trap would not know the other")
+    check("...hidden by a rule that covers both",
+          "cms-newsletter-hp" in markup)
+    css = open("/app/app/static/css/site-base.css", encoding="utf-8").read()
+    check("...and that rule really does hide it",
+          ".cms-contact-hp, .cms-newsletter-hp {" in css,
+          "two rules that can drift is how one form leaks a visible field")
+    check("it is not type=hidden, which a bot can tell apart",
+          'name="website" tabindex' in markup.replace('type="text" id="cms-sub-website" ', ''),
+          markup[markup.find("cms-newsletter-hp"):][:200])
+
+    print()
+    print("Both routes actually use it")
+    print("-" * 70)
+    #  A statement about the code: a limiter nothing calls is the exact
+    #  fault this file exists because of.
+    public = open("/app/app/routes/public.py", encoding="utf-8").read()
+    check("the contact form asks before doing the work",
+          'ratelimit.too_many(db, "contact"' in public)
+    check("the sign-up form asks too",
+          'ratelimit.too_many(db, "signup"' in public)
+    check("both count on the way IN, not on success",
+          public.count("ratelimit.record(db,") == 2,
+          "counting only successes means the way past is to fail")
+    check("the sign-up form checks the honeypot",
+          "captcha.HONEYPOT_FIELD" in public
+          and public.count("captcha.HONEYPOT_FIELD") >= 2)
+
+shutil.rmtree(DATA_DIR, ignore_errors=True)
+print()
+print("%d checks, %d failed" % (passed + len(failures), len(failures)))
+sys.exit(1 if failures else 0)

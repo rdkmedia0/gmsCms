@@ -88,6 +88,63 @@ for slug in slugs:
             missing += 1
             print("    MISSING  %s  (live page /%s)" % (url, slug))
 
+#  ---- Pictures that are the same picture twice ----
+#
+#  By BYTES, never by name: a name says nothing about content, and the
+#  earlier sweep that trusted names is how 77 orphans survived a cleanup.
+#
+#  The distinction that matters is WHERE the copies are. Two templates
+#  holding identical bytes is CORRECT and must not be "fixed" -- a
+#  template's pictures belong to the template (CLAUDE.md), and a shared
+#  app-wide folder is exactly what made an exported package silently
+#  incomplete. A fork carrying its own copy of what it forked is the
+#  same thing and equally right. Two copies inside ONE template, or two
+#  uploads of the same file, are waste.
+import hashlib                                                     # noqa: E402
+from collections import defaultdict                                # noqa: E402
+
+by_hash = defaultdict(list)
+static_root = app.static_folder
+for base, dirs, files in os.walk(static_root):
+    dirs[:] = [d for d in dirs if d not in ("__pycache__", "fonts")]
+    for fname in files:
+        if not fname.lower().endswith((".png", ".jpg", ".jpeg", ".webp", ".gif")):
+            continue
+        full = os.path.join(base, fname)
+        try:
+            with open(full, "rb") as fh:
+                by_hash[hashlib.sha256(fh.read()).hexdigest()].append(full)
+        except OSError:
+            pass
+
+
+def _owner(path):
+    """Which template a picture belongs to, or None for an upload."""
+    rel = os.path.relpath(path, static_root).replace(os.sep, "/")
+    parts = rel.split("/")
+    return parts[1] if len(parts) > 2 and parts[0] == "themes" else None
+
+
+wasted = 0
+across = 0
+for digest, paths in sorted(by_hash.items()):
+    if len(paths) < 2:
+        continue
+    owners = [_owner(p) for p in paths]
+    if len(set(owners)) == len(paths) and all(owners):
+        #  One copy each, in different templates. Correct.
+        across += 1
+        continue
+    size = os.path.getsize(paths[0])
+    wasted += size * (len(paths) - 1)
+    print("    DUPLICATE  %.0f KB, %d copies in the same place:" % (size / 1024, len(paths)))
+    for path in paths:
+        print("               %s" % os.path.relpath(path, static_root))
+
+print()
+print("  %d picture(s) shared between templates — correct, each owns its own copy" % across)
+print("  %.2f MB of genuine duplication" % (wasted / 1048576))
+
 print("  %d distinct media URLs fetched across every template and the live site" % checked)
 print("  %d missing, %d served as the wrong type" % (missing, wrong_type))
 print("  %d checks, %d failed" % (checked, missing + wrong_type))

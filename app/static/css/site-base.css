@@ -1880,7 +1880,7 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
 /* The honeypot. Off-screen rather than display:none — some bots skip
    anything explicitly hidden, and this reads as a normal field to them
    while never being seen or focusable by a person. */
-.cms-contact-hp { position: absolute; left: -9999px; top: auto;
+.cms-contact-hp, .cms-newsletter-hp { position: absolute; left: -9999px; top: auto;
   width: 1px; height: 1px; overflow: hidden; }
 
 

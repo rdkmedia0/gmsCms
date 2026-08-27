@@ -6005,12 +6005,23 @@ cannot fail passes everything.
 
 ### Small, cheap, not done
 
-  * **Four genuinely duplicated pictures** (2.6MB) survive on the live
-    install -- identical bytes under different names. A rounding error
-    next to the 85MB of orphaned PNGs already removed.
-  * **The "Added" moment on a Buy button** uses `--primary-dark`, so on an
-    orange site it is a darker orange rather than a success green. A
-    judgement call left to the owner.
+  * **Duplicated pictures**: `tools/media_check.py` reports them by BYTES
+    now, and tells the two cases apart -- two TEMPLATES holding the same
+    picture is CORRECT and must not be "fixed" (a template's pictures
+    belong to the template; a shared folder is what made an export
+    silently incomplete), while two copies inside one template is waste.
+    On a fresh install: 2 shared, 0 wasted. Run it against the live
+    install to find the four.
+  * **The "Added" moment on a Buy button** -- stale, and worth keeping as
+    a correction. It reads `.cms-action-btn.is-added`, which is `#15803d`,
+    a success green; a Buy button carries BOTH `cms-buy-btn` and
+    `cms-action-btn` (`sections.py` says so where it builds the markup),
+    so the rule matches and it is already green. Nothing to fix. Reading
+    the CSS would have taken a minute -- the same mistake as diagnosing a
+    template's shape from one look at a live site.
+  * **A responsive preview** -- built. The dropdown is in the admin bar
+    (`public/page.html`); it showed nothing until the framing headers
+    were fixed, which was a separate bug.
   * **Protecting a purchases page further** -- asking for the buyer's
     email as well as the link. Designed, refused so far because it puts
     friction on somebody who has just paid.
@@ -6019,11 +6030,31 @@ cannot fail passes everything.
 
 ### Still open from before today
 
-The CAPTCHA (arithmetic stops nothing that matters), a visitor-facing AI
-assistant that has to start from refusal rather than retrieval, and
-WhatsApp -- where a `wa.me` link is an afternoon and the Business API is
-a decision about whether this product holds customer conversations at
-all. All three are written out above and unchanged.
+**The CAPTCHA is closed, and not the way this note expected.**
+"Arithmetic stops nothing that matters" is true, and `captcha.py` already
+said so in its own last paragraph: the sum is not meant to stop a
+determined attacker, "the rate limit on the route is what bounds the
+damage". **That rate limit did not exist.** The only limiter in the app
+guarded the password on a purchases page. So the honest gap was never the
+sum -- it was a module documenting a defence it did not have, which is
+worse than documenting none, because it is the reason nobody went
+looking. Built as `services/ratelimit.py` + `tools/abuse_check.py`.
+
+Building it turned up something this note had not seen: the SIGN-UP form
+had no check at all, and it is the more dangerous of the two. The contact
+form mails the owner; a flood is a nuisance in their inbox. The sign-up
+form mails whatever address is typed into it, so a flood is a
+confirmation message sent to a stranger who did not ask, at an address
+the attacker chose -- somebody else's inbox, and this site's reputation.
+It has the tighter allowance now, and the same honeypot, deliberately
+using the same field NAME, so a bot that has learned to leave `website`
+alone on one form has learned it on both.
+
+Still open, and both genuinely decisions rather than tasks: a
+visitor-facing AI assistant that has to start from refusal rather than
+retrieval, and WhatsApp -- where a `wa.me` link is an afternoon and the
+Business API is a decision about whether this product holds customer
+conversations at all. Both are written out above and unchanged.
 
 ### Should the featured image live in the text toolbar? (asked 2026-08-27)
 

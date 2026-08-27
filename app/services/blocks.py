@@ -258,6 +258,17 @@ def build_newsletter(values):
         f'<button type="submit" class="cms-action-btn">'
         f'<span data-field="cta">{esc(values.get("cta") or "Sign up")}</span></button>'
         f'<input type="hidden" name="consent_text" value="{esc(values.get("consent") or "Yes, email me occasional updates. Unsubscribe any time.")}">'
+        #  The same trap the contact form sets, and deliberately the same
+        #  FIELD: a bot that has learned to leave `website` alone there
+        #  has learned it here, rather than there being two traps that
+        #  can disagree. Hidden with CSS rather than type="hidden", so a
+        #  bot reading the markup cannot tell it apart from a real field.
+        #  This form mails whatever address is typed into it, so what it
+        #  is protecting is a STRANGER's inbox, not the owner's.
+        f'<div class="cms-newsletter-hp" aria-hidden="true">'
+        f'<label for="cms-sub-website">Website</label>'
+        f'<input type="text" id="cms-sub-website" name="website" tabindex="-1" autocomplete="off">'
+        f'</div>'
         #  A line, not a tick box. The box asked somebody to agree to
         #  signing up, on a form whose only purpose is signing up, having
         #  already pressed a button that says Sign up -- the same act,

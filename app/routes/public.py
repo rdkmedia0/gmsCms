@@ -30,7 +30,8 @@ from ..services import palette as palette_service
 from ..services.menu import _parse_menu_meta, _page_href
 from ..services import blog as blog_service
 from ..services import (blocks, captcha, cart as cart_service, commerce, downloads,
-                        integrations, legal, newsletter, site, site_emails, subscribers)
+                        integrations, legal, newsletter, ratelimit, site, site_emails,
+                        subscribers)
 from .admin import (
     _list_tools, get_email_settings, get_layout_settings, get_site_settings, COLOR_PRESETS,
     NAV_LAYOUTS, get_nav_layout, SIDEBAR_LAYOUT_PRESETS, FOOTER_LAYOUT_PRESETS,
@@ -469,6 +470,11 @@ SIGNUP_MESSAGES = {
                     "Please try again later.", False),
     "consent": ("Tick the box to say yes, and we'll sign you up.", False),
     "ok": ("Thank you — you're on the list.", True),
+    #  Never "you are being rate limited", which reads as an accusation
+    #  to somebody who simply typed their address wrong twice.
+    "slow-down": ("That address has been asked for a few times already. Please check your "
+                  "inbox — including the spam folder — and try again in an hour if nothing "
+                  "arrived.", False),
 }
 
 
@@ -507,6 +513,32 @@ def subscribe():
     """
     db = get_db()
     back = request.referrer or url_for("public.home")
+
+    #  This form mails whatever address is typed into it, so a flood is a
+    #  confirmation message sent to a STRANGER who did not ask, at an
+    #  address somebody else chose. Double opt-in bounds the harm at one
+    #  message each; these two bound how many strangers get one.
+    #
+    #  The honeypot is the captcha module's own field, so a bot that has
+    #  learned to leave it alone here has learned it for the contact form
+    #  too -- one trap, not two that can disagree. No worded question:
+    #  this form is one box and a button, and a sum on it would cost more
+    #  sign-ups than it stops.
+    if (request.form.get(captcha.HONEYPOT_FIELD) or "").strip():
+        current_app.logger.info("Sign-up rejected: honeypot filled from %s", _client_ip())
+        #  Thanked and ignored. Telling it which trap it fell into is how
+        #  it learns to avoid the trap.
+        return _signup_answer(back, "ok")
+    ip = _client_ip()
+    if ratelimit.too_many(db, "signup", ip):
+        current_app.logger.info("Sign-up rate limited from %s", ip)
+        return _signup_answer(back, "slow-down")
+    #  Counted on the way IN, before the work: a request that fails
+    #  half-way still counts, or the cheapest way past this is to make
+    #  every attempt fail.
+    ratelimit.record(db, "signup", ip)
+    db.commit()
+
     #  Sending this form IS the consent: its only purpose is subscribing,
     #  and the button says so. There was a required tick box asking the
     #  same person to agree to the thing they had just pressed a button to
@@ -1179,6 +1211,17 @@ def contact_submit(slug):
     back_url = url_for("public.home") if page["is_home"] else url_for("public.page", slug=slug)
     if not (name and email and message):
         return redirect(f"{back_url}?error=1")
+    #  The limit services/captcha.py has always said bounds the damage.
+    #  It did not exist: the only limiter in the app guarded a purchases
+    #  page's password. A module that documents a defence it does not
+    #  have is worse than one that documents none, because it is the
+    #  reason nobody goes looking.
+    ip = _client_ip()
+    if ratelimit.too_many(db, "contact", ip):
+        current_app.logger.info("Contact form rate limited from %s", ip)
+        return redirect(f"{back_url}?slow=1")
+    ratelimit.record(db, "contact", ip)
+    db.commit()
     ok, reason = captcha.verify(
         request.form.get("captcha_token"),
         request.form.get("captcha_answer"),
