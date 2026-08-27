@@ -628,6 +628,13 @@ def _migrate(db):
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         )
     """)
+
+    #  The buyer's link, encrypted rather than only hashed. Hash-only meant
+    #  a live link could never be shown again, so every email minted a new
+    #  one and a buyer collected a different link per purchase -- which is
+    #  not a link you can keep. Encrypted with the same key the API keys
+    #  use, so a copy of the database is still not enough on its own.
+    _add_column(db, "access_tokens", "token_enc", "TEXT")
     #  Idempotency for every provider webhook: an event id we have already
     #  processed is dropped rather than replayed.
     db.execute("""

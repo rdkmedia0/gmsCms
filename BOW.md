@@ -4837,3 +4837,54 @@ no way to select on "the radius is extreme", so it stays until the
 container/object distinction above is available as something CSS can ask
 about.
 
+### One buyer, one link (2026-08-27)
+
+Three purchases produced three different `/my/<token>` links, and the
+owner named the consequence: a link that changes every time is not a link
+anybody can keep.
+
+It was not an oversight, it was a consequence. Only the token's HASH was
+stored -- deliberately, so a copy of the database could not open anyone's
+page -- and a hash cannot be turned back into a link. So anything that had
+to SHOW a link had no choice but to mint a new one, and every purchase
+issued another. All of them worked, which is why it looked like a
+cosmetic oddity rather than the feature failing at its one job.
+
+The token is now also held encrypted (`crypto`, the key the API keys
+already use), so the buyer's live link can be shown again. Stated
+plainly, because it is a real change of threat model: a copy of the
+database alone used to be useless, and now a copy of the database
+TOGETHER with the encryption key would open a buyer's page. That is the
+bar this app already sets for the Stripe secret key sitting in the same
+file, and `services/backup.py` leaves the key out of an archive by
+default for exactly this reason.
+
+The page also stopped saying "there's no password". True, and not
+something to advertise -- it tells anyone reading over a shoulder what
+the link is worth.
+
+**Still open, and the owner asked**: whether to protect a purchase
+further. The cheap and meaningful option is to ask for the buyer's email
+address before the page opens -- something you have plus something you
+know, no account, no password to forget. Not built: it puts friction on
+somebody who has just paid, and that is the owner's call.
+
+### An internal marker reached a person
+
+The Bookings screen read: `Couldn't read your diary from Cal.com --
+[could-not-reach] TimeoutError: The read operation timed out`.
+
+`[could-not-reach]` is a sentinel this codebase adds so a caller can tell
+"the provider said no" from "nothing answered" -- two problems with
+different fixes. It was only ever translated in one place, the Test
+Connection button, and every other surface printed the raw string. Eight
+of them.
+
+Now one function, `integrations.explain(error, name)`, sits between any
+provider error and any person: it rewrites the unreachable case into a
+sentence that says whose fault it is ("a network problem on the machine
+running this site, not a problem with your key") and returns everything
+else untouched, since most callers already have their own sentence to put
+it in. A marker that must never be read by anybody should have exactly
+one exit.
+

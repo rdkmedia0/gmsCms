@@ -251,7 +251,7 @@ def commerce_bookings():
         bookings=bookings,
         gone=commerce.gone_bookings(db),
         calcom_ready=ready,
-        error=error,
+        error=integrations.explain(error, "Cal.com"),
     )
 
 
@@ -341,9 +341,12 @@ def commerce_fulfilment():
     if integrations.is_configured(db, "stripe"):
         catalogue, cat_error = integrations.stripe_catalogue_cached(db)
         products, product_error = integrations.stripe_products(db)
+        cat_error = integrations.explain(cat_error, "Stripe")
+        product_error = integrations.explain(product_error, "Stripe")
     event_types, ev_error = ([], None)
     if integrations.is_configured(db, "calcom"):
         event_types, ev_error = integrations.calcom_event_types(db)
+        ev_error = integrations.explain(ev_error, "Cal.com")
     rules = {
         r["price_id"]: r
         for r in db.execute("SELECT * FROM fulfilment_rules").fetchall()
@@ -499,7 +502,7 @@ def commerce_product_add():
         image_url,
     )
     if error:
-        flash(f"Stripe wouldn't accept that — {error}", "error")
+        flash(f"Stripe wouldn't accept that — {integrations.explain(error, 'Stripe')}", "error")
     else:
         flash("Product created. Now say what it delivers.", "success")
     return redirect(url_for("admin.commerce_fulfilment"))
@@ -529,7 +532,7 @@ def commerce_product_save(product_id):
         image_url=image_url,
     )
     if not ok:
-        flash(f"Stripe wouldn't accept that — {error}", "error")
+        flash(f"Stripe wouldn't accept that — {integrations.explain(error, 'Stripe')}", "error")
         return redirect(url_for("admin.commerce_fulfilment"))
 
     old_price_id = (request.form.get("price_id") or "").strip()
@@ -541,7 +544,7 @@ def commerce_product_save(product_id):
         new_price_id, error = integrations.stripe_reprice(
             db, product_id, old_price_id, amount, currency, interval)
         if error:
-            flash(f"The price could not be changed — {error}", "error")
+            flash(f"The price could not be changed — {integrations.explain(error, 'Stripe')}", "error")
             return redirect(url_for("admin.commerce_fulfilment"))
         if old_price_id and new_price_id:
             #  The rule says what a sale delivers, and it is keyed by
@@ -780,7 +783,7 @@ def settings_stripe_sync():
         db, integrations, credit_expiry_at=_credit_expiry_at(db)
     )
     if error:
-        return jsonify({"ok": False, "message": f"Couldn't read orders from Stripe — {error}"})
+        return jsonify({"ok": False, "message": f"Couldn't read orders from Stripe — {integrations.explain(error, 'Stripe')}"})
     if recorded:
         return jsonify({"ok": True, "message": f"Checked the last {checked} checkouts and recorded {recorded} new order(s)."})
     return jsonify({"ok": True, "message": f"Checked the last {checked} checkouts — nothing new to record."})

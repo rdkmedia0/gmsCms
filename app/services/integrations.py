@@ -234,6 +234,22 @@ def _why_no_dns():
     return ""
 
 
+def explain(error, name="the provider"):
+    """Any provider error, phrased for a person.
+
+    An error that never reached the provider carries a marker so callers
+    can tell "it said no" from "nothing answered". The marker is internal
+    and must never be read by anybody, so every surface that shows an
+    error goes through here; anything else is returned unchanged, since
+    most callers already have their own sentence to put it in.
+    """
+    if error and error.startswith(UNREACHABLE):
+        return (f"could not reach {name} at all — this is a network problem "
+                f"on the machine running this site, not a problem with your key "
+                f"({error[len(UNREACHABLE):]})")
+    return error
+
+
 def _reachability(error, name):
     """The human half of an error: what happened, and whose problem it is."""
     if error.startswith(UNREACHABLE):

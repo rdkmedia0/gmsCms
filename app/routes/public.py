@@ -71,7 +71,7 @@ def _send_order_email(db, order_id):
     if not customer or not mailer.is_configured(settings):
         return False
     try:
-        token = commerce.create_access_token(db, customer["id"])
+        token, _ = commerce.get_or_create_token(db, customer["id"])
         db.commit()
         #  An emailed link has to work on a device that is not this one.
         #  url_for(_external=True) builds from whichever host THIS request
@@ -274,7 +274,8 @@ def my_account_download(token, entitlement_id):
     row, error = downloads.claim(db, entitlement_id, customer["id"])
     db.commit()
     if error:
-        return redirect(url_for("public.my_account", token=token, error=error))
+        return redirect(url_for("public.my_account", token=token,
+                                error=integrations.explain(error, "the booking calendar")))
     response = send_file(
         downloads.path_for(row),
         as_attachment=True,
@@ -664,7 +665,7 @@ def checkout_thanks():
             #  spam folder would otherwise leave someone who has just paid
             #  with no route to what they bought.
             if order and order["customer_id"]:
-                token = commerce.create_access_token(db, order["customer_id"])
+                token, _ = commerce.get_or_create_token(db, order["customer_id"])
                 db.commit()
                 ents = commerce.entitlements_for(db, order["customer_id"])
                 state["link"] = _public_url("public.my_account", token=token)

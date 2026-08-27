@@ -6,7 +6,7 @@
   <p>Links expire after a while, and each one only opens the purchases it was sent for. If you need a new one, reply to your order email and we'll send it.</p>
 {% else %}
   <h1>Hello{{ ' ' ~ customer.name if customer.name }}</h1>
-  <p class="cms-account-sub">Everything you've bought from us, on one page. There's no password — this link is enough, so keep the email that brought you here.</p>
+  <p class="cms-account-sub">Everything you&rsquo;ve bought from us, on one page. Keep the email that brought you here &mdash; it&rsquo;s how you get back.</p>
 
   {% if booked %}
   <p class="cms-account-flash ok">Booked{{ ' for ' ~ booked_label if booked_label }}. Check your email for the confirmation and the joining link.</p>

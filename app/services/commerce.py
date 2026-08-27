@@ -32,6 +32,8 @@ import json
 import secrets
 import time
 
+from .. import crypto
+
 #  Stripe signs with a timestamp inside the signed payload specifically so
 #  a captured request cannot be replayed later. Five minutes is Stripe's
 #  own documented default tolerance.
@@ -287,29 +289,43 @@ def create_access_token(db, customer_id, days=ACCESS_TOKEN_DAYS):
     token = secrets.token_urlsafe(32)
     expires = datetime.datetime.utcnow() + datetime.timedelta(days=days)
     db.execute(
-        "INSERT INTO access_tokens (customer_id, token_hash, expires_at) VALUES (?, ?, ?)",
+        "INSERT INTO access_tokens (customer_id, token_hash, token_enc, expires_at) "
+        "VALUES (?, ?, ?, ?)",
         (customer_id, hashlib.sha256(token.encode()).hexdigest(),
+         crypto.encrypt(token),
          expires.strftime("%Y-%m-%d %H:%M:%S")),
     )
     return token
 
 
 def get_or_create_token(db, customer_id, days=ACCESS_TOKEN_DAYS):
-    """A usable link for this buyer, minting one only if none is live.
+    """The buyer's one link, minting it only if they have none live.
 
-    Returns (token, is_new). An existing token cannot be returned — only
-    its hash is stored, by design — so when one is already valid this
-    returns (None, False) and the caller uses whatever link it already
-    has. Anything that must SHOW a link mints a fresh one; the old one
-    keeps working until it expires, which is the friendly behaviour when
-    someone still has the first email.
+    Returns (token, is_new). One customer keeps ONE link for as long as it
+    is valid, because a link that changes with every purchase is not a
+    link anybody can keep -- which is what hash-only storage forced, since
+    a hash cannot be turned back into a link to show again.
+
+    So the token is also held encrypted (`crypto`, the same key the API
+    keys use). The hash stays and is still what a lookup matches on. What
+    changes is the threat model, stated plainly: a copy of the database
+    alone used to be useless, and now a copy of the database TOGETHER with
+    the encryption key would open a buyer's page. That is the bar this app
+    already sets for the Stripe key sitting in the same file, and backups
+    leave the key out by default for exactly this reason.
     """
     live = db.execute(
-        "SELECT 1 FROM access_tokens WHERE customer_id = ? AND expires_at > CURRENT_TIMESTAMP LIMIT 1",
+        "SELECT token_enc FROM access_tokens WHERE customer_id = ? "
+        "AND expires_at > CURRENT_TIMESTAMP ORDER BY id DESC LIMIT 1",
         (customer_id,),
     ).fetchone()
-    if live:
-        return None, False
+    if live and live["token_enc"]:
+        existing = crypto.decrypt(live["token_enc"])
+        if existing:
+            return existing, False
+    #  A row from before this column existed, or one that will not decrypt:
+    #  mint a fresh link rather than stranding the buyer. The old one keeps
+    #  working until it expires.
     return create_access_token(db, customer_id, days), True
 
 
