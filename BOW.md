@@ -5897,11 +5897,23 @@ Confirm your subscription, You're subscribed, and newsletter sends. The
 pattern already exists in miniature: `newsletter_intro`/`newsletter_outro`
 are editable while the sender line and unsubscribe are not.
 
-**Currency.** Three separate features that keep being asked for as one: a
-base currency for the site (smallest, most clearly missing -- one
-setting, the default for every new product, so a shop cannot end up
-pricing in three currencies by accident); regional detection; a
-converter. Start with the first.
+**Currency.** ~~Three separate features that keep being asked for as
+one.~~ **The base currency is BUILT** (2026-08-27). Regional detection
+and a converter remain, and remain separate.
+
+Worth recording what building it turned up, because the reason for doing
+it was stated as tidiness and the real reason was money. `cart.lines()`
+took the FIRST line's currency and added every later amount into one
+subtotal regardless -- so a basket holding 10 CHF and 10 EUR read
+"20.00 CHF", a number that is not a price in either currency, and the
+customer was quietly quoted the wrong thing. Nothing raised. The
+per-product dropdown (CHF first in the list) was the mechanism, so it is
+gone rather than defaulted: a new product takes the site's currency, an
+existing one keeps its own because a Stripe price is immutable and a
+reprice in a new currency would orphan the fulfilment rule keyed to the
+old, and anything on sale that disagrees with the base is named on the
+screen. `shipping_for` also had a hardcoded `"chf"` fallback, so a shop
+charging in euros quoted postage in francs. `tools/currency_check.py`.
 
 ### Gaps found by using it, worth building
 

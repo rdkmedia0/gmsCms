@@ -821,6 +821,47 @@ def invalidate_catalogue():
 
 
 CURRENCIES = (("chf", "CHF"), ("eur", "EUR"), ("usd", "USD"), ("gbp", "GBP"))
+
+#  What this shop charges in. One setting, because one shop is one
+#  currency: it is the default for every new product and the thing a
+#  basket refuses to depart from. Nothing here converts anything --
+#  conversion and regional detection are separate features.
+BASE_CURRENCY_KEY = "base_currency"
+DEFAULT_CURRENCY = "chf"
+
+
+def base_currency(db):
+    row = db.execute("SELECT value FROM settings WHERE key = ?",
+                     (BASE_CURRENCY_KEY,)).fetchone()
+    value = (row["value"] if row else "") or ""
+    return value if value in dict(CURRENCIES) else DEFAULT_CURRENCY
+
+
+def set_base_currency(db, value):
+    """(saved, error). Refused rather than coerced: a currency this app
+    cannot name is one Stripe would reject at the payment step, which is
+    the worst possible moment to find out."""
+    value = (value or "").strip().lower()
+    if value not in dict(CURRENCIES):
+        return None, "That isn't a currency this site can charge in."
+    db.execute("INSERT INTO settings (key, value) VALUES (?, ?) "
+               "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+               (BASE_CURRENCY_KEY, value))
+    return value, None
+
+
+def currencies_in_use(db):
+    """Every currency the live catalogue actually prices in.
+
+    Read from Stripe rather than from anything this app stores, because
+    Stripe is where a price lives and a product could have been repriced
+    there. Sorted so the screen does not shuffle between visits.
+    """
+    catalogue, error = stripe_catalogue_cached(db)
+    if error:
+        return [], error
+    return sorted({(item.get("currency") or "").lower()
+                   for item in catalogue if item.get("currency")}), None
 INTERVALS = (("", "One-off payment"), ("month", "Every month"), ("year", "Every year"))
 
 

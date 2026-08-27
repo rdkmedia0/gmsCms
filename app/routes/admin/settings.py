@@ -460,6 +460,10 @@ def commerce_fulfilment():
         products=products,
         product_error=product_error,
         currencies=integrations.CURRENCIES,
+        base_currency=integrations.base_currency(db),
+        #  Read from Stripe, not from anything stored here: a price lives
+        #  there and could have been changed there.
+        currencies_in_use=integrations.currencies_in_use(db)[0],
         intervals=integrations.INTERVALS,
         public_url=bool((get_email_settings(db).get("site_public_url") or "").strip()),
         zones=integrations.SHIPPING_ZONES,
@@ -586,7 +590,7 @@ def commerce_product_add():
         request.form.get("name"),
         request.form.get("description") or "",
         _money_to_cents(request.form.get("amount")),
-        request.form.get("currency") or "chf",
+        integrations.base_currency(db),
         request.form.get("interval") or "",
         image_url,
     )
@@ -594,6 +598,27 @@ def commerce_product_add():
         flash(f"Stripe wouldn't accept that — {integrations.explain(error, 'Stripe')}", "error")
     else:
         flash("Product created. Now say what it delivers.", "success")
+    return redirect(url_for("admin.commerce_fulfilment"))
+
+
+@bp.route("/commerce/currency", methods=["POST"])
+@login_required
+def commerce_currency():
+    """What this shop charges in.
+
+    Changing it does NOT reprice anything: a Stripe price is immutable
+    and its currency is part of it, so an existing product keeps what it
+    was created with and the screen says so. This decides what the NEXT
+    product is priced in.
+    """
+    db = get_db()
+    saved, error = integrations.set_base_currency(db, request.form.get("base_currency"))
+    if error:
+        flash(error, "error")
+    else:
+        db.commit()
+        flash("New products will be priced in %s. Anything already on sale keeps the "
+              "currency it was created with." % saved.upper(), "success")
     return redirect(url_for("admin.commerce_fulfilment"))
 
 
@@ -627,7 +652,8 @@ def commerce_product_save(product_id):
     old_price_id = (request.form.get("price_id") or "").strip()
     amount = _money_to_cents(request.form.get("amount"))
     interval = request.form.get("interval") or ""
-    currency = (request.form.get("currency") or "chf").lower()
+    currency = ((request.form.get("current_currency") or "").strip().lower()
+                or integrations.base_currency(db))
     was = request.form.get("current_amount", type=int)
     if amount and (amount != was or interval != (request.form.get("current_interval") or "")):
         new_price_id, error = integrations.stripe_reprice(

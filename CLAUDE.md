@@ -786,6 +786,20 @@ Each of these follows the structure above — thin routes, logic in
   Products are created and repriced from this app; a Stripe price is
   immutable, so "change the price" means new price + retire old + move
   the fulfilment rule.
+  **One shop is one currency** (`integrations.base_currency`): one
+  setting, the default every new product is created with. It was a
+  per-product dropdown with CHF first in the list, which is exactly how
+  a shop came to price in three currencies -- and the consequence was not
+  untidiness, it was that `cart.lines()` took the FIRST line's currency
+  and added every later amount into one subtotal, so 10 CHF and 10 EUR
+  read "20.00 CHF": a number that is not a price in either. A basket now
+  refuses to mix and says which one it took out. An EXISTING product
+  keeps the currency it was created with, because a Stripe price is
+  immutable and a new one in a different currency would orphan the
+  fulfilment rule keyed to the old -- so the screen states each price's
+  currency rather than offering to change it, and names any that
+  disagree with the base. Conversion and regional detection are separate
+  features and deliberately not here.
 - **One list of tool controls**: a tool's config forms live once, in
   `tool_config_forms` (`public/page.html`), called by the section chain
   and by `render_cell` alike -- a section passes no `col_index` and gets
@@ -1123,6 +1137,8 @@ part that constrains the CODE.
   carries a control character, after an invisible one cost a day),
   `stale_media_check.py` (that installing removes what a template no
   longer ships, and refuses to when it cannot read the archive),
+  `currency_check.py` (that one shop is one currency and a basket cannot
+  add two of them together),
   `schedule_check.py` (that a send put on the clock goes exactly once
   even when two workers claim it together, and refuses for the same
   reasons a live send refuses), and

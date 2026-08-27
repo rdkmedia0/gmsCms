@@ -111,6 +111,19 @@ def lines(db, integrations):
             if not quantity:
                 continue
         amount = item["amount"] or 0
+        #  Two currencies cannot be added. Before this, the first line
+        #  set the currency and every later amount was added into it
+        #  regardless -- so 10 CHF and 10 EUR read "20.00 CHF", a number
+        #  that is not a price in any currency at all. The odd one out is
+        #  taken back out of the basket and said so, rather than quoting
+        #  a total nobody can pay.
+        if currency and item["currency"] and item["currency"] != currency:
+            remove(price_id)
+            problems.append(
+                "%s is priced in %s and the rest of your basket is in %s, so we have taken "
+                "it out. Please order it on its own."
+                % (item["name"], (item["currency"] or "").upper(), currency.upper()))
+            continue
         currency = currency or item["currency"]
         subtotal += amount * quantity
         out.append({
@@ -229,7 +242,9 @@ def shipping_for(db, integrations, lines_, subtotal, currency):
         "countries": zone[1],
         "amount": 0 if free else settings["amount"],
         "label": "Free delivery" if free else settings["label"],
-        "currency": currency or "chf",
+        #  The site's own, not a hardcoded CHF: postage on a shop that
+        #  charges in euros was being quoted in francs.
+        "currency": currency or integrations.base_currency(db),
     }
 
 

@@ -20,6 +20,40 @@
 {% else %}
 
 <div class="card">
+  <div class="integration-head">
+    <h2>What this shop charges in</h2>
+    <span class="hint">One shop, one currency.</span>
+  </div>
+  <form method="post" action="{{ url_for('admin.commerce_currency') }}" class="inline-form">
+    <label for="base_currency" title="The currency every new product is priced in.">Currency</label>
+    <select id="base_currency" name="base_currency"
+            title="Every new product is priced in this. Anything already on sale keeps the currency it was created with, because a Stripe price cannot change.">
+      {% for code, label in currencies %}
+      <option value="{{ code }}" {{ 'selected' if code == base_currency }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-small btn-primary"
+            title="Save this as the currency new products are priced in.">Save</button>
+  </form>
+  <p class="hint">This decides what the <em>next</em> product is priced in. Anything already on
+    sale keeps what it was created with &mdash; Stripe never lets a price change, so an old
+    receipt still says what it said.</p>
+
+  {#  Two currencies on one shop is not a warning about tidiness. A
+      basket cannot hold both -- there is no total that is a price in
+      either -- so the odd one out is taken back out at the basket, and
+      the owner should hear it here rather than from a customer. #}
+  {% set strays = currencies_in_use | reject('equalto', base_currency) | list %}
+  {% if strays %}
+  <p class="flash flash-warning">Some of what you sell is priced in
+    {{ strays | map('upper') | join(', ') }}, not {{ base_currency | upper }}.
+    A basket cannot hold two currencies &mdash; there is no total that is a price in either
+    &mdash; so anything in the odd one out is taken back out when a customer tries to buy it
+    alongside the rest. To fix it, retire that product and add it again.</p>
+  {% endif %}
+</div>
+
+<div class="card">
   <h2>Files you sell</h2>
   <p class="hint">Upload anything you sell as a download — an ebook, a set of photos, an audio track, a template. These are kept private: they have no web address of their own, and a buyer only ever gets one by having paid for it.</p>
   <form method="post" action="{{ url_for('admin.commerce_file_upload') }}" enctype="multipart/form-data" class="inline-form">
@@ -59,9 +93,11 @@
     <div class="product-price-row">
       <input type="number" id="new_amount" name="amount" step="0.01" min="0" required
              placeholder="0.00" title="What it costs. Tax is added by Stripe if you have Stripe Tax switched on.">
-      <select name="currency" title="The currency you charge in">
-        {% for code, label in currencies %}<option value="{{ code }}">{{ label }}</option>{% endfor %}
-      </select>
+      {#  No picker. One shop is one currency, and a per-product
+          dropdown is exactly how a shop came to price in three of them.
+          Said in words so it is never a surprise, with the setting one
+          click away. #}
+      <span class="product-currency" title="This shop charges in {{ base_currency | upper }}. Change it in “What this shop charges in”, above.">{{ base_currency | upper }}</span>
       <select name="interval" title="A one-off sale, or something they pay for again each month or year">
         {% for value, label in intervals %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
       </select>
@@ -119,11 +155,12 @@
       <input type="number" id="amount_{{ loop.index }}" name="amount" step="0.01" min="0"
              value="{{ '%.2f'|format(p.amount / 100) if p.amount is not none else '' }}"
              title="Change this and a new price is created for you, with the old one retired">
-      <select name="currency" title="The currency you charge in">
-        {% for code, label in currencies %}
-        <option value="{{ code }}" {{ 'selected' if p.currency == label }}>{{ label }}</option>
-        {% endfor %}
-      </select>
+      {#  Its own, and not editable: a Stripe price cannot change, so
+          repricing makes a NEW one -- and making that new one in a
+          different currency would orphan the fulfilment rule keyed to
+          the old price, which is how a buyer pays and gets nothing. #}
+      <span class="product-currency" title="A price cannot change currency once it exists. To sell this in {{ base_currency | upper }}, retire it and add it again.">{{ p.currency }}</span>
+      <input type="hidden" name="current_currency" value="{{ p.currency | lower }}">
       <select name="interval" title="A one-off sale, or something they pay for again">
         {% for value, label in intervals %}
         <option value="{{ value }}" {{ 'selected' if p.interval == value }}>{{ label }}</option>
