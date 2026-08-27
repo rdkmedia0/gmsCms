@@ -5,12 +5,6 @@
   "meta_description": "How I work and what I care about as a designer.",
   "sections": [
     [
-      "html",
-      "",
-      "<nav class=\"cms-breadcrumb cms-breadcrumb-medium cms-breadcrumb-style-uppercase\">%%CMS_BREADCRUMB%%</nav>",
-      {}
-    ],
-    [
       "banner",
       "",
       "<div class=\"cms-banner\" style=\"background-image:url('media/cv-banner.webp')\"><div class=\"cms-banner-overlay\"><h2>How I Work</h2><p>Research-first, opinionated about details, allergic to unnecessary meetings.</p></div></div>",

@@ -5,12 +5,6 @@
   "meta_description": "A bit more about me and how I work.",
   "sections": [
     [
-      "html",
-      "",
-      "<nav class=\"cms-breadcrumb cms-breadcrumb-medium cms-breadcrumb-style-pill\">%%CMS_BREADCRUMB%%</nav>",
-      {}
-    ],
-    [
       "banner",
       "",
       "<div class=\"cms-banner\" style=\"background-image:url('media/personal-banner.webp')\"><div class=\"cms-banner-overlay\"><h2>A Bit More About Me</h2><p>How a decade of road trips turned into a full-time habit.</p></div></div>",

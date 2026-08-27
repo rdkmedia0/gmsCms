@@ -4446,3 +4446,54 @@ the element, modify the one key in question, and post that back -- or
 leave a setting that has a control to the person whose site it is, which
 is what the defect-or-choice test in CLAUDE.md already says.
 
+## Two gaps found by using the thing (2026-08-27)
+
+### A template cannot ship site-wide furniture
+
+Three built-ins shipped a Breadcrumb on their About page and nowhere
+else, which is not a decision anybody would make: a breadcrumb that
+appears on one page of six is worse than none, because it reads as a
+mistake on that page and its absence reads as a mistake on the others.
+
+It was not a decision. It is the only thing a template CAN do. A pack
+carries `pages/`, and every section in them lands in a page's body --
+there is no `zone` key, so a template cannot put anything in the header
+or footer zone where it would apply everywhere. The menu is site-wide
+only because the SEED builds it into the header zone afterwards, not
+because the pack asked for one.
+
+Removed from the three templates, since "none" is the half of "all or
+none" that a pack can actually express. The feature worth building is the
+other half: let a pack carry header/footer-zone sections, so a template
+can ship a breadcrumb, a strapline, or a booking bar that applies to the
+whole site. Note when doing it that zone sections are shared, so applying
+a pack's content must not duplicate them on every load -- the same
+merge-by-slug problem the body pages already solve.
+
+### The shop speaks one currency and never says which
+
+A product's price is a number and a currency chosen per product, and a
+visitor sees it whoever and wherever they are. Three separate things were
+asked for and they are not the same feature:
+
+  1. **A base currency for the site.** The smallest and the most clearly
+     missing: one setting, used as the default for every new product, so
+     a shop cannot end up with prices in three currencies by accident.
+  2. **Regional detection.** Show a visitor their own currency. Needs a
+     source for the visitor's region (their IP, which is a privacy
+     question this app has been careful about, or Accept-Language, which
+     is weaker but local) and a rate source.
+  3. **A selector with live conversion.** The visitor chooses. Needs a
+     rate feed, a refresh policy, and a decision about what happens at
+     checkout -- Stripe charges in ONE currency, so a converted price is
+     an estimate unless the Stripe price is created in that currency too.
+
+The trap in 2 and 3 is that a displayed price is a representation and the
+charge is the fact. Showing EUR and charging GBP is how a shop gets a
+chargeback. Whatever is built, the checkout page must state the currency
+the card will actually be charged in.
+
+Worth doing 1 first regardless: it is a setting, it has no dependencies,
+and it makes the other two coherent by giving them something to convert
+FROM.
+

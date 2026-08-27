@@ -5,12 +5,6 @@
   "meta_description": "Credentials and coaching philosophy.",
   "sections": [
     [
-      "html",
-      "",
-      "<nav class=\"cms-breadcrumb cms-breadcrumb-medium cms-breadcrumb-style-plain\">%%CMS_BREADCRUMB%%</nav>",
-      {}
-    ],
-    [
       "banner",
       "",
       "<div class=\"cms-banner\" style=\"background-image:url('media/coaching-banner.webp')\"><div class=\"cms-banner-overlay\"><h2>Hi, I'm Morgan</h2><p>ICF-certified coach, 9 years in, 400+ client sessions.</p></div></div>",
