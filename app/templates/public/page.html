@@ -2244,6 +2244,9 @@
     <video id="cms-lightbox-video" class="cms-lightbox-video" controls playsinline hidden></video>
   </div>
   <script src="{{ static_url('js/site.js') }}"></script>
+  {#  Adding to the basket without leaving the shop. The form works
+      without it -- see the script's own note. #}
+  <script src="{{ static_url('js/cart-add.js') }}"></script>
 
   {% if editing %}
   {% include "partials/cms_modal.html" %}

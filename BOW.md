@@ -5440,3 +5440,26 @@ automatic fork earlier the same day: I answered "this field needs a rich
 text editor" by building one, rather than asking what already answered
 it. The smaller build looked like less work and was more code.
 
+### Add to basket, and stay where you are (2026-08-27)
+
+Adding something took the shopper straight to the basket. The code even
+said why -- "the way a market stall works: you see what you are holding"
+-- and on a page of four products it means being carried away from the
+shop after each one and having to find the way back. That is where a
+second purchase stops happening.
+
+Now it adds and leaves them there. The basket is a link in the header
+with a count on it; that count changing IS the confirmation, and the
+basket is one click away whenever they want it.
+
+Built as an upgrade, not a replacement: the form posts and the server
+answers either way. With a script the page does not navigate at all --
+the count updates, the button says "Added" for a moment and goes back to
+itself. Without one, the same form posts and the server sends them back
+to the page they were on, and the header count is still honest feedback.
+
+Found while doing it: **a public page renders no flashes at all**, so the
+existing `flash("Sorry — that's just sold out.")` had never been seen by
+anybody. The refusal travels in the answer now and lands on the button
+that was pressed, which is where the shopper is looking.
+

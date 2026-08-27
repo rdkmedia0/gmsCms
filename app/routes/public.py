@@ -670,19 +670,41 @@ def cart():
 
 @bp.route("/cart/add", methods=["POST"])
 def cart_add():
+    """Puts something in the basket and leaves the shopper where they are.
+
+    It used to go straight to the basket "the way a market stall works".
+    On a page of four products that means being taken away from the shop
+    after each one and having to find your way back, which is how a
+    second purchase stops happening.
+
+    So: add it, say so, stay put. The basket is a link in the header with
+    a count on it, and it is there whenever they want it.
+
+    Answers JSON when asked, so the page can update its count without a
+    reload, and redirects back to where the shopper was when it is not --
+    the form works either way, and the header count is honest feedback
+    even with no script running.
+    """
     db = get_db()
+    wants_json = "application/json" in (request.headers.get("Accept") or "")
+    back = request.referrer or url_for("public.home")
     price_id = (request.form.get("price_id") or "").strip()
     if not price_id:
-        return redirect(request.referrer or url_for("public.home"))
+        return jsonify({"ok": False, "message": "Nothing to add."}) if wants_json else redirect(back)
+
     left = cart_service.stock_for(db, price_id)
     if left == 0:
-        flash("Sorry — that's just sold out.", "error")
-        return redirect(request.referrer or url_for("public.home"))
+        #  A public page renders no flashes, so this has to travel in the
+        #  answer itself or the shopper is told nothing at all.
+        if wants_json:
+            return jsonify({"ok": False, "message": "Sorry — that's just sold out."})
+        return redirect(back)
+
     cart_service.add(price_id, request.form.get("quantity", type=int) or 1)
-    #  Straight to the basket, the way a market stall works: you see what
-    #  you are holding. Guessing whether to interrupt with a pop-up is
-    #  exactly the sort of cleverness a first-time seller does not need.
-    return redirect(url_for("public.cart"))
+    if wants_json:
+        return jsonify({"ok": True, "count": cart_service.count(),
+                        "message": "Added to your basket"})
+    return redirect(back)
 
 
 @bp.route("/cart/update", methods=["POST"])
