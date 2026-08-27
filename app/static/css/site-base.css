@@ -951,11 +951,11 @@ li.cms-menu-divider { display: block; width: auto; height: 1px; margin: 4px 8px;
 [data-corner-style="cut-corner"] { --site-radius: 0 32px 0 32px; --site-radius-pad: initial; }
 [data-corner-style="pill"] {
   --site-radius: 999px;
-  --site-radius-pad: min(24%, 88px) min(16%, 68px);
+  --site-radius-pad: min(24%, 88px) min(22%, 104px);
 }
 [data-corner-style="lens"] {
   --site-radius: 50% / 30%;
-  --site-radius-pad: min(30%, 96px) min(16%, 68px);
+  --site-radius-pad: min(30%, 96px) min(22%, 104px);
 }
 [data-corner-style="organic"] {
   --site-radius: 60% 40% 55% 45% / 45% 55% 40% 60%;
