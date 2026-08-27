@@ -5060,3 +5060,54 @@ shop -- which is everybody, on their first day. The two messages say
 different things: one is a way back to what was bought, the other is a
 job list.
 
+### Capping a container was overriding a choice (2026-08-27)
+
+The container cap from earlier today is **reverted**. It was the same
+mistake this file already records about centring a menu: a shape somebody
+picked from a control is a choice, and flattening it in CSS overrules a
+person. Corners is a control. The pill on a section is the look.
+
+What was actually wrong was never the shape -- it was content sitting
+OUTSIDE it, and that is fixed where it belongs, by insetting the content.
+The two caps that remain are the video and the textarea, and both are
+there because the shape makes the thing unusable rather than unfamiliar:
+a play bar clipped off the bottom edge is not a look.
+
+Worth keeping the failure shape in mind: "this looks like too much" is a
+report about taste, and the fix for taste is a control, not a rule that
+takes the taste away from everybody.
+
+Note also what the investigation turned up, which was not the cap at all:
+`--site-radius` had become unset on the live site because the site's
+Corners setting had moved to Auto, and no template's `theme.css` sets it
+-- the built-ins state per-kind defaults (`--corner-card`, `--corner-hero`
+and so on) and leave the site-wide variable to the owner. So a template
+cannot carry a pill: the shape is the SITE's setting, not the template's,
+and activating one does not restore it. That is a real gap in "a template
+brings a look" and belongs on the list beside the header/footer-zone one.
+
+### A basket is the smallest box on the page
+
+The basket badge hung outside its own curve. Measured: a 69px-wide block
+handed 22% of its own width as side padding, leaving 39px of room for a
+67px link. Percentage padding shrinks with the box; the link inside it
+does not.
+
+The rule that gives a short strip its side clearance already existed and
+already listed the menu and the breadcrumb. The basket -- the smallest and
+worst affected of the three -- was not on it. Same class of thing, same
+rule, one more selector.
+
+**Three more basket styles** while there: just the bag with no number (a
+header that would rather not put a running total in front of somebody
+still reading), a solid button, and the word with a count and no picture.
+The style class now travels onto the rendered anchor, the way the
+alignment class already had to, because the marker div holding it is never
+what a visitor sees.
+
+**And the Menu gained the pill badge** the Breadcrumb already offered --
+filled and outline. Its own entry rather than a corner setting, because a
+menu can be pill-shaped on a square-cornered site and often should be: it
+is the one row where the shape does the work of separating one word from
+the next.
+

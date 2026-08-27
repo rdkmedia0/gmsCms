@@ -20,7 +20,12 @@ from .. import icons
 
 MENU_STYLES = ("plain", "buttons", "dropdown")
 MENU_SIZES = ("small", "medium", "large")
-MENU_BUTTON_STYLES = ("solid", "outline", "soft", "floating", "tabs", "fade")
+#  "pill" is the badge shape the basket's own count uses: a small filled
+#  capsule rather than a rectangle. Its own entry rather than a corner
+#  setting, because a menu can be pill-shaped on a square-cornered site
+#  and often should be -- it is the one row of chrome where the shape is
+#  doing the work of separating one word from the next.
+MENU_BUTTON_STYLES = ("solid", "outline", "soft", "floating", "tabs", "fade", "pill", "pill-outline")
 MENU_SUBMENU_STYLES = ("card", "minimal", "dark", "bordered", "pill")
 MENU_DIRECTIONS = ("horizontal", "vertical")
 

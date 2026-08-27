@@ -998,17 +998,10 @@ li.cms-menu-divider { display: block; width: auto; height: 1px; margin: 4px 8px;
     then to the app's. A theme sets only the variable now — never the
     property — so nothing it declares can outrank the admin's choice on
     source order, which is what used to silently break this. */
-/*  Capped, for the same reason the video below is. `999px` does not mean
-    "very round corners", it means "as round as this box allows" -- on a
-    button that is a pill, on a 952x940 page section it is an ellipse, and
-    the box has stopped having corners at all. A CONTAINER holds objects
-    that carry their own shape, so when it degenerates it draws a huge
-    oval around unrelated things. Objects (a card, a button, a picture)
-    are left alone: a pill IS the idiom there. */
-.block-header { border-radius: clamp(0px, var(--site-radius, var(--corner-hero, 0)), 56px); }
+.block-header { border-radius: var(--site-radius, var(--corner-hero, 0)); }
 .block-html {
   box-shadow: var(--site-shadow, var(--shadow-panel, none));
-  border-radius: clamp(0px, var(--site-radius, var(--corner-panel, 0)), 56px);
+  border-radius: var(--site-radius, var(--corner-panel, 0));
   padding: var(--site-radius-pad, var(--pad-panel, 0));
 }
 /*  A menu block is one of these shapes lying down: wide and short, with
@@ -1048,7 +1041,12 @@ video, .cms-media video, .cms-video {
     block's WIDTH even when vertical, so a 24px breadcrumb was given 88px
     above and below and took more room than the page heading. */
 .block-html:has(.cms-menu),
-.block-html:has(.cms-breadcrumb) {
+.block-html:has(.cms-breadcrumb),
+/*  A basket is the smallest of these and the worst affected: a 69px-wide
+    block given 22% of its own width as side padding leaves 39px of room
+    for a 67px link, so the badge hung outside the curve. Percentage
+    padding shrinks with the box; the thing inside it does not. */
+.block-html:has(.cms-basket) {
   padding-top: var(--pad-menu-block, 12px);
   padding-bottom: var(--pad-menu-block, 12px);
   /*  The SIDES too, and for the same reason the top and bottom needed
@@ -1074,7 +1072,7 @@ video, .cms-media video, .cms-video {
     border box, so the radius curves it. Clipping the whole box would take
     a Menu's dropdown and a tool's panel with it. The dim overlay is a
     ::before and inherits the radius (see .cms-section-bg::before). */
-.cms-section { border-radius: clamp(0px, var(--site-radius, 0), 56px); }
+.cms-section { border-radius: var(--site-radius, 0); }
 
 .cms-content-divider {
   border: none; border-top-width: 1px;
@@ -2205,3 +2203,61 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
     is what every block written before the choice existed does, so nothing
     moves on an existing site. */
 .cms-contact-column .cms-contact-details { flex-direction: column; align-items: center; gap: 8px; }
+
+/*  Basket styles. Everything except "button" is a plain link that takes
+    the surrounding colour; "button" is the one that paints a ground of
+    its own, and so has to state its own text colour rather than let the
+    site's reach it by inheritance. */
+.cms-basket-link.cms-basket-style-button {
+  background: var(--primary, #2563eb);
+  color: var(--primary-on, #fff);
+  padding: 9px 16px;
+  font-weight: 600;
+}
+.cms-basket-link.cms-basket-style-button:hover {
+  background: var(--primary-dark, #1d4ed8);
+}
+.cms-basket-link.cms-basket-style-button .cms-basket-count {
+  background: color-mix(in srgb, var(--primary-on, #fff) 22%, transparent);
+  color: var(--primary-on, #fff);
+}
+.cms-basket-link.cms-basket-style-button .cms-basket-count[data-empty="1"] {
+  background: color-mix(in srgb, var(--primary-on, #fff) 14%, transparent);
+  color: var(--primary-on, #fff);
+}
+/*  No number to balance the bag, so it needs no extra room beside it. */
+.cms-basket-link.cms-basket-style-bag { gap: 0; }
+
+/*  Pill menu buttons — the same capsule the basket count wears, so a
+    header carrying both reads as one set of controls rather than two.
+    999px unconditionally: this is the tool's own chosen shape, not the
+    site's corner setting, which is why it does not read --site-radius. */
+.cms-menu-btnstyle-pill a.cms-menu-btn,
+.cms-menu-btnstyle-pill-outline a.cms-menu-btn {
+  border-radius: 999px;
+  padding: 8px 18px;
+}
+.cms-menu-btnstyle-pill a.cms-menu-btn {
+  background: var(--menu-btn-color);
+  color: var(--menu-btn-text);
+  border: 1px solid transparent;
+}
+.cms-menu-btnstyle-pill a.cms-menu-btn:hover { opacity: .88; }
+/*  The outline version keeps the capsule and gives the ground back, for
+    a header that already has a colour of its own. */
+.cms-menu-btnstyle-pill-outline a.cms-menu-btn {
+  background: transparent;
+  color: var(--menu-btn-color);
+  border: 1.5px solid color-mix(in srgb, var(--menu-btn-color) 45%, transparent);
+}
+.cms-menu-btnstyle-pill-outline a.cms-menu-btn:hover {
+  background: var(--menu-btn-color); color: var(--menu-btn-text);
+  border-color: var(--menu-btn-color); opacity: 1;
+}
+/*  The page you are on, in either pill style. */
+.cms-menu-btnstyle-pill a.cms-menu-btn.is-current,
+.cms-menu-btnstyle-pill-outline a.cms-menu-btn.is-current {
+  background: var(--menu-btn-color); color: var(--menu-btn-text);
+  border-color: var(--menu-btn-color);
+}
+

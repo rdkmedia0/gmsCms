@@ -473,6 +473,8 @@
           <option value="floating" {{ 'selected' if cell.menu_button_style == 'floating' }}>Floating (pill + shadow)</option>
           <option value="tabs" {{ 'selected' if cell.menu_button_style == 'tabs' }}>Tabs (underline)</option>
           <option value="fade" {{ 'selected' if cell.menu_button_style == 'fade' }}>Fade (gradient)</option>
+          <option value="pill" {{ 'selected' if cell.menu_button_style == 'pill' }}>Pill badge (filled)</option>
+          <option value="pill-outline" {{ 'selected' if cell.menu_button_style == 'pill-outline' }}>Pill badge (outline)</option>
         </select>
         {% endif %}
         {% if cell.menu_style == 'dropdown' %}

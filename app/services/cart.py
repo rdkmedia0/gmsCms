@@ -254,6 +254,9 @@ BASKET_STYLES = (
     ("icon", "Basket and a count"),
     ("count", "Just the count"),
     ("full", "Basket, count and the word"),
+    ("bag", "Just the basket, no number"),
+    ("button", "A button saying Basket"),
+    ("text", "The word and a count, no picture"),
 )
 BASKET_STYLE_PREFIX = "cms-basket-style-"
 
@@ -315,11 +318,15 @@ def render_basket(content, cart_url, editing=False):
             '<path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>')
     style = settings["style"]
     parts = []
-    if style in ("icon", "full"):
+    if style in ("icon", "full", "bag", "button"):
         parts.append(icon)
-    if style == "full":
+    if style in ("full", "button", "text"):
         parts.append('<span class="cms-basket-word">Basket</span>')
-    parts.append(f'<span class="cms-basket-count"{"" if items else " data-empty=\"1\""}>{items}</span>')
+    #  "bag" is the one style with no number at all: a header that only
+    #  ever shows a bag, for a site that would rather not put a running
+    #  total in front of somebody who is still reading.
+    if style != "bag":
+        parts.append(f'<span class="cms-basket-count"{"" if items else " data-empty=\"1\""}>{items}</span>')
     label = f"{items} item in your basket" if items == 1 else f"{items} items in your basket"
     #  The alignment class has to land on what actually renders. It is
     #  stored on the tool's own marker div (basket_settings reads it back
@@ -327,6 +334,10 @@ def render_basket(content, cart_url, editing=False):
     #  this <a> replaces it entirely — so the class is repeated here, or
     #  the CSS that positions the basket has nothing in the live page to
     #  select.
-    return (f'<a class="cms-basket-link {BASKET_ALIGN_PREFIX}{settings["align"]}" '
+    #  The style class travels onto the rendered <a> for the same reason
+    #  the alignment one does: the marker div holding it is never what a
+    #  visitor sees, so CSS keyed off it would match nothing live.
+    return (f'<a class="cms-basket-link {BASKET_STYLE_PREFIX}{style} '
+            f'{BASKET_ALIGN_PREFIX}{settings["align"]}" '
             f'href="{cart_url}" title="{label}" aria-label="{label}">'
             + "".join(parts) + "</a>")
