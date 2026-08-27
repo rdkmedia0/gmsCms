@@ -998,10 +998,17 @@ li.cms-menu-divider { display: block; width: auto; height: 1px; margin: 4px 8px;
     then to the app's. A theme sets only the variable now — never the
     property — so nothing it declares can outrank the admin's choice on
     source order, which is what used to silently break this. */
-.block-header { border-radius: var(--site-radius, var(--corner-hero, 0)); }
+/*  Capped, for the same reason the video below is. `999px` does not mean
+    "very round corners", it means "as round as this box allows" -- on a
+    button that is a pill, on a 952x940 page section it is an ellipse, and
+    the box has stopped having corners at all. A CONTAINER holds objects
+    that carry their own shape, so when it degenerates it draws a huge
+    oval around unrelated things. Objects (a card, a button, a picture)
+    are left alone: a pill IS the idiom there. */
+.block-header { border-radius: clamp(0px, var(--site-radius, var(--corner-hero, 0)), 56px); }
 .block-html {
   box-shadow: var(--site-shadow, var(--shadow-panel, none));
-  border-radius: var(--site-radius, var(--corner-panel, 0));
+  border-radius: clamp(0px, var(--site-radius, var(--corner-panel, 0)), 56px);
   padding: var(--site-radius-pad, var(--pad-panel, 0));
 }
 /*  A menu block is one of these shapes lying down: wide and short, with
@@ -1067,7 +1074,7 @@ video, .cms-media video, .cms-video {
     border box, so the radius curves it. Clipping the whole box would take
     a Menu's dropdown and a tool's panel with it. The dim overlay is a
     ::before and inherits the radius (see .cms-section-bg::before). */
-.cms-section { border-radius: var(--site-radius, 0); }
+.cms-section { border-radius: clamp(0px, var(--site-radius, 0), 56px); }
 
 .cms-content-divider {
   border: none; border-top-width: 1px;

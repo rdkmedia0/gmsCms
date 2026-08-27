@@ -4799,3 +4799,41 @@ simply is curved, setting `--site-radius` in its own CSS. Anything keyed
 off that attribute would have matched nothing here, which CLAUDE.md
 already warns about and which is why the fix reads the variable instead.
 
+### A container is not an object, and 999px is not "very round" (2026-08-27)
+
+The shop still read as odd after its content was brought inside the
+shape, and the owner named it: overuse of the pill. Measured, one page
+carried the same 999px at four nesting levels -- section, panel, card,
+button -- including a **952x940 section drawn as one enormous ellipse**
+around unrelated content.
+
+The statable fact: `border-radius: 999px` does not mean "very round
+corners", it means "as round as this box allows". On a 130x50 button that
+is a pill and it is the idiom. On a 952x940 section the box stops having
+corners at all and becomes an ellipse -- a different shape, which the
+control that produced it does not name. The control is called Corners.
+
+So the line is **container versus object**. A card, a button, a picture
+is an object and wears its own shape; a section or a panel is a region
+holding objects that already have shapes, and when its curve degenerates
+it draws a huge oval around things with no relation to it. Containers are
+now capped (`clamp(0px, var(--site-radius, 0), 56px)`), objects untouched.
+
+This is the same judgement the video cap already makes in this file --
+there, a 999px radius clipped the play bar off and the player could not be
+used. Same cause, different symptom.
+
+Known limit, shared with that cap: `clamp()` takes lengths, so a `50% /
+30%` lens or an organic blob radius makes the declaration invalid and it
+is dropped, leaving those shapes uncapped. Worth a proper fix when a
+lens-cornered site is looked at.
+
+One further thing seen and NOT changed: a shop card pushes its button to
+the bottom (`margin-top: auto`) so buttons line up across a row, which
+puts content at the top and bottom of an ellipse -- exactly where the
+shape is narrowest -- and leaves the middle, the widest part, empty. The
+alignment is deliberate and correct on a rectangular theme, and there is
+no way to select on "the radius is extreme", so it stays until the
+container/object distinction above is available as something CSS can ask
+about.
+
