@@ -598,6 +598,35 @@ def _migrate(db):
             sent_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    #  A send put on the clock. See services/scheduling.py for why the
+    #  claim is the lock and why a failure is never retried by itself.
+    #
+    #  No foreign key, for the same reason newsletter_sends has none: the
+    #  record that a send was attempted outlives the thing it was
+    #  attempted for. `kind` and `target_id` name what to send the same
+    #  way a send record does.
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS newsletter_schedule (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            kind TEXT NOT NULL,
+            target_id INTEGER NOT NULL,
+            subject TEXT NOT NULL DEFAULT '',
+            audience TEXT NOT NULL DEFAULT 'all',
+            send_at TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            claimed_at TEXT,
+            done_at TEXT,
+            sent INTEGER NOT NULL DEFAULT 0,
+            failed INTEGER NOT NULL DEFAULT 0,
+            error TEXT
+        )
+    """)
+    #  The poller asks exactly this question every minute, per worker.
+    db.execute("""
+        CREATE INDEX IF NOT EXISTS idx_schedule_due
+        ON newsletter_schedule (claimed_at, send_at)
+    """)
+
     #  Who asked to hear from you, and what they agreed to when they
     #  did. See services/subscribers.py.
     db.execute("""

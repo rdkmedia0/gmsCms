@@ -99,6 +99,65 @@ with sync_playwright() as p:
         """() => document.querySelector('[data-block-style=\"align\"]').disabled"""))
 
     print()
+    print("Laid out the way a mail composer is")
+    print("-" * 68)
+    #  Tools, then the actions, then who it is for, then the message. The
+    #  order is the whole point: it is a shape people already know.
+    order = page.evaluate("""
+      () => {
+        const want = ['.cms-issue-toolbar', '.cms-compose-actions',
+                      '.cms-compose-header', '.cms-issue-canvas-ground'];
+        const tops = want.map(sel => {
+          const el = document.querySelector(sel);
+          return el ? el.getBoundingClientRect().top : -1;
+        });
+        return tops;
+      }""")
+    check("tools, actions, recipients, then the message",
+          all(t > 0 for t in order) and order == sorted(order), str(order))
+    check("who it goes to is a field in the header, not a card at the bottom",
+          page.evaluate("() => !!document.querySelector('.cms-compose-header #audience')"))
+    check("...and the subject is beside it",
+          page.evaluate("() => !!document.querySelector('.cms-compose-header #subject')"))
+    check("all four actions are there", page.evaluate(
+        """() => {
+             const bar = document.querySelector('.cms-compose-actions');
+             const words = Array.from(bar.querySelectorAll('button'))
+               .map(b => b.textContent.trim());
+             return ['Send','Schedule','Save','Preview'].every(w => words.includes(w));
+           }"""))
+    check("it says Preview, not a sentence about sending", page.evaluate(
+        """() => Array.from(document.querySelectorAll('.cms-compose-actions button'))
+             .some(b => b.textContent.trim() === 'Preview')"""))
+    check("one form, told apart by formaction", page.evaluate(
+        """() => document.querySelectorAll('form.cms-issue-form').length === 1
+             && document.querySelectorAll('.cms-compose-actions button[formaction]').length >= 3"""))
+    check("Schedule has a time to send at", page.evaluate(
+        "() => !!document.querySelector('.cms-compose-actions input[type=\"datetime-local\"]')"))
+    check("the browser's own clock is what gets sent", page.evaluate(
+        """() => {
+             const f = document.querySelector('[data-tz-offset]');
+             return !!f && f.value === String(new Date().getTimezoneOffset());
+           }"""))
+    #  A hidden field is not a control anybody can see, so it is exempt --
+    #  the rule is about a label that might be a glyph, not about markup.
+    check("every action carries a sentence", page.evaluate(
+        """() => Array.from(document.querySelectorAll('.cms-compose-actions button, '
+             + '.cms-compose-actions input, .cms-compose-header select, '
+             + '.cms-compose-header input, .cms-compose-header label'))
+             .filter(c => c.type !== 'hidden')
+             .every(c => c.title && c.title.trim())"""))
+
+    #  Send cannot be taken back, so it asks. Schedule can, so it does not.
+    page.click("[data-send]")
+    page.wait_for_timeout(250)
+    check("Send asks before it goes",
+          page.query_selector("#cms-modal-backdrop:not([hidden])") is not None)
+    page.click("#cms-modal-cancel")
+    page.wait_for_timeout(200)
+    check("...and saying no sends nothing", page.url.endswith(ISSUE))
+
+    print()
     print("A button and a picture are optional, added from the toolbar")
     print("-" * 68)
     before = kinds(page)
@@ -200,7 +259,9 @@ with sync_playwright() as p:
     print()
     print("What is on screen is what is sent")
     print("-" * 68)
-    page.click('.cms-post-save-bar button[type="submit"]')
+    page.evaluate("""
+      () => Array.from(document.querySelectorAll('.cms-compose-actions button'))
+              .find(b => b.textContent.trim() === 'Save').click()""")
     settle(page)
     sent = ctx.new_page()
     sent.goto(EDIT + "/preview", wait_until="networkidle")

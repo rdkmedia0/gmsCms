@@ -532,6 +532,110 @@ def _first_words(content, words=6):
     return " ".join(parts[:words]) + ("…" if len(parts) > words else "")
 
 
+#  ---------------------------------------------------------------
+#  Everything a send has to be sure of, once
+#  ---------------------------------------------------------------
+#
+#  These checks were inside the route, tangled with `request.form`,
+#  `flash` and `redirect` -- which was fine while a send only ever
+#  happened because somebody had just pressed a button. A SCHEDULED send
+#  happens on a background thread with no request and nobody to flash a
+#  message at, and the one thing that must not happen is a second copy of
+#  these rules that drifts from the first. So they live here, answering in
+#  plain data, and both callers say what they like about the answer.
+#
+#  CLAUDE.md already says this about `_send_it`: extract the guards first,
+#  then add the caller, or the two drift.
+
+class Blocked(object):
+    """Why a send cannot go, in words for the person who has to fix it.
+
+    `where` is an admin endpoint to send them to when the fix lives on
+    another screen -- a refusal that does not say where to go is only
+    half a refusal.
+    """
+
+    def __init__(self, message, where=None):
+        self.message = message
+        self.where = where
+
+    def __repr__(self):
+        return "Blocked(%r, %r)" % (self.message, self.where)
+
+
+class Ready(object):
+    """Who it goes to, and what it signs off as."""
+
+    def __init__(self, people, sender_line, site_title):
+        self.people = people
+        self.sender_line = sender_line
+        self.site_title = site_title
+
+
+def preflight(db, mailer, subscribers, legal, sections, audience,
+              email_settings, legal_settings, site_title):
+    """Ready(...) or Blocked(...). No Flask, so a thread can ask too.
+
+    The modules come in as arguments rather than as imports because a
+    service in this project never reaches sideways for its collaborators
+    -- and because passing them is what lets a checker hand in a mailer
+    that captures instead of sends.
+    """
+    if not mailer.is_configured(email_settings):
+        return Blocked("Email isn't set up yet, so there is nothing to send with.",
+                       "admin.settings_email")
+    if not sections:
+        return Blocked("There's nothing in this to send — write it first.")
+
+    if audience not in dict(subscribers.AUDIENCES):
+        audience = "all"
+    #  Confirmed only. An address that was typed into the form and never
+    #  answered its confirmation mail is on the table so it can be shown
+    #  and so a second attempt does not make a second row -- it is not a
+    #  subscriber, and sending to it is the exact thing double opt-in
+    #  exists to prevent.
+    people = subscribers.listing(db, confirmed_only=True, audience=audience)
+    if not people:
+        counts = subscribers.counts(db)
+        if audience == "customers":
+            return Blocked(
+                "Nobody on the list has bought anything yet, so there are no customers to "
+                "send to. You can flag somebody as a customer by hand on the Email list "
+                "screen.")
+        return Blocked("Nobody has confirmed yet." if counts["pending"]
+                       else "Nobody is on the list yet.")
+
+    line, has_address = sender_line(legal_settings, site_title)
+    if not has_address:
+        #  Refused rather than warned: a commercial email without a postal
+        #  identity is unlawful in most places this will be used, and the
+        #  address is two minutes of typing on a screen that already
+        #  exists.
+        return Blocked(
+            "Add your postal address on the Legal pages screen first — an email to a "
+            "list has to carry it, and it takes a minute.",
+            "admin.legal_pages")
+    return Ready(people, line, site_title)
+
+
+def deliver(db, mailer, email_settings, ready, sections, subject, view_url,
+            look, intro, outro, audience, kind, target_id, link_for):
+    """Build it, send it, write down that it went. (sent, failed).
+
+    The other half of preflight(): between them they are the whole of a
+    send, with no Flask in either, so the route and the scheduler run the
+    same code rather than two copies of it.
+    """
+    html = to_email_html(sections, ready.site_title, "{{UNSUBSCRIBE}}", ready.sender_line,
+                         view_url, look=look, intro=intro, outro=outro)
+    text = plain_text(sections, "{{UNSUBSCRIBE}}", ready.sender_line,
+                      intro=intro, outro=outro)
+    sent, failed = send_to_list(db, mailer, email_settings, ready.people, subject,
+                                html, text, ready.site_title, link_for)
+    record_send(db, kind, target_id, subject, sent, failed, audience)
+    return sent, failed
+
+
 def send_to_list(db, mailer, settings, people, subject, html, text, from_name, link_for):
     """Sends one message per person, so each carries its own unsubscribe
     link. Returns (sent, failed).

@@ -3,43 +3,22 @@
 {% block title %}{{ item.subject or 'Newsletter' }} — My Site Admin{% endblock %}
 {% block content %}
 {% include "partials/email_tabs.html" %}
-<h1>{{ item.subject or 'Untitled newsletter' }}</h1>
-<p class="hint">{{ layout.blurb }} &mdash; write straight into it below. What you see is the email.</p>
 
-{% if not email_ready %}
-<p class="flash flash-warning">Email isn&rsquo;t set up, so nothing can be sent yet.
-  <a href="{{ url_for('admin.settings_email') }}">Set it up &rarr;</a></p>
-{% endif %}
-{% if not has_address %}
-<p class="flash flash-warning">A newsletter has to carry your postal address by law, and there isn&rsquo;t one yet.
-  <a href="{{ url_for('admin.legal_pages') }}">Add it &rarr;</a></p>
-{% endif %}
+{#  Laid out the way a mail composer is, because that is a shape people
+    already know: a ribbon of tools across the top, the recipients and
+    the subject underneath it, and the message itself below those. The
+    parts were all here before and in a different order -- subject in a
+    card at the top, "who gets it" in a card at the BOTTOM, next to Send
+    -- which meant deciding who a newsletter was for happened after
+    writing it, in a different place from everything else about it.
 
-{#  One form. The subject is a plain field because it is not part of the
-    email; everything else is written into the email itself, and the
-    hidden inputs below are kept in step by newsletter-editor.js so the
-    route that saves it never has to know any of this happened. #}
-<form method="post" class="cms-issue-form">
-  <div class="card">
-    <label for="subject" title="What people see in their inbox before they open it">Subject</label>
-    <input type="text" id="subject" name="subject" maxlength="200" value="{{ item.subject }}"
-           placeholder="What this one is about"
-           title="What people see in their inbox before they open it. Say the thing, don't tease it.">
-    <p class="hint">The line people decide on. Say what is inside rather than hinting at it.</p>
-  </div>
+    ONE form, and the buttons differ by `formaction`. That is what lets
+    "who gets it" be a single control every action can see: it used to be
+    in a form of its own beside Send, so Schedule could not have reached
+    it without a second copy. #}
+<form method="post" class="cms-issue-form cms-compose">
 
-  {#  ONE toolbar, above the canvas.
-
-      Above it rather than in it because an email has no room for a
-      toolbar and this one is not being sent. One rather than several
-      because everything here acts on the same thing -- the newsletter
-      being written -- and splitting it by which part of the machinery
-      answers would be an arrangement that suits the code, not the
-      person using it.
-
-      It is in four groups, left to right, and the order is the order
-      somebody works in: pick a shape, put things in it, write, then
-      style what you wrote. #}
+  {#  ---- the ribbon ---- #}
   <div class="cms-issue-toolbar" data-newsletter-toolbar>
 
     {#  1. The shape. Changing it lays the blocks out afresh, which
@@ -117,8 +96,71 @@
               title="Remove this block from the newsletter. Nothing else moves.">&times;</button>
     </div>
   </div>
-  <p class="hint">Click a block to select it, then style it or move it. Everything is optional
-    &mdash; a newsletter is whatever blocks you leave in it.</p>
+
+  {#  ---- what the buttons do ----
+      Send and Schedule carry their own `formaction`, so all three read
+      the one "who gets it" control below. Preview opens in its own tab
+      and POSTs what is ON SCREEN, so it previews the draft in front of
+      you rather than the last thing saved. #}
+  <div class="cms-compose-actions">
+    <button type="submit" class="btn btn-primary" data-send
+            formaction="{{ url_for('admin.newsletter_issue_send', newsletter_id=item.id) }}"
+            title="Send this now, to the people chosen below. It cannot be unsent.">Send</button>
+
+    <span class="cms-compose-schedule">
+      <button type="submit" class="btn" data-schedule
+              formaction="{{ url_for('admin.newsletter_issue_schedule', newsletter_id=item.id) }}"
+              title="Send it automatically at the time beside this. You do not have to be here.">Schedule</button>
+      <input type="datetime-local" name="send_at" data-send-at
+             data-scheduled-utc="{{ scheduled.send_at if scheduled else '' }}"
+             title="When to send it. This is your own clock — the time you see here is the time it goes.">
+      {#  The browser's own offset, so what the owner typed is read in the
+          clock they typed it on. Filled by newsletter-editor.js. #}
+      <input type="hidden" name="tz_offset" data-tz-offset value="0">
+    </span>
+
+    <span class="cms-compose-spacer"></span>
+
+    <button type="submit" class="btn" title="Keep this. Nothing is sent.">Save</button>
+    <button type="submit" class="btn" formtarget="_blank"
+            formaction="{{ url_for('admin.newsletter_issue_preview', newsletter_id=item.id) }}"
+            title="Open it in its own tab, exactly as it will arrive — including what you have just changed.">Preview</button>
+  </div>
+
+  {#  ---- the header: who it is for, and what it says on the tin ---- #}
+  <div class="cms-compose-header">
+    <div class="cms-compose-row">
+      <label for="audience" title="Who this goes to. Only people who have confirmed their address are ever written to.">To</label>
+      <select id="audience" name="audience"
+              title="Everyone who has confirmed their address, or only the people who have bought something.">
+        {% for key, label in audiences %}
+        <option value="{{ key }}" {% if last and last.audience == key %}selected{% endif %}>
+          {{ label }} ({{ audience_counts[key] }})</option>
+        {% endfor %}
+      </select>
+      <span class="cms-compose-note">Only confirmed addresses are ever written to.</span>
+    </div>
+
+    <div class="cms-compose-row">
+      <label for="subject" title="What people see in their inbox before they open it">Subject</label>
+      <input type="text" id="subject" name="subject" maxlength="200" value="{{ item.subject }}"
+             placeholder="What this one is about"
+             title="What people see in their inbox before they open it. Say the thing, don't tease it.">
+    </div>
+  </div>
+
+  {#  ---- anything standing between this and a send ---- #}
+  {% if not email_ready %}
+  <p class="flash flash-warning">Email isn&rsquo;t set up, so nothing can be sent yet.
+    <a href="{{ url_for('admin.settings_email') }}">Set it up &rarr;</a></p>
+  {% endif %}
+  {% if not has_address %}
+  <p class="flash flash-warning">A newsletter has to carry your postal address by law, and there isn&rsquo;t one yet.
+    <a href="{{ url_for('admin.legal_pages') }}">Add it &rarr;</a></p>
+  {% endif %}
+  {% if missing %}
+  <p class="flash flash-warning">Still needed before this can go: {{ missing | join(', ') }}.</p>
+  {% endif %}
 
   {#  The styles the SENT email writes onto each kind of block, handed to
       the editor so a heading made here arrives looking like the heading
@@ -158,45 +200,36 @@
   {#  ONE field, because the canvas IS the form: the editor reads the
       whole arrangement out of the page and writes it here as JSON. A
       named input per slot is what the fixed-slot model did, and it is
-      exactly what stopped a newsletter having two pictures. #}
-  {#  `forceescape`, not bare `tojson`: tojson escapes for a SCRIPT block,
+      exactly what stopped a newsletter having two pictures.
+
+      `forceescape`, not bare `tojson`: tojson escapes for a SCRIPT block,
       leaving the double quotes JSON is made of intact -- so in an
       attribute the browser ends the value at the first one and the field
       arrives as the two characters `[{`. Everything downstream then
       quietly behaves as though the newsletter had no blocks in it. #}
   <input type="hidden" name="blocks_json" data-blocks-store
          value="{{ blocks | tojson | forceescape }}">
-
-  <div class="cms-post-save-bar">
-    <button type="submit" class="btn btn-primary" title="Keep this. Nothing is sent.">Save</button>
-    <a class="btn" href="{{ url_for('admin.newsletter_issue_preview', newsletter_id=item.id) }}" target="_blank"
-       title="Open it exactly as it will be sent, in its own tab">See it as it will be sent</a>
-  </div>
 </form>
 
-<div class="card">
-  <h2>Send it</h2>
-  {% if missing %}
-  <p class="flash flash-warning">Still needed before this can go: {{ missing | join(', ') }}.</p>
+{#  ---- what has happened to it, and what is about to ---- #}
+{% if scheduled or last %}
+<div class="card cms-compose-status">
+  {% if scheduled %}
+  <p><strong>Scheduled.</strong> This goes out on its own at
+    <time datetime="{{ scheduled.send_at }}Z" data-local-time="{{ scheduled.send_at }}Z">{{ scheduled.send_at }} UTC</time>
+    &mdash; you do not have to be here.</p>
+  <form method="post" action="{{ url_for('admin.newsletter_issue_schedule', newsletter_id=item.id) }}">
+    <input type="hidden" name="cancel" value="1">
+    <button type="submit" class="btn btn-small"
+            title="Take this off the clock. Nothing is sent and nothing is lost.">Cancel this schedule</button>
+  </form>
   {% endif %}
   {% if last %}
-  <p class="hint">Last sent {{ last.sent_at[:16] }} to {{ last.sent_count }}
-    {{ 'person' if last.sent_count == 1 else 'people' }}.</p>
+  <p class="hint">Last sent {{ last.sent_at[:16] }} to {{ last.recipients }}
+    {{ 'person' if last.recipients == 1 else 'people' }}.</p>
   {% endif %}
-  <form method="post" action="{{ url_for('admin.newsletter_issue_send', newsletter_id=item.id) }}"
-        class="inline-form cms-delete-form"
-        data-confirm="Send this to your list? It cannot be unsent.">
-    <label for="audience" title="Who gets it">Who gets it</label>
-    <select id="audience" name="audience" title="Everyone who has confirmed, or only people who have bought something">
-      {% for key, label in audiences %}
-      <option value="{{ key }}">{{ label }} ({{ audience_counts[key] }})</option>
-      {% endfor %}
-    </select>
-    <button type="submit" class="btn btn-primary"
-            title="Send this newsletter to the people you chose. This cannot be undone.">Send</button>
-  </form>
-  <p class="hint">Only people who have confirmed their address are ever written to.</p>
 </div>
+{% endif %}
 
 <div class="card">
   <form method="post" action="{{ url_for('admin.newsletter_issue_delete', newsletter_id=item.id) }}"

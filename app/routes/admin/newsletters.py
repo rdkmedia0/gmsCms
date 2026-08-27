@@ -15,8 +15,8 @@ from ... import mailer
 import json
 
 from . import FONT_PAIRINGS
-from ...services import (blog as blog_service, email_layouts, legal, newsletter, palette, site,
-                         subscribers)
+from ...services import (blog as blog_service, email_layouts, legal, newsletter, palette,
+                         scheduling, site, subscribers)
 
 
 #  Two settings and nothing else. The greeting and the sign-off are the
@@ -206,6 +206,9 @@ def newsletter_issue_edit(newsletter_id):
         audience_counts={key: subscribers.audience_count(db, key)
                          for key, _label in subscribers.AUDIENCES},
         last=newsletter.last_send(db, "newsletter", newsletter_id),
+        #  What is on the clock for this one, so the screen can show it
+        #  rather than the owner having to remember.
+        scheduled=scheduling.pending_for(db, "newsletter", newsletter_id),
         email_ready=mailer.is_configured(get_email_settings(db)),
         sender_line=line,
         has_address=has_address,
@@ -236,6 +239,160 @@ def newsletter_issue_preview(newsletter_id):
     return newsletter.to_email_html(
         _composed_sections(db, row), site_title, "#unsubscribe-link", line,
         None, look=_look(db), intro=intro, outro=outro)
+
+
+#  ---- Sending it later ----
+#
+#  A scheduled send runs on a background thread with no request, so
+#  everything it needs has to be worked out from the database alone. That
+#  is why `_run_scheduled` takes an app and a row and nothing else, and
+#  why the two guards below exist: without a public address there is
+#  nowhere for an unsubscribe link to point, and `request.host_url` --
+#  which a live send falls back on -- is not there to save it.
+
+
+def _sections_for_schedule(db, row):
+    """What a due job should actually send, looked up now rather than
+    frozen when it was scheduled.
+
+    Deliberate: somebody who schedules a newsletter and then fixes a typo
+    in it expects the fixed one to go. The subject is stored on the job
+    for the same reason it is shown on the list -- so a schedule can be
+    read without opening what it points at -- but the CONTENT is always
+    the current content.
+    """
+    if row["kind"] == "newsletter":
+        item = newsletter.get_composed(db, row["target_id"])
+        if not item:
+            return None, ""
+        return _composed_sections(db, item), item["subject"] or ""
+    #  Only newsletters can be put on the clock today. `kind` is on the
+    #  table anyway, because the send RECORD already names what went out
+    #  that way and a schedule that could not say what it was for would
+    #  be the odd one out -- and because a scheduled blog post is the
+    #  obvious next caller.
+    return None, ""
+
+
+def _run_scheduled(app, row):
+    """One due job, start to finish. Never raises: the poller has to
+    survive a job that cannot go.
+
+    It runs inside a REQUEST context, made from the site's own address,
+    which is not a trick: `url_for` cannot build a link without knowing
+    what host to build it for, and a thread has no request to borrow one
+    from. The site's public address is the correct answer -- it is the
+    address the unsubscribe link has to work at -- and reading it first
+    is also the check that there IS one. Without it the job is refused
+    rather than sent with a link to nowhere, which would be worse than
+    not sending.
+    """
+    from ...services import scheduling
+    with app.app_context():
+        base = site.public_base(get_db())
+    if not base:
+        with app.app_context():
+            scheduling.finish(get_db(), row["id"], 0, 0,
+                              "This site does not know its own web address yet, so an "
+                              "unsubscribe link could not be built. Set it on the Sending "
+                              "email screen, then schedule it again.")
+        return
+
+    with app.test_request_context(base_url=base):
+        db = get_db()
+        try:
+            sections, subject = _sections_for_schedule(db, row)
+            view_url = None      # a composed newsletter has no page to read
+            if not sections:
+                scheduling.finish(db, row["id"], 0, 0,
+                                  "There is nothing to send — it may have been deleted.")
+                return
+            subject = (row["subject"] or subject or "").strip()
+            email_settings = get_email_settings(db)
+            site_title = (get_site_settings(db) or {}).get("site_title") or "Our newsletter"
+            verdict = newsletter.preflight(
+                db, mailer, subscribers, legal, sections, row["audience"],
+                email_settings, legal.settings_for(db), site_title)
+            if isinstance(verdict, newsletter.Blocked):
+                scheduling.finish(db, row["id"], 0, 0, verdict.message)
+                return
+            intro, outro = _wrapped(db, subject, view_url)
+            sent, failed = newsletter.deliver(
+                db, mailer, email_settings, verdict, sections, subject, view_url,
+                _look(db), intro, outro, row["audience"], row["kind"], row["target_id"],
+                lambda token: site.absolute(db, url_for("public.unsubscribe", token=token)))
+            scheduling.finish(db, row["id"], sent, failed)
+            db.commit()
+        except Exception as e:                      # noqa: BLE001
+            app.logger.exception("scheduled send %s failed", row["id"])
+            try:
+                scheduling.finish(db, row["id"], 0, 0, str(e)[:300])
+            except Exception:                       # noqa: BLE001
+                pass
+
+
+def arm_scheduler(app):
+    """Start this process's poller. Called on the first request (see
+    services/scheduling.py for why it cannot be at import time)."""
+    return scheduling.start(app, _run_scheduled)
+
+
+@bp.route("/newsletters/issue/<int:newsletter_id>/schedule", methods=["POST"])
+@login_required
+def newsletter_issue_schedule(newsletter_id):
+    """Put it on the clock, or take it back off."""
+    db = get_db()
+    row = newsletter.get_composed(db, newsletter_id)
+    back = url_for("admin.newsletter_issue_edit", newsletter_id=newsletter_id)
+    if not row:
+        return redirect(url_for("admin.newsletters"))
+
+    if request.form.get("cancel"):
+        scheduling.cancel(db, "newsletter", newsletter_id)
+        db.commit()
+        flash("That send is off the clock.", "success")
+        return redirect(back)
+
+    when = scheduling.to_utc(request.form.get("send_at"),
+                             request.form.get("tz_offset"))
+    if not when:
+        flash("Choose a date and time to send it.", "error")
+        return redirect(back)
+    if when <= scheduling.utcnow():
+        flash("That time has already passed — pick one in the future, or press Send now.",
+              "error")
+        return redirect(back)
+
+    #  The same refusals a send would make, made NOW rather than in the
+    #  middle of the night with nobody watching. A schedule that was
+    #  always going to fail is worse than a refusal, because it looks
+    #  like it worked.
+    sections = _composed_sections(db, row)
+    site_title = (get_site_settings(db) or {}).get("site_title") or "Our newsletter"
+    audience = request.form.get("audience") or "all"
+    verdict = newsletter.preflight(
+        db, mailer, subscribers, legal, sections, audience,
+        get_email_settings(db), legal.settings_for(db), site_title)
+    if isinstance(verdict, newsletter.Blocked):
+        flash(verdict.message, "error")
+        return redirect(url_for(verdict.where) if verdict.where else back)
+    if not (row["subject"] or "").strip():
+        flash("Give it a subject first — that is the line people decide on.", "error")
+        return redirect(back)
+    still_missing = email_layouts.missing(newsletter.composed_blocks(row))
+    if still_missing:
+        flash("Fill in %s first." % ", ".join(still_missing), "error")
+        return redirect(back)
+    if not site.public_base(db):
+        flash("This site does not know its own web address yet, and a scheduled send needs "
+              "one to build the unsubscribe link. Set it on the Sending email screen.", "error")
+        return redirect(url_for("admin.settings_email"))
+
+    scheduling.schedule(db, "newsletter", newsletter_id, row["subject"], audience, when)
+    db.commit()
+    arm_scheduler(current_app._get_current_object())
+    flash("Scheduled. It goes out on its own — you do not have to be here.", "success")
+    return redirect(back)
 
 
 @bp.route("/newsletters/issue/<int:newsletter_id>/send", methods=["POST"])
@@ -277,55 +434,27 @@ def _send_it(db, kind, target_id, sections, subject, view_url, back):
     any content at all.
     """
     email_settings = get_email_settings(db)
-    if not mailer.is_configured(email_settings):
-        flash("Email isn't set up yet, so there is nothing to send with.", "error")
-        return redirect(url_for("admin.settings_email"))
-    if not sections:
-        flash("There's nothing in this to send — write it first.", "error")
-        return redirect(back)
-
+    site_settings = get_site_settings(db) or {}
+    site_title = site_settings.get("site_title") or "Our newsletter"
     audience = request.form.get("audience") or "all"
     if audience not in dict(subscribers.AUDIENCES):
         audience = "all"
-    #  Confirmed only. An address that was typed into the form and never
-    #  answered its confirmation mail is on the table so it can be shown
-    #  and so a second attempt does not make a second row -- it is not a
-    #  subscriber, and sending to it is the exact thing double opt-in
-    #  exists to prevent.
-    people = subscribers.listing(db, confirmed_only=True, audience=audience)
-    if not people:
-        counts = subscribers.counts(db)
-        if audience == "customers":
-            flash("Nobody on the list has bought anything yet, so there are no customers to "
-                  "send to. You can flag somebody as a customer by hand on the Email list "
-                  "screen.", "error")
-        else:
-            flash("Nobody has confirmed yet." if counts["pending"]
-                  else "Nobody is on the list yet.", "error")
-        return redirect(back)
 
-    site_settings = get_site_settings(db) or {}
-    site_title = site_settings.get("site_title") or "Our newsletter"
-    line, has_address = newsletter.sender_line(legal.settings_for(db), site_title)
-    if not has_address:
-        #  Refused rather than warned: a commercial email without a postal
-        #  identity is unlawful in most places this will be used, and the
-        #  address is two minutes of typing on a screen that already
-        #  exists.
-        flash("Add your postal address on the Legal pages screen first — an email to a list has "
-              "to carry it, and it takes a minute.", "error")
-        return redirect(url_for("admin.legal_pages"))
-
+    #  The same checks a SCHEDULED send makes, asked in one place so the
+    #  two cannot drift. This route's job is only to say what the answer
+    #  means to somebody looking at a screen.
+    verdict = newsletter.preflight(
+        db, mailer, subscribers, legal, sections, audience,
+        email_settings, legal.settings_for(db), site_title)
+    if isinstance(verdict, newsletter.Blocked):
+        flash(verdict.message, "error")
+        return redirect(url_for(verdict.where) if verdict.where else back)
     intro, outro = _wrapped(db, subject, view_url)
-    html = newsletter.to_email_html(sections, site_title, "{{UNSUBSCRIBE}}", line, view_url,
-                                    look=_look(db), intro=intro, outro=outro)
-    text = newsletter.plain_text(sections, "{{UNSUBSCRIBE}}", line,
-                                 intro=intro, outro=outro)
-    sent, failed = newsletter.send_to_list(
-        db, mailer, email_settings, people, subject, html, text, site_title,
-        lambda token: site.absolute(db, url_for("public.unsubscribe", token=token), request.host_url),
-    )
-    newsletter.record_send(db, kind, target_id, subject, sent, failed, audience)
+    sent, failed = newsletter.deliver(
+        db, mailer, email_settings, verdict, sections, subject, view_url,
+        _look(db), intro, outro, audience, kind, target_id,
+        lambda token: site.absolute(db, url_for("public.unsubscribe", token=token),
+                                    request.host_url))
     db.commit()
 
     who = "customers" if audience == "customers" else "the list"

@@ -594,6 +594,70 @@
     });
   }
 
+  //  ---- the compose bar ----
+  //
+  //  Send, Schedule, Save and Preview are one form told apart by
+  //  `formaction`, so all four read the same "who gets it" control. Three
+  //  things have to happen in JavaScript, and only three.
+
+  //  1. The clock. What the owner types is their own time; what is stored
+  //     is UTC. The browser is the only thing that knows the difference,
+  //     so it says so on every submit -- read once at load would be wrong
+  //     for a page left open across a daylight-saving change.
+  var tzField = form.querySelector("[data-tz-offset]");
+  function stampOffset() {
+    if (tzField) tzField.value = String(new Date().getTimezoneOffset());
+  }
+  stampOffset();
+
+  //  2. An existing schedule, shown back on that same clock. The server
+  //     can only say UTC; turning it into "the time you set" is the
+  //     browser's job.
+  var whenField = form.querySelector("[data-send-at]");
+  if (whenField && whenField.dataset.scheduledUtc) {
+    var at = new Date(whenField.dataset.scheduledUtc.replace(" ", "T") + "Z");
+    if (!isNaN(at)) {
+      var pad = function (n) { return String(n).padStart(2, "0"); };
+      whenField.value = at.getFullYear() + "-" + pad(at.getMonth() + 1) + "-"
+        + pad(at.getDate()) + "T" + pad(at.getHours()) + ":" + pad(at.getMinutes());
+    }
+  }
+  //  ...and the same for anywhere else a stored time is shown.
+  document.querySelectorAll("[data-local-time]").forEach(function (el) {
+    var t = new Date(el.dataset.localTime.replace(" ", "T"));
+    if (!isNaN(t)) el.textContent = t.toLocaleString();
+  });
+
+  //  3. Send asks first, because it cannot be taken back. Schedule does
+  //     not: it CAN be taken back, right up until it goes.
+  var sendBtn = form.querySelector("[data-send]");
+  if (sendBtn) {
+    sendBtn.addEventListener("click", function (e) {
+      if (sendBtn.dataset.confirmed === "1") return;
+      e.preventDefault();
+      var who = form.querySelector("#audience");
+      var count = who ? who.options[who.selectedIndex].text.trim() : "your list";
+      var ask = window.cmsModal
+        ? window.cmsModal({
+            message: "Send this now to " + count + "? It cannot be unsent.",
+            confirmLabel: "Send it",
+          }).then(function (r) { return r && r.confirmed; })
+        : Promise.resolve(window.confirm("Send this now? It cannot be unsent."));
+      ask.then(function (yes) {
+        if (!yes) return;
+        sendBtn.dataset.confirmed = "1";
+        collect();
+        save();
+        stampOffset();
+        //  Submitted THROUGH the button, so its formaction is the one
+        //  used -- form.submit() would post to the editor instead and
+        //  quietly save rather than send.
+        structural = true;
+        sendBtn.click();
+      });
+    });
+  }
+
   form.addEventListener("submit", function () {
     //  See `structural`: after a splice the canvas and `blocks` no longer
     //  line up, and reading one into the other would scramble them.

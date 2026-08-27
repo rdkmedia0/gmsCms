@@ -5717,6 +5717,117 @@ colour arrives on the cell of the SENT email, writes with the toolbar,
 and changes the template (confirming that it asks first, and that what
 gets laid out is what the server declares).
 
+## The newsletter screen became a mail composer (2026-08-27)
+
+Asked for: the toolbar, subject and recipients laid out like Outlook --
+a recognised format -- with the template and tools along the top and the
+recipients beneath them; Save and Schedule added; and "See it as it will
+be sent" shortened to Preview.
+
+The layout part is straightforward and the reason it is worth doing is
+not aesthetic. The parts were all there already, in an order nobody would
+choose: subject in a card at the top, **"who gets it" in a card at the
+BOTTOM, beside Send**. So deciding who a newsletter was for happened
+after writing it, on a different part of the page from everything else
+about it. A composer's order -- tools, actions, To and Subject, then the
+message -- is not a style, it is the order somebody actually works in,
+and it is already in everybody's hands.
+
+**One form, four `formaction`s.** That is what made the layout possible
+rather than just rearranged. "Who gets it" was in a form of its own next
+to Send; Schedule could not have reached it without a second copy of the
+control, and two audience pickers that must agree is a bug waiting to be
+written. Send and Schedule and Preview now carry their own `formaction`
+and Save keeps the form's, so all four read the one field.
+
+Send asks before it goes, because it cannot be taken back. Schedule does
+not ask, because it can -- right up until it goes.
+
+### Schedule had to be real, and that is the whole of the work
+
+An option called Schedule that quietly never fires is the exact thing
+this project's own rule forbids: a control that is discarded is a control
+that lies. There was no scheduler here and deliberately so -- the Cal.com
+note says building one is "the one thing this design deliberately does
+not do", though that is about availability, not about a queue.
+
+The hard part is not the clock. **This app runs two gunicorn workers
+against one SQLite file**, so anything that wakes up looking for due
+sends is running twice, and the failure it invites is mailing everybody
+twice -- which you find out about from your readers. Every decision
+follows from that:
+
+  * **The claim IS the lock.** Taking a job is one UPDATE carrying the
+    state it expects in its WHERE clause (`claimed_at IS NULL`), so
+    exactly one worker's UPDATE can match and `rowcount` says which one
+    won. No lock table, nothing to leak if a process dies mid-send: a row
+    that was claimed and never finished is visible AS a claimed row, and
+    can be reported rather than silently retried into a double send.
+    Committed immediately, because the claim has to be visible to the
+    other worker BEFORE this one starts the slow part.
+
+  * **A failure is never retried automatically.** It is written down with
+    its reason and left for a person. An automatic retry of "send to
+    forty people" cannot tell "SMTP was briefly down" from "twenty of
+    them already got it", and guessing wrong is the one failure here that
+    cannot be taken back.
+
+  * **The thread is armed by the first request each worker handles**, not
+    at import time -- which is where it belongs by every other measure.
+    gunicorn runs `--preload`, so `create_app()` executes in the master
+    and the workers are forked from it, and **threads do not survive a
+    fork**. One started there would sit in the master, where no request
+    is ever served, and neither worker would have one. The consequence
+    worth knowing: a site nobody ever visits does not send. Scheduling one
+    is itself a request, so the poller is running from the moment there
+    is anything to do.
+
+  * **A scheduled send runs inside a request context built from the
+    site's own address.** `url_for` cannot build a link without knowing
+    what host to build it for, and a thread has no request to borrow one
+    from -- this showed up as "Working outside of request context" the
+    first time the checker ran it. The site's public address is the
+    correct answer, since it is the address the unsubscribe link has to
+    work at; and reading it first is also the check that there IS one.
+    Without it the job is refused rather than sent with a link to
+    nowhere.
+
+  * **The guards were extracted before the caller was written**, which is
+    what CLAUDE.md already said to do about `_send_it`. Is email set up,
+    is there anything to send, is anybody on the list, is there a postal
+    address -- all four now answer in plain data (`newsletter.preflight`
+    returning `Ready` or `Blocked`), so the route flashes them and the
+    scheduler writes them down, from ONE set of rules. `newsletter.deliver`
+    is the other half. Neither knows about Flask.
+
+  * **What goes is the current content, not a frozen copy.** Somebody who
+    schedules a newsletter and then fixes a typo expects the fixed one to
+    go. The subject is stored on the job as well, so the schedule can be
+    read without opening what it points at.
+
+  * **The clock is UTC in the database and local on the screen.** The
+    offset comes from the browser rather than a setting, because the
+    person typing the time is the one looking at that clock -- and it is
+    re-read on every submit, not once at load, so a page left open across
+    a daylight-saving change does not schedule an hour out.
+
+### A quiet bug found on the way
+
+`last.sent_count` -- the column has always been `recipients`. Jinja
+resolves a missing key to Undefined and renders it as nothing, so "Last
+sent … to 40 people" had been printing "to  people" for as long as it has
+existed, on two screens. Nothing raised, nothing logged. It is the same
+shape as the `tojson`-in-an-attribute bug from earlier today: a template
+expression that is wrong produces emptiness, not an error.
+
+**Checked by racing it**: `tools/schedule_check.py` (26 assertions) puts
+a job on the clock, proves nothing goes early, has two workers claim the
+same row and proves exactly one wins, sends it with the mail captured,
+then breaks each precondition in turn and proves it refuses with the
+reason written down rather than mailing anyway. The poller was also
+watched firing on its own against the live container, arranged so the job
+would be refused rather than sent.
+
 ## Where this stands, and what is left (2026-08-27)
 
 Written at the end of a long day on a live install, so the next person --

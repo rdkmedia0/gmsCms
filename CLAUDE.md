@@ -40,6 +40,8 @@ app/
                        # card styling, starter-HTML builders, image-library
                        # listing — the biggest one, matches the biggest
                        # feature area
+    scheduling.py      # sending a newsletter later: the claim IS the
+                       # lock, because two workers wake up together
     email_layouts.py   # what a NEWSLETTER is made of: the BLOCKS, and
                        # the arrangements of them each template starts
                        # from. An email is not a page —
@@ -929,6 +931,33 @@ Each of these follows the structure above — thin routes, logic in
   preview that has drifted is worse than none. Every structural action
   reads the canvas into the block list BEFORE it splices, because that
   re-read matches DOM to blocks by index.
+  The screen is laid out the way a mail composer is -- ribbon, then the
+  actions, then To and Subject, then the message -- because that is a
+  shape people already know; "who gets it" used to be a card at the
+  BOTTOM beside Send, so deciding who a newsletter was for happened
+  after writing it. It is ONE form and the buttons differ by
+  `formaction`, which is what lets Send, Schedule, Save and Preview all
+  read the same audience control without a second copy of it.
+- **A scheduled send has to survive two workers** (`services/scheduling.py`).
+  This app runs two gunicorn workers against one SQLite file, so whatever
+  wakes up looking for due sends is running twice and the failure it
+  invites is mailing everybody twice. **The claim is the lock**: taking a
+  job is one UPDATE carrying the state it expects (`claimed_at IS NULL`),
+  so exactly one worker can match and `rowcount` says which. Nothing to
+  leak if a process dies mid-send -- a claimed, unfinished row is visible
+  AS one. **A failure is never retried automatically**: it is written
+  down with its reason and left for a person, because an automatic retry
+  cannot tell "SMTP was briefly down" from "twenty of them already got
+  it". The poller thread is armed by the first request each worker
+  handles, NOT at import time: `--preload` means `create_app()` runs in
+  the master and threads do not survive a fork, so one started there
+  would sit where no request is ever served. A scheduled send runs inside
+  a request context built from the site's own public address, because
+  `url_for` cannot make a link without a host and there is no request to
+  borrow one from -- and reading that address first is also the check
+  that there IS one, without which the job is refused rather than sent
+  with an unsubscribe link to nowhere. `tools/schedule_check.py` walks
+  the lot with the mail captured, including racing two claims.
   `tools/newsletter_editor_check.py` drives the real thing in a browser
   and compares what is sent against what was on screen -- run it after
   touching any of the three.
@@ -1093,7 +1122,10 @@ part that constrains the CODE.
   tables, no stylesheet, no classes, no flex — and that nothing in `app/`
   carries a control character, after an invisible one cost a day),
   `stale_media_check.py` (that installing removes what a template no
-  longer ships, and refuses to when it cannot read the archive), and
+  longer ships, and refuses to when it cannot read the archive),
+  `schedule_check.py` (that a send put on the clock goes exactly once
+  even when two workers claim it together, and refuses for the same
+  reasons a live send refuses), and
   `design_conventions_check.py` (that a word means one thing across
   tools, and that no admin form asks for raw HTML).
 - **A security header written about third parties still has to be read

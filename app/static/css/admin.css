@@ -915,6 +915,56 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
 .cms-block-tools.cms-tools-idle { opacity: .5; }
 .cms-block-remove { color: #b42318; font-weight: 700; }
 
+/*  ---- the compose bar: actions, then who it is for ---- */
+/*  The order is a mail composer's, because that is a shape people already
+    know: tools, then the actions, then To and Subject, then the message.
+    Everything here is the app talking, so it wears the editor's clothes
+    and stops at the top of the canvas. */
+.cms-compose-actions {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  padding: 10px 12px; margin: 0 0 8px;
+  background: #fff; border: 1px solid #e2e4e9;
+  border-radius: var(--cms-ui-radius-surface);
+}
+/*  Send and Schedule on the left, Save and Preview pushed right: the two
+    that leave the building are not the two that do not, and putting a
+    hand's width between them is the cheapest way to say so. */
+.cms-compose-spacer { flex: 1 1 auto; }
+.cms-compose-schedule { display: inline-flex; align-items: center; gap: 6px; }
+.cms-compose-actions input[type=datetime-local] {
+  width: auto; padding: 7px 10px; font-size: 14px; border-width: 1px;
+}
+
+.cms-compose-header {
+  background: #fff; border: 1px solid #e2e4e9;
+  border-radius: var(--cms-ui-radius-surface);
+  padding: 4px 12px 10px; margin: 0 0 12px;
+}
+/*  A label of fixed width down the left, the way To and Subject line up
+    in every mail client. */
+.cms-compose-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0; border-bottom: 1px solid #eef0f3;
+}
+.cms-compose-row:last-child { border-bottom: 0; }
+.cms-compose-row > label {
+  flex: 0 0 74px; margin: 0; font-size: 13px; color: #55606d;
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.cms-compose-row > input,
+.cms-compose-row > select { flex: 1 1 auto; width: auto; margin: 0; }
+.cms-compose-row > input[type=text] { font-size: 16px; }
+.cms-compose-note { flex: 0 0 auto; font-size: 12px; color: #6b7480; }
+.cms-compose-status p { margin: 0 0 8px; }
+
+@media (max-width: 700px) {
+  /*  The label above its field rather than beside it: 74px of "SUBJECT"
+      plus a usable box does not fit on a phone. */
+  .cms-compose-row { flex-wrap: wrap; }
+  .cms-compose-row > label { flex-basis: 100%; }
+  .cms-compose-note { flex-basis: 100%; }
+}
+
 /*  ---- the canvas, and the blocks in it ---- */
 
 .cms-issue-canvas-ground { padding: 26px 14px; border-radius: var(--cms-ui-radius-surface); margin: 0 0 14px; }

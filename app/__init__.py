@@ -376,6 +376,21 @@ def create_app():
     app.register_blueprint(admin_bp)
     app.register_blueprint(public_bp)
 
+    #  Scheduled sends are polled by a thread PER WORKER, armed by the
+    #  first request that worker handles.
+    #
+    #  Not here at import time, which is where it belongs by every other
+    #  measure: gunicorn runs --preload, so this function executes in the
+    #  master and the workers are forked from it -- and threads do not
+    #  survive a fork. A thread started here would sit in the master,
+    #  where no request is ever served, and none would exist in either
+    #  worker. Both of them running one is harmless: taking a job is an
+    #  atomic claim, so only one can win it (see services/scheduling.py).
+    @app.before_request
+    def _arm_scheduled_sends():           # noqa: ANN202
+        from .routes.admin.newsletters import arm_scheduler
+        arm_scheduler(app)
+
     #  The very first boot opens the site with a look on, once there are
     #  routes for its menus to point at. See _open_with_a_look.
     if first_boot:

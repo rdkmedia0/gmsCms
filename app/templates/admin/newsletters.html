@@ -40,7 +40,7 @@
          title="Open this newsletter">{{ row.subject or 'Untitled' }}</a>
       <span class="hint">&middot; {{ layout_names.get(row.layout, row.layout) }}
         {%- if composed_sends[row.id] %} &middot; sent {{ composed_sends[row.id].sent_at[:10] }}
-          to {{ composed_sends[row.id].sent_count }}{% else %} &middot; not sent{% endif %}</span>
+          to {{ composed_sends[row.id].recipients }}{% else %} &middot; not sent{% endif %}</span>
     </li>
     {% endfor %}
   </ul>
