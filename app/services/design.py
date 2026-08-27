@@ -160,6 +160,12 @@ def _google_fonts_stylesheet_url(family_names):
 # exist for wide boxes, where a percentage of the width is a percentage
 # of the long side. Decorative surfaces are left alone -- nothing inside
 # a banner or a button can spill.
+#  The side figure is set by the corner, not by eye. A block 950 wide and
+#  560 tall with a 999px radius gets 280px corners (half the short side),
+#  so content sitting 88px below the top edge needs
+#  280 - sqrt(280^2 - (280-88)^2) = 76px of side clearance before it is
+#  inside the shape at all. It had 36px, which is why a first list item
+#  and a first blog card sat on the curve. 104px clears it with room.
 SHAPE_PRESETS = {
     "sharp": {"name": "Sharp", "radius": "0px"},
     "soft": {"name": "Soft", "radius": "10px"},
@@ -167,12 +173,12 @@ SHAPE_PRESETS = {
     "pill": {
         "name": "Pill",
         "radius": "999px",
-        "content_padding": "min(24%, 88px) min(9%, 36px)",
+        "content_padding": "min(24%, 88px) min(22%, 104px)",
     },
     "lens": {
         "name": "Lens",
         "radius": "50% / 30%",
-        "content_padding": "min(30%, 96px) min(9%, 36px)",
+        "content_padding": "min(30%, 96px) min(22%, 104px)",
     },
     "cut-corner": {"name": "Cut Corner", "radius": "0 32px 0 32px"},
     "organic": {

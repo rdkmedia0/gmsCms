@@ -534,7 +534,11 @@ body.has-sidebar-right > .site-sidebar.site-sidebar-right.site-sidebar-empty { f
   height: 180px; background-size: cover; background-position: center; background-color: #f0f1f3;
 }
 .cms-blog-grid.cms-blog-list .cms-blog-card-image { width: 220px; height: auto; min-height: 140px; flex-shrink: 0; }
-.cms-blog-card-body { padding: 16px 18px; }
+/*  The side figure scales, because the card itself may be curved: a
+    725px card with a 999px radius gets 87px corners, and a title sitting
+    18px in loses its first letter to the curve. 6% is 43px there and
+    stays at 18px on a small card, where the corner is small too. */
+.cms-blog-card-body { padding: 16px max(18px, 6%); }
 .cms-blog-card-body h3 { margin: 0 0 6px; font-family: var(--site-heading-font-family); }
 .cms-blog-date { font-size: 13px; color: #888; }
 .cms-blog-post-image { width: 100%; max-height: 420px; object-fit: cover; border-radius: var(--site-radius, 10px); margin-bottom: 20px; }
