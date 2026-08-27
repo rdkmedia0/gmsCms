@@ -5835,29 +5835,45 @@ including me -- does not have to reconstruct it from thirty entries
 above. Everything below is either specified and unbuilt, or a question
 waiting on the owner. Nothing here is a fix somebody forgot.
 
-### Waiting on one answer from the owner
+### Answered and built since this was written
 
-**Do the transactional emails get dressed, or stay plain?** The order and
-subscription mails are plain text ON PURPOSE -- "it renders everywhere,
-never trips a spam filter, and the one thing that matters is the link".
-The new email layouts could dress them to match the site. It cuts both
-ways: a receipt is one of the few messages where plain text is
-respectable, and HTML is heavier and marginally more spam-prone. The
-editor for them (below) is designed either way; only the rendering
-differs. **Nothing else in the newsletter work can finish until this is
-decided**, because the same layouts serve both.
+**The transactional emails are dressed.** Answered by the owner:
+"Dressed". `newsletter.to_transactional_html()` renders them in the
+site's own look with no unsubscribe footer, since a receipt is not a
+mailing.
 
-### Built but not wired up
+**The email layouts are built, wired, and then rebuilt.** They shipped as
+four fixed sets of named slots; that model is gone. A newsletter is an
+ordered list of BLOCKS and a layout is a starting arrangement of them --
+see "A newsletter stopped being a set of slots" above for why the fixed
+slots had to go, and "The newsletter screen became a mail composer" for
+the screen that uses them. `templates/emails/layouts/` no longer exists;
+one template, `emails/blocks.html`, renders both the sent email and the
+canvas it is written in.
 
-**Email layouts.** `services/email_layouts.py`, four table-structured
-layouts under `templates/emails/layouts/`, and 53 checks that an inbox
-can render them. Nothing in the admin uses them yet: the Newsletters
-screen is untouched and still says a newsletter is just a page written
-with the same tools -- which the measurements above disprove. What
-remains is the screen: pick a layout, fill its named slots, preview,
-send. The model underneath (a newsletter as a layout plus values, rather
-than as a page of sections) is the part still to be decided in storage
-terms.
+**Send later exists.** `services/scheduling.py` plus
+`tools/schedule_check.py`. The claim is the lock, because two workers
+wake up together.
+
+### Loose ends from that work, worth an hour each
+
+**Nothing lists what is scheduled.** `scheduling.recent()` was written
+for exactly this and nothing calls it: a schedule is only visible from
+inside the newsletter it belongs to, so "what is going out this week"
+cannot be answered without opening each one. The Newsletters screen is
+where it belongs, beside what has already gone.
+
+**Only newsletters can be scheduled.** A blog post is the obvious next
+caller -- `newsletter_schedule.kind` already names what a job is for, and
+the send path already handles posts. What is missing is
+`_sections_for_schedule` knowing about them, and a control on the post
+editor.
+
+**The compose ribbon is dense.** Four groups fit at 1280px and wrap to
+two rows on a narrow laptop. Legible, but worth a second look once
+somebody has used it in anger -- the likely answer is that the block
+style group collapses behind one button until a block is selected.
+
 
 ### Specified, agreed, not built
 
