@@ -5299,3 +5299,38 @@ of duplicates" into two separate facts -- four real copies, and a picker
 counting formats as pictures -- with different causes and different
 fixes.
 
+### The duplicate templates had a trigger, and it was protecting nothing
+
+Three entries called "Life Coaching (your copy)", "(your copy 2)",
+"(your copy 3)" -- reported three times, and each one carrying its own
+duplicate of the template's pictures.
+
+The trigger was a `before_request` that forked the active builtin on the
+first content edit: *"the first content change of a site makes it
+theirs."* Editing a page writes to `pages` and `sections`. It does not
+write to the template package or its row. So there was never anything
+about a content edit that needed a copy of a template -- what it produced
+was a new template per site, silently, and another one each time the
+site happened to be running a builtin again.
+
+The one plausible defence was `_retire_foreign_pack_pages`, which deletes
+pages belonging to a DIFFERENT pack when a template is activated -- so
+perhaps the fork was keeping edited pages safe by making the active slug
+match. It was not. That function spares any page whose `source_template`
+is NULL, and `fork_active_builtin` never touched `source_template` at
+all -- zero references. The pages kept pointing at the builtin either
+way.
+
+Removed. Forking stays as something the owner ASKS for when they change a
+LOOK, which is the design already written up above; `fork_active_builtin`
+is kept for it. Proved by making three content edits in a row against a
+fresh install and watching the template count stay at sixteen.
+
+**A note on the shape of the mistake**, because it is the second one
+today: a piece of machinery that fires on every edit, does something
+invisible, and is justified by a sentence that sounds like care --
+"makes it theirs". Nobody asked for it and nobody could see it happen.
+The Basket panel's padding and this both come down to the same question,
+which is worth asking of anything automatic: *what did the person do that
+asked for this?*
+

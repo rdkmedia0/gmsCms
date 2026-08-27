@@ -1097,7 +1097,6 @@ def inject_password_warning():
 #  site: a capture would rescan and re-copy every picture on the first
 #  keystroke, and the useful thing to own at that moment is the template
 #  they started from.
-CONTENT_EDIT_ENDPOINTS = ("admin.section_", "admin.page_", "admin.blog_post_")
 
 
 def fork_active_builtin(db):
@@ -1186,21 +1185,26 @@ def fork_active_builtin(db):
     return new_id
 
 
-@bp.before_request
-def fork_builtin_before_content_edit():
-    """The first content change of a site running a built-in makes it
-    theirs. Only content: template management, settings and the like leave
-    the stock template alone."""
-    from flask import request as _request, session as _session
-    if _request.method != "POST" or not _session.get("user_id"):
-        return None
-    if not (_request.endpoint or "").startswith(CONTENT_EDIT_ENDPOINTS):
-        return None
-    try:
-        fork_active_builtin(get_db())
-    except Exception:  # noqa: BLE001 — an edit must never fail because of this
-        pass
-    return None
+#  There WAS a before_request here that forked the active builtin on the
+#  first content edit -- "the first content change of a site makes it
+#  theirs". It is gone, and it is worth saying why, because it looked
+#  protective and was not.
+#
+#  Editing a page writes to pages and sections. It does not write to the
+#  template package or its row, so there was nothing about a content edit
+#  that needed a copy of the template. What it produced instead was a new
+#  template per site, silently, named "(your copy)", "(your copy 2)",
+#  "(your copy 3)" -- three identical entries in one library here, each
+#  carrying its own duplicate of the template's pictures.
+#
+#  It was not guarding _retire_foreign_pack_pages either, which was the
+#  one plausible defence: that function spares any page whose
+#  source_template is NULL, and fork_active_builtin never touched
+#  source_template at all.
+#
+#  Forking stays, as something the owner ASKS for when they change a
+#  LOOK -- see BOW.md, "Forking, settled". fork_active_builtin is kept
+#  for that; only the automatic trigger is removed.
 
 
 @bp.before_request
