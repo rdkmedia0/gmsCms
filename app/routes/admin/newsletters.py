@@ -165,6 +165,9 @@ def newsletter_issue_edit(newsletter_id):
         #  what is written into is what is sent.
         canvas=email_layouts.render(row["layout"], newsletter.composed_values(row),
                                     look, edit=True),
+        #  What the sent email writes onto each block, so the editor can
+        #  write the same thing onto a block the toolbar has just made.
+        block_styles=email_layouts.block_styles(look),
         look=look,
         layout=email_layouts.LAYOUTS[row["layout"]],
         fields=email_layouts.fields_for(row["layout"]),

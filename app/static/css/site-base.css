@@ -2391,6 +2391,16 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
       control); this is the rest.  */
   .site-header-zone, .site-sidebar-zone { padding: 8px 14px; }
   .site-content { padding: 14px; }
+
+  /*  A basket left in its row sits BESIDE the menu here rather than on a
+      row of its own. The zone stacks its sections, which is right for
+      content and wrong for two small controls: it left a band of empty
+      beside each of them and pushed the site down a screenful. */
+  .site-header-zone {
+    flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px;
+  }
+  .site-header-zone > .cms-section:has(.cms-menu) { flex: 1 1 auto; }
+  .site-header-zone > .cms-section:has(.cms-basket-link) { flex: 0 0 auto; margin: 0; }
 }
 
 /*  A floating basket. Lifted out of the page and pinned to a corner, so
@@ -2414,9 +2424,14 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
 .cms-basket-link.cms-basket-align-float-top { top: 14px; }
 .cms-basket-link.cms-basket-align-float-bottom { bottom: 14px; }
 /*  The section it came from has nothing left to hold, so it takes no
-    room -- otherwise a floating basket leaves its own empty row behind. */
+    room -- otherwise a floating basket leaves its own empty row behind.
+    `display: contents` and NOT `display: none`: a fixed child of a
+    display:none parent is not rendered either, so hiding the section
+    took the basket with it and it vanished for every visitor while
+    still being there while editing. Contents removes the box and keeps
+    the child. */
 .cms-section:has(.cms-basket-align-float-top),
-.cms-section:has(.cms-basket-align-float-bottom) { display: none; }
+.cms-section:has(.cms-basket-align-float-bottom) { display: contents; }
 /*  While editing, the frame it lives in has to stay reachable -- you
     cannot click a tool that is not there. */
 .cms-editing .cms-section:has(.cms-basket-align-float-top),

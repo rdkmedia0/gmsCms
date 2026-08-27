@@ -95,6 +95,133 @@ def fields_for(key):
     return LAYOUTS.get(key, LAYOUTS["letter"])["fields"]
 
 
+#  Schemes a link in a newsletter may use. The same list a button holds
+#  itself to: anything else is left as the literal text somebody typed
+#  rather than quietly becoming a link.
+LINK_SCHEMES = ("http://", "https://", "mailto:", "tel:", "/", "#")
+
+#  The written vocabulary a newsletter body may use. Small on purpose,
+#  and the same shape as the one an FAQ answer takes (see
+#  sections.faq_markdown): the owner never types HTML -- this app has no
+#  raw-HTML box for anything a person writes, and an email is the worst
+#  place to start -- so what the toolbar produces is written down as
+#  TEXT, escaped first and converted second. No tag can arrive by being
+#  typed, and the stored form stays something a person can read.
+#
+#      ## a heading        ### a smaller heading
+#      **bold**            *italic*
+#      [words](address)    - a bullet
+#      a blank line between paragraphs
+#
+#  newsletter-editor.js's serialiser is the exact inverse of this. If one
+#  changes the other has to, or a newsletter stops reading back the way
+#  it was written.
+_LINK_STYLE = ["color:#1a5fd0;text-decoration:underline;"]
+
+
+def _spans(escaped):
+    """What happens inside a line: bold, italic, a link."""
+    def link(match):
+        label, href = match.group(1), match.group(2).strip()
+        if not href.startswith(LINK_SCHEMES):
+            return match.group(0)   # left as the literal text it was
+        return '<a href="%s" style="%s">%s</a>' % (href, _LINK_STYLE[0], label)
+
+    out = re.sub(r"\[([^\]]+)\]\(([^)\s]+)\)", link, escaped)
+    out = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", out)
+    out = re.sub(r"(?<!\*)\*([^*]+)\*(?!\*)", r"<em>\1</em>", out)
+    return out
+
+
+def block_styles(look, size=16):
+    """The inline style each kind of block carries.
+
+    Named separately because the EDITOR needs the same strings: a heading
+    made by the toolbar has to arrive looking exactly like the heading
+    that will be sent, and the only way to be sure of that is for both to
+    read the same dictionary rather than two hand-copied lists that drift.
+    """
+    look = look or {}
+    body_font = look.get("body_font") or "Arial, sans-serif"
+    heading_font = look.get("heading_font") or body_font
+    accent = look.get("accent") or "#1a5fd0"
+    return {
+        "p": "margin:0 0 14px;font-size:%dpx;line-height:1.65;color:#333c47;"
+             "font-family:%s;" % (size, body_font),
+        "li": "margin:0 0 8px;font-size:%dpx;line-height:1.6;color:#333c47;"
+              "font-family:%s;" % (size, body_font),
+        "ul": "margin:0 0 16px;padding-left:22px;",
+        "h2": "margin:22px 0 10px;font-size:%dpx;line-height:1.3;font-weight:700;"
+              "color:#1c2430;font-family:%s;" % (size + 5, heading_font),
+        "h3": "margin:18px 0 8px;font-size:%dpx;line-height:1.35;font-weight:700;"
+              "color:#1c2430;font-family:%s;" % (size + 1, heading_font),
+        "a": "color:%s;text-decoration:underline;" % accent,
+    }
+
+
+def rich(text, look, size=16):
+    """One body field as finished, inline-styled email blocks.
+
+    Every style is written onto the tag itself, because most clients
+    strip a stylesheet -- which is also why this returns whole blocks
+    rather than text for a macro to wrap: a heading and a bullet are not
+    paragraphs and cannot be styled as though they were.
+    """
+    st = block_styles(look, size)
+    _LINK_STYLE[0] = st["a"]
+    para, item = st["p"], st["li"]
+    head = {2: st["h2"], 3: st["h3"]}
+
+    blocks, bullets, para_lines = [], [], []
+
+    def flush_list():
+        if bullets:
+            blocks.append(
+                '<ul style="' + st["ul"] + '">'
+                + "".join('<li style="%s">%s</li>' % (item, b) for b in bullets)
+                + "</ul>")
+            del bullets[:]
+
+    def flush_para():
+        #  Lines inside one paragraph are joined by a break, not split
+        #  into paragraphs. That distinction is the whole reason a blank
+        #  line means something: an address or a sign-off is several
+        #  lines of ONE paragraph, and turning each into its own would
+        #  put 14px between every line of it.
+        if para_lines:
+            blocks.append('<p style="%s">%s</p>' % (para, "<br>".join(para_lines)))
+            del para_lines[:]
+
+    def flush():
+        flush_para()
+        flush_list()
+
+    for chunk in re.split(r"\n\s*\n", (text or "").strip()):
+        for line in chunk.split(chr(10)):
+            line = line.strip()
+            if not line:
+                continue
+            escaped = escape(line)
+            if escaped.startswith("- "):
+                flush_para()
+                bullets.append(_spans(escaped[2:].strip()))
+                continue
+            flush_list()
+            #  Deepest marker first: "### " also starts with "## ".
+            if escaped.startswith("### "):
+                flush_para()
+                blocks.append('<h3 style="%s">%s</h3>' % (head[3], _spans(escaped[4:].strip())))
+            elif escaped.startswith("## "):
+                flush_para()
+                blocks.append('<h2 style="%s">%s</h2>' % (head[2], _spans(escaped[3:].strip())))
+            else:
+                para_lines.append(_spans(escaped))
+        #  A blank line in the source ends whatever was being built.
+        flush()
+    flush()
+    return blocks
+
+
 def paragraphs(text):
     """Plain text as escaped paragraphs.
 
@@ -163,5 +290,6 @@ def render(key, values, look, edit=False):
     prepared = {}
     for field in fields_for(key):
         raw = (values.get(field["key"]) or "").strip()
-        prepared[field["key"]] = paragraphs(raw) if field["kind"] == PARAGRAPHS else raw
+        prepared[field["key"]] = (rich(raw, look) if field["kind"] == PARAGRAPHS
+                                  else raw)
     return render_template("emails/layouts/%s.html" % key, look=look, v=prepared, edit=edit)

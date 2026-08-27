@@ -1,4 +1,5 @@
 {% extends "admin/base.html" %}
+{% from "partials/wysiwyg_toolbar.html" import wysiwyg_toolbar %}
 {% block title %}{{ item.subject or 'Newsletter' }} — My Site Admin{% endblock %}
 {% block content %}
 {% include "partials/email_tabs.html" %}
@@ -26,6 +27,23 @@
            title="What people see in their inbox before they open it. Say the thing, don't tease it.">
     <p class="hint">The line people decide on. Say what is inside rather than hinting at it.</p>
   </div>
+
+  {#  The same toolbar the blog and the live page use, minus the group an
+      email cannot honour (see the macro). It acts on whichever body slot
+      was last written in, so it sits above the canvas rather than inside
+      it -- an email has no room for a toolbar and this one is not going
+      to be sent. #}
+  <div class="cms-issue-toolbar">
+    {{ wysiwyg_toolbar(include_image=false, include_icon=false, include_layout=false) }}
+    <p class="hint">Select some words, then a button. Headings, bold, italic, a link and
+      bullets are what an email can carry reliably &mdash; so they are what is offered.</p>
+  </div>
+
+  {#  The styles the SENT email writes onto each kind of block, handed to
+      the editor so a heading made here arrives looking like the heading
+      that will be sent. One dictionary, read by both sides -- see
+      email_layouts.block_styles. #}
+  <script type="application/json" id="cms-email-block-styles">{{ block_styles | tojson }}</script>
 
   {#  The ground behind the card is the site's own, the way it will be in
       the inbox -- so the thing being written into looks like the thing
@@ -90,5 +108,6 @@
   </form>
 </div>
 <script src="{{ static_url('js/admin/modal.js') }}"></script>
+<script src="{{ static_url('js/wysiwyg-commands.js') }}"></script>
 <script src="{{ static_url('js/admin/newsletter-editor.js') }}"></script>
 {% endblock %}

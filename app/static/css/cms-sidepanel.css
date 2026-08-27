@@ -42,6 +42,22 @@
   box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
   color: #fff;
   transition: right 0.2s ease;
+  /*  The strip slides along the edge it is on -- see dock-drag.js. Down
+      the side that is the Y axis; along the bottom the same variable
+      moves X, because the stylesheet is what knows which edge we are on.
+      A transform rather than an offset so the five tabs keep their
+      overlap exactly and only one number ever has to be written. */
+  transform: translateY(var(--cms-dock-tab-slide, 0px));
+  /*  Or the first finger-drag scrolls the page instead of moving them. */
+  touch-action: none;
+}
+.cms-dock-tab-btn.cms-dock-bottom {
+  transform: translateX(var(--cms-dock-tab-slide, 0px));
+}
+/*  While dragging: no text selection anywhere, and the grabbing cursor
+    stays put even when the pointer outruns the tab. */
+.cms-dock-tab-dragging, .cms-dock-tab-dragging * {
+  user-select: none; cursor: grabbing !important;
 }
 /*  The open tab sits on the panel's actual edge, so it has to be the same
     expression the panel's own width resolves to: the width the admin

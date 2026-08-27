@@ -216,6 +216,34 @@ _csp = https_headers.get("Content-Security-Policy", "")
 _form_action = next((d.strip() for d in _csp.split(";") if d.strip().startswith("form-action")), "")
 check("checkout may reach Stripe (form-action covers redirects)",
       "checkout.stripe.com" in _form_action, _form_action or "no form-action set")
+
+#  The site frames its own pages -- that is what the responsive preview
+#  in the editor IS -- and a page that refuses every framer refuses
+#  itself. It came up as a broken document at every width. 'self' still
+#  refuses every OTHER origin, which is the clickjacking protection the
+#  rule exists for, so nothing is given away by allowing it.
+_frame_ancestors = next((d.strip() for d in _csp.split(";")
+                         if d.strip().startswith("frame-ancestors")), "")
+check("the site may frame its own pages (the preview)",
+      "'self'" in _frame_ancestors, _frame_ancestors or "no frame-ancestors set")
+check("nobody else may frame them",
+      "*" not in _frame_ancestors and "http" not in _frame_ancestors,
+      _frame_ancestors)
+#  The older header has to AGREE: a browser reading both applies the
+#  stricter, so DENY beside frame-ancestors 'self' would still block it.
+_xfo = https_headers.get("X-Frame-Options", "")
+check("the older header says the same thing", _xfo.upper() == "SAMEORIGIN",
+      _xfo or "not set")
+#  frame-ancestors is only half of it: that says who may frame US, and
+#  frame-src says what WE may frame. The preview needs both to name the
+#  site itself. It said `https:` alone, which happens to match this
+#  origin over https and matches nothing over http -- so the preview was
+#  empty on every install without a certificate, for a reason no part of
+#  the page could report.
+_frame_src = next((d.strip() for d in _csp.split(";")
+                   if d.strip().startswith("frame-src")), "")
+check("the site may frame its own pages over either scheme",
+      "'self'" in _frame_src, _frame_src or "no frame-src set")
 check("and forms still may not post anywhere else",
       "*" not in _form_action and "https:" not in _form_action.replace("https://", ""),
       _form_action)

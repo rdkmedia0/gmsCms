@@ -14,25 +14,24 @@
 {#  While editing, the paragraphs live inside ONE editable box rather
     than one box per paragraph -- otherwise pressing Return could not make
     a new paragraph, which is the first thing anybody tries. #}
+{#  The blocks arrive finished. email_layouts.rich() has already decided
+    whether each one is a paragraph, a heading or a list AND written the
+    inline style onto it, because a heading is not a paragraph and cannot
+    be styled as though it were -- which is what this macro used to do to
+    all of them. #}
 {% macro body(blocks, look, size=16, slot='', edit=false) -%}
 {% if edit %}
-<div data-slot="{{ slot }}" data-multiline="1" contenteditable="true"
-     data-placeholder="Write what you want to say. Leave a blank line between paragraphs."
+<div data-slot="{{ slot }}" data-multiline="1" data-rich="1" contenteditable="true"
+     data-placeholder="Write what you want to say. Select some words to style them."
      style="outline:none;">
-{% for block in blocks %}
-<p style="margin:0 0 14px;font-size:{{ size }}px;line-height:1.65;color:#333c47;
-          font-family:{{ look.body_font }};">{{ block | safe }}</p>
-{% endfor %}
+{% for block in blocks %}{{ block | safe }}{% endfor %}
 {% if not blocks %}
 <p style="margin:0 0 14px;font-size:{{ size }}px;line-height:1.65;color:#333c47;
           font-family:{{ look.body_font }};"><br></p>
 {% endif %}
 </div>
 {% else %}
-{% for block in blocks %}
-<p style="margin:0 0 14px;font-size:{{ size }}px;line-height:1.65;color:#333c47;
-          font-family:{{ look.body_font }};">{{ block | safe }}</p>
-{% endfor %}
+{% for block in blocks %}{{ block | safe }}{% endfor %}
 {% endif %}
 {%- endmacro %}
 

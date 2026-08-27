@@ -13,16 +13,25 @@
 
     The behaviour lives in static/js/wysiwyg-commands.js, shared the same
     way -- see that file for why a command needs a caller to say what to
-    do afterwards. #}
-  {% macro wysiwyg_toolbar(include_image=true, include_icon=true) %}
+    do afterwards.
+
+    `include_layout` is a third: alignment, a font and a colour are things
+    an EMAIL cannot honour -- every client that strips a stylesheet also
+    ignores most of them, and the newsletter's serialiser has no way to
+    write them down. A control that is thrown away on save is a control
+    that lies, so the newsletter turns that group off and keeps exactly
+    the seven the vocabulary supports. #}
+  {% macro wysiwyg_toolbar(include_image=true, include_icon=true, include_layout=true) %}
     <div class="cms-wysiwyg-toolbar">
       <button type="button" data-cmd="bold" title="Bold"><b>B</b></button>
       <button type="button" data-cmd="italic" title="Italic"><i>I</i></button>
       <button type="button" data-cmd="underline" title="Underline"><u>U</u></button>
       <button type="button" data-cmd="insertUnorderedList" title="Bullet list">&bull; List</button>
       <button type="button" data-cmd="formatBlock" data-value="h2" title="Heading">H2</button>
+      <button type="button" data-cmd="formatBlock" data-value="h3" title="Smaller heading">H3</button>
       <button type="button" data-cmd="formatBlock" data-value="p" title="Paragraph">¶</button>
       <button type="button" data-cmd="createLink" title="Link">🔗</button>
+      {%- if include_layout %}
       <button type="button" data-cmd="justifyLeft" title="Align left">⯇</button>
       <button type="button" data-cmd="justifyCenter" title="Align center">☰</button>
       <button type="button" data-cmd="justifyRight" title="Align right">⯈</button>
@@ -53,6 +62,7 @@
         <input type="color" data-cmd="hiliteColor" value="#ffff00">
       </label>
       <button type="button" class="cms-color-reset" data-reset-cmd="hiliteColor" title="Remove the highlight color">⟲A</button>
+      {%- endif %}
       {%- if include_image %}
       <button type="button" class="cms-insert-image-btn" title="Insert an image here">🖼️ Image</button>
       {%- endif %}

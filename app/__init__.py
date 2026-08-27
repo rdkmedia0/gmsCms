@@ -234,8 +234,23 @@ def create_app():
         "connect-src 'self'",
         #  Embeds (a video, a booking widget) are a real feature; being
         #  framed BY someone else is not, hence frame-ancestors.
-        "frame-src https:",
-        "frame-ancestors 'none'",
+        #  'self' as well as https: -- these are two different jobs in one
+        #  directive. `https:` is for an embedded third party (a Cal.com
+        #  booking, a Stripe button, a video), which is why it is that
+        #  wide. `'self'` is for the editor's own responsive preview,
+        #  which frames THIS site: over https the origin happened to
+        #  match `https:` and it worked, over plain http it did not, so
+        #  the preview came up empty on every install that had not put a
+        #  certificate on yet. Naming the site itself says what is meant
+        #  and stops depending on the scheme to say it.
+        "frame-src 'self' https:",
+        #  'self', not 'none': the responsive preview shows the site's own
+        #  page in a frame, and a page that refuses every framer refuses
+        #  itself -- the preview came up as a broken document. Another
+        #  site still cannot frame this one, which is the whole point of
+        #  the rule; X-Frame-Options below says the same thing to older
+        #  browsers and has to agree, or the stricter of the two wins.
+        "frame-ancestors 'self'",
         #  Checkout is a form that redirects to Stripe's own payment page,
         #  and form-action is enforced across the whole redirect chain --
         #  so 'self' alone silently refuses every purchase in a browser
@@ -252,7 +267,7 @@ def create_app():
         #  running it on this origin.
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         #  Belt and braces with frame-ancestors, for older browsers.
-        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
         response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
         #  Only ever sent over https, so it cannot strand a site that is
         #  served over plain http. Deliberately without includeSubDomains

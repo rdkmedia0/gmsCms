@@ -861,6 +861,20 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
 
     Only the frame around it is styled here. Everything inside carries
     its own inline styles, because it has to survive an inbox. */
+/*  The toolbar is the app talking, not the email -- so it wears the
+    editor's own clothes and sits ABOVE the canvas rather than in it.
+    Sticky, because a newsletter is longer than a screen and a toolbar
+    you have to scroll back up to reach is one nobody uses. */
+.cms-issue-toolbar {
+  position: sticky; top: 0; z-index: 5;
+  /*  Pinned, not var(--primary): this is the editor's own chrome and its
+      legibility must not be decided by the template being edited. */
+  background: #fff;
+  border: 1px solid #e2e4e9;
+  border-radius: var(--cms-ui-radius-surface);
+  padding: 8px 10px 4px; margin: 0 0 10px;
+}
+.cms-issue-toolbar .hint { margin: 6px 2px 2px; }
 .cms-issue-canvas-ground { padding: 26px 14px; border-radius: var(--cms-ui-radius-surface); margin: 0 0 14px; }
 .cms-issue-canvas {
   width: 600px; max-width: 100%; margin: 0 auto; background: #fff;

@@ -5476,6 +5476,136 @@ existing `flash("Sorry — that's just sold out.")` had never been seen by
 anybody. The refusal travels in the answer now and lands on the button
 that was pressed, which is where the shopper is looking.
 
+## Five faults found by using it on a phone and a desktop (2026-08-27)
+
+All five reported from the running site. Three turned out to share one
+shape: a rule that was right about the outside world and had never been
+asked what it did to this site's own machinery.
+
+### The preview showed nothing, at every width
+
+Two separate headers, both correct-looking, both wrong here.
+
+`frame-ancestors 'none'` and `X-Frame-Options: DENY` say "nobody may put
+this page in a frame". The responsive preview in the editor puts this
+page in a frame. A page that refuses every framer refuses ITSELF, so the
+preview was an empty document at 390, 768 and 1400 alike -- and nothing
+reported it, because a blocked frame is a console line in a browser, not
+an error the server ever sees. `'self'` and `SAMEORIGIN` still refuse
+every other origin, which is the clickjacking protection the rule exists
+for; nothing is given away by letting the site frame itself.
+
+Fixing that alone was not enough, and the second half is the more
+interesting one. `frame-src https:` says what this page may EMBED, and it
+is that wide because a Cal.com booking or a Stripe button has to work.
+Over https the site's own origin happens to match `https:`, so the
+preview worked once framing was allowed. Over plain http it matches
+nothing -- so the preview would have stayed broken on every install that
+has not put a certificate on yet, in a way that looked like a different
+bug. Naming `'self'` says what is actually meant rather than depending on
+the scheme to say it by accident.
+
+**The rule this leaves:** a security directive written about third
+parties has to be re-read as a statement about the site's own features.
+Three checks in `tools/prod_check.py` now hold both halves.
+
+### The floating basket was there while editing and gone for visitors
+
+The floating basket is `position: fixed`, and the section it came from
+has nothing left to hold -- so I hid that section with `display: none`.
+A fixed child of a `display: none` parent is not rendered either. It
+survived in edit mode only because a later rule put the section back to
+`display: block` so the tool stayed clickable, which is exactly the
+condition that hid the bug from me: it worked everywhere I was looking.
+
+`display: contents` is the right tool and the distinction is worth
+keeping: `none` removes the box AND everything in it; `contents` removes
+only the box. When the whole point is that a child escapes its parent,
+`none` is never what is meant.
+
+### The dock tabs sat wherever the stylesheet put them
+
+Five fixed offsets down the right-hand edge, often over the thing being
+edited, with nothing an admin could do about it. They now slide along the
+edge they are on -- up and down at the side, left and right along the
+bottom -- as one strip rather than five buttons, because they are one
+control with five faces and letting them scatter would mean hunting for
+one. Remembered per orientation, since a distance down the right edge
+means nothing when the strip is lying across the bottom.
+
+Two details that make it usable rather than merely possible: the travel
+limits are measured from where the tabs actually ARE, not from the
+numbers in the stylesheet, so adding or restyling a tab cannot leave the
+strip able to slide off-screen; and a drag only becomes a drag after 4px,
+so a plain click still opens the panel. The tooltip says it can be
+dragged, added in JavaScript to all five rather than to five templates.
+
+### A basket beside the menu took a screenful on a phone
+
+The header zone stacks its sections, which is right for content and
+wrong for two small controls: the menu and the basket each got a full
+row, with a band of empty beside them. On a phone the site began most of
+a screen down. The zone now lays those two out in a row.
+
+### The newsletter editor had no text tools
+
+The canvas was already the email -- written into in place, on the site's
+own ground, in the site's own fonts. What it could not do was make a
+heading, a bold word, a link or a list, which is most of what writing a
+newsletter is.
+
+The shape follows the FAQ's, deliberately: **a small written vocabulary,
+escaped first and converted second** (`email_layouts.rich`). The owner
+never types HTML; the toolbar writes `## `, `**`, `[words](address)` and
+`- ` into the stored text, and `newsletter-editor.js` reads exactly that
+back. Same trade as the FAQ, made for the same reason: the stored form
+stays something a person can read, and no tag can arrive by being typed.
+
+Four things this cost, each of which is the note worth keeping:
+
+  * **The toolbar had to lose controls.** Alignment, a font picker and a
+    colour picker are on the shared toolbar and mean nothing in an inbox
+    -- every client that strips a stylesheet ignores most of them, and
+    the vocabulary cannot write them down, so the serialiser would throw
+    them away on save. A control that is discarded on save is a control
+    that lies. `include_layout=false` turns that group off; the seven
+    that remain are exactly the seven the vocabulary supports. (H3 was
+    added to the shared toolbar for everybody -- the page and the blog
+    wanted it too.)
+
+  * **One dictionary of styles, read by both sides.** An email carries
+    its styles on the tag, and `execCommand` emits a bare `<h2>`. So a
+    heading made by the toolbar would have looked nothing like the one
+    that gets sent -- in the very screen whose whole claim is that it
+    shows you the email. `email_layouts.block_styles()` is handed to the
+    page as JSON and the editor writes the same strings onto whatever the
+    toolbar just made. Two hand-copied lists would have drifted.
+
+  * **Rewriting the DOM fights the caret.** The first version tidied on
+    every keystroke and scattered the words as they were typed
+    ("We are open ate on Thursdays**l**"), because replacing an element
+    moves the caret to the start of what replaced it. Split in two:
+    writing a style attribute is safe and runs continuously; replacing a
+    node runs on blur and before saving. And READING handles both forms,
+    so what is stored is right at any moment regardless of which has run.
+
+  * **A styled span is not a block.** `styleWithCSS` makes bold a
+    `<span style="font-weight:bold">`, so the reader has to understand
+    that form -- but a heading carries `font-weight:700` as part of the
+    email's own style, and reading THAT as emphasis wrapped every heading
+    in `**`. Only an inline span counts. Related: `insertUnorderedList`
+    nests the `<ul>` inside the `<p>` it was made from, which is invalid,
+    unreadable by the serialiser and puts the caret in front of the words
+    already there. It is lifted out and the caret put back into it.
+
+**Checked by driving it.** `tools/newsletter_editor_check.py` types into
+the canvas, presses the toolbar buttons, saves, and compares what would
+be SENT against what was on screen -- 18 assertions. It needs a browser
+and a running instance because that is the only place the thing it checks
+happens: a serialiser in JavaScript and a renderer in Python have to
+agree exactly, and neither language can prove that alone. A drift between
+them raises nothing; it just quietly changes what somebody wrote.
+
 ## Where this stands, and what is left (2026-08-27)
 
 Written at the end of a long day on a live install, so the next person --

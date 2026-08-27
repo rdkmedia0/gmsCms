@@ -8,6 +8,7 @@ arrive empty without anyone noticing.
 
     python tools/email_layout_check.py
 """
+import io
 import os
 import re
 import sys
@@ -19,6 +20,19 @@ from app import create_app                                         # noqa: E402
 from app.services import email_layouts, newsletter                 # noqa: E402
 
 passed = failed = 0
+
+
+NL = chr(10)
+
+
+def _source(rel):
+    """One of the files this checks the CONTENT of, read as text."""
+    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    return io.open(os.path.join(here, rel), encoding="utf-8").read()
+
+
+ISSUE_EDIT = _source("app/templates/admin/newsletter_issue_edit.html")
+EDITOR_JS = _source("app/static/js/admin/newsletter-editor.js")
 
 
 def check(what, ok, detail=""):
@@ -91,6 +105,72 @@ with app.test_request_context("/"):
     check("angle brackets are escaped, not rendered", "&lt;&amp;&gt;" in letter, letter[:70])
     check("a blank line makes a new paragraph", letter.count("<p ") >= 2)
     check("a single newline stays a line break", "<br>" in letter)
+
+    print()
+    print("The vocabulary a body may use, and only that")
+    print("-" * 68)
+    #  Everything the toolbar can produce, written down as text. The
+    #  editor's serialiser is the exact inverse of this; if it drifts, a
+    #  newsletter stops reading back the way it was written.
+    vocab_look = {"body_font": "Georgia, serif", "heading_font": "Palatino, serif",
+                  "accent": "#a3352a"}
+    src = ("## A heading" + NL
+           + "Words with **bold** and *italic* and [a link](https://x.test)." + NL
+           + "A second line of the same paragraph." + NL + NL
+           + "- first bullet" + NL
+           + "- second bullet" + NL + NL
+           + "### A smaller heading" + NL
+           + "[not a link](javascript:alert(1)) stays as it was typed." + NL
+           + "<script>alert(1)</script>")
+    out = email_layouts.rich(src, vocab_look)
+    joined = "".join(out)
+    check("## makes a heading", out[0].startswith("<h2 "), out[0][:40])
+    check("### makes a smaller heading", any(b.startswith("<h3 ") for b in out))
+    check("** makes bold", "<strong>bold</strong>" in joined)
+    check("* makes italic", "<em>italic</em>" in joined)
+    check("- makes one list, not one per line", joined.count("<ul") == 1
+          and joined.count("<li") == 2)
+    check("a link is a link", '<a href="https://x.test"' in joined)
+    check("a script-scheme link stays plain text",
+          "javascript:alert(1)) stays" in joined and 'href="javascript' not in joined)
+    check("typed markup is escaped, never rendered",
+          "&lt;script&gt;" in joined and "<script>" not in joined)
+
+    #  The email carries its style on the tag, because most clients strip
+    #  a stylesheet -- and it carries the SITE's, not a default.
+    check("every block carries an inline style",
+          all(' style="' in b for b in out))
+    check("the body font reaches a paragraph", "Georgia, serif" in joined)
+    check("the heading font reaches a heading", "Palatino, serif" in joined)
+    check("the site's colour reaches a link", "#a3352a" in joined)
+
+    #  One dictionary, read by the email and by the editor. If these
+    #  stopped agreeing, a heading made by the toolbar would look one way
+    #  on screen and another in the inbox.
+    st = email_layouts.block_styles(vocab_look)
+    check("the editor is given the same styles the email writes",
+          all(st[k] in joined for k in ("p", "h2", "h3", "ul", "li", "a")))
+    check("the screen hands those styles to the editor",
+          "cms-email-block-styles" in ISSUE_EDIT and "block_styles" in ISSUE_EDIT)
+    check("the editor reads them rather than repeating them",
+          "cms-email-block-styles" in EDITOR_JS
+          and "STYLES[" in EDITOR_JS)
+
+    print()
+    print("The editor is the email, with tools")
+    print("-" * 68)
+    check("the shared toolbar is used, not a second one",
+          "wysiwyg_toolbar" in ISSUE_EDIT and "wysiwyg-commands.js" in ISSUE_EDIT)
+    check("what an email cannot honour is not offered",
+          "include_layout=false" in ISSUE_EDIT)
+    check("the toolbar acts on the slot being written in",
+          "lastBody" in EDITOR_JS)
+    check("a block the toolbar makes is styled like the sent one",
+          "function restyle" in EDITOR_JS and "restyle(el)" in EDITOR_JS)
+    check("the serialiser reads headings back",
+          '"## "' in EDITOR_JS and '"### "' in EDITOR_JS)
+    check("the serialiser reads emphasis and links back",
+          '"**"' in EDITOR_JS.replace(chr(39), chr(34)) or '**" + inner' in EDITOR_JS)
 
     print()
     print("The screen can build itself, and refuse for a reason")

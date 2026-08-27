@@ -876,6 +876,23 @@ Each of these follows the structure above — thin routes, logic in
   from unsubscribing them and takes that evidence with it, by design.
   `tools/signup_check.py` walks the whole path with the mail captured
   instead of sent; run it after touching any of this.
+- **A newsletter body takes a small written vocabulary**, not HTML and
+  not a plain box: `## `/`### `, `**bold**`, `*italic*`,
+  `[words](address)`, `- ` bullets (`email_layouts.rich`, escaped first
+  and converted second -- the same shape `faq_markdown` takes, for the
+  same reasons). The editing canvas IS the email, and its toolbar is the
+  shared one with `include_layout=false`, because alignment, fonts and
+  colours mean nothing in an inbox and the serialiser cannot write them
+  down -- **a control that is discarded on save is a control that lies**.
+  Three things travel together and must stay in step: `rich()`,
+  `newsletter-editor.js`'s serialiser (its exact inverse), and
+  `block_styles()`, which both the sent email and the editor read so a
+  heading made by the toolbar looks like the heading that arrives. In the
+  editor, writing a style attribute is safe while typing; REPLACING a
+  node moves the caret and may only happen on blur or before saving.
+  `tools/newsletter_editor_check.py` drives the real thing in a browser
+  and compares what is sent against what was on screen -- run it after
+  touching any of the three.
 - **Backups**: `services/backup.py`. SQLite `VACUUM INTO`, never a file
   copy; restore pushes back through SQLite's backup API rather than
   swapping a file under a running app. The encryption key is excluded by
@@ -1040,6 +1057,18 @@ part that constrains the CODE.
   longer ships, and refuses to when it cannot read the archive), and
   `design_conventions_check.py` (that a word means one thing across
   tools, and that no admin form asks for raw HTML).
+- **A security header written about third parties still has to be read
+  as a statement about this site's own features.** `frame-ancestors` and
+  `X-Frame-Options` said "nobody may frame this", and the editor's
+  responsive preview frames THIS site -- so it showed an empty document
+  at every width, silently, because a blocked frame is a console line and
+  never an error the server sees. They are `'self'`/`SAMEORIGIN` now,
+  which still refuses every other origin. `frame-src` is the other half
+  and the subtler one: it said `https:` (wide, for an embedded Cal.com or
+  Stripe), which the site's own origin happens to match over https and
+  never matches over http -- so the preview would have stayed broken on
+  every install without a certificate. It names `'self'` explicitly
+  rather than depending on the scheme to say it by accident.
 - **`tools/prod_check.py`** is the net under all of the above: it proves
   the pragmas are live by holding a write open and reading through it,
   proves the ordering cannot tie by racing three writes, asks for the
