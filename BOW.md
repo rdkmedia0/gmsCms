@@ -4762,3 +4762,40 @@ with rules of its own, and anything whose failure mode lives in those
 rules -- CSP, mixed content, cookie policy, autoplay, clipboard -- is
 invisible to every tool that is not one.
 
+### A curve needs an inset, and the inset depends on the box's shape (2026-08-27)
+
+Shop items on a pill-cornered site drew an ellipse and then wrote the
+name, price and button into the rectangle's corners, outside it. The
+shape was the owner's (Corners is a control, so the roundness is a
+choice); the spill was not (nobody chose a button hanging off the edge).
+So: a defect, by the two questions in CLAUDE.md.
+
+The mechanism was already solved and simply not wired up. Strongly-curved
+shapes declare `--site-radius-pad` so content clears the curve, and seven
+surfaces read it. The commerce and card surfaces took `--site-radius` for
+their corners and kept a flat `padding: 16px`. Measured against the
+ellipse equation, every corner of every child: worst point **1.43** before
+(1.0 is the edge), **0.71** after.
+
+**The new part.** Applying the same inset to `.cms-file-card` turned a
+420x80 row into 420x352. `--site-radius-pad`'s components are
+percentages, and a percentage padding resolves against the containing
+block's WIDTH -- on any side. On a block that is roughly as tall as it is
+wide that is fine. On a short wide row it means the TOP inset is sized
+from the width, and 24% of 420 is 100px of padding above an 80px box.
+
+Underneath the arithmetic is a geometric fact: a curve cuts a box where
+the box is longest. A tall block is cut at its corners and needs both
+insets; a short wide row is cut at its ENDS and needs only an inline one.
+One variable cannot answer both, so the three short-wide surfaces
+(`.cms-file-card`, `.cms-subscribe-note`, a collapsed
+`.cms-faq-style-cards .cms-faq-item`) were left alone rather than given a
+fix that is worse than the fault -- a companion inline-only variable,
+declared by each shape preset beside the one that exists, is the shape of
+the answer when it is worth building.
+
+Note also that `[data-corner-style]` was EMPTY on this site: the template
+simply is curved, setting `--site-radius` in its own CSS. Anything keyed
+off that attribute would have matched nothing here, which CLAUDE.md
+already warns about and which is why the fix reads the variable instead.
+

@@ -1183,7 +1183,7 @@ video, .cms-media video, .cms-video {
 .cms-card-row-3 { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
 .cms-card {
   background: color-mix(in srgb, var(--primary, #2563eb) 6%, transparent);
-  border-radius: var(--site-radius, 12px); padding: 20px;
+  border-radius: var(--site-radius, 12px); padding: var(--site-radius-pad, 20px);
   border: 1px solid color-mix(in srgb, var(--primary, #2563eb) 15%, transparent);
 }
 .cms-card h3 { margin: 0 0 8px; }
@@ -1623,7 +1623,7 @@ body.cms-editing .cms-video-thumb-empty::after {
 .cms-buy-style-card { display: block; }
 .cms-buy-card {
   border: 1px solid color-mix(in srgb, var(--primary, #2563eb) 20%, transparent);
-  border-radius: var(--site-radius, 10px); padding: 22px; text-align: center;
+  border-radius: var(--site-radius, 10px); padding: var(--site-radius-pad, 22px); text-align: center;
   background: color-mix(in srgb, var(--primary, #2563eb) 4%, transparent);
   box-shadow: var(--site-shadow, none);
 }
@@ -1636,7 +1636,7 @@ body.cms-editing .cms-video-thumb-empty::after {
    read once, quickly, often on a phone — plain blocks, generous type,
    no navigation to get lost in. */
 .cms-account-sub { opacity: .8; }
-.cms-account-block { text-align: left; margin: 28px 0; padding: 20px 22px;
+.cms-account-block { text-align: left; margin: 28px 0; padding: var(--site-radius-pad, 20px 22px);
   border-radius: var(--site-radius, 10px); box-shadow: var(--site-shadow, none);
   background: color-mix(in srgb, var(--primary, #2563eb) 5%, transparent); }
 .cms-account-block h2 { margin-top: 0; }
@@ -1725,7 +1725,8 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
 .cms-shop-grid[data-columns="2"] { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
 .cms-shop-grid[data-columns="4"] { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
-.cms-shop-item { display: flex; flex-direction: column; gap: 8px; padding: 16px;
+.cms-shop-item { display: flex; flex-direction: column; gap: 8px;
+  padding: var(--site-radius-pad, 16px);
   border: 1px solid rgba(128,128,128,.25); border-radius: var(--site-radius, 8px);
   text-align: left; }
 .cms-shop-item.is-sold-out { opacity: .6; }
