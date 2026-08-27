@@ -4407,3 +4407,42 @@ The first is worth doing on its own terms. The second should not be
 started without deciding whether this product wants to hold customer
 conversations at all.
 
+## Driving the editor from outside broke a live site (2026-08-27)
+
+Worth recording in full, because the next person automating this app will
+reach for the same shortcut.
+
+**What happened.** To set a Menu's alignment I found its control --
+`select[name=menu_align]` -- set its value and dispatched a `change`
+event, which is what a click does. The control carries
+`onchange="this.form.requestSubmit()"`, so the form submitted. The menu
+came back holding one item, and since the header menu is a template zone
+shared by every page, every menu on the site was lost at once.
+
+**Why.** The Menu tool's page checkboxes have NO `name`. They are read by
+JavaScript, which assembles a single JSON `menu_items` field. That
+assembly only happens while the tool's panel is open and its script has
+run. Submitting the form without it posts an empty item list, and the
+tool faithfully rebuilds the menu as empty. Nothing validated it, because
+an empty menu is a legitimate thing to want.
+
+**Three rules that follow.**
+
+1. **A form whose fields are assembled by JavaScript cannot be submitted
+   from outside that JavaScript.** Check for unnamed inputs before
+   posting anything: if the control that matters has no `name`, the form
+   is a view over state held elsewhere.
+2. **Re-applying the template does not repair it.** `refresh_site_menus`
+   was tried first and did nothing, because the menu's items live in the
+   section's own markup (`data-menu-items`), not in the pack.
+3. **The repair needs the exact stored shape**, which is
+   `{"key": "p<id>", "type": "page", "id": <id>, "icon": "", "parent": null}`.
+   Posting `{"id":..., "parent":null}` returns 200 and silently drops
+   every item -- the second failure of the same evening, from guessing a
+   payload instead of reading one back first.
+
+**What should have been done**: read the existing `data-menu-items` off
+the element, modify the one key in question, and post that back -- or
+leave a setting that has a control to the person whose site it is, which
+is what the defect-or-choice test in CLAUDE.md already says.
+
