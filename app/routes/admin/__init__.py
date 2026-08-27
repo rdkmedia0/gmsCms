@@ -46,6 +46,7 @@ RESERVED_SLUGS = {
 #  working unchanged.
 from ...services.design import (  # noqa: F401  (re-exported)
     COLOR_PRESETS, FONT_PAIRINGS, GOOGLE_FONT_CHOICES, SHAPE_PRESETS, SHADOW_PRESETS,
+    SHAPE_SMALL_SCREEN_MAX,
     SHADE_SPREADS,
     _google_fonts_stylesheet_url,
 )

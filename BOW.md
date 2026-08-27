@@ -5738,3 +5738,56 @@ because somebody ticked it, and a newsletter is not a page at all any
 more. Rewritten against what is actually there, including what a template
 picture's padlock means and why a receipt carries no unsubscribe link.
 
+### A phone cannot hold an ellipse (2026-08-27)
+
+Reported from a real phone: pricing spills, blog entries sit against the
+edge, the newsletter sign-up spills, the menu is a wide empty bar.
+Measured at 390px, all one cause.
+
+`--site-radius-pad` is percentages of WIDTH. That is right for a block
+roughly as tall as it is wide, and it fails at both extremes -- a short
+wide row was already known. A phone makes everything the OTHER extreme:
+a newsletter block was 190x471, an ellipse of semi-axes 95x235, with its
+words **3.05 times outside its own curve**. A blog card had `padding: 0`
+and never inset at all.
+
+**Padding cannot fix it, and trying proves the point.** Adding vertical
+padding makes the box taller, which makes the ellipse taller, which
+pushes the words further out at the ends. Measured: +92px of padding
+moved 3.05 to 2.49. It chases its own tail.
+
+So the strongly-curved shapes now state a small-screen radius as well
+(`radius_small`), and below 700px they become firmly rounded corners.
+Same judgement as the video and textarea caps: at that size the shape
+stops the thing working. It is emitted with the rest of the shape rather
+than from site-base.css, because that stylesheet is loaded BEFORE the
+theme's own block and a media query in it would lose at equal
+specificity.
+
+The width is the bigger win. Those insets were eating half the screen:
+every box went from 190px wide to 284px, and the words with them. The
+menu strip went from a 342px bar holding one glyph pushed right, to
+112px, centred.
+
+### Two things that had never worked
+
+**"Layout only has menu items."** The sidebar and footer pickers are
+gated on `{% if active_tpl %}`, and `active_tpl` was computed in the
+route and never passed to the template. Not a regression from splitting
+the Dashboard -- `git` shows it was never in the context, so those two
+groups of controls had never rendered for anybody. Twenty-seven picker
+buttons where there were nine.
+
+**A picker that only names things** asks somebody to imagine the answer.
+The newsletter layouts were four names and a sentence each, and what a
+shape looks like is the entire basis on which one is chosen. Each card
+now shows the REAL layout, rendered with real sentences and scaled down
+-- not a drawing of it, which could drift from the thing itself.
+
+And the editor shows the email beside the words as they are typed. The
+preview route answers the FORM rather than what was last saved, and
+stores nothing, so the right-hand side is what would go out if you sent
+it now -- and a half-written sentence never becomes the saved copy.
+Writing into a column of text boxes and pressing Preview afterwards is
+guessing with an extra step.
+

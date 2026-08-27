@@ -2357,3 +2357,31 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
 .cms-action-btn.is-refused { opacity: .75; }
 .cms-basket-count { transition: background-color .2s ease; }
 
+/*  A phone, and the shapes that do not fit on one.
+    ------------------------------------------------------------------
+    The strongly-curved shapes state a small-screen radius of their own
+    (SHAPE_PRESETS' `radius_small`, emitted with the rest of the shape --
+    see routes/public.py for why it cannot live here). What is left is
+    the furniture around them.
+
+    Measured before and after on a real page at 390px: a newsletter block
+    had its words 3.05x outside its own curve and was 190px wide; it is
+    now a rounded rectangle 284px wide. The width is the bigger win --
+    the percentage insets those shapes need were eating half the screen. */
+@media (max-width: 700px) {
+  /*  A strip of navigation is not an ellipse here, so it needs neither
+      the wide side clearance nor the height that came with it. */
+  .block-html:has(.cms-menu),
+  .block-html:has(.cms-breadcrumb) {
+    padding: 8px 14px;
+  }
+  /*  Tighter and centred: collapsed to a burger, the strip was a
+      342px-wide bar holding one glyph pushed to the far right. */
+  .site-header-zone > .cms-section:has(.cms-menu) { margin-inline: auto; }
+  .block-html:has(.cms-menu) { width: fit-content; margin-inline: auto; }
+  .cms-menu-toggle { margin-left: 0; }
+  .cms-menu-links { justify-content: center; }
+  /*  A post's words want the room the curve was taking. */
+  .cms-blog-card-body { padding: 18px 20px; }
+}
+

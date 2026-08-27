@@ -83,6 +83,10 @@ def newsletters():
         composed_sends={row["id"]: newsletter.last_send(db, "newsletter", row["id"])
                         for row in newsletter.list_composed(db)},
         layout_choices=email_layouts.choices(),
+        #  Each shape shown filled in, not merely named: what a layout
+        #  looks like is the whole basis on which one is chosen.
+        layout_samples={key: email_layouts.sample(key, _look(db))
+                        for key, _n, _b in email_layouts.choices()},
         layout_names={key: email_layouts.LAYOUTS[key]["name"] for key in email_layouts.LAYOUTS},
         sends={p["id"]: newsletter.last_send(db, "page", p["id"]) for p in pages},
         #  Every post, newest first, grouped by the blog it belongs to --
@@ -170,15 +174,26 @@ def newsletter_issue_edit(newsletter_id):
     )
 
 
-@bp.route("/newsletters/issue/<int:newsletter_id>/preview")
+@bp.route("/newsletters/issue/<int:newsletter_id>/preview", methods=["GET", "POST"])
 @login_required
 def newsletter_issue_preview(newsletter_id):
     """Exactly what will be sent, wrapper and all -- a preview of
-    something else is not a preview."""
+    something else is not a preview.
+
+    POSTed, it previews what is in the FORM rather than what was last
+    saved, and saves nothing. That is what lets the editor show the email
+    changing as somebody types: writing a newsletter blind and pressing
+    Preview afterwards is guessing with an extra step.
+    """
     db = get_db()
     row = newsletter.get_composed(db, newsletter_id)
     if not row:
         return redirect(url_for("admin.newsletters"))
+    if request.method == "POST":
+        typed = {f["key"]: (request.form.get(f["key"]) or "")
+                 for f in email_layouts.fields_for(row["layout"])}
+        row = dict(row, subject=request.form.get("subject") or row["subject"],
+                   values_json=json.dumps(typed))
     site_title = (get_site_settings(db) or {}).get("site_title") or "Our newsletter"
     line, _ = newsletter.sender_line(legal.settings_for(db), site_title)
     intro, outro = _wrapped(db, row["subject"], None)

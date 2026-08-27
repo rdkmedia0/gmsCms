@@ -116,6 +116,36 @@ def missing(key, values):
             if f["required"] and not (values or {}).get(f["key"], "").strip()]
 
 
+#  Words for a specimen. Real sentences rather than "Lorem ipsum" or a
+#  field name, because the point of a specimen is to show what the shape
+#  does to WRITING -- how long a heading can be before it wraps, what two
+#  paragraphs look like beside a button.
+SAMPLE = {
+    "heading": "A quiet week, and one thing worth saying",
+    "body": ("I have been asked the same question three times this month."
+             + chr(10) * 2
+             + "When people say they want more time, they rarely mean more hours."),
+    "image": "",
+    "button_label": "Read the rest",
+    "button_url": "#",
+    "left_heading": "Evening slots",
+    "left_body": "Thursdays now run until 8pm.",
+    "right_heading": "Two spaces left",
+    "right_body": "The next block starts in October.",
+}
+
+
+def sample(key, look):
+    """One layout, filled in, for somebody choosing between them.
+
+    A name and a sentence cannot show what a shape looks like -- which is
+    the whole basis on which one is picked. This renders the real layout
+    with real words, so the picker shows the thing itself rather than a
+    description of it.
+    """
+    return render(key, SAMPLE, look)
+
+
 def render(key, values, look):
     """The email BODY for one layout. The wrapper adds the rest."""
     key = key if key in LAYOUTS else "letter"

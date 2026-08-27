@@ -14,7 +14,9 @@
   <a href="{{ url_for('admin.legal_pages') }}">Add it →</a></p>
 {% endif %}
 
-<form method="post" class="card">
+<div class="cms-issue-editor">
+<form method="post" class="card cms-issue-fields"
+      data-preview-url="{{ url_for('admin.newsletter_issue_preview', newsletter_id=item.id) }}">
   <label for="subject" title="What people see in their inbox before they open it">Subject</label>
   <input type="text" id="subject" name="subject" maxlength="200" value="{{ item.subject }}"
          placeholder="What this one is about"
@@ -48,9 +50,21 @@
   <div class="cms-post-save-bar">
     <button type="submit" class="btn btn-primary" title="Keep these words. Nothing is sent.">Save</button>
     <a class="btn" href="{{ url_for('admin.newsletter_issue_preview', newsletter_id=item.id) }}" target="_blank"
-       title="See exactly what will land in somebody's inbox, wrapper and all">Preview</a>
+       title="Open the preview on its own, at full size">Open preview separately</a>
   </div>
 </form>
+
+{#  The email beside the words, updating as they are typed. It renders the
+    FORM rather than what was last saved and stores nothing, so the right
+    hand side is what would go out if you sent it now. #}
+<div class="cms-issue-preview">
+  <div class="cms-issue-preview-bar">
+    <span>What they will get</span>
+    <span class="cms-issue-preview-state" data-idle="Up to date"></span>
+  </div>
+  <iframe class="cms-issue-preview-frame" title="Preview of this newsletter"></iframe>
+</div>
+</div>
 
 <div class="card">
   <h2>Send it</h2>
@@ -84,4 +98,5 @@
   </form>
 </div>
 <script src="{{ static_url('js/admin/modal.js') }}"></script>
+<script src="{{ static_url('js/admin/newsletter-preview.js') }}"></script>
 {% endblock %}

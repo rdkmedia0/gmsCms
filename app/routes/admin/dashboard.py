@@ -86,6 +86,12 @@ def _screen_context(db):
         nav_layout=get_nav_layout(db),
         sidebar_layout_presets=SIDEBAR_LAYOUT_PRESETS,
         footer_layout_presets=FOOTER_LAYOUT_PRESETS,
+        #  The Layout screen's sidebar and footer pickers are gated on
+        #  this, and it was computed here and never passed -- so those two
+        #  pickers had never rendered at all, on the old Dashboard or the
+        #  new screen. Reported as "layout only has menu items", which is
+        #  exactly what it was.
+        active_tpl=active_tpl,
         has_sidebar_content=has_sidebar_content,
         active_content=active_content,
         activate_conflict_map=activate_conflict_map,

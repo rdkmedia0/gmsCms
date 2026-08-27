@@ -17,6 +17,12 @@
     {% for key, name, blurb in layout_choices %}
     <button type="submit" name="layout" value="{{ key }}" class="cms-layout-choice"
             title="Start a newsletter using the &quot;{{ name }}&quot; shape">
+      {#  The layout itself, filled in and shrunk -- not a drawing of it.
+          A picker that only names things asks somebody to imagine the
+          answer. #}
+      <span class="cms-layout-preview" aria-hidden="true">
+        <span class="cms-layout-preview-inner">{{ layout_samples[key] | safe }}</span>
+      </span>
       <strong>{{ name }}</strong>
       <span>{{ blurb }}</span>
     </button>

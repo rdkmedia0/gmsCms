@@ -35,6 +35,7 @@ from .admin import (
     _list_tools, get_email_settings, get_layout_settings, get_site_settings, COLOR_PRESETS,
     NAV_LAYOUTS, get_nav_layout, SIDEBAR_LAYOUT_PRESETS, FOOTER_LAYOUT_PRESETS,
     FONT_PAIRINGS, SHAPE_PRESETS, SHADOW_PRESETS, SHADE_SPREADS, GOOGLE_FONT_CHOICES,
+    SHAPE_SMALL_SCREEN_MAX,
     _google_fonts_stylesheet_url,
 )
 from .admin.templates import dashboard_template_maps
@@ -1743,6 +1744,7 @@ def _theme_override_css(template):
        palette — this is that missing single-zone override."""
     if not template:
         return None
+    small_screen_shape = ""
     lines = []
     extra_rules = []  # whole rules, emitted after the :root block
     #  How colourful the derived shades are — the admin's Shades choice.
@@ -1821,6 +1823,15 @@ def _theme_override_css(template):
             #  [data-corner-style] block in site-base.css.
             if shape.get("content_padding"):
                 lines.append(f"--site-radius-pad: {shape['content_padding']};")
+            #  ...and what it becomes on a phone. Emitted here rather than
+            #  in site-base.css because that stylesheet is loaded BEFORE
+            #  this block, so a media query in it would lose to the
+            #  declaration above at equal specificity.
+            if shape.get("radius_small"):
+                small_screen_shape = (
+                    "@media (max-width: %dpx){:root{--site-radius: %s;"
+                    "--site-radius-pad: initial;}}"
+                    % (SHAPE_SMALL_SCREEN_MAX, shape["radius_small"]))
 
     shadow_key = template["shadow_override"] or _column(template, "shadow_default")
     if shadow_key:
@@ -1855,6 +1866,9 @@ def _theme_override_css(template):
             border = style.get("border")
             if border and hex_re.match(border):
                 lines.append(f"--site-{zone}-border: 3px solid {border};")
+    if small_screen_shape:
+        #  After :root, so it wins at equal specificity where it applies.
+        extra_rules.append(small_screen_shape)
     if not lines and not extra_rules:
         return None
     root = ":root {\n  " + "\n  ".join(lines) + "\n}" if lines else ""

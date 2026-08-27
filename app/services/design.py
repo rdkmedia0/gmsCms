@@ -166,6 +166,21 @@ def _google_fonts_stylesheet_url(family_names):
 #  280 - sqrt(280^2 - (280-88)^2) = 76px of side clearance before it is
 #  inside the shape at all. It had 36px, which is why a first list item
 #  and a first blog card sat on the curve. 104px clears it with room.
+#  A phone makes every box tall and narrow, and an ellipse that tall
+#  cannot hold a paragraph: measured on a real page, a 190x471 newsletter
+#  block had its words 3.05 times outside its own curve. Padding cannot
+#  fix it -- adding vertical padding makes the box taller, which makes the
+#  ellipse taller, which pushes the words further out. Tried: +92px of
+#  padding moved 3.05 to 2.49.
+#
+#  So the strongly-curved shapes state a small-screen radius as well.
+#  Below the breakpoint they become firmly rounded corners rather than
+#  ellipses -- the same judgement the video and textarea caps already
+#  make, and for the same reason: at that size the shape stops the thing
+#  working. `radius_small` is absent on the gentle shapes, which need no
+#  such thing.
+SHAPE_SMALL_SCREEN_MAX = 700
+
 SHAPE_PRESETS = {
     "sharp": {"name": "Sharp", "radius": "0px"},
     "soft": {"name": "Soft", "radius": "10px"},
@@ -173,22 +188,26 @@ SHAPE_PRESETS = {
     "pill": {
         "name": "Pill",
         "radius": "999px",
+        "radius_small": "26px",
         "content_padding": "min(24%, 88px) min(22%, 104px)",
     },
     "lens": {
         "name": "Lens",
         "radius": "50% / 30%",
+        "radius_small": "22px",
         "content_padding": "min(30%, 96px) min(22%, 104px)",
     },
     "cut-corner": {"name": "Cut Corner", "radius": "0 32px 0 32px"},
     "organic": {
         "name": "Organic",
         "radius": "60% 40% 55% 45% / 45% 55% 40% 60%",
+        "radius_small": "22px",
         "content_padding": "min(34%, 104px) min(14%, 52px)",
     },
     "organic-alt": {
         "name": "Organic (Alt)",
         "radius": "30% 70% 70% 30% / 30% 30% 70% 70%",
+        "radius_small": "22px",
         "content_padding": "min(34%, 104px) min(14%, 52px)",
     },
 }

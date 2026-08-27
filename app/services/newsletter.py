@@ -307,7 +307,11 @@ def composed_values(row):
     """The filled-in slots, forgiving of a row written before a layout
     changed -- a missing slot is empty, not an error."""
     try:
-        return json.loads(row["values_json"] or "{}")
+        #  A dict as well as a row: the live preview builds one from the
+        #  form rather than from the database, so nothing is saved while
+        #  somebody is still typing.
+        return json.loads((row["values_json"] if not isinstance(row, dict)
+                           else row.get("values_json")) or "{}")
     except (ValueError, TypeError):
         return {}
 
