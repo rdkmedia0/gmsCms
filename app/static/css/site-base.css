@@ -2195,6 +2195,34 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
     of that; center gets auto on both sides, which centers a flex child
     regardless of the row's own justify-content. */
 .site-header-zone > .cms-section:has(.cms-basket-align-right) { margin-left: auto; }
+
+/*  A basket set to the right belongs in the CORNER, not on a row of its
+    own. The header zone stacks its sections in a column, so a basket in
+    one always landed under the menu with the whole width of the page
+    between them -- which nobody chose and no control offers.
+
+    Lifted out of the flow instead, into the same top-right corner the
+    burger toggle already uses, so the menu keeps the full width it was
+    centred in. Only for align=right: left and centre are positions
+    somebody picked in the row, and moving those would overrule them.
+
+    Not on a phone, where there is no corner to spare and the stacked
+    row is the right answer; and not in the minimal layout, whose own
+    toggle is already in that corner. */
+@media (min-width: 768px) {
+  .site-header-zone { position: relative; }
+  .site-header-zone > .cms-section:has(.cms-basket-align-right) {
+    position: absolute;
+    top: 10px;
+    right: 24px;
+    width: auto;
+    margin: 0;
+    z-index: 2;
+  }
+  .nav-layout-minimal .site-header-zone > .cms-section:has(.cms-basket-align-right) {
+    position: static; margin-left: auto; width: auto;
+  }
+}
 .site-header-zone > .cms-section:has(.cms-basket-align-left) { margin-right: auto; }
 .site-header-zone > .cms-section:has(.cms-basket-align-center) { margin-left: auto; margin-right: auto; }
 

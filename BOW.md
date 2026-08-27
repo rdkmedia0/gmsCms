@@ -5111,3 +5111,26 @@ menu can be pill-shaped on a square-cornered site and often should be: it
 is the one row where the shape does the work of separating one word from
 the next.
 
+### A basket on a row of its own (2026-08-27)
+
+The header zone stacks its sections in a column -- one section, one row --
+so a basket in its own section always landed UNDER the menu with the full
+width of the page between them. `margin-left: auto` pushed it right, which
+made it a lone box in the corner of an empty second row rather than a
+basket in the header. The zone was 222px tall to hold it.
+
+Nobody chose that and no control offers otherwise: the basket's alignment
+control says left, centre or right within a row, and says nothing about
+which row. So the fix is the app's to make.
+
+A basket set to the RIGHT is now lifted out of the flow into the same
+top-right corner the burger toggle already uses -- the menu keeps the full
+width it was centred in, and the zone came back to 130px. Left and centre
+stay exactly as they were, because those are positions somebody picked and
+moving them would overrule a choice.
+
+Two exceptions, both for the same reason -- there has to BE a spare
+corner: not below 768px, where the stacked row is right and the corner is
+not free, and not in the minimal layout, whose own toggle already lives
+there.
+
