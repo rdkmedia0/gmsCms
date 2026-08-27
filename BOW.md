@@ -4888,3 +4888,67 @@ else untouched, since most callers already have their own sentence to put
 it in. A marker that must never be read by anybody should have exactly
 one exit.
 
+### The stock count could never count (2026-08-27)
+
+Selling the physical item left "Only 3 left" saying 3, and the order read
+"Nothing to unlock -- this was payment only".
+
+```python
+if not rule or rule["kind"] not in (KIND_DOWNLOAD, KIND_CREDIT):
+    return None                     # physical leaves here
+...
+if rule["stock"] is not None:       # never reached for physical
+```
+
+Stock is only ever set on a physical item, and the one line maintaining
+it sat below an early return that fired for exactly that kind. The
+docstring even said physical returns None -- the author knew, and put the
+stock update underneath anyway. So the count was decoration: it displayed,
+it could be edited, and it never moved.
+
+Fixed by counting first, before any branch, for every kind that has a
+count. A posted item is now also recorded as an entitlement, which is what
+it is -- something a sale owes somebody -- so the owner's Orders screen
+says **To post: 1 item** instead of "payment only", which actively hid the
+one thing that needed doing. The buyer's page ignores the kind, because
+there is nothing for them to claim.
+
+### A time with no timezone is a missed appointment
+
+The buyer was told **09:00 (Europe/Zurich)**. The owner's Bookings screen
+said **07:00**, unlabelled. Same booking.
+
+Underneath was a worse trap: `describe_slot` did not convert, it
+*labelled*. It formatted whatever offset the string carried and appended
+the zone name, so asking for a Zurich time handed back a UTC one wearing
+a Zurich label. The buyer's page was right only because the string it
+stored already carried the local offset -- correct by luck.
+
+It now converts, and a time that really is UTC says "UTC" rather than
+looking local. An unknown zone name, or an image with no tz database,
+falls back to showing the time as it came rather than claiming a
+conversion that did not happen.
+
+### Commerce becomes one screen with tabs, and Orders can be asked a question
+
+Products, Orders and Bookings were three dashboard buttons for one
+subject. They are now one **Commerce** button with tabs, the shape Email
+already had. The tab list lives in ONE partial rather than being pasted
+into each template -- which is how the Email section's three copies can
+already drift when a fourth screen is added.
+
+Orders gained filters by buyer, product and date, and -- found while
+building them -- **it never said what was bought**, only an amount and a
+Stripe reference, which answers neither of the two questions the screen
+exists for. Filters are plain GET controls, so a filtered view is an
+address that can be bookmarked and sent to somebody, and the choices
+offered are only the ones actually present, so a filter can never select
+nothing.
+
+Two smaller things fixed in passing. The cancel dialog offered **"Cancel
+booking"** next to **"Cancel"** -- one undoes the booking, the other
+undoes the click; the confirm now says "Yes, cancel it". And a Jinja trap
+worth knowing: a dict key called `items` is unreachable, because
+`entry.items` resolves to `dict.items`, the method, and the template gets
+something it cannot loop over.
+

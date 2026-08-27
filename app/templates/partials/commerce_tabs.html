@@ -1,0 +1,10 @@
+{#  The Commerce section's tabs. One list, included by each of its three
+    screens, rather than a copy pasted into each -- which is how two
+    screens end up offering different sets of tabs after a fourth is
+    added. See partials/tabs.html for why they are links. #}
+{% set tabs = [
+  ("Products", url_for('admin.commerce_fulfilment'), request.endpoint == 'admin.commerce_fulfilment'),
+  ("Orders", url_for('admin.commerce_orders'), request.endpoint == 'admin.commerce_orders'),
+  ("Bookings", url_for('admin.commerce_bookings'), request.endpoint == 'admin.commerce_bookings'),
+] %}
+{% include "partials/tabs.html" %}

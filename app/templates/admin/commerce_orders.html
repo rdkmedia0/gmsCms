@@ -1,6 +1,7 @@
 {% extends "admin/base.html" %}
 {% block title %}Orders — My Site Admin{% endblock %}
 {% block content %}
+{% include "partials/commerce_tabs.html" %}
 <h1>Orders</h1>
 <p class="hint">Every sale, who made it, and what they're still owed. Buyers don't have accounts — they reach their purchases through a link we email them — so if someone says they never got theirs, resend it from here.</p>
 
@@ -8,16 +9,65 @@
 <p class="flash flash-warning">Email isn't set up, so order emails aren't being sent and Resend won't work. <a href="{{ url_for('admin.settings_email') }}">Set it up →</a></p>
 {% endif %}
 
+
+{#  Plain GET controls: the filtered view is an address, so it can be
+    bookmarked and sent to somebody. Every control names itself in a
+    title, and the choices offered are the ones actually present in the
+    orders, so a filter can never select nothing. #}
+<form method="get" class="card cms-order-filters" action="{{ url_for('admin.commerce_orders') }}">
+  <div class="filter-row">
+    <label for="who">Who bought it
+      <select id="who" name="who" title="Show only orders from one buyer">
+        <option value="">Anyone</option>
+        {% for email in buyers %}
+        <option value="{{ email }}"{{ ' selected' if filters.who == email }}>{{ email }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label for="what">What they bought
+      <select id="what" name="what" title="Show only orders containing one product">
+        <option value="">Anything</option>
+        {% for name in products %}
+        <option value="{{ name }}"{{ ' selected' if filters.what == name }}>{{ name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label for="since">From
+      <input type="date" id="since" name="since" value="{{ filters.since }}"
+             title="Only orders on or after this day. Leave blank for no earliest date.">
+    </label>
+    <label for="until">To
+      <input type="date" id="until" name="until" value="{{ filters.until }}"
+             title="Only orders up to and including this day. Leave blank for no latest date.">
+    </label>
+    <button type="submit" class="btn btn-small" title="Show the orders matching these choices">Show</button>
+    {% if filtered %}
+    <a class="btn btn-small" href="{{ url_for('admin.commerce_orders') }}"
+       title="Clear the filters and show every order again">Show all</a>
+    {% endif %}
+  </div>
+  <p class="hint">Leave a box alone to ignore it. The address in your browser changes with your choices, so you can bookmark a view or send it to someone.</p>
+</form>
+
 {% if not orders %}
-<div class="card"><p>No orders yet. When someone buys something, it appears here within seconds.</p></div>
+{% if filtered %}
+<div class="card"><p>No orders match those choices. <a href="{{ url_for('admin.commerce_orders') }}">Show every order</a>.</p></div>
 {% else %}
-{% for order in orders %}
+<div class="card"><p>No orders yet. When someone buys something, it appears here within seconds.</p></div>
+{% endif %}
+{% else %}
+{% for entry in orders %}{% set order = entry.row %}
 <div class="card">
   <div class="integration-head">
     <h2>{{ '%.2f'|format((order.amount_total or 0) / 100) }} {{ (order.currency or '').upper() }}</h2>
     <span class="integration-badge {{ 'is-on' if order.status == 'paid' else 'is-off' }}">{{ order.status }}</span>
     <span class="hint">{{ order.created_at[:16] }}</span>
   </div>
+  {% if entry.bought %}
+  <p class="order-bought">
+    {% for name, qty in entry.bought %}{{ name }}{% if qty > 1 %} &times;{{ qty }}{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}
+  </p>
+  {% endif %}
   <p class="hint">
     {% if order.email %}<strong>{{ order.email }}</strong>{% if order.name %} · {{ order.name }}{% endif %}
     {% else %}<em>no email recorded</em>{% endif %}
@@ -31,6 +81,8 @@
     <li>
       {% if e.kind == 'credit' %}
         {{ e.granted - e.used }} of {{ e.granted }} session{{ 's' if e.granted != 1 }} left
+      {% elif e.kind == 'physical' %}
+        <strong>To post:</strong> {{ e.granted }} item{{ 's' if e.granted != 1 }} &mdash; the delivery address is on the Stripe payment
       {% else %}
         {{ e.granted - e.used }} of {{ e.granted }} download{{ 's' if e.granted != 1 }} left
       {% endif %}

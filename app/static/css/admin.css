@@ -734,3 +734,22 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
     two options are one decision, and it should read as one. */
 .legal-layout { border: 1px solid var(--border, #e2e4e9); border-radius: var(--cms-ui-radius-surface); padding: 10px 12px; margin: 12px 0; }
 .legal-layout legend { font-size: 12px; font-weight: 700; padding: 0 6px; }
+
+/*  The Orders filters. A row of labelled controls that wraps rather than
+    scrolls, so the narrowest screen still shows all four and the button.
+    Chrome, so it takes the editor's own tokens and never the site's. */
+.cms-order-filters .filter-row {
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: end;
+}
+.cms-order-filters label {
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: .85rem; color: var(--cms-ui-text);
+}
+.cms-order-filters select,
+.cms-order-filters input[type="date"] {
+  min-width: 11rem; border-radius: var(--cms-ui-radius-control);
+}
+.cms-order-filters .btn { margin-bottom: 1px; }
+/*  What the sale was for, said before the money and the reference —
+    it is the first thing anybody scanning this page is looking for. */
+.order-bought { margin: 2px 0 6px; font-weight: 600; }

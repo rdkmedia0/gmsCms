@@ -145,20 +145,31 @@ def grant_for_line_item(db, customer_id, order_id, price_id, quantity, expires_a
     entitlement kind granted, or None when the price has no rule — which
     is the normal case for a plain physical item that needs no unlocking."""
     rule = fulfilment_rule(db, price_id)
-    if not rule or rule["kind"] not in (KIND_DOWNLOAD, KIND_CREDIT):
+    if not rule or rule["kind"] not in FULFILMENT_KINDS:
         return None
-    granted = (rule["quantity"] or 1) * max(1, int(quantity or 1))
-    db.execute(
-        "INSERT INTO entitlements (customer_id, order_id, kind, ref, granted, expires_at) "
-        "VALUES (?, ?, ?, ?, ?, ?)",
-        (customer_id, order_id, rule["kind"], rule["ref"], granted, expires_at),
-    )
+    count = max(1, int(quantity or 1))
+    #  Stock is only ever set on a physical item, and this used to sit
+    #  below an early return that fired for exactly that kind -- so the
+    #  one line maintaining the count could never run, and "3 left" stayed
+    #  3 however many were sold. Counted first, for every kind that has
+    #  one, so no later branch can strand it again.
     if rule["stock"] is not None:
         #  Stock lives here because Stripe has no such field at all.
         db.execute(
             "UPDATE fulfilment_rules SET stock = MAX(0, stock - ?) WHERE id = ?",
-            (max(1, int(quantity or 1)), rule["id"]),
+            (count, rule["id"]),
         )
+    #  A posted item is recorded like anything else a sale owes somebody.
+    #  The buyer's page ignores this kind -- there is nothing for them to
+    #  claim -- but the owner has to see that something needs posting,
+    #  which "nothing to unlock, this was payment only" actively hid.
+    granted = (rule["quantity"] or 1) * count if rule["kind"] != "physical" else count
+    db.execute(
+        "INSERT INTO entitlements (customer_id, order_id, kind, ref, granted, expires_at) "
+        "VALUES (?, ?, ?, ?, ?, ?)",
+        (customer_id, order_id, rule["kind"], rule["ref"], granted,
+         expires_at if rule["kind"] == KIND_CREDIT else None),
+    )
     return rule["kind"]
 
 

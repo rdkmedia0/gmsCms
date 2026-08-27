@@ -10,7 +10,9 @@
       var { confirmed } = await window.cmsModal({
         message: "Cancel the booking on " + btn.dataset.when +
           "? Cal.com will email everyone, and the session goes back to whoever paid for it.",
-        confirmLabel: "Cancel booking",
+        //  The dismiss button already says "Cancel", so a confirm also
+        //  called "Cancel booking" put two opposite actions a word apart.
+        confirmLabel: "Yes, cancel it",
       });
       if (!confirmed) return;
       var result = btn.closest(".card").querySelector(".integration-result");

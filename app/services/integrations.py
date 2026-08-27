@@ -18,6 +18,7 @@ a Stripe secret key announces which mode it is in its prefix, and a
 separate switch would only create a way for the two to disagree.
 """
 import datetime
+import zoneinfo
 import json
 import os
 import time
@@ -723,13 +724,36 @@ def slots_calendar(slots_by_day, start_date, days):
 
 def describe_slot(when, timezone=None):
     """"Monday 24 August at 14:00" — what a person needs to read back
-    before committing, rather than an ISO timestamp."""
+    before committing, rather than an ISO timestamp.
+
+    A named timezone CONVERTS the time into that zone; it used to only
+    append the name, which meant asking for a Zurich time and being handed
+    a UTC one wearing a Zurich label. A booking somebody reads and turns
+    up for is the last place to be casual about this.
+
+    An unlabelled time is a hazard of the same kind, so a time in UTC says
+    so unless the reader has already been told which zone they are in.
+    """
     try:
         parsed = datetime.datetime.fromisoformat(when.replace("Z", "+00:00"))
     except (ValueError, AttributeError):
         return when
+    if timezone:
+        try:
+            zone = zoneinfo.ZoneInfo(timezone)
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=datetime.timezone.utc)
+            parsed = parsed.astimezone(zone)
+        except Exception:
+            #  An unknown zone name, or an image with no tz database. Show
+            #  the time as it came rather than pretend it was converted.
+            timezone = None
     text = parsed.strftime("%A %d %B at %H:%M")
-    return f"{text} ({timezone})" if timezone and timezone != "UTC" else text
+    if timezone and timezone != "UTC":
+        return f"{text} ({timezone})"
+    if parsed.tzinfo is not None and parsed.utcoffset() == datetime.timedelta(0):
+        return f"{text} UTC"
+    return text
 
 
 def calcom_bookings(db, status="upcoming", take=50):
@@ -754,7 +778,11 @@ def calcom_bookings(db, status="upcoming", take=50):
             "uid": b.get("uid"),
             "title": b.get("title") or "Meeting",
             "start": b.get("start"),
-            "when": describe_slot(b.get("start")),
+            #  The zone the buyer booked in, so the owner reads the same
+            #  clock their visitor did rather than a bare UTC time that
+            #  looks local and is two hours out in summer.
+            "when": describe_slot(b.get("start"),
+                                  (attendees[0].get("timeZone") if attendees else None)),
             "status": b.get("status"),
             "name": (attendees[0].get("name") if attendees else None),
             "email": (attendees[0].get("email") if attendees else None),

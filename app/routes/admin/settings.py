@@ -1,3 +1,4 @@
+import json
 import os
 import uuid
 import urllib.parse
@@ -283,21 +284,77 @@ def commerce_orders():
     This is the answer to "someone says they never got their email" and
     to "what has this person actually paid for" — the two questions an
     owner asks about a sale after it happens.
+
+    Filtered by buyer, by product and by date, because those are the three
+    ways somebody arrives at this page with a question already in mind.
+    The filters are plain links on this same address, so a filtered view
+    can be bookmarked and sent to somebody.
     """
     db = get_db()
-    orders = db.execute(
-        "SELECT o.*, c.email, c.name FROM orders o "
-        "LEFT JOIN customers c ON c.id = o.customer_id ORDER BY o.id DESC LIMIT 100"
-    ).fetchall()
+    who = (request.args.get("who") or "").strip()
+    what = (request.args.get("what") or "").strip()
+    since = (request.args.get("since") or "").strip()
+    until = (request.args.get("until") or "").strip()
+
+    sql = ("SELECT o.*, c.email, c.name FROM orders o "
+           "LEFT JOIN customers c ON c.id = o.customer_id WHERE 1=1")
+    args = []
+    if who:
+        sql += " AND c.email = ?"
+        args.append(who)
+    if since:
+        sql += " AND o.created_at >= ?"
+        args.append(since)
+    if until:
+        #  An inclusive end date: somebody choosing the 27th means the
+        #  whole of the 27th, not midnight at the start of it.
+        sql += " AND o.created_at < date(?, '+1 day')"
+        args.append(until)
+    sql += " ORDER BY o.id DESC LIMIT 500"
+    rows = db.execute(sql, args).fetchall()
+
+    #  What each order was FOR. The screen showed an amount and no
+    #  product, which answers neither of the questions above on its own.
+    def bought(order):
+        try:
+            items = json.loads(order["line_items"] or "[]")
+        except (ValueError, TypeError):
+            return []
+        out = []
+        for item in items:
+            name = item.get("description") or (item.get("price") or {}).get("nickname")
+            if name:
+                out.append((name, item.get("quantity") or 1))
+        return out
+
+    orders = []
+    for row in rows:
+        names = bought(row)
+        if what and what not in [n for n, _ in names]:
+            continue
+        #  Not "items": Jinja resolves entry.items to dict.items, the
+        #  method, and hands the template something it cannot loop over.
+        orders.append({"row": row, "bought": names})
+
+    #  The choices offered are the ones actually present, so a filter can
+    #  never select nothing.
+    buyers = [r["email"] for r in db.execute(
+        "SELECT DISTINCT c.email FROM orders o JOIN customers c ON c.id = o.customer_id "
+        "WHERE c.email IS NOT NULL ORDER BY c.email").fetchall()]
+    products = sorted({n for r in db.execute(
+        "SELECT line_items FROM orders").fetchall() for n, _ in bought(r)})
+
     entitlements = {}
-    for row in db.execute(
-        "SELECT * FROM entitlements ORDER BY id"
-    ).fetchall():
+    for row in db.execute("SELECT * FROM entitlements ORDER BY id").fetchall():
         entitlements.setdefault(row["order_id"], []).append(row)
     return render_template(
         "admin/commerce_orders.html",
         orders=orders,
         entitlements=entitlements,
+        buyers=buyers,
+        products=products,
+        filters={"who": who, "what": what, "since": since, "until": until},
+        filtered=bool(who or what or since or until),
         email_ready=mailer.is_configured(get_email_settings(db)),
     )
 
