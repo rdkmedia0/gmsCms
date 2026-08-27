@@ -1,0 +1,10 @@
+{% from "emails/layouts/_parts.html" import heading, body, button %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+  {#  Centred throughout: `align` alone does not reach a block child that
+      brings its own text-align, so it is stated on the cell as well. #}
+  <tr><td align="center" style="padding:8px 0 4px;text-align:center;">
+    {{ heading(v.heading, look, 30) }}
+    {{ body(v.body, look, 17) }}
+    {{ button(v.button_label, v.button_url, look) }}
+  </td></tr>
+</table>

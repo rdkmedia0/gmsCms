@@ -160,8 +160,24 @@ def to_email_html(sections, site_title, unsubscribe_url, sender_line, view_url=N
     #  Inline the styles last, so anything the sections carried is styled
     #  the same way as what was added above.
     for tag, style in styles.items():
-        body = re.sub(rf"<{tag}(\s|>)", lambda m, s=style, t=tag: f'<{t} style="{s}"{m.group(1)}',
-                      body, flags=re.I)
+        #  MERGED, not prepended and not skipped. Prepending made a second
+        #  style attribute and a browser reads the first, so a layout that
+        #  set white text on a coloured button had the look's link colour
+        #  put in front of it and the label vanished into the button.
+        #  Skipping styled elements instead would stop the look reaching
+        #  anything that carries a style of its own, which is most of what
+        #  a section contains. So: the look goes in FIRST and the
+        #  element's own declarations follow, which is the order that lets
+        #  the later one win inside a single attribute.
+        def _dress(match, s=style, t=tag):
+            attrs = match.group(1)
+            found = re.search(r'style\s*=\s*"([^"]*)"', attrs, flags=re.I)
+            if found:
+                merged = s + found.group(1)
+                return f"<{t}" + attrs[:found.start()] + f'style="{merged}"' + attrs[found.end():] + ">"
+            return f'<{t} style="{s}"{attrs}>'
+        body = re.sub(rf"<{tag}\b([^>]*)>", _dress, body, flags=re.I)
+
     #  Background images do not survive most clients and leave an empty
     #  box where a banner was.
     body = re.sub(r'style="[^"]*background-image:[^"]*"', "", body)

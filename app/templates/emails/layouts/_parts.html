@@ -1,0 +1,40 @@
+{#  Shared pieces, so four layouts cannot drift apart on the one thing
+    that matters here -- that every style is inline and every box is a
+    table cell. Nothing in an email may rely on a class or a stylesheet. #}
+{% macro heading(text, look, size=24) -%}
+<h1 style="margin:0 0 14px;font-size:{{ size }}px;line-height:1.25;font-weight:700;
+           font-family:{{ look.heading_font }};color:#1c2430;">{{ text }}</h1>
+{%- endmacro %}
+
+{% macro body(blocks, look, size=16) -%}
+{% for block in blocks %}
+<p style="margin:0 0 14px;font-size:{{ size }}px;line-height:1.65;color:#333c47;
+          font-family:{{ look.body_font }};">{{ block | safe }}</p>
+{% endfor %}
+{%- endmacro %}
+
+{#  A button is a table, not an <a> with padding: Outlook ignores padding
+    on an inline element and the click target collapses to the text. #}
+{% macro button(label, url, look) -%}
+{% if label and url %}
+{#  width:auto on purpose. The wrapper inlines a `table` style carrying
+    width:100%, and a button as wide as the card does not read as a
+    button -- it reads as a coloured band. Set here so the merge has
+    something later to win with. #}
+<table role="presentation" cellpadding="0" cellspacing="0" border="0"
+       style="margin:6px 0 4px;width:auto;">
+  <tr><td align="center" bgcolor="{{ look.accent }}" style="border-radius:6px;">
+    <a href="{{ url }}" style="display:inline-block;padding:13px 26px;font-size:16px;
+       font-weight:600;color:#ffffff;text-decoration:none;font-family:{{ look.body_font }};">{{ label }}</a>
+  </td></tr>
+</table>
+{% endif %}
+{%- endmacro %}
+
+{% macro picture(src) -%}
+{% if src %}
+<img src="{{ src }}" width="536" alt=""
+     style="display:block;width:100%;max-width:536px;height:auto;border:0;
+            border-radius:6px;margin:0 0 18px;">
+{% endif %}
+{%- endmacro %}
