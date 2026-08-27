@@ -97,7 +97,14 @@ h3 { font-family: var(--site-heading-font-family); font-weight: var(--site-headi
 .empty-state { text-align: center; color: var(--muted); }
 
 label { display: block; font-weight: 600; margin: 14px 0 6px; }
-input[type=text], input[type=password], input[type=file], select, textarea {
+/*  Every field the admin can type into, not just the three that were
+    listed. A date, an email or a number input left off this list keeps
+    the browser's own default -- a thinner border, a smaller face, a
+    different height -- so a row holding one beside a select looked
+    broken, and did on the Orders filters, the setup wizard and Legal. */
+input[type=text], input[type=password], input[type=file], input[type=email],
+input[type=date], input[type=number], input[type=tel], input[type=url],
+input[type=search], select, textarea {
   width: 100%;
   padding: 12px 14px;
   font-size: 17px;
@@ -738,18 +745,28 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
 /*  The Orders filters. A row of labelled controls that wraps rather than
     scrolls, so the narrowest screen still shows all four and the button.
     Chrome, so it takes the editor's own tokens and never the site's. */
+/*  A grid rather than a wrapping flex row: every control gets the same
+    column width, so they line up in one rank and wrap as whole units
+    instead of leaving one field stranded on a line of its own. */
 .cms-order-filters .filter-row {
-  display: flex; flex-wrap: wrap; gap: 12px; align-items: end;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px 16px;
+  align-items: end;
 }
 .cms-order-filters label {
-  display: flex; flex-direction: column; gap: 4px;
-  font-size: .85rem; color: var(--cms-ui-text);
+  display: flex; flex-direction: column; gap: 6px;
+  font-size: .82rem; font-weight: 600; letter-spacing: .01em;
+  color: var(--cms-ui-text);
 }
+/*  The fields inherit the shared control style above, so they already
+    match each other; these only stop a date field shrinking to its own
+    idea of how wide a date is. */
 .cms-order-filters select,
-.cms-order-filters input[type="date"] {
-  min-width: 11rem; border-radius: var(--cms-ui-radius-control);
-}
-.cms-order-filters .btn { margin-bottom: 1px; }
+.cms-order-filters input[type="date"] { width: 100%; font-size: 16px; padding: 10px 12px; }
+.cms-order-filters .filter-actions { display: flex; gap: 8px; align-items: end; }
+.cms-order-filters .filter-actions .btn { white-space: nowrap; }
+.cms-order-filters > .hint { margin: 14px 0 0; }
 /*  What the sale was for, said before the money and the reference —
     it is the first thing anybody scanning this page is looking for. */
 .order-bought { margin: 2px 0 6px; font-weight: 600; }

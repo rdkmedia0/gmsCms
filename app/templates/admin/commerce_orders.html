@@ -32,6 +32,15 @@
         {% endfor %}
       </select>
     </label>
+    <label for="kind">What kind
+      <select id="kind" name="kind" title="Show only orders that deliver one kind of thing — handy for finding everything still waiting to be posted">
+        <option value="">Any kind</option>
+        <option value="credit"{{ ' selected' if filters.kind == 'credit' }}>Sessions to book</option>
+        <option value="download"{{ ' selected' if filters.kind == 'download' }}>Downloads</option>
+        <option value="physical"{{ ' selected' if filters.kind == 'physical' }}>Something to post</option>
+        <option value="payment"{{ ' selected' if filters.kind == 'payment' }}>Payment only</option>
+      </select>
+    </label>
     <label for="since">From
       <input type="date" id="since" name="since" value="{{ filters.since }}"
              title="Only orders on or after this day. Leave blank for no earliest date.">
@@ -40,11 +49,13 @@
       <input type="date" id="until" name="until" value="{{ filters.until }}"
              title="Only orders up to and including this day. Leave blank for no latest date.">
     </label>
-    <button type="submit" class="btn btn-small" title="Show the orders matching these choices">Show</button>
-    {% if filtered %}
-    <a class="btn btn-small" href="{{ url_for('admin.commerce_orders') }}"
-       title="Clear the filters and show every order again">Show all</a>
-    {% endif %}
+    <div class="filter-actions">
+      <button type="submit" class="btn" title="Show the orders matching these choices">Show</button>
+      {% if filtered %}
+      <a class="btn" href="{{ url_for('admin.commerce_orders') }}"
+         title="Clear the filters and show every order again">Show all</a>
+      {% endif %}
+    </div>
   </div>
   <p class="hint">Leave a box alone to ignore it. The address in your browser changes with your choices, so you can bookmark a view or send it to someone.</p>
 </form>

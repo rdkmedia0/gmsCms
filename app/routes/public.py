@@ -94,7 +94,13 @@ def _send_order_email(db, order_id):
         #  theirs, which has already been sent by this point.
         try:
             seller = (settings.get("to_email") or settings.get("from_email") or "").strip()
-            if seller and seller != customer["email"]:
+            #  Sent even when the owner IS the buyer. The two messages say
+            #  different things -- one is a way back to what was bought,
+            #  the other is a job list -- so suppressing the second
+            #  because the addresses match hides the sale notice from
+            #  every owner testing their own shop, which is everyone on
+            #  their first day.
+            if seller:
                 mailer.send(
                     settings, seller,
                     f"Sale: {(order['amount_total'] or 0) / 100:.2f} "

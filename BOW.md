@@ -5027,3 +5027,36 @@ other is time they keep paying to host). The buyer is told the DATE, not
 a duration -- "30 days" needs them to remember when they bought it, and
 they are reading the email weeks later.
 
+### The field types nobody listed (2026-08-27)
+
+The Orders filter row looked broken: two selects at one height beside two
+date boxes at another, in a thinner border and a smaller face, wrapping so
+that one field sat alone on a line.
+
+The layout was only half of it. The shared control rule named
+`input[type=text]`, `password` and `file` -- so `date`, `email`, `number`,
+`tel`, `url` and `search` inputs kept the BROWSER's defaults, everywhere
+in the admin. Not a filter-row problem at all: the setup wizard's email
+fields and Legal's number fields had it too, and had had it all along,
+because nothing had ever put one of them next to a select where the
+mismatch was visible.
+
+An attribute-value selector that has to be extended for every value is a
+list that will be wrong again. It is now complete for the types this admin
+actually uses, and the row itself is a grid rather than a wrapping flex
+line, so controls share a column width and wrap as whole units.
+
+**Orders also filters by what an order DELIVERS** -- sessions, a
+download, something to post, or payment only. That is a different
+question from what it was called: "everything still waiting to be posted"
+is a working list, and the product name cannot answer it. Payment-only is
+the absence of any rule, so it is a kind on the screen while being a row
+nowhere.
+
+And the sale notice to the owner **is sent even when the owner is the
+buyer**. It was suppressed when the two addresses matched, which is tidy
+in production and hides the feature from every owner testing their own
+shop -- which is everybody, on their first day. The two messages say
+different things: one is a way back to what was bought, the other is a
+job list.
+

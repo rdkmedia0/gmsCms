@@ -293,6 +293,7 @@ def commerce_orders():
     db = get_db()
     who = (request.args.get("who") or "").strip()
     what = (request.args.get("what") or "").strip()
+    kind = (request.args.get("kind") or "").strip()
     since = (request.args.get("since") or "").strip()
     until = (request.args.get("until") or "").strip()
 
@@ -327,10 +328,24 @@ def commerce_orders():
                 out.append((name, item.get("quantity") or 1))
         return out
 
+    #  What each order DELIVERS, which is a different question from what
+    #  it was called: "a download" and "something to post" are the two
+    #  jobs an owner sorts their day by. Payment-only is the absence of
+    #  any rule, so it is a kind here even though it is a row nowhere.
+    ents_by_order = {}
+    for row in db.execute("SELECT * FROM entitlements ORDER BY id").fetchall():
+        ents_by_order.setdefault(row["order_id"], []).append(row)
+
+    def kinds_of(order_id):
+        found = {e["kind"] for e in ents_by_order.get(order_id, [])}
+        return found or {"payment"}
+
     orders = []
     for row in rows:
         names = bought(row)
         if what and what not in [n for n, _ in names]:
+            continue
+        if kind and kind not in kinds_of(row["id"]):
             continue
         #  Not "items": Jinja resolves entry.items to dict.items, the
         #  method, and hands the template something it cannot loop over.
@@ -344,17 +359,14 @@ def commerce_orders():
     products = sorted({n for r in db.execute(
         "SELECT line_items FROM orders").fetchall() for n, _ in bought(r)})
 
-    entitlements = {}
-    for row in db.execute("SELECT * FROM entitlements ORDER BY id").fetchall():
-        entitlements.setdefault(row["order_id"], []).append(row)
     return render_template(
         "admin/commerce_orders.html",
         orders=orders,
-        entitlements=entitlements,
+        entitlements=ents_by_order,
         buyers=buyers,
         products=products,
-        filters={"who": who, "what": what, "since": since, "until": until},
-        filtered=bool(who or what or since or until),
+        filters={"who": who, "what": what, "kind": kind, "since": since, "until": until},
+        filtered=bool(who or what or kind or since or until),
         email_ready=mailer.is_configured(get_email_settings(db)),
     )
 
