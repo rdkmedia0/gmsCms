@@ -4338,3 +4338,72 @@ a 1100px box by 264px for a corner only 150px across.
 
 Decorative surfaces — a banner, a picture, a button — are left alone:
 nothing inside them can spill.
+
+## Asked for, not yet built (2026-08-27)
+
+Raised while walking a real install. Recorded here rather than started,
+because each is a feature with a design question in it, not a fix.
+
+### Commerce, properly exercised
+
+Nothing on the site sells anything yet, which is why "test buying" could
+not be answered: the coaching template's pricing tiers link to /contact,
+by design. Before payments can be called tested, this needs a product of
+each KIND created and bought through the site -- a one-off, a file
+download, a session pack that grants an entitlement -- and then the part
+that actually matters checked: that a session pack decrements as bookings
+are used, and that the booking-to-credit link in services/commerce.py
+holds when the two arrive out of order (booked before paid, refunded
+after booked).
+
+Note for whoever does it: a webhook cannot be registered on an install
+that is not reachable from the internet, and this one is not -- it is a
+LAN address. The thank-you-page path plus the reconcile button is the
+supported route there, and is what should be tested.
+
+### The CAPTCHA is arithmetic, and that is not enough
+
+The contact form asks "what is three plus four?". That stops a naive
+script and nothing else: any language model answers it instantly, and
+they are what sends spam now. Worth replacing.
+
+The design tension is real and should be decided deliberately rather than
+by picking a library: this app self-hosts its fonts specifically so that
+no visitor's IP reaches a third party, and hCaptcha or Turnstile would
+put a script from someone else's CDN on every form -- the exact thing
+that was removed. Options worth weighing: a proof-of-work challenge
+served from this app, a honeypot plus timing heuristic (no visitor-facing
+puzzle at all), or accepting the third party and saying so in the privacy
+page. The rate limit already in place (5/hour per IP) is a floor, not an
+answer.
+
+### A front-end assistant that only answers about this site
+
+An AI chat for visitors, scoped to the site and its services. The whole
+difficulty is the word "only": a model given a site's pages will happily
+answer questions about anything, invent a price, or promise a refund
+policy that does not exist -- and it does it in the owner's voice, on
+their page. What it says about their business is theirs, legally and
+practically.
+
+So the design has to start from refusal rather than retrieval: what
+sources it may draw on (the site's own pages, and nothing else), what it
+must decline, whether an answer it is unsure of becomes a contact form
+instead of a guess, and whether the owner sees a transcript. The
+assistant that already exists is admin-only and proposes content a human
+approves -- a visitor-facing one has no such gate, which is the whole
+problem.
+
+### WhatsApp to the owner
+
+Two very different features share the name. A wa.me link is a tool
+somebody drops on a page, needs no integration, and would take an
+afternoon. The Business API means a Meta app, a verified number, message
+templates approved in advance, and a webhook to receive replies -- and
+it puts conversations with customers inside a third party this app would
+then be responsible for.
+
+The first is worth doing on its own terms. The second should not be
+started without deciding whether this product wants to hold customer
+conversations at all.
+
