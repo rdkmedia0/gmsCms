@@ -4497,3 +4497,45 @@ Worth doing 1 first regardless: it is a setting, it has no dependencies,
 and it makes the other two coherent by giving them something to convert
 FROM.
 
+## The builtin-fork trap (2026-08-27)
+
+A live install accumulated three templates all called "Life Coaching
+(your copy)". Reproduced, because "how did that happen" deserved an
+answer rather than a guess:
+
+    activated the builtin      copies=0  active=Life Coaching (builtin)
+    edited one text block      copies=1  active=Life Coaching (your copy)
+    activated the builtin      copies=1  active=Life Coaching (builtin)
+    edited one text block      copies=2
+    activated the builtin      copies=2
+    edited one text block      copies=3
+
+**Activate a builtin, edit anything, and it forks.** Do that cycle again
+and you get another copy. Re-running the setup walk-through does NOT fork
+on its own -- it was the edit each time, which is why this was invisible:
+nobody thinks of typing a word as creating a template.
+
+The user sequence that produces it is entirely ordinary: try a template,
+tweak something, decide to start fresh, activate the original again,
+tweak something. Two abandoned copies, no warning. Until 2026-08-27 they
+were also identically named, so the library became unreadable -- that
+half is fixed (the name is disambiguated like the slug always was).
+
+The forking is right: it stops an edit modifying a shipped template.
+What is missing is that nothing notices a copy of that exact builtin
+already exists. Three options, none of them obviously correct, which is
+why this is written down rather than acted on:
+
+  * **Reuse the existing copy.** Simplest, and wrong if the owner has
+    since saved changes into it -- they activated the BUILTIN, so they
+    asked for the shipped look, not their old copy of it.
+  * **Fork only when the existing copy has diverged** from its builtin.
+    Correct, and needs a comparison that is meaningful across theme
+    files and content.
+  * **Say something.** "You already have a copy of this template" with
+    the choice offered. Cheapest, honest, and puts it in front of the one
+    person who knows which they meant.
+
+The third is probably right for a product whose whole argument is that a
+novice should never be surprised by what it did.
+
