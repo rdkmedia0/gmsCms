@@ -1968,6 +1968,7 @@ def _render_page(db, page, post=None, post_content=""):
         search_styles=SEARCH_STYLES,
         basket_styles=cart_service.BASKET_STYLES,
         basket_aligns=cart_service.BASKET_ALIGNS,
+        basket_icons=cart_service.BASKET_ICONS,
         faq_views=FAQ_VIEWS,
         #  Read once and cleared: a report is about the save that just
         #  happened, and should not follow the admin around the site. A

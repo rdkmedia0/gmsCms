@@ -18,7 +18,12 @@ from .. import icons
 # links block (a normal 'html' section/chunk) they can reorder/edit like any
 # other content afterward. Any number of these can exist independently.
 
-MENU_STYLES = ("plain", "buttons", "dropdown")
+#  "pill" is buttons wearing the badge shape, and it is a top-level style
+#  rather than a variant hidden under Buttons because that is where
+#  somebody looks for it -- the Breadcrumb already offers Pill badge in
+#  its own Style list, and two tools naming the same look differently is
+#  how an editor stops being learnable.
+MENU_STYLES = ("plain", "buttons", "pill", "dropdown")
 MENU_SIZES = ("small", "medium", "large")
 #  "pill" is the badge shape the basket's own count uses: a small filled
 #  capsule rather than a rectangle. Its own entry rather than a corner
@@ -288,7 +293,11 @@ def _build_menu_links_html(db, items, style="plain", size="medium", bg_color="",
             + toggle_btn + '<div class="cms-menu-links"><ul>' + "".join(parts) + "</ul></div></nav>"
         )
 
-    link_class = ' class="cms-menu-btn"' if style == "buttons" else ""
+    #  A pill menu IS a button menu; only its shape differs, so every
+            #  question below asks "does this draw buttons", not "is the
+            #  style the string 'buttons'".
+    draws_buttons = style in ("buttons", "pill")
+    link_class = ' class="cms-menu-btn"' if draws_buttons else ""
     parts = []
     for it in resolved:
         if it["type"] == "divider":
@@ -296,8 +305,9 @@ def _build_menu_links_html(db, items, style="plain", size="medium", bg_color="",
             continue
         href, label = _href_label(it)
         parts.append(f'<a href="{html_escape(href)}" data-menu-key="{html_escape(it["key"])}"{link_class}>{_icon_span(it)}{html_escape(label)}</a>')
-    button_style_class = f" cms-menu-btnstyle-{button_style}" if style == "buttons" else ""
-    menu_class = f"cms-menu cms-menu-{size}{align_class}{link_style_class}{direction_class}" + (" cms-menu-buttons" + button_style_class if style == "buttons" else "")
+    shape = "pill" if style == "pill" else button_style
+    button_style_class = f" cms-menu-btnstyle-{shape}" if draws_buttons else ""
+    menu_class = f"cms-menu cms-menu-{size}{align_class}{link_style_class}{direction_class}" + (" cms-menu-buttons" + button_style_class if draws_buttons else "")
     button_style_attr = f' data-menu-button-style="{button_style}"' if style == "buttons" else ""
     return (
         f'<nav class="{menu_class}" data-menu-items="{items_json}" data-menu-style="{style}" '

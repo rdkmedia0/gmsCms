@@ -1041,12 +1041,7 @@ video, .cms-media video, .cms-video {
     block's WIDTH even when vertical, so a 24px breadcrumb was given 88px
     above and below and took more room than the page heading. */
 .block-html:has(.cms-menu),
-.block-html:has(.cms-breadcrumb),
-/*  A basket is the smallest of these and the worst affected: a 69px-wide
-    block given 22% of its own width as side padding leaves 39px of room
-    for a 67px link, so the badge hung outside the curve. Percentage
-    padding shrinks with the box; the thing inside it does not. */
-.block-html:has(.cms-basket) {
+.block-html:has(.cms-breadcrumb) {
   padding-top: var(--pad-menu-block, 12px);
   padding-bottom: var(--pad-menu-block, 12px);
   /*  The SIDES too, and for the same reason the top and bottom needed
@@ -1056,6 +1051,23 @@ video, .cms-media video, .cms-video {
       not the 90px that min(22%, 104px) hands it. */
   padding-inline: var(--pad-menu-block-side, 32px);
 }
+/*  A basket needs the same kind of clearance and nowhere near as much of
+    it. Percentage padding was the original fault -- a 69px-wide block
+    given 22% of its own width left 39px of room for a 67px link -- but
+    borrowing the menu's 32px was the opposite mistake: a 131x92 panel
+    around a bag and a number. Its own figures, sized to the thing inside
+    rather than to the box around it.
+
+    `.cms-basket-link`, NOT `.cms-basket`: the marker div carrying that
+    class is replaced outright by the rendered anchor, so a selector
+    keyed off the stored markup matches nothing on a page anybody looks
+    at. render_basket says so about the alignment class; it is true of
+    every rule that has to find a basket. */
+.block-html:has(.cms-basket-link) {
+  padding: 8px 14px;
+  width: fit-content;
+}
+
 .cms-card-shape { border-radius: var(--site-radius, var(--corner-card, 0)); }
 .cms-banner { border-radius: var(--site-radius, var(--corner-banner, 0)); }
 .cms-blog-card { border-radius: var(--site-radius, var(--corner-post, 10px)); }

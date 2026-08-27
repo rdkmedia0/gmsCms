@@ -272,11 +272,38 @@ BASKET_ALIGNS = (
 BASKET_ALIGN_PREFIX = "cms-basket-align-"
 
 
-def build_basket(style="icon", hide_when_empty=False, align="right"):
+#  What the basket is a picture OF. A bakery, a bookshop and a hardware
+#  supplier all call it something different and reach for a different
+#  shape, and the icon is the one part a shopper reads before any word.
+#  Stroke-only paths on a 24x24 grid, so every one of them sits at the
+#  same weight beside the others and takes the surrounding colour.
+BASKET_ICONS = (
+    ("bag", "Shopping bag"),
+    ("basket", "Basket"),
+    ("trolley", "Trolley"),
+    ("box", "Parcel"),
+    ("tag", "Price tag"),
+)
+BASKET_ICON_PATHS = {
+    "bag": '<path d="M6 8h12l-1 12H7L6 8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>',
+    "basket": ('<path d="M3 9h18l-1.4 8.6a2 2 0 0 1-2 1.7H6.4a2 2 0 0 1-2-1.7L3 9Z"/>'
+               '<path d="m8 9 2-5m6 5-2-5"/><path d="M10 12.5v3.5m4-3.5v3.5"/>'),
+    "trolley": ('<path d="M2.5 4h2.2l2.4 10.4a2 2 0 0 0 2 1.6h7.6a2 2 0 0 0 2-1.5L20.5 8H6"/>'
+                '<circle cx="10" cy="19.2" r="1.3"/><circle cx="17" cy="19.2" r="1.3"/>'),
+    "box": ('<path d="M3 8.4 12 4l9 4.4v7.2L12 20l-9-4.4V8.4Z"/>'
+            '<path d="M3 8.4 12 12.8l9-4.4"/><path d="M12 12.8V20"/>'),
+    "tag": ('<path d="M4 4h7.2l8.4 8.4a1.8 1.8 0 0 1 0 2.5l-4.7 4.7a1.8 1.8 0 0 1-2.5 0L4 11.2V4Z"/>'
+            '<circle cx="8.2" cy="8.2" r="1.2"/>'),
+}
+BASKET_ICON_PREFIX = "cms-basket-icon-"
+
+def build_basket(style="icon", hide_when_empty=False, align="right", icon="bag"):
     style = style if style in dict(BASKET_STYLES) else "icon"
     align = align if align in dict(BASKET_ALIGNS) else "right"
+    icon = icon if icon in BASKET_ICON_PATHS else "bag"
     empty = "1" if str(hide_when_empty) == "1" else "0"
-    return (f'<div class="cms-basket {BASKET_STYLE_PREFIX}{style} {BASKET_ALIGN_PREFIX}{align}" '
+    return (f'<div class="cms-basket {BASKET_STYLE_PREFIX}{style} {BASKET_ALIGN_PREFIX}{align} '
+            f'{BASKET_ICON_PREFIX}{icon}" '
             f'data-basket-tool data-hide-empty="{empty}"></div>')
 
 
@@ -286,18 +313,21 @@ def basket_settings(content):
     soup = BeautifulSoup(content or "", "html.parser")
     box = soup.find(class_="cms-basket")
     if box is None:
-        return {"style": "icon", "align": "right", "hide_when_empty": False}
+        return {"style": "icon", "align": "right", "hide_when_empty": False, "icon": "bag"}
     classes = box.get("class") or []
     style = next((key for key, _ in BASKET_STYLES
                   if BASKET_STYLE_PREFIX + key in classes), "icon")
     align = next((key for key, _ in BASKET_ALIGNS
                   if BASKET_ALIGN_PREFIX + key in classes), "right")
-    return {"style": style, "align": align, "hide_when_empty": box.get("data-hide-empty") == "1"}
+    icon = next((key for key, _ in BASKET_ICONS
+                 if BASKET_ICON_PREFIX + key in classes), "bag")
+    return {"style": style, "align": align, "icon": icon,
+            "hide_when_empty": box.get("data-hide-empty") == "1"}
 
 
 def apply_basket_form(form):
     return build_basket(form.get("basket_style"), "1" if form.get("hide_when_empty") else "0",
-                        form.get("basket_align"))
+                        form.get("basket_align"), form.get("basket_icon"))
 
 
 def render_basket(content, cart_url, editing=False):
@@ -310,12 +340,14 @@ def render_basket(content, cart_url, editing=False):
     items = count()
     if settings["hide_when_empty"] and not items and not editing:
         return ""
-    #  A bag rather than a trolley: it reads at small sizes, and this is
-    #  as likely to be a bakery as a supermarket.
+    #  A bag by default -- it reads at small sizes, and this is as likely
+    #  to be a bakery as a supermarket -- but the owner picks the shape,
+    #  because what a shop calls its basket is the shop's own word.
     icon = ('<svg viewBox="0 0 24 24" width="20" height="20" fill="none" '
-            'stroke="currentColor" stroke-width="1.8" aria-hidden="true">'
-            '<path d="M6 8h12l-1 12H7L6 8Z"/>'
-            '<path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>')
+            'stroke="currentColor" stroke-width="1.8" stroke-linecap="round" '
+            'stroke-linejoin="round" aria-hidden="true">'
+            + BASKET_ICON_PATHS.get(settings["icon"], BASKET_ICON_PATHS["bag"])
+            + '</svg>')
     style = settings["style"]
     parts = []
     if style in ("icon", "full", "bag", "button"):

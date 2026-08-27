@@ -5134,3 +5134,40 @@ corner: not below 768px, where the stacked row is right and the corner is
 not free, and not in the minimal layout, whose own toggle already lives
 there.
 
+### A rule that looks for a tool has to look for what renders (2026-08-27)
+
+The basket panel kept its wrong size through two attempted fixes, and
+neither was a padding problem in the end.
+
+`.block-html:has(.cms-basket)` matches nothing on a page a visitor sees.
+The `.cms-basket` div is a MARKER -- `render_basket` replaces it outright
+with an `<a class="cms-basket-link">` -- so the class the rule looks for
+exists only in stored markup. `render_basket`'s own comment says this
+about the alignment class, and the lesson generalises to every rule that
+has to find a basket: **select on what renders, not on what is stored.**
+
+It is a quiet failure, which is what makes it worth the entry: a
+`:has()` that matches nothing does not error, it simply does nothing, and
+the symptom is that a fix "did not work".
+
+The sizing either side of it was wrong in both directions. Percentage
+padding gave a 69px block 22% of its own width and left 39px of room for
+a 67px link, so the count hung outside the curve. Borrowing the menu's
+32px was the opposite: a 131x92 panel around a bag and a number. Its own
+figures now -- `8px 14px` and `width: fit-content` -- and the panel is
+96x51, with the worst corner against the curve down from **1.31 to
+0.39**.
+
+**Five basket pictures** rather than one hardcoded bag: bag, basket,
+trolley, parcel, price tag. A bakery, a bookshop and a hardware supplier
+reach for different shapes, and the icon is the one part a shopper reads
+before any word.
+
+**And the pill menu moved up a level.** It was added as a button STYLE,
+which put it one dropdown below where anybody looks -- the Breadcrumb
+offers "Pill badge" in its own Style list, and two tools naming the same
+look at different depths is how an editor stops being learnable. It is
+now a top-level menu style. Everything that asked "is this buttons?" now
+asks "does this draw buttons?", because a pill menu is a button menu and
+only its shape differs.
+

@@ -444,6 +444,7 @@
         <select name="menu_style" class="cms-menu-style-select" onchange="this.form.requestSubmit()" title="Menu display style">
           <option value="plain" {{ 'selected' if cell.menu_style == 'plain' }}>Plain links</option>
           <option value="buttons" {{ 'selected' if cell.menu_style == 'buttons' }}>Buttons</option>
+          <option value="pill" {{ 'selected' if cell.menu_style == 'pill' }}>Pill badges</option>
           <option value="dropdown" {{ 'selected' if cell.menu_style == 'dropdown' }}>Dropdown (submenus)</option>
         </select>
         <select name="menu_size" onchange="this.form.requestSubmit()" title="Font size">
@@ -908,12 +909,19 @@
   {% endmacro %}
 
   {% macro basket_config_fields(cell) %}
-    {% set basket = cell.basket or {'style': 'icon', 'align': 'right', 'hide_when_empty': False} %}
+    {% set basket = cell.basket or {'style': 'icon', 'align': 'right', 'icon': 'bag', 'hide_when_empty': False} %}
     <div class="cms-faq-config-row">
       <label class="cms-faq-config-label" title="How the basket looks">Style
         <select name="basket_style" onchange="this.form.requestSubmit()" title="How the basket looks">
           {% for value, label in basket_styles %}
           <option value="{{ value }}" {{ 'selected' if basket.style == value }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="cms-faq-config-label" title="Which picture stands for your basket — a bag, a basket, a trolley, a parcel or a price tag">Picture
+        <select name="basket_icon" onchange="this.form.requestSubmit()" title="Which picture stands for your basket — a bag suits a shop, a trolley a bigger one, a parcel something you post">
+          {% for value, label in basket_icons %}
+          <option value="{{ value }}" {{ 'selected' if basket.icon == value }}>{{ label }}</option>
           {% endfor %}
         </select>
       </label>
