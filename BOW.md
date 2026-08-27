@@ -5951,18 +5951,26 @@ Worth keeping the mistake as well as the fix: I diagnosed a missing
 feature from one observation of a live site, and wrote it down as fact.
 The setting had been changed. Reading the code would have taken a minute.
 
-**A short wide box needs an inline-only inset.** `--site-radius-pad` is
-percentages of WIDTH, which is right for a block roughly as tall as it is
-wide and wrong for a row: a 420x80 file card given the generic figure
-became 420x352. Three surfaces are left with their own padding for this
-reason. A companion variable, declared by each shape preset beside the
-one that exists, is the answer.
+**A short wide box needs an inline-only inset.** ~~Not built.~~ **BUILT**
+(2026-08-27) as `--site-radius-pad-row`: the vertical half is a length,
+the horizontal half stays a percentage because horizontally it is
+measuring the right thing. Applied to the three surfaces that had been
+left with their own padding -- the file card, the account flash and the
+sign-up note.
 
-**`clamp()` cannot cap a lens or a blob.** The video and textarea caps
-take lengths, so a `50% / 30%` radius makes the declaration invalid and
-it is dropped -- those shapes stay uncapped, and a video's controls are
-clipped on a lens-cornered site. Worth a proper fix when one is looked
-at.
+**`clamp()` cannot cap a lens or a blob.** **BUILT** (2026-08-27), and
+the diagnosis in this entry was half right in a way worth correcting.
+"The declaration is invalid and it is dropped" suggests the previous
+declaration wins, which is what happens to a mistyped LITERAL. Through
+`var()` it does not: the browser accepts the declaration, substitutes,
+and only then finds it invalid -- "invalid at computed-value time",
+which means UNSET. Measured in a browser: `clamp(0px, var(--lens), 28px)`
+computes to `0px`. So the rule was not merely failing to cap, it was
+removing the radius entirely, and on a gentle site it was silently
+overriding a shape the owner had chosen. `--site-radius-safe` is always a
+plain length. `tools/shape_check.py` measures all eight shapes and
+carries a self-test that reproduces both old faults, because a check that
+cannot fail passes everything.
 
 ### Small, cheap, not done
 

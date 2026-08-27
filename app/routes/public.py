@@ -1835,6 +1835,15 @@ def _theme_override_css(template):
             #  [data-corner-style] block in site-base.css.
             if shape.get("content_padding"):
                 lines.append(f"--site-radius-pad: {shape['content_padding']};")
+            #  ...and the companion for a box much wider than it is tall,
+            #  where a percentage of WIDTH on the vertical axis is not a
+            #  smaller mistake, it is a bigger one.
+            if shape.get("row_padding"):
+                lines.append(f"--site-radius-pad-row: {shape['row_padding']};")
+            #  ...and the shape as a plain length, for the things that
+            #  cannot wear the real one. See SHAPE_PRESETS.
+            if shape.get("radius_safe"):
+                lines.append(f"--site-radius-safe: {shape['radius_safe']};")
             #  ...and what it becomes on a phone. Emitted here rather than
             #  in site-base.css because that stylesheet is loaded BEFORE
             #  this block, so a media query in it would lose to the
@@ -1842,7 +1851,7 @@ def _theme_override_css(template):
             if shape.get("radius_small"):
                 small_screen_shape = (
                     "@media (max-width: %dpx){:root{--site-radius: %s;"
-                    "--site-radius-pad: initial;}}"
+                    "--site-radius-pad: initial;--site-radius-pad-row: initial;}}"
                     % (SHAPE_SMALL_SCREEN_MAX, shape["radius_small"]))
 
     shadow_key = template["shadow_override"] or _column(template, "shadow_default")

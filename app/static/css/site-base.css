@@ -972,25 +972,80 @@ li.cms-menu-divider { display: block; width: auto; height: 1px; margin: 4px 8px;
     the variable behave as though it were never set, which is what these
     four want: a gentle corner needs no inset, so the box keeps its own
     padding. */
-[data-corner-style="sharp"] { --site-radius: 0px; --site-radius-pad: initial; }
-[data-corner-style="soft"] { --site-radius: 10px; --site-radius-pad: initial; }
-[data-corner-style="rounded"] { --site-radius: 22px; --site-radius-pad: initial; }
-[data-corner-style="cut-corner"] { --site-radius: 0 32px 0 32px; --site-radius-pad: initial; }
+/*  --site-radius-pad-row is the companion for a box much WIDER than it
+    is tall, and it exists because the main one cannot serve both.
+    Percentage padding resolves against WIDTH on every side, including
+    top and bottom. That is right for a box roughly as tall as it is wide
+    -- a card, a panel -- and absurd for a row: a 420x80 file card given
+    `min(24%, 88px)` vertically gained 88px above and below and became
+    420x352, four times its own height, to clear a curve that never
+    reached it.
+
+    So the vertical half is a LENGTH here. Only the horizontal stays a
+    percentage, because horizontally it is measuring the right thing --
+    the end caps of a pill really are a fraction of the box's width.
+
+    A gentle corner needs neither, and says `initial` for the same reason
+    the one above does (see the note): an empty custom property is set to
+    the EMPTY value, which var() substitutes happily and the declaration
+    is dropped rather than falling back. */
+/*  --site-radius-safe is the shape as a PLAIN LENGTH, for the two or
+    three things that cannot wear the real one.
+
+    `clamp(0px, var(--site-radius), 28px)` was the first attempt and it
+    cannot work. clamp() takes comparable values, and a lens is
+    `50% / 30%` and a blob is eight percentages -- so after substitution
+    the declaration is invalid, and an invalid value arriving through
+    var() does NOT fall back to the previous declaration the way a
+    mistyped literal would. It is "invalid at computed-value time", which
+    means unset: `border-radius: 0`. So on exactly the sites that needed
+    capping, the cap silently did nothing and the video kept its
+    uncappable radius (or lost it entirely), which is why a lens site
+    still had a play bar clipped off the bottom.
+
+    A separate variable that is always a length is the fix, and it is the
+    same move `radius_small` already makes for the phone. It keeps the
+    shape's CHARACTER -- a gentle site gets a gentle number, a dramatic
+    one gets the largest number that still leaves the thing usable. */
+[data-corner-style="sharp"] {
+  --site-radius: 0px; --site-radius-pad: initial; --site-radius-pad-row: initial;
+  --site-radius-safe: 0px;
+}
+[data-corner-style="soft"] {
+  --site-radius: 10px; --site-radius-pad: initial; --site-radius-pad-row: initial;
+  --site-radius-safe: 10px;
+}
+[data-corner-style="rounded"] {
+  --site-radius: 22px; --site-radius-pad: initial; --site-radius-pad-row: initial;
+  --site-radius-safe: 22px;
+}
+[data-corner-style="cut-corner"] {
+  --site-radius: 0 32px 0 32px; --site-radius-pad: initial; --site-radius-pad-row: initial;
+  --site-radius-safe: 20px;
+}
 [data-corner-style="pill"] {
   --site-radius: 999px;
   --site-radius-pad: min(24%, 88px) min(22%, 104px);
+  --site-radius-pad-row: 16px min(13%, 56px);
+  --site-radius-safe: 28px;
 }
 [data-corner-style="lens"] {
   --site-radius: 50% / 30%;
   --site-radius-pad: min(30%, 96px) min(22%, 104px);
+  --site-radius-pad-row: 16px min(12%, 50px);
+  --site-radius-safe: 24px;
 }
 [data-corner-style="organic"] {
   --site-radius: 60% 40% 55% 45% / 45% 55% 40% 60%;
   --site-radius-pad: min(34%, 104px) min(14%, 52px);
+  --site-radius-pad-row: 18px min(11%, 46px);
+  --site-radius-safe: 24px;
 }
 [data-corner-style="organic-alt"] {
   --site-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
   --site-radius-pad: min(34%, 104px) min(14%, 52px);
+  --site-radius-pad-row: 18px min(11%, 46px);
+  --site-radius-safe: 24px;
 }
 
 /*  The five kinds of box a theme shapes independently. Each reads the
@@ -1018,7 +1073,7 @@ li.cms-menu-divider { display: block; width: auto; height: 1px; margin: 4px 8px;
     used. Capped, so a strongly-curved site still rounds its video and
     still has a video you can pause. */
 video, .cms-media video, .cms-video {
-  border-radius: clamp(0px, var(--site-radius, 0px), 28px);
+  border-radius: var(--site-radius-safe, 12px);
 }
 
 /*  Content in a strongly-curved block is centred, because the curve eats
@@ -1257,7 +1312,10 @@ video, .cms-media video, .cms-video {
 /* File / download section */
 .block-file { display: flex; justify-content: center; }
 .cms-file-card {
-  display: flex; align-items: center; gap: 14px; padding: 16px 20px;
+  /*  A row, so the ROW inset -- see --site-radius-pad-row. With the
+      ordinary one this became 420x352 on a pill-cornered site. */
+  display: flex; align-items: center; gap: 14px;
+  padding: var(--site-radius-pad-row, 16px 20px);
   border: 1px solid rgba(0,0,0,0.12); border-radius: var(--site-radius, 12px); max-width: 420px; width: 100%;
 }
 .cms-file-icon { font-size: 28px; }
@@ -1293,7 +1351,7 @@ video, .cms-media video, .cms-video {
     player nobody can pause. The shape rules exempt "a banner, a picture,
     a button -- nothing inside them can spill", and a video is the case
     that breaks the exemption. */
-.block-media video { width: 100%; border-radius: clamp(0px, var(--site-radius, 8px), 28px); display: block; }
+.block-media video { width: 100%; border-radius: var(--site-radius-safe, 12px); display: block; }
 .block-media audio { width: 100%; }
 .block-media.cms-img-small, .block-media.cms-img-medium {
   display: inline-block; vertical-align: top; margin-right: 16px;
@@ -1385,7 +1443,9 @@ video, .cms-media video, .cms-video {
     Capped for the same reason a video's is: the shape has to survive the
     thing inside it. */
 textarea, .cms-contact-form textarea, .cms-newsletter textarea {
-  border-radius: clamp(0px, var(--site-radius, 8px), 20px);
+  /*  min() rather than the variable alone: a textarea wants LESS than a
+      video does, and both numbers are lengths so this one is valid. */
+  border-radius: min(var(--site-radius-safe, 8px), 20px);
 }
 /* A clip with no link yet is a slot the admin still has to fill — shown
    while editing (so it can be clicked and filled in), never to a real
@@ -1680,7 +1740,12 @@ body.cms-editing .cms-video-thumb-empty::after {
 }
 .cms-slot-btn:hover { background: var(--primary, #2563eb); color: #fff; }
 .cms-slot-btn:focus-visible { outline: 3px solid var(--accent, #f97316); outline-offset: 2px; }
-.cms-account-flash { padding: 12px 16px; border-radius: var(--site-radius, 8px); font-weight: 600; }
+/*  A message bar is a row too: one line of words in a box the full width
+    of the page. See --site-radius-pad-row. */
+.cms-account-flash {
+  padding: var(--site-radius-pad-row, 12px 16px);
+  border-radius: var(--site-radius, 8px); font-weight: 600;
+}
 .cms-account-flash.ok { background: #e3efe7; color: #2f6647; }
 .cms-account-flash.bad { background: #fde8e6; color: #a3271b; }
 
@@ -1941,8 +2006,10 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
     Quiet by default and only loud when something went wrong, because the
     usual case -- "go and look in your inbox" -- is an instruction, not an
     alarm. */
+/*  And the third: a note above a sign-up form, one or two lines wide.
+    See --site-radius-pad-row. */
 .cms-subscribe-note {
-  margin: 0 0 20px; padding: 12px 16px;
+  margin: 0 0 20px; padding: var(--site-radius-pad-row, 12px 16px);
   border-radius: var(--site-radius, 8px);
   background: color-mix(in srgb, var(--primary, #2563eb) 10%, transparent);
   border: 1px solid color-mix(in srgb, var(--primary, #2563eb) 30%, transparent);

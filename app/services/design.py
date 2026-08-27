@@ -182,33 +182,54 @@ def _google_fonts_stylesheet_url(family_names):
 SHAPE_SMALL_SCREEN_MAX = 700
 
 SHAPE_PRESETS = {
-    "sharp": {"name": "Sharp", "radius": "0px"},
-    "soft": {"name": "Soft", "radius": "10px"},
-    "rounded": {"name": "Rounded", "radius": "22px"},
+    "sharp": {"name": "Sharp", "radius": "0px", "radius_safe": "0px"},
+    "soft": {"name": "Soft", "radius": "10px", "radius_safe": "10px"},
+    "rounded": {"name": "Rounded", "radius": "22px", "radius_safe": "22px"},
     "pill": {
         "name": "Pill",
         "radius": "999px",
         "radius_small": "26px",
         "content_padding": "min(24%, 88px) min(22%, 104px)",
+        #  For a box much WIDER than it is tall. Percentage padding
+        #  resolves against WIDTH on every side, so the figure above
+        #  turned a 420x80 row into 420x352; the vertical half is a
+        #  length here and only the horizontal stays a percentage,
+        #  because horizontally it is measuring the right thing.
+        "row_padding": "16px min(13%, 56px)",
+        #  The shape as a plain LENGTH, for the things that
+        #  cannot wear the real one -- a video, whose controls
+        #  live on the edge that curves away, and a textarea,
+        #  which is the one field tall enough for a pill to
+        #  become a stadium. clamp() cannot do this: a lens is
+        #  `50% / 30%`, so the declaration is invalid after
+        #  substitution and becomes unset rather than falling
+        #  back.
+        "radius_safe": "28px",
     },
     "lens": {
         "name": "Lens",
         "radius": "50% / 30%",
         "radius_small": "22px",
         "content_padding": "min(30%, 96px) min(22%, 104px)",
+        "row_padding": "16px min(12%, 50px)",
+        "radius_safe": "24px",
     },
-    "cut-corner": {"name": "Cut Corner", "radius": "0 32px 0 32px"},
+    "cut-corner": {"name": "Cut Corner", "radius": "0 32px 0 32px", "radius_safe": "20px"},
     "organic": {
         "name": "Organic",
         "radius": "60% 40% 55% 45% / 45% 55% 40% 60%",
         "radius_small": "22px",
         "content_padding": "min(34%, 104px) min(14%, 52px)",
+        "row_padding": "18px min(11%, 46px)",
+        "radius_safe": "24px",
     },
     "organic-alt": {
         "name": "Organic (Alt)",
         "radius": "30% 70% 70% 30% / 30% 30% 70% 70%",
         "radius_small": "22px",
         "content_padding": "min(34%, 104px) min(14%, 52px)",
+        "row_padding": "18px min(11%, 46px)",
+        "radius_safe": "24px",
     },
 }
 

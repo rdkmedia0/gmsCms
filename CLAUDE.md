@@ -225,6 +225,30 @@ The two mistakes this prevents are opposite and equally common: styling
 around a defect in the machinery instead of fixing it, and "fixing" a
 site's own look out from under the person whose site it is.
 
+Two more traps in the same family, both found by measuring rather than
+reading, and both cases where a WRONG declaration produces silence:
+
+  * **A percentage pads against WIDTH on every side**, top and bottom
+    included. Right for a box roughly as tall as it is wide, absurd for
+    a row: a 420x80 file card given `min(24%, 88px)` vertically became
+    420x352. A short-wide surface takes `--site-radius-pad-row`, whose
+    vertical half is a LENGTH and whose horizontal half stays a
+    percentage, because horizontally it is measuring the right thing.
+  * **`clamp()` cannot cap a lens or a blob**, and the failure is worse
+    than not capping. A lens is `50% / 30%`, so `clamp(0px,
+    var(--site-radius), 28px)` is invalid after substitution -- and an
+    invalid value arriving through `var()` does not fall back to the
+    previous declaration, it is "invalid at computed-value time", which
+    means UNSET. Measured: it computed to `0px`. So on exactly the sites
+    that needed the cap, the rule did nothing at all. Anything that
+    cannot wear the real shape takes `--site-radius-safe`, which is
+    always a plain length.
+
+  Both variables are declared by every entry in `SHAPE_PRESETS`, emitted
+  with the theme CSS, and mirrored in the `[data-corner-style]` block for
+  a section's own override. `tools/shape_check.py` measures all eight
+  shapes in a real browser, and proves the old values really did fail.
+
 A related trap, found the same day: **you cannot select on a CSS
 variable's value.** `[data-corner-style]` is empty unless an ADMIN has
 overridden the shape -- a template that simply IS curved sets
@@ -1157,6 +1181,9 @@ part that constrains the CODE.
   add two of them together),
   `site_emails_check.py` (that an owner's words reach the four messages
   that send themselves, and that no field can delete a fact),
+  `shape_check.py` (that every shape survives a video, a textarea and a
+  short wide box, measured in a browser because no server-side check can
+  see a dropped declaration),
   `schedule_check.py` (that a send put on the clock goes exactly once
   even when two workers claim it together, and refuses for the same
   reasons a live send refuses), and
