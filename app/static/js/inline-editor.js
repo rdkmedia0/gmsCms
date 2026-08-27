@@ -1059,6 +1059,7 @@
     window.cmsWysiwyg.bindToolbar(bar, {
       findBody: (el) => currentWysiwygBody(el),
       afterCommand: (body) => { if (body) saveWysiwygBody(body); },
+      say: (message) => toast(message),
       askForLink: (done, body) => {
         const hasTextSelection = (window.getSelection()?.toString() || "").length > 0;
         const linkingImage = !hasTextSelection && lastClickedImage && body?.contains(lastClickedImage);
@@ -1092,41 +1093,6 @@
   // Insert an image at the cursor — lets images sit alongside text inside
   // tables, cards, or any WYSIWYG body instead of only in dedicated Image
   // sections.
-  bindEach(".cms-insert-image-btn", (btn) => {
-    const toolbar = btn.closest(".cms-wysiwyg-toolbar");
-    const input = toolbar.querySelector(".cms-insert-image-input");
-    let savedRange = null;
-    btn.addEventListener("mousedown", () => {
-      const sel = window.getSelection();
-      if (sel.rangeCount) savedRange = sel.getRangeAt(0).cloneRange();
-    });
-    btn.addEventListener("click", () => input.click());
-    input.addEventListener("change", async () => {
-      const file = input.files[0];
-      if (!file) return;
-      const formData = new FormData();
-      formData.set("image", file);
-      try {
-        const res = await fetch("/admin/upload-image", { method: "POST", body: formData });
-        const data = await res.json();
-        if (res.ok && data.url) {
-          const sel = window.getSelection();
-          sel.removeAllRanges();
-          if (savedRange) sel.addRange(savedRange);
-          document.execCommand("insertImage", false, data.url);
-          const body = currentWysiwygBody(btn);
-          if (body) saveWysiwygBody(body);
-          toast("Image inserted");
-        } else {
-          toast(data.error || "Upload failed");
-        }
-      } catch {
-        toast("Upload failed — check your connection");
-      }
-      input.value = "";
-    });
-  });
-
   // Insert an icon at the cursor — same shared grid the Menu tool uses
   // (see its own wiring above), but for freeform text: no stored item to
   // update, just an immediate insertHTML at wherever the cursor was before

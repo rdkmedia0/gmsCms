@@ -33,6 +33,9 @@
       done(url || null);
     };
     var onLinkImage = options.onLinkImage || null;
+    //  How a caller tells somebody something. The live page has a toast;
+    //  a form has nothing, so it falls back to the browser.
+    var say = options.say || function (message) { window.alert(message); };
 
     root.querySelectorAll("button[data-cmd]").forEach(function (btn) {
       //  mousedown, not click: pressing a button blurs the editable and
@@ -65,6 +68,44 @@
         run(ctrl.dataset.cmd, ctrl.value);
         if (ctrl.tagName === "SELECT") ctrl.value = "";   // reset the "Font…" picker
         afterCommand(findBody(ctrl));
+      });
+    });
+
+    //  A picture inside the words. Shared for the same reason the
+    //  commands are: the live page and an admin form upload to the same
+    //  route and insert at the same caret; only "what now" differs.
+    root.querySelectorAll(".cms-insert-image-btn").forEach(function (btn) {
+      var input = root.querySelector(".cms-insert-image-input");
+      if (!input) return;
+      var savedRange = null;
+      btn.addEventListener("mousedown", function () {
+        var sel = window.getSelection();
+        if (sel.rangeCount) savedRange = sel.getRangeAt(0).cloneRange();
+      });
+      btn.addEventListener("click", function () { input.click(); });
+      input.addEventListener("change", function () {
+        var file = input.files[0];
+        if (!file) return;
+        var data = new FormData();
+        data.set("image", file);
+        fetch("/admin/upload-image", { method: "POST", body: data, credentials: "same-origin" })
+          .then(function (res) { return res.json().then(function (j) { return { ok: res.ok, j: j }; }); })
+          .then(function (r) {
+            if (r.ok && r.j.url) {
+              //  The click moved focus off the words, so the caret has to
+              //  be put back before anything can be inserted at it.
+              var sel = window.getSelection();
+              sel.removeAllRanges();
+              if (savedRange) sel.addRange(savedRange);
+              document.execCommand("insertImage", false, r.j.url);
+              afterCommand(findBody(btn));
+              say("Image inserted");
+            } else {
+              say((r.j && r.j.error) || "Upload failed");
+            }
+          })
+          .catch(function () { say("Upload failed — check your connection"); })
+          .then(function () { input.value = ""; });
       });
     });
 

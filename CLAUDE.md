@@ -35,6 +35,10 @@ app/
                        # card styling, starter-HTML builders, image-library
                        # listing — the biggest one, matches the biggest
                        # feature area
+    email_layouts.py   # what a NEWSLETTER is made of: the layouts and
+                       # their named fields, declared so the editing
+                       # screen builds itself. An email is not a page —
+                       # see "Newsletters" below.
     menu.py            # the Menu-tool builder, shared by body sections,
                        # template zones, and demo/package content
     palette.py         # color-palette role matching + tint_shade_ramp()
@@ -347,7 +351,16 @@ the same installer an admin's uploaded package goes through: the import
 path used to run only when somebody uploaded something, which is exactly
 how it came to discard a package's pages and pictures unnoticed. It now
 runs sixteen times per boot, so a break in it is a failed start rather
-than a surprise months later. Reinstalling is skipped when the archive
+than a surprise months later. **Installing also REMOVES pictures the
+archive no longer ships** (`_drop_stale_media`): extracting adds files and
+never takes any away, so a template whose pictures changed format left
+every old one behind — 77 orphaned PNGs on one install, referenced by
+nothing, doubling the Media Library. Reading a zip's index is cheap, so
+it runs on the boots that skip reinstalling too, which is what lets an
+install already carrying leftovers clean itself. It touches `media/`
+only, and a missing or unreadable archive removes nothing: not being able
+to read what a folder should contain must never mean deleting what is in
+it. Reinstalling is skipped when the archive
 already unpacked in place matches by hash (`.installed-from`), so a boot
 costs milliseconds — but a template with no `templates` row is always
 reinstalled, which is how a deleted builtin comes back. Every installed
@@ -387,6 +400,16 @@ package happens to have `pages/`:
   activatable/exportable/loadable like any other entry. Exporting to a
   `.zip` (`export_package_zip()`) stays a separate, always-available
   action on any library entry, builtin or not.
+- **Editing content never forks a template.** There WAS a
+  `before_request` that copied the active builtin on the first content
+  edit — "the first content change of a site makes it theirs" — and it
+  produced three identically-named "(your copy)" entries on one install,
+  each with its own duplicate of the pictures. Editing a page writes to
+  `pages` and `sections`, never to the template package or its row, so
+  nothing about it needed a copy. `fork_active_builtin` is kept for the
+  case that DOES want one — an owner changing a LOOK, asked and named —
+  but nothing calls it automatically. See BOW.md for the agreed design of
+  the consented fork and the source/custom/promoted lifecycle.
 - **Delete** works on any template, including builtins — a deleted
   builtin's `templates` row (and its copied `static/themes/<slug>/`
   asset) just comes back the next time the app restarts, since the seed
@@ -626,6 +649,18 @@ security-relevant, not just the ones that look risky:
   admin-only, trusted-operator feature, not a public input path. Don't add
   a new path that lets an unauthenticated visitor's input reach a `| safe`
   render.
+- **CSP is enforced by the browser, and only by the browser.** The
+  Content-Security-Policy in `app/__init__.py` is not advisory: `form-action`
+  applies to a form submission's WHOLE redirect chain, so `'self'` alone
+  silently refused every checkout — the POST is same-origin, the 303 to
+  Stripe is not. It answered 303 to `curl` and did nothing in a browser,
+  which is why every command-line check passed while nobody could pay. Two
+  rules follow: name any third-party host a form must be able to reach
+  (`checkout.stripe.com`, `pay.stripe.com` are there now), and verify
+  anything that leaves this origin in a real browser, because no
+  server-side test can see a CSP refusal. `tools/prod_check.py` asserts
+  the directive admits Stripe and has not been widened to `*` while doing
+  it.
 - **Auth/CSRF**: every state-changing admin route stays behind
   `@login_required` and the existing CSRF middleware (`app/csrf.py`,
   Origin/Referer-based, not a hidden-token scheme — see its own docstring
@@ -688,7 +723,15 @@ content**: design for a total novice ("think as if grandma wants to
 build a website") — plain quick-select controls (dropdowns, checkboxes,
 labeled buttons), a `title` tooltip on every control in addition to
 adjacent `<p class="hint">` text, never a raw HTML textarea as the way to
-accomplish ordinary styling or layout. `admin/page_edit.html` used to
+accomplish ordinary styling or layout. **There is ONE rich-text toolbar**
+— its markup in `partials/wysiwyg_toolbar.html`, its behaviour in
+`static/js/wysiwyg-commands.js` — used by the live editor and by any
+admin form that needs one (`textarea[data-richtext]`, upgraded by
+`admin/rich-text.js`). The blog editor briefly had a second, smaller
+one; `tools/design_conventions_check.py` now refuses that. A caller
+passes only what genuinely differs: which editable a control acts on,
+what to do afterwards, and how to ask for a URL.
+`admin/page_edit.html` used to
 render every section's `content` in a raw `<textarea>` — including plain
 Text/Card/Banner sections whose `content` is real HTML — as a legacy
 fallback UI; it was removed once the live inline editor
@@ -730,6 +773,18 @@ Each of these follows the structure above — thin routes, logic in
   optional — text over an unmodified photograph is legible about half the
   time — and it is a class, so everything inside a dimmed band flips
   colour with it.
+- **An email is not a page** (2026-08-27). A newsletter WAS a page,
+  written with the tools every other page uses, and most of them do not
+  survive the trip: measured, Blog/Shop/Buy button/Contact form/FAQ
+  Reader arrive EMPTY (each is a marker resolved against live data an
+  inbox does not have), Search arrives as a magnifying glass, and Columns
+  as the literal text `{}`. So a newsletter is being remade as a LAYOUT
+  with named slots — `services/email_layouts.py` plus table-structured
+  templates under `templates/emails/layouts/`, every style inline. The
+  layouts and their checks exist; the screen that uses them does not yet.
+  What the wrapper owns does not move and must not become editable: the
+  ground, the light card, the sender line and the unsubscribe link.
+  When adding a layout, add a template and an entry — never a tool.
 - **Newsletters**: `services/newsletter.py`. A newsletter IS a page,
   sent as email by translating its sections to inline-styled HTML. One
   message per person, refused without a postal address. `page_type=
@@ -948,6 +1003,17 @@ part that constrains the CODE.
   edited. If you change the Dockerfile or anything the build copies, the
   published image is what a host gets -- so a change verified only against
   a local build is a change verified in the wrong place.
+- **The other checkers**, each the net under one feature:
+  `parity_check.py` (every tool's panel, section vs cell),
+  `newsletter_check.py` and `signup_check.py` (the mail paths, with the
+  mail captured), `fresh_install_check.py` (two boots against an empty
+  DATA_DIR), `email_layout_check.py` (that an inbox can render a layout —
+  tables, no stylesheet, no classes, no flex — and that nothing in `app/`
+  carries a control character, after an invisible one cost a day),
+  `stale_media_check.py` (that installing removes what a template no
+  longer ships, and refuses to when it cannot read the archive), and
+  `design_conventions_check.py` (that a word means one thing across
+  tools, and that no admin form asks for raw HTML).
 - **`tools/prod_check.py`** is the net under all of the above: it proves
   the pragmas are live by holding a write open and reading through it,
   proves the ordering cannot tie by racing three writes, asks for the

@@ -28,14 +28,15 @@
 
     <label for="content">Content</label>
     {#  The same toolbar the live page uses -- one macro, both places
-        (partials/wysiwyg_toolbar.html). Without the image and icon
-        buttons: this form has no upload target, and it carries its own
-        icon control below. #}
+        (partials/wysiwyg_toolbar.html), including the Image button --
+        it uploads to /admin/upload-image and inserts at the caret, which
+        works here exactly as it does on the page. Without the toolbar's
+        icon button only: this form already has its own, below. #}
     <div class="cms-blog-content-tools">
       <button type="button" class="btn cms-insert-icon-textarea-btn" data-target="content" title="Insert an icon at the cursor">{{ icon_svg(icon_choices[0][0] if icon_choices else '') | safe }} Insert Icon</button>
     </div>
     <div class="cms-richtext" data-for="content">
-      {{ wysiwyg_toolbar(include_media=false) }}
+      {{ wysiwyg_toolbar(include_image=true, include_icon=false) }}
     </div>
     {#  data-richtext: admin/rich-text.js puts the editable surface inside
         the box above and keeps this field in step, so the form, the route

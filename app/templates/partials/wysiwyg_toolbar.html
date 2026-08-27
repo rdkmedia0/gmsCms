@@ -5,7 +5,8 @@
     project keeps warning about. One macro now, included by both, so a
     button added here appears in both places.
 
-    `include_media` is the only difference between the two callers: the
+    `include_image` / `include_icon` are the only difference between the
+    callers: the
     live page can upload an image into the words and insert an icon from
     its own grid; an admin form has no upload target and carries its own
     icon control. Everything else is identical, deliberately.
@@ -13,7 +14,7 @@
     The behaviour lives in static/js/wysiwyg-commands.js, shared the same
     way -- see that file for why a command needs a caller to say what to
     do afterwards. #}
-  {% macro wysiwyg_toolbar(include_media=true) %}
+  {% macro wysiwyg_toolbar(include_image=true, include_icon=true) %}
     <div class="cms-wysiwyg-toolbar">
       <button type="button" data-cmd="bold" title="Bold"><b>B</b></button>
       <button type="button" data-cmd="italic" title="Italic"><i>I</i></button>
@@ -52,13 +53,13 @@
         <input type="color" data-cmd="hiliteColor" value="#ffff00">
       </label>
       <button type="button" class="cms-color-reset" data-reset-cmd="hiliteColor" title="Remove the highlight color">⟲A</button>
-      {%- if include_media %}
+      {%- if include_image %}
       <button type="button" class="cms-insert-image-btn" title="Insert an image here">🖼️ Image</button>
       {%- endif %}
-      {%- if include_media %}
+      {%- if include_image %}
       <input type="file" class="cms-insert-image-input" accept="image/*" hidden>
       {%- endif %}
-      {%- if include_media %}
+      {%- if include_icon %}
       <button type="button" class="cms-insert-icon-btn" title="Insert an icon here">{{ icon_svg(icon_choices[0][0] if icon_choices else '') | safe }} Icon</button>
       {%- endif %}
     </div>

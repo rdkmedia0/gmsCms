@@ -4344,22 +4344,35 @@ nothing inside them can spill.
 Raised while walking a real install. Recorded here rather than started,
 because each is a feature with a design question in it, not a fix.
 
-### Commerce, properly exercised
+### Commerce, properly exercised -- DONE (2026-08-27)
 
-Nothing on the site sells anything yet, which is why "test buying" could
-not be answered: the coaching template's pricing tiers link to /contact,
-by design. Before payments can be called tested, this needs a product of
-each KIND created and bought through the site -- a one-off, a file
-download, a session pack that grants an entitlement -- and then the part
-that actually matters checked: that a session pack decrements as bookings
-are used, and that the booking-to-credit link in services/commerce.py
-holds when the two arrive out of order (booked before paid, refunded
-after booked).
+Done, and it found two bugs that only a real purchase could have found.
 
-Note for whoever does it: a webhook cannot be registered on an install
-that is not reachable from the internet, and this one is not -- it is a
-LAN address. The thank-you-page path plus the reconcile button is the
-supported route there, and is what should be tested.
+All four kinds were created and bought through the site with Stripe in
+test mode: payment-only, a session pack, a file download, and a posted
+item. The session pack decremented on booking (10 -> 9), the booking
+produced a real calendar invite, and cancelling it from the admin gave
+the session back (9 -> 10). Orders, entitlements and the diary all agree.
+
+What it turned up:
+
+  * **Nobody could pay at all.** `form-action 'self'` is enforced across a
+    form's whole redirect chain, so the 303 handing the buyer to Stripe
+    was refused by the browser -- silently, and only in a browser.
+    `curl` ignores CSP, which is why every check written against that
+    flow had passed. See its own entry above.
+  * **The stock count could never count.** The line maintaining it sat
+    below an early return that fired for exactly the kind that has stock.
+
+Two notes for anyone repeating it. A CHF checkout offers TWINT, Card and
+Klarna with none preselected, so nothing typed reaches a card until Card
+is chosen; and on a posted item Google's address suggestions cover the
+postcode and city fields until dismissed. Both cost an hour of looking at
+a form that appeared complete.
+
+The webhook caveat still stands: this install is a LAN address, so the
+thank-you-page path plus reconcile is what was tested, and is the
+supported route there.
 
 ### The CAPTCHA is arithmetic, and that is not enough
 
@@ -5245,7 +5258,7 @@ section had styled, which is most of a section.
 ### A character you cannot see, in a test that cannot fail
 
 Writing that fix, an escaping slip put a literal **backspace (chr 8)**
-where a regex word boundary belonged: `<a...` became `<a␈...`, which
+where a regex word boundary belonged: `<a\b...` became `<a␈...`, which
 matches nothing. The loop ran fifteen times and did nothing. The
 character is invisible in an editor, in `grep`, and in
 `inspect.getsource` -- an hour went into re-reading code that was, as
@@ -5462,4 +5475,131 @@ Found while doing it: **a public page renders no flashes at all**, so the
 existing `flash("Sorry — that's just sold out.")` had never been seen by
 anybody. The refusal travels in the answer now and lands on the button
 that was pressed, which is where the shopper is looking.
+
+## Where this stands, and what is left (2026-08-27)
+
+Written at the end of a long day on a live install, so the next person --
+including me -- does not have to reconstruct it from thirty entries
+above. Everything below is either specified and unbuilt, or a question
+waiting on the owner. Nothing here is a fix somebody forgot.
+
+### Waiting on one answer from the owner
+
+**Do the transactional emails get dressed, or stay plain?** The order and
+subscription mails are plain text ON PURPOSE -- "it renders everywhere,
+never trips a spam filter, and the one thing that matters is the link".
+The new email layouts could dress them to match the site. It cuts both
+ways: a receipt is one of the few messages where plain text is
+respectable, and HTML is heavier and marginally more spam-prone. The
+editor for them (below) is designed either way; only the rendering
+differs. **Nothing else in the newsletter work can finish until this is
+decided**, because the same layouts serve both.
+
+### Built but not wired up
+
+**Email layouts.** `services/email_layouts.py`, four table-structured
+layouts under `templates/emails/layouts/`, and 53 checks that an inbox
+can render them. Nothing in the admin uses them yet: the Newsletters
+screen is untouched and still says a newsletter is just a page written
+with the same tools -- which the measurements above disprove. What
+remains is the screen: pick a layout, fill its named slots, preview,
+send. The model underneath (a newsletter as a layout plus values, rather
+than as a page of sections) is the part still to be decided in storage
+terms.
+
+### Specified, agreed, not built
+
+**The fork, and the template lifecycle.** Three entries above work it
+out: content edits never fork (the automatic trigger IS now removed),
+changing a LOOK on a source asks first, the owner names the copy,
+overwrite-or-new when one exists, and a finished custom template is
+promoted to a source -- which is also the moment it gets packaged and
+becomes exportable. Two things to settle while building: a promoted
+template has no zip behind it and needs its own flag rather than
+borrowing `is_builtin`, and promotion should be reversible until
+something depends on it. Note this supersedes CLAUDE.md's "exporting
+stays an always-available action on any library entry".
+
+**An editor for the other site emails.** Facts the code always renders --
+name, address, order reference, session count, download deadline, links,
+unsubscribe -- with slots the owner writes around them, each email's own
+placeholders listed on screen to click in rather than typed from memory,
+and a preview against sample data. Five messages: Your order, Sale,
+Confirm your subscription, You're subscribed, and newsletter sends. The
+pattern already exists in miniature: `newsletter_intro`/`newsletter_outro`
+are editable while the sender line and unsubscribe are not.
+
+**Currency.** Three separate features that keep being asked for as one: a
+base currency for the site (smallest, most clearly missing -- one
+setting, the default for every new product, so a shop cannot end up
+pricing in three currencies by accident); regional detection; a
+converter. Start with the first.
+
+### Gaps found by using it, worth building
+
+**A template cannot carry its own shape.** No `theme.css` sets
+`--site-radius`; the built-ins state per-kind defaults and leave the
+site-wide shape to the owner's Corners setting. So activating a template
+does not restore the look it was designed with, and a pill-cornered
+template is not expressible. Sits beside the older gap that **a template
+cannot ship header/footer-zone sections** -- both are "a template brings
+a look" being less true than it sounds.
+
+**A short wide box needs an inline-only inset.** `--site-radius-pad` is
+percentages of WIDTH, which is right for a block roughly as tall as it is
+wide and wrong for a row: a 420x80 file card given the generic figure
+became 420x352. Three surfaces are left with their own padding for this
+reason. A companion variable, declared by each shape preset beside the
+one that exists, is the answer.
+
+**`clamp()` cannot cap a lens or a blob.** The video and textarea caps
+take lengths, so a `50% / 30%` radius makes the declaration invalid and
+it is dropped -- those shapes stay uncapped, and a video's controls are
+clipped on a lens-cornered site. Worth a proper fix when one is looked
+at.
+
+### Small, cheap, not done
+
+  * **Four genuinely duplicated pictures** (2.6MB) survive on the live
+    install -- identical bytes under different names. A rounding error
+    next to the 85MB of orphaned PNGs already removed.
+  * **The "Added" moment on a Buy button** uses `--primary-dark`, so on an
+    orange site it is a darker orange rather than a success green. A
+    judgement call left to the owner.
+  * **Protecting a purchases page further** -- asking for the buyer's
+    email as well as the link. Designed, refused so far because it puts
+    friction on somebody who has just paid.
+  * **A responsive preview** in edit mode: desktop/tablet/phone from a
+    dropdown in the header, asked for and recorded above.
+
+### Still open from before today
+
+The CAPTCHA (arithmetic stops nothing that matters), a visitor-facing AI
+assistant that has to start from refusal rather than retrieval, and
+WhatsApp -- where a `wa.me` link is an afternoon and the Business API is
+a decision about whether this product holds customer conversations at
+all. All three are written out above and unchanged.
+
+### Should the featured image live in the text toolbar? (asked 2026-08-27)
+
+Asked when the blog editor got the shared toolbar. The answer is no, and
+the reason is worth stating because the two look alike:
+
+  * An **inline image** is a picture inside the words, inserted at the
+    caret. The toolbar acts on a caret; that is what a toolbar is for.
+  * A **featured image** is the picture that REPRESENTS the post -- on a
+    Blog tool's cards, in a listing, at the head of the post. It is a
+    property of the post, and it has no caret to be inserted at.
+
+One button for both would leave nobody able to say which they had just
+set. They are different questions asked of the same file.
+
+**But the complaint underneath is fair, and there is a real defect in
+it**: the Featured Image card is wrapped in `{% if post %}`, so it does
+not exist while the post is being written -- you must save first, then
+scroll to a separate card at the bottom, choose a file and press a second
+Upload button. Three of those four steps are avoidable. Worth doing:
+bring it up beside the title where it belongs, let it be set while
+writing rather than only afterwards, and make it one control rather than
+a form of its own.
 
