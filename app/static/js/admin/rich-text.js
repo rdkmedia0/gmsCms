@@ -61,10 +61,30 @@
     //  at rather than a hidden textarea's caret.
     textarea.richtextSurface = editable;
 
+    //  The post's own picture, if this field has a slot for one. The
+    //  toolbar's Image button then sets THAT rather than dropping a
+    //  picture into the middle of the words -- one place to add a
+    //  picture, and it appears where it will appear in the post.
+    var slot = wrap.querySelector("[data-featured-slot]");
+    var slotStore = wrap.querySelector("[data-featured-store]");
+
+    function showFeatured(url) {
+      if (!slot || !slotStore) return;
+      slotStore.value = url || "";
+      slot.querySelector("img").src = url || "";
+      slot.hidden = !url;
+    }
+
+    if (slot) {
+      var remove = slot.querySelector(".cms-featured-remove");
+      if (remove) remove.addEventListener("click", function () { showFeatured(""); });
+    }
+
     if (bar && window.cmsWysiwyg) {
       window.cmsWysiwyg.bindToolbar(bar, {
         findBody: function () { return editable; },
         afterCommand: function () { sync(); },
+        onImage: slot ? showFeatured : null,
       });
     }
 

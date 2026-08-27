@@ -342,12 +342,18 @@ def blog_post_edit(blog_id, post_id):
     if request.method == "POST":
         title = request.form.get("title", "").strip() or post["title"]
         db.execute(
-            "UPDATE blog_posts SET title = ?, excerpt = ?, content = ?, published_at = ? WHERE id = ?",
+            #  The post's picture comes from the writing toolbar now (the
+            #  Image button sets it and shows it where it will appear), so
+            #  it is saved with everything else rather than through a
+            #  second form of its own.
+            "UPDATE blog_posts SET title = ?, excerpt = ?, content = ?, published_at = ?, "
+            "featured_image = ? WHERE id = ?",
             (
                 title,
                 request.form.get("excerpt", "").strip(),
                 request.form.get("content", "").strip(),
                 _published_date(request.form, post["published_at"]),
+                (request.form.get("featured_image") or "").strip() or None,
                 post_id,
             ),
         )

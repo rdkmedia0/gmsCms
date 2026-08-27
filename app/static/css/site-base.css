@@ -2383,5 +2383,45 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
   .cms-menu-links { justify-content: center; }
   /*  A post's words want the room the curve was taking. */
   .cms-blog-card-body { padding: 18px 20px; }
+
+  /*  Room at the top of a phone is the scarcest room there is: the site
+      began 159px down, and 150px of that was the header zone -- its own
+      36px of padding, a menu strip, and the basket on a row of its own.
+      The basket can now float out of the flow entirely (its Position
+      control); this is the rest.  */
+  .site-header-zone, .site-sidebar-zone { padding: 8px 14px; }
+  .site-content { padding: 14px; }
 }
+
+/*  A floating basket. Lifted out of the page and pinned to a corner, so
+    it costs no room in the layout and stays with the reader as they go
+    down -- which on a phone is the difference between the site starting
+    at the top of the screen and starting halfway down it.
+
+    Fixed to the viewport rather than to the header: a basket that
+    scrolls away is a basket somebody has to go looking for. The side is
+    the same side the site's own reading direction ends on. */
+.cms-basket-link.cms-basket-align-float-top,
+.cms-basket-link.cms-basket-align-float-bottom {
+  position: fixed;
+  inset-inline-end: 14px;
+  z-index: 900;
+  background: var(--card-bg, #fff);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, .18);
+  border-radius: 999px;
+  padding: 9px 14px;
+}
+.cms-basket-link.cms-basket-align-float-top { top: 14px; }
+.cms-basket-link.cms-basket-align-float-bottom { bottom: 14px; }
+/*  The section it came from has nothing left to hold, so it takes no
+    room -- otherwise a floating basket leaves its own empty row behind. */
+.cms-section:has(.cms-basket-align-float-top),
+.cms-section:has(.cms-basket-align-float-bottom) { display: none; }
+/*  While editing, the frame it lives in has to stay reachable -- you
+    cannot click a tool that is not there. */
+.cms-editing .cms-section:has(.cms-basket-align-float-top),
+.cms-editing .cms-section:has(.cms-basket-align-float-bottom) { display: block; }
+/*  A logged-in admin has a bar at the top of the page; a basket pinned
+    under it would sit on top of the bar. */
+body.cms-logged-in .cms-basket-link.cms-basket-align-float-top { top: 60px; }
 

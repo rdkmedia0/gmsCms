@@ -36,6 +36,8 @@
     //  How a caller tells somebody something. The live page has a toast;
     //  a form has nothing, so it falls back to the browser.
     var say = options.say || function (message) { window.alert(message); };
+    //  What an uploaded picture is for. Absent: it goes in at the caret.
+    var onImage = options.onImage || null;
 
     root.querySelectorAll("button[data-cmd]").forEach(function (btn) {
       //  mousedown, not click: pressing a button blurs the editable and
@@ -92,6 +94,14 @@
           .then(function (res) { return res.json().then(function (j) { return { ok: res.ok, j: j }; }); })
           .then(function (r) {
             if (r.ok && r.j.url) {
+              //  A caller can say what a picture is FOR. The blog editor
+              //  makes it the post's own picture rather than one inside
+              //  the words; without a hook it goes in at the caret, which
+              //  is what a page needs.
+              if (onImage) {
+                onImage(r.j.url);
+                return;
+              }
               //  The click moved focus off the words, so the caret has to
               //  be put back before anything can be inserted at it.
               var sel = window.getSelection();

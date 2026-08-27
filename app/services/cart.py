@@ -264,10 +264,20 @@ BASKET_STYLE_PREFIX = "cms-basket-style-"
 #  where a shopper looks first — top-right is the one near-universal
 #  convention across shopping sites — but a header built right-to-left, or
 #  one that already puts something else on the right, needs the other two.
+#  Where the basket sits. The first three place it in whatever row it
+#  was dropped into; the last two lift it out of the page entirely and
+#  pin it to a corner, over everything, following the reader down the
+#  page.
+#
+#  Floating earns its place on a phone in particular. In the flow, the
+#  basket takes a whole row of its own under the menu -- two tall bands
+#  before any of the site is visible. Floating, it takes none.
 BASKET_ALIGNS = (
-    ("right", "Right"),
-    ("center", "Center"),
-    ("left", "Left"),
+    ("right", "Right of its row"),
+    ("center", "Middle of its row"),
+    ("left", "Left of its row"),
+    ("float-top", "Floating, top corner"),
+    ("float-bottom", "Floating, bottom corner"),
 )
 BASKET_ALIGN_PREFIX = "cms-basket-align-"
 

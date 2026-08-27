@@ -5862,3 +5862,42 @@ Pasting is forced to plain text, because a paragraph copied from a web
 page brings its fonts and colours with it and an email that half matches
 the site looks like a mistake.
 
+### A basket that costs no room, and a phone that starts at the top (2026-08-27)
+
+**The basket can float.** Two new positions pin it to a corner of the
+viewport, over the page, following the reader down it. In the flow it
+takes a whole row of its own -- fine on a wide screen, and on a phone it
+was 52px of a 150px header before any of the site appeared. Floating, it
+takes none. Fixed to the viewport rather than to the header, because a
+basket that scrolls away is a basket somebody has to go looking for; and
+the section it came from is hidden with it, or a floating basket leaves
+its own empty row behind. While EDITING that section stays visible --
+you cannot click a tool that is not there.
+
+**And the phone header was taking a screenful.** The site began 159px
+down: 36px of zone padding, a menu strip, the basket's row. Tightened to
+128px, and 77px with the basket floating -- less than half.
+
+### One place to add a picture (2026-08-27)
+
+A blog post's picture was a card at the BOTTOM of the editor, wrapped in
+`{% if post %}` so it did not exist until the post had been saved once,
+with an upload form of its own. Three steps and a scroll to add one
+picture, and the picture appeared nowhere near where it would appear.
+
+It is the toolbar's Image button now, and the picture shows immediately
+under that toolbar -- which is where it sits in the published post, above
+the words. It saves with everything else rather than through a second
+form.
+
+The shared toolbar learned one hook for it: `onImage`. Without one, an
+uploaded picture goes in at the caret, which is what a page needs; with
+one, the caller says what a picture is FOR. That is the same seam the
+toolbar already uses for "which editable" and "what now" -- a caller
+passes only what genuinely differs.
+
+I argued against this earlier, on the grounds that an inline image and a
+post's own picture are different things. They are, and the owner was
+still right: there is one Image button in front of somebody writing a
+post, and what it should do is the obvious thing.
+

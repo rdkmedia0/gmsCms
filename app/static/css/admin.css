@@ -887,3 +887,18 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
 .cms-issue-asides { display: grid; gap: 12px; }
 .cms-slot-aside label { display: grid; gap: 4px; font-size: .85rem; font-weight: 600; }
 
+
+/*  The post's own picture, shown where it will be in the post: at the
+    top, under the toolbar that sets it. It used to be a separate card at
+    the bottom of the page, only after saving, with an Upload button of
+    its own -- three steps and a scroll to add one picture. */
+.cms-featured-slot {
+  margin: 0; padding: 12px 16px 0; position: relative;
+  border-bottom: 1px solid var(--border);
+}
+.cms-featured-slot[hidden] { display: none; }
+.cms-featured-slot img {
+  display: block; width: 100%; max-height: 260px; object-fit: cover;
+  border-radius: var(--cms-ui-radius-control);
+}
+.cms-featured-slot .cms-featured-remove { margin: 8px 0 12px; }

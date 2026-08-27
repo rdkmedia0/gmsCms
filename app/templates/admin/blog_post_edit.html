@@ -37,6 +37,19 @@
     </div>
     <div class="cms-richtext" data-for="content">
       {{ wysiwyg_toolbar(include_image=true, include_icon=false) }}
+      {#  The post's own picture, where it will be in the post: at the
+          top, above the words. The Image button in the toolbar above sets
+          it, so there is one place to add a picture rather than a button
+          here and a separate form at the bottom of the page. #}
+      <figure class="cms-featured-slot" data-featured-slot
+              data-empty-note="No picture yet — use 🖼️ Image above to add one. It appears at the top of the post."
+              {{ 'hidden' if not (post and post.featured_image) }}>
+        <img src="{{ post.featured_image if post and post.featured_image }}" alt="">
+        <button type="button" class="btn btn-small cms-featured-remove"
+                title="Take this picture off the post. The file stays in your Media Library.">Remove picture</button>
+      </figure>
+      <input type="hidden" name="featured_image" data-featured-store
+             value="{{ post.featured_image if post and post.featured_image else '' }}">
     </div>
     {#  data-richtext: admin/rich-text.js puts the editable surface inside
         the box above and keeps this field in step, so the form, the route
@@ -117,16 +130,5 @@
 <script src="{{ static_url('js/admin/rich-text.js') }}"></script>
 <script src="{{ static_url('js/admin/icon-picker-textarea.js') }}"></script>
 
-{% if post %}
-<div class="card">
-  <h2>Featured Image</h2>
-  {% if post.featured_image %}
-  <img class="preview-img" src="{{ post.featured_image }}" alt="{{ post.title }}">
-  {% endif %}
-  <form method="post" action="{{ url_for('admin.blog_post_image_upload', blog_id=blog.id, post_id=post.id) }}" enctype="multipart/form-data" class="inline-form">
-    <input type="file" name="image" accept="image/*" required>
-    <button type="submit" class="btn">Upload</button>
-  </form>
-</div>
-{% endif %}
+
 {% endblock %}
