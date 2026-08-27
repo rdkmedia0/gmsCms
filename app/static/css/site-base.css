@@ -1090,8 +1090,21 @@ video, .cms-media video, .cms-video {
    letting a long nav wrap into several cramped rows on a phone screen. */
 @media (max-width: 700px) {
   .cms-menu-toggle { display: block; }
-  .cms-menu-links { display: none; flex-basis: 100%; flex-direction: column; align-items: flex-start; gap: 2px; }
+  /*  The links already asked for a whole row (flex-basis: 100%) and could
+      never have one, because .cms-menu does not wrap -- so opening the
+      menu squeezed a column of links in BESIDE the burger and shoved the
+      burger off to the left. A control must not move when you press it.
+      With wrapping allowed, the burger keeps its place and the links open
+      underneath it. */
+  .cms-menu { flex-wrap: wrap; row-gap: 4px; }
+  .cms-menu-links { display: none; flex-basis: 100%; width: 100%; flex-direction: column; align-items: stretch; gap: 2px; }
   .cms-menu.cms-menu-open .cms-menu-links { display: flex; }
+  /*  A phone is touched, not pointed at: each link is its own row with a
+      target you can hit, rather than a line of text among others. */
+  .cms-menu.cms-menu-open .cms-menu-links > a,
+  .cms-menu.cms-menu-open .cms-menu-links > ul > li > a {
+    display: block; padding: 12px 4px; line-height: 1.4;   /* 45px tall: past the 44px touch guideline */
+  }
   .cms-menu-dropdown .cms-menu-links > ul { flex-direction: column; gap: 0; width: 100%; }
   .cms-menu-dropdown .cms-submenu { position: static; box-shadow: none; border: none; padding-left: 16px; }
   .cms-menu-dropdown li.cms-menu-has-submenu > .cms-submenu { display: none; }
