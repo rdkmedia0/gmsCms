@@ -10,6 +10,7 @@
   var savedPos = null;
 
   btn.addEventListener("mousedown", function () {
+    if (textarea.richtextSurface) return;   // the surface keeps its own caret
     savedPos = { start: textarea.selectionStart, end: textarea.selectionEnd };
   });
   btn.addEventListener("click", function (e) {
@@ -25,8 +26,17 @@
     iconBtn.addEventListener("click", function (e) {
       e.stopPropagation();
       grid.hidden = true;
-      var pos = savedPos || { start: textarea.value.length, end: textarea.value.length };
       var html = iconBtn.innerHTML.trim();
+      //  When the field has been upgraded to a WYSIWYG (rich-text.js) the
+      //  textarea is hidden and nobody is looking at it, so the icon has
+      //  to go into the surface the person can actually see.
+      if (textarea.richtextSurface) {
+        textarea.richtextSurface.focus();
+        document.execCommand("insertHTML", false, html + "&nbsp;");
+        textarea.value = textarea.richtextSurface.innerHTML;
+        return;
+      }
+      var pos = savedPos || { start: textarea.value.length, end: textarea.value.length };
       textarea.setRangeText(html, pos.start, pos.end, "end");
       textarea.focus();
     });

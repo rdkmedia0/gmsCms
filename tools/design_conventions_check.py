@@ -90,5 +90,27 @@ check("the badge drops the underline", "text-decoration: none" in _all)
 check("and the bold", "font-weight: inherit" in _all)
 
 print()
+print("Nobody is asked to type HTML")
+print("-" * 70)
+#  CLAUDE.md: never a raw HTML textarea as the way to accomplish ordinary
+#  styling or layout. The page editor had one removed once already; the
+#  blog post editor still had one, showing <p> tags to somebody writing a
+#  post.
+_admin = os.path.join(_here, "app", "templates", "admin")
+_raw = []
+for _name in sorted(os.listdir(_admin)):
+    if not _name.endswith(".html"):
+        continue
+    _t = open(os.path.join(_admin, _name), encoding="utf-8").read()
+    for _m in re.finditer(r"<textarea[^>]*>", _t):
+        _tag = _m.group(0)
+        #  A field holding a post's or a page's writing must be upgraded.
+        if 'name="content"' in _tag and "data-richtext" not in _tag:
+            _raw.append(_name)
+check("no admin form takes a post's writing as raw HTML", not _raw, ", ".join(_raw))
+check("the blog editor loads the rich-text script",
+      "js/admin/rich-text.js" in open(os.path.join(_admin, "blog_post_edit.html"), encoding="utf-8").read())
+
+print()
 print("%d checks, %d failed" % (passed + failed, failed))
 sys.exit(1 if failed else 0)

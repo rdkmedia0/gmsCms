@@ -5364,3 +5364,42 @@ two tools drifting apart again, so the rule is checked rather than
 trusted -- an editor stops being learnable the moment one word means two
 things in it.
 
+### Writing a post should not require knowing what a <p> is (2026-08-27)
+
+The blog editor's Content field was a plain `<textarea>` holding raw
+HTML, so somebody writing a post saw
+`<p>I used to give burned-out clients...</p>` and had to maintain the
+tags themselves.
+
+This is the rule this project already applied once and then left a hole
+in: `admin/page_edit.html` had exactly this removed -- "never a raw HTML
+textarea as the way to accomplish ordinary styling or layout" -- and the
+blog editor kept one.
+
+`static/js/admin/rich-text.js` upgrades any `textarea[data-richtext]`
+into a small WYSIWYG. The textarea STAYS in the form, keeps its name and
+keeps being what the server reads; it is only hidden and kept in step. So
+the route, the model and `blog.post_html()` see exactly what they always
+saw, and nothing downstream had to change.
+
+Three details worth keeping:
+
+  * **The command set is the live editor's, minus the page-layout ones.**
+    Bold, italic, headings, lists, a link. Alignment, fonts and colours
+    belong to a section on a page, not to the words of a post -- offering
+    them here would be inventing a second, quieter way to style a page.
+  * **Toolbar buttons act on `mousedown`, not `click`.** Clicking blurs
+    the editable and the selection goes with it, so the command lands on
+    nothing.
+  * **Old posts still open.** Posts written before the editor existed are
+    plain text with blank lines between paragraphs, and `post_html()`
+    still renders them that way; the upgrade does the same conversion, so
+    an old post shows paragraphs rather than one run-on block.
+
+The icon inserter had to be told about it: it writes at
+`selectionStart`, which a hidden textarea no longer has a visible caret
+for, so it now inserts into the surface the person is actually looking at.
+
+`design_conventions_check.py` asserts no admin form takes a post's
+writing as raw HTML, so the hole cannot reopen quietly in a third place.
+

@@ -29,7 +29,14 @@
     <div class="cms-blog-content-tools">
       <button type="button" class="btn cms-insert-icon-textarea-btn" data-target="content" title="Insert an icon at the cursor">{{ icon_svg(icon_choices[0][0] if icon_choices else '') | safe }} Insert Icon</button>
     </div>
-    <textarea id="content" name="content" rows="14" placeholder="Write your post. Blank lines start a new paragraph.">{{ post.content if post else '' }}</textarea>
+    {#  data-richtext: admin/rich-text.js replaces this with a small
+        WYSIWYG and keeps the textarea in step, so the form, the route and
+        everything downstream see exactly what they always did. A post's
+        content is HTML, and nobody should have to type HTML to write
+        one. #}
+    <textarea id="content" name="content" rows="14" data-richtext
+              title="Write your post here. Use the buttons above for headings, lists and links."
+              placeholder="Write your post.">{{ post.content if post else '' }}</textarea>
 
     {# Saving and publishing are two halves of one decision — "is this
        ready" is answered at the moment you put the work down, not three
@@ -99,6 +106,7 @@
 
 {% from "partials/icon_picker.html" import icon_picker_grid with context %}
 {{ icon_picker_grid(include_none=false) }}
+<script src="{{ static_url('js/admin/rich-text.js') }}"></script>
 <script src="{{ static_url('js/admin/icon-picker-textarea.js') }}"></script>
 
 {% if post %}
