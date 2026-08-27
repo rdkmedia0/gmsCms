@@ -4539,3 +4539,58 @@ why this is written down rather than acted on:
 The third is probably right for a product whose whole argument is that a
 novice should never be surprised by what it did.
 
+### What to do about the fork -- the two designs, weighed (2026-08-27)
+
+First, a fact that removes one of them: **a forked template already never
+forks again.** `fork_active_builtin` returns early unless the active
+template `is_builtin`, and three edits to a user-managed copy leave the
+count unchanged. The builtin / user-managed distinction exists and is
+already load-bearing. So "make forks not fork" is not a change to make;
+it is the current behaviour.
+
+That leaves the only route to a second copy: deliberately activating the
+BUILTIN again, then editing. Which points at the other design.
+
+**No forking; edit the active template; offer to reload the shipped
+version.** The reason this works here, and would not in most products, is
+that the pristine data is already immutable and already present: every
+builtin lives as `app/data/template-packages/<slug>.zip`, rebuilt from
+source at image build time, reinstalled on boot, hash-checked. Nothing an
+owner does can damage it. The fork protects a thing that cannot be lost.
+
+What it buys: an entire concept leaves the owner's head. No copies, no
+library filling with near-identical entries, no question of which one is
+"mine". Editing a template edits the template, which is what everybody
+assumes it does anyway. And "Reload the shipped version" is one action
+sitting next to Load Content, which already means something adjacent.
+
+What it costs, and both are worth stating before anyone builds it:
+
+  * **"Bakery" on this install may no longer be Bakery.** A template's
+    name would no longer promise what it shows. Mitigated by marking a
+    modified builtin as changed, which also gives the reload action
+    something to be enabled by.
+  * **The reload is destructive and must say so** -- it overwrites the
+    look and, if content is included, the pages. The confirm dialog and
+    the save-first checkbox already exist for exactly this shape of
+    action.
+
+Recommendation: this one, and mark a modified builtin so the name never
+lies. It is fewer concepts, and the safety it gives up was protecting
+something that was never at risk.
+
+### Responsive preview in edit mode (asked for 2026-08-27)
+
+A dropdown in the editing header to switch the view between desktop,
+tablet and phone, without leaving the page or resizing the window.
+
+Worth building for a reason this session demonstrated repeatedly: almost
+every layout fault found on this site was a phone fault, and each one was
+found by measuring at 390px rather than by looking at the desktop view.
+An owner editing their own site has no way to see that at all.
+
+Note when building: the editor's own chrome (the dock, the tool panels)
+must not be scaled with the page -- it is the app talking, not the site,
+and it should stay at its own size while the CANVAS narrows. That is the
+chrome-vs-content boundary again, in a new place.
+
