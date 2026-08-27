@@ -5791,3 +5791,30 @@ it now -- and a half-written sentence never becomes the saved copy.
 Writing into a column of text boxes and pressing Preview afterwards is
 guessing with an extra step.
 
+### The control was there, and unreachable (2026-08-27)
+
+"I don't see the preview dropdown." It was on the page -- confirmed in
+the live HTML -- and on a phone it was off the right-hand edge.
+
+The admin bar is one `nowrap` row that scrolls sideways. Measured at
+390px: **869px of controls in 390px of bar**, so five of its seven were
+off screen, including the mode switch, the page picker and Preview at… .
+A sideways scroll inside a fixed 47px strip is not something anybody
+finds, and nothing on screen suggests there is more.
+
+It wraps below 900px now -- **900, not 760, because the breakpoint is the
+content's own width and a tablet at 768 was still losing two of them.**
+Nothing off screen at 390, 768, 1024 or 1400.
+
+**And the bar is sticky rather than fixed.** Fixed needs the body to
+reserve exactly the bar's height; it reserved a hard-coded 40px against a
+bar 47px tall, so seven pixels of every page have always sat underneath
+it -- on every screen, since long before today. Wrapping made that worse,
+because a wrapped bar's height depends on how many rows it takes and no
+constant can know that. Sticky takes its own space and still stays put
+while scrolling, which is what fixed was wanted for.
+
+The lesson is about the report, not the bar: "I can't see X" was true,
+and X was present, styled and working. Checking that it renders answers a
+different question from whether anybody can reach it.
+
