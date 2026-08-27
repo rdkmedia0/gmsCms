@@ -216,7 +216,7 @@
   <h2>What has gone out</h2>
   <div class="table-scroll">
     <table class="simple-table">
-      <thead><tr><th>When</th><th>Subject</th><th>Sent to</th></tr></thead>
+      <thead><tr><th>When</th><th>Subject</th><th>Sent to</th><th></th></tr></thead>
       <tbody>
         {% for h in history %}
         <tr>
@@ -235,6 +235,17 @@
             {% endif %}
           </td>
           <td>{{ h.recipients }}{% if h.audience == 'customers' %} <span class="hint">(customers)</span>{% endif %}{% if h.failed %} <span class="hint">({{ h.failed }} failed)</span>{% endif %}</td>
+          <td>
+            {#  Per row, with a confirmation that says what is lost. This
+                line is the record that the send happened; removing it is
+                a deliberate act, not tidying. #}
+            <form method="post" action="{{ url_for('admin.newsletter_send_forget', send_id=h.id) }}"
+                  class="cms-delete-form"
+                  data-confirm="Remove this from the record of what you have sent? Nothing reaches the people it went to — but this line is how you would answer &quot;you emailed me&quot; later, and nothing else keeps it.">
+              <button type="submit" class="icon-btn"
+                      title="Remove this send from the record. The email itself has already gone; this only forgets that it did.">&times;</button>
+            </form>
+          </td>
         </tr>
         {% endfor %}
       </tbody>
@@ -243,4 +254,5 @@
 </div>
 {% endif %}
 
+<script src="{{ static_url('js/admin/modal.js') }}"></script>
 {% endblock %}

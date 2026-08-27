@@ -5901,3 +5901,24 @@ post's own picture are different things. They are, and the owner was
 still right: there is one Image button in front of somebody writing a
 post, and what it should do is the obvious thing.
 
+### Taking things off again (2026-08-27)
+
+Two removals, and they are not the same kind of act.
+
+**A post's picture** now comes off from where it went on: a Remove
+control on the picture itself, under the toolbar that set it. Nothing to
+weigh -- a picture the owner does not want is simply not the post's
+picture, and the file stays in the Media Library either way.
+
+**A line from what has gone out** is different, and the confirmation says
+so rather than asking "are you sure": *this line is how you would answer
+"you emailed me" later, and nothing else keeps it*. The send record
+deliberately outlives the page or post it came from -- that is why it
+carries no foreign key -- so removing one is a per-row act, not a Clear
+History button. The same distinction the subscriber screen already draws
+between unsubscribing somebody and erasing them.
+
+It touches nothing about anybody's subscription or consent. Those live on
+`subscribers` and answer a different question: whether you were allowed
+to write to somebody is not the same as whether you did.
+

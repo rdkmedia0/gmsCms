@@ -324,6 +324,22 @@ def _post_view_url(db, blog, post):
                                      post_slug=post["slug"]), request.host_url)
 
 
+@bp.route("/newsletters/sent/<int:send_id>/delete", methods=["POST"])
+@login_required
+def newsletter_send_forget(send_id):
+    """Takes one line off the record of what has gone out.
+
+    Offered because it is the owner's record of their own site. Worth
+    knowing what it costs, which the confirmation says: this line is how
+    "you emailed me" is answered later, and nothing else keeps it.
+    """
+    db = get_db()
+    newsletter.forget_send(db, send_id)
+    db.commit()
+    flash("Removed from the record. The people it went to are unaffected.", "success")
+    return redirect(url_for("admin.newsletters"))
+
+
 @bp.route("/newsletters/wrapper", methods=["POST"])
 @login_required
 def newsletter_wrapper():

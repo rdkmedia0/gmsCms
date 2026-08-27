@@ -361,6 +361,22 @@ def history(db, kind=None, target_id=None, limit=50):
     return db.execute(sql + " ORDER BY s.id DESC LIMIT ?", (*params, limit)).fetchall()
 
 
+def forget_send(db, send_id):
+    """Removes one line from what has gone out.
+
+    Kept deliberate rather than easy. The send record is evidence: it is
+    how an owner answers "you emailed me" a year later, and it survives
+    the page or post being deleted for exactly that reason. So removing
+    one is a per-row act with a confirmation, not a Clear History button
+    -- the same distinction the subscriber screen already draws between
+    unsubscribing somebody and erasing them.
+
+    What it does NOT touch is anybody's subscription or consent record.
+    Those live on `subscribers` and are a different question.
+    """
+    db.execute("DELETE FROM newsletter_sends WHERE id = ?", (send_id,))
+
+
 def last_send(db, kind, target_id):
     return db.execute(
         "SELECT * FROM newsletter_sends WHERE target_kind = ? AND target_id = ? "
