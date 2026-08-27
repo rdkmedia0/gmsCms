@@ -975,6 +975,17 @@ li.cms-menu-divider { display: block; width: auto; height: 1px; margin: 4px 8px;
 .block-html {
   box-shadow: var(--site-shadow, var(--shadow-panel, none));
   border-radius: var(--site-radius, var(--corner-panel, 0));
+  /*  Capped, and the two declarations are deliberate. A stadium reaches
+      furthest INTO its box at the top and bottom, which is exactly where
+      the first blog card and the first timeline marker sit -- so no
+      amount of uniform side padding clears it, and only a shallower
+      curve does.
+      The second declaration is invalid when --site-radius is a
+      multi-value shorthand (cut-corner is "0 32px 0 32px"), and an
+      invalid declaration is DISCARDED, leaving the line above it
+      standing. So cut-corner keeps its shape and a pill gets capped,
+      from one rule and without being able to select on the value. */
+  border-radius: min(var(--site-radius, var(--corner-panel, 0px)), 64px);
   padding: var(--site-radius-pad, var(--pad-panel, 0));
 }
 /*  A menu block is one of these shapes lying down: wide and short, with
@@ -1020,7 +1031,12 @@ video, .cms-media video, .cms-video {
 }
 .cms-card-shape { border-radius: var(--site-radius, var(--corner-card, 0)); }
 .cms-banner { border-radius: var(--site-radius, var(--corner-banner, 0)); }
-.cms-blog-card { border-radius: var(--site-radius, var(--corner-post, 10px)); }
+  /*  Capped like .block-html above, and for the same reason: a card's
+      title and date start at its top-left, which is the part of a
+      stadium that is not there. The second declaration is discarded when
+      --site-radius is a multi-value shorthand, leaving the first. */
+  .cms-blog-card { border-radius: var(--site-radius, var(--corner-post, 10px));
+                   border-radius: min(var(--site-radius, var(--corner-post, 10px)), 40px); }
 
 /*  A section's own box: the band its background colour or picture paints.
     It reads the same cascade as everything else, the site-wide level
@@ -1714,7 +1730,7 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); align-items: stretch; }
 .cms-price-tier { display: flex; flex-direction: column; gap: 12px; padding: var(--site-radius-pad, 26px 22px);
   border: 1px solid var(--primary-200, rgba(128,128,128,.28));
-  border-radius: var(--site-radius, 10px); background: var(--primary-50, #fff); }
+  border-radius: var(--site-radius, 10px); border-radius: min(var(--site-radius, 10px), 44px); background: var(--primary-50, #fff); }
 .cms-price-tier.is-featured { border-color: var(--primary, #2563eb); border-width: 2px;
   box-shadow: 0 12px 32px -18px var(--primary-700, rgba(0,0,0,.4)); }
 .cms-price-name { margin: 0; font-size: 1.05rem; letter-spacing: .04em; text-transform: uppercase;
@@ -1734,7 +1750,7 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
 .cms-price-btn:hover { background: var(--primary-700, #1d4ed8); color: #fff; }
 
 /* --- Testimonial --------------------------------------------------- */
-.cms-quote { margin: 0; padding: var(--site-radius-pad, 26px); border-radius: var(--site-radius, 10px); display: grid; gap: 14px; }
+.cms-quote { margin: 0; padding: var(--site-radius-pad, 26px); border-radius: var(--site-radius, 10px); border-radius: min(var(--site-radius, 10px), 44px); display: grid; gap: 14px; }
 .cms-quote-card { background: var(--primary-50, #f8fafc);
   border: 1px solid var(--primary-100, rgba(128,128,128,.2)); }
 .cms-quote-large { text-align: center; padding: 40px 24px; }
@@ -1752,7 +1768,7 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
 /* --- Numbers ------------------------------------------------------- */
 .cms-stat-row { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   text-align: center; }
-.cms-stat { display: grid; gap: 4px; padding: var(--site-radius-pad, 20px 12px); border-radius: var(--site-radius, 10px);
+.cms-stat { display: grid; gap: 4px; padding: var(--site-radius-pad, 20px 12px); border-radius: var(--site-radius, 10px); border-radius: min(var(--site-radius, 10px), 44px);
   background: var(--primary-50, transparent); }
 .cms-stat-value { font-size: 2.6rem; font-weight: 700; line-height: 1;
   color: var(--primary-700, #1d4ed8); font-variant-numeric: tabular-nums; }
@@ -1793,7 +1809,7 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
 
 /* --- Call to action ------------------------------------------------ */
 .cms-cta { display: grid; gap: 12px; justify-items: center; text-align: center;
-  padding: var(--site-radius-pad, 44px 28px); border-radius: var(--site-radius, 12px); }
+  padding: var(--site-radius-pad, 44px 28px); border-radius: var(--site-radius, 12px); border-radius: min(var(--site-radius, 12px), 44px); }
 .cms-cta h2 { margin: 0; font-size: 1.9rem; }
 .cms-cta p { margin: 0; max-width: 52ch; opacity: .9; }
 .cms-cta-solid { background: var(--primary, #2563eb); color: var(--primary-on, #fff); }
@@ -1807,7 +1823,7 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
 .cms-cta-btn:hover { filter: brightness(1.08); }
 
 /* --- Email sign-up ------------------------------------------------- */
-.cms-newsletter { display: grid; gap: 10px; padding: var(--site-radius-pad, 30px 24px); border-radius: var(--site-radius, 12px);
+.cms-newsletter { display: grid; gap: 10px; padding: var(--site-radius-pad, 30px 24px); border-radius: var(--site-radius, 12px); border-radius: min(var(--site-radius, 12px), 44px);
   background: var(--primary-50, #f8fafc); border: 1px solid var(--primary-100, rgba(128,128,128,.2)); }
 .cms-newsletter h2 { margin: 0; font-size: 1.4rem; }
 .cms-newsletter p { margin: 0; opacity: .85; }
