@@ -1,7 +1,0 @@
-{% from "emails/layouts/_parts.html" import heading, body %}
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-  <tr><td>
-    {{ heading(v.heading, look, slot='heading', edit=edit) }}
-    {{ body(v.body, look, slot='body', edit=edit) }}
-  </td></tr>
-</table>

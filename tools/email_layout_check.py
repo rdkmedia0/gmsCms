@@ -33,6 +33,7 @@ def _source(rel):
 
 ISSUE_EDIT = _source("app/templates/admin/newsletter_issue_edit.html")
 EDITOR_JS = _source("app/static/js/admin/newsletter-editor.js")
+BLOCKS_TPL = _source("app/templates/emails/blocks.html")
 
 
 def check(what, ok, detail=""):
@@ -63,7 +64,17 @@ with app.test_request_context("/"):
     print("-" * 68)
     bodies = {}
     for key, name, blurb in email_layouts.choices():
-        html = email_layouts.render(key, FILLED, look)
+        #  Its own starting arrangement, filled in -- a layout IS its
+        #  blocks now, so rendering it any other way would check
+        #  something nobody ever sends.
+        blocks = email_layouts.starting_blocks(key)
+        for block in blocks:
+            if block["type"] == "image":
+                block["src"] = "https://example.test/p.png"
+            elif block["type"] == "button":
+                block["label"] = "Read it"
+                block["url"] = "https://example.test/"
+        html = email_layouts.render(blocks, look)
         bodies[key] = html
         check("%s renders something" % name, len(html.strip()) > 80)
 
@@ -101,10 +112,16 @@ with app.test_request_context("/"):
     print()
     print("What the owner typed is safe")
     print("-" * 68)
-    letter = bodies["letter"]
-    check("angle brackets are escaped, not rendered", "&lt;&amp;&gt;" in letter, letter[:70])
-    check("a blank line makes a new paragraph", letter.count("<p ") >= 2)
-    check("a single newline stays a line break", "<br>" in letter)
+    #  A fixture of its own: reading these off whatever words a layout
+    #  happens to ship made the check depend on the sample text, so
+    #  rewording a template broke it.
+    typed = email_layouts.render([{
+        "type": "text",
+        "text": "<&> first line" + NL + "second line" + NL + NL + "a new paragraph",
+    }], look)
+    check("angle brackets are escaped, not rendered", "&lt;&amp;&gt;" in typed, typed[:70])
+    check("a blank line makes a new paragraph", typed.count("<p ") >= 2, typed[:90])
+    check("a single newline stays a line break", "<br>" in typed, typed[:90])
 
     print()
     print("The vocabulary a body may use, and only that")
@@ -152,9 +169,12 @@ with app.test_request_context("/"):
           all(st[k] in joined for k in ("p", "h2", "h3", "ul", "li", "a")))
     check("the screen hands those styles to the editor",
           "cms-email-block-styles" in ISSUE_EDIT and "block_styles" in ISSUE_EDIT)
+    #  Per block, not one set for the whole email: a block can carry its
+    #  own font and colour now, so the editor reads the styles off the
+    #  block it is editing rather than off the page.
     check("the editor reads them rather than repeating them",
-          "cms-email-block-styles" in EDITOR_JS
-          and "STYLES[" in EDITOR_JS)
+          "data-styles" in BLOCKS_TPL and "stylesFor" in EDITOR_JS
+          and "dataset.styles" in EDITOR_JS)
 
     print()
     print("The editor is the email, with tools")
@@ -176,14 +196,62 @@ with app.test_request_context("/"):
     print("The screen can build itself, and refuse for a reason")
     print("-" * 68)
     for key, name, blurb in email_layouts.choices():
-        fields = email_layouts.fields_for(key)
-        check("%s: every field has a label" % key, all(f["label"] for f in fields))
-        check("%s: every field has a hint or needs none" % key,
-              all("hint" in f for f in fields))
-    check("an empty announcement says what is missing",
-          email_layouts.missing("announcement", {}) == ["Heading", "Button", "Button goes to"],
-          str(email_layouts.missing("announcement", {})))
-    check("a filled one is ready to send", email_layouts.missing("announcement", FILLED) == [])
+        blocks = email_layouts.starting_blocks(key)
+        check("%s: lays out real blocks" % key, len(blocks) > 0)
+        check("%s: every block is one this app can render" % key,
+              all(b["type"] in email_layouts.BLOCK_TYPES for b in blocks))
+    check("every kind of block has a name and a hint",
+          all(v.get("name") and v.get("hint") for v in email_layouts.BLOCK_TYPES.values()))
+    check("the Insert menu offers every kind, once",
+          sorted(email_layouts.BLOCK_ORDER) == sorted(email_layouts.BLOCK_TYPES))
+
+    #  What stops a send is a block that would arrive BROKEN, named so the
+    #  refusal says what to do rather than that something is wrong.
+    empty = email_layouts.missing([])
+    check("an empty newsletter says so", empty == ["There are no words in it yet"], str(empty))
+    half = email_layouts.missing([
+        {"type": "heading", "text": "Hello"},
+        {"type": "button", "label": "Book now", "url": ""},
+        {"type": "image", "src": ""},
+    ])
+    check("a button with nowhere to go is named",
+          any("no web address" in g for g in half), str(half))
+    check("an empty picture slot is named",
+          any("no picture" in g for g in half), str(half))
+    check("a newsletter with words and nothing broken is ready",
+          email_layouts.missing([{"type": "heading", "text": "Hello"}]) == [])
+
+    #  Every style a block may carry has to survive being written down and
+    #  read back, or a control that appears to work quietly does nothing.
+    styled = email_layouts.normalise([{
+        "type": "text", "text": "Hi",
+        "style": {"bg": "#fff3cd", "color": "#402000", "align": "center",
+                  "font": "Georgia, 'Times New Roman', serif",
+                  "shadow": "3px 3px red"},
+    }])
+    check("a block keeps the styles an inbox honours",
+          styled[0]["style"] == {"bg": "#fff3cd", "color": "#402000",
+                                 "align": "center",
+                                 "font": "Georgia, 'Times New Roman', serif"},
+          str(styled[0]["style"]))
+    check("...and drops anything else", "shadow" not in styled[0]["style"])
+    check("a colour that is not a colour is refused",
+          email_layouts.normalise([{"type": "text", "style": {"bg": "red; x:y"}}])[0]["style"] == {})
+    check("a font nobody has is refused",
+          email_layouts.normalise([{"type": "text",
+                                    "style": {"font": "Comic Sans MS"}}])[0]["style"] == {})
+    check("a block type this app cannot render is dropped",
+          email_layouts.normalise([{"type": "carousel"}]) == [])
+
+    #  Somebody's draft, written before blocks existed.
+    old = email_layouts.from_named_slots(
+        {"heading": "Autumn", "body": "Words.", "button_label": "Go",
+         "button_url": "https://example.test/"})
+    check("a newsletter written the old way still opens",
+          [b["type"] for b in old] == ["heading", "text", "button"],
+          str([b["type"] for b in old]))
+    check("...with what was written still in it",
+          old[0]["text"] == "Autumn" and old[2]["url"] == "https://example.test/")
 
     print()
     print("The wrapper does not undo the layout")
@@ -225,6 +293,12 @@ print("-" * 68)
 #  is looked for by code from now on, across everything shipped.
 import os as _os
 WHITESPACE = (chr(9), chr(10), chr(13))
+#  Not a control character, and every bit as invisible: a U+00A0 that
+#  got into a regex or an identifier reads as a space in every editor
+#  and matches nothing. Allowed in TEMPLATES, where it is a real
+#  typographic choice, and never in code.
+NBSP = chr(0xA0)
+_nbsp = []
 _bad = []
 for _root, _dirs, _files in _os.walk(_os.path.join(_here, "app")):
     _dirs[:] = [d for d in _dirs if d not in ("__pycache__", "fonts", "themes", "uploads")]
@@ -238,7 +312,12 @@ for _root, _dirs, _files in _os.walk(_os.path.join(_here, "app")):
             continue
         if any(ord(c) < 32 and c not in WHITESPACE for c in _s):
             _bad.append(_os.path.relpath(_p, _here))
+        #  In CODE only: a template may legitimately want one between two
+        #  words that must not be split across a line.
+        if _f.endswith((".py", ".css", ".js")) and NBSP in _s:
+            _nbsp.append(_os.path.relpath(_p, _here))
 check("no control characters anywhere in app/", not _bad, ", ".join(_bad[:3]))
+check("no invisible non-breaking spaces in code", not _nbsp, ", ".join(_nbsp[:3]))
 
 print()
 print("%d checks, %d failed" % (passed + failed, failed))

@@ -7,92 +7,289 @@ because each is a marker resolved against live data that does not exist
 in an inbox; Search arrives as a magnifying glass; a Video gallery as
 three play triangles; Columns as the literal text `{}`.
 
-So a newsletter is not a page. It is a LAYOUT with named slots the owner
-fills in -- a table structure, because table structure is what email
-clients actually render, with every style inline because most clients
-strip a stylesheet.
+So a newsletter is not a page. It is an ordered list of BLOCKS -- a table
+structure, because table structure is what email clients actually render,
+with every style inline because most clients strip a stylesheet.
+
+A LAYOUT is a starting arrangement of those blocks, and nothing more.
+That is the same shape `PAGE_LAYOUTS` takes for pages, and it is here for
+the same reason. A layout used to be a fixed set of named slots, which
+meant a letter could never carry a picture and a story could never carry
+two, and every newsletter had exactly the parts its layout declared
+whether it wanted them or not. Now a template seeds the blocks and every
+one of them can be added, removed, reordered or restyled afterwards.
+Nothing later has to ask which layout a newsletter was made from.
 
 What a layout does NOT decide: the ground, the card, the sender line and
 the unsubscribe link. Those come from `newsletter.to_email_html`'s
 wrapper and stay there, because two of them are legally required and one
 of them is the reason the card is light (see that module's own notes).
 
-A layout is a Jinja template under `templates/emails/layouts/`, and its
-fields are declared here so the editing screen can build itself: one
-labelled control per field, a hint under each, in the same shape as
-every other admin form.
+What a BLOCK may be styled with is short, and the test for admitting a
+control is two-part: an inbox has to honour it AND the stored form has to
+be able to write it down. Background, text colour, alignment and a font
+family all pass -- they are inline attributes on a table cell, which is
+the one thing every client renders. `@font-face` does not: Gmail strips
+it, so a font choice here is a real installed family and never a
+webfont, however good the site's own looks.
 """
 import re
 from html import escape
 
 from flask import render_template
 
-#  Field kinds, and what the editor makes of each. Deliberately few: an
-#  owner filling in a newsletter should recognise every control from
-#  somewhere else in this app.
-TEXT = "text"            # one line
-PARAGRAPHS = "paragraphs"  # several, blank line between
-IMAGE = "image"          # a picture from the media library
-URL = "url"              # somewhere to send a reader
+#  ---------------------------------------------------------------
+#  What a newsletter can be made of
+#  ---------------------------------------------------------------
+#
+#  A closed set, like PAGE_TYPES and for the same reason: everything in
+#  it has to survive an inbox, which is a question with a fixed answer
+#  rather than a matter of taste. A new kind of block is a considered
+#  addition to this dictionary, never something a template can invent.
+
+BLOCK_TYPES = {
+    "heading": {
+        "name": "Heading",
+        "icon": "H",
+        "hint": "A line that introduces what follows.",
+    },
+    "text": {
+        "name": "Words",
+        "icon": "¶",
+        "hint": "Paragraphs. Select some words to make them bold, or a link.",
+    },
+    "image": {
+        "name": "Picture",
+        "icon": "\U0001f5bc️",
+        "hint": "Shown the full width of the card. Landscape works best.",
+    },
+    "button": {
+        "name": "Button",
+        "icon": "▭",
+        "hint": "One thing to click. Drawn as a table, so Outlook renders it.",
+    },
+    "divider": {
+        "name": "A line",
+        "icon": "—",
+        "hint": "A rule, to separate one part from the next.",
+    },
+}
+
+#  The order the Insert menu offers them in -- most-used first, rather
+#  than however the dictionary happens to iterate.
+BLOCK_ORDER = ("heading", "text", "image", "button", "divider")
+
+#  Real installed families only. A webfont cannot travel: Gmail strips
+#  @font-face, so a name here has to be something already on the machine
+#  reading the mail. "" means "whatever the site uses", which is the
+#  default and what a newsletter keeps unless somebody chooses otherwise.
+EMAIL_FONTS = (
+    ("", "The site's own"),
+    ("Arial, Helvetica, sans-serif", "Arial"),
+    ("Georgia, 'Times New Roman', serif", "Georgia"),
+    ("'Times New Roman', Times, serif", "Times New Roman"),
+    ("Verdana, Geneva, sans-serif", "Verdana"),
+    ("'Trebuchet MS', Tahoma, sans-serif", "Trebuchet MS"),
+    ("'Courier New', Courier, monospace", "Courier New"),
+)
+
+ALIGNMENTS = (("left", "Left"), ("center", "Centred"), ("right", "Right"))
 
 
-def _field(key, label, kind, hint, required=False):
-    return {"key": key, "label": label, "kind": kind, "hint": hint, "required": required}
+def blank(kind):
+    """A new block of one kind, with everything it needs to be drawn.
+
+    An empty block still has to be visible in the editor -- a slot you
+    cannot see is a slot you cannot fill -- so each carries whatever the
+    canvas needs to draw its empty shape.
+    """
+    kind = kind if kind in BLOCK_TYPES else "text"
+    made = {"type": kind, "style": {}}
+    if kind == "heading":
+        made.update({"text": "", "level": 2})
+    elif kind == "text":
+        made["text"] = ""
+    elif kind == "image":
+        made.update({"src": "", "alt": "", "url": ""})
+    elif kind == "button":
+        made.update({"label": "", "url": ""})
+    return made
+
+
+def _clean_style(style):
+    """Only what an inbox honours, and only in a form it can be given."""
+    style = style if isinstance(style, dict) else {}
+    out = {}
+    for key in ("bg", "color"):
+        if _is_hex(style.get(key)):
+            out[key] = style[key]
+    font = style.get("font") or ""
+    if font and font in dict(EMAIL_FONTS):
+        out["font"] = font
+    align = style.get("align") or ""
+    if align in dict(ALIGNMENTS):
+        out["align"] = align
+    return out
+
+
+def _is_hex(value):
+    return bool(value) and bool(re.match(r"^#[0-9a-fA-F]{6}$", str(value)))
+
+
+def normalise(blocks):
+    """Whatever arrived, as a list of blocks this module can render.
+
+    Forgiving on purpose: a newsletter written before a block type
+    existed, or saved by a browser that dropped a field, should open and
+    be fixable rather than fail.
+    """
+    if not isinstance(blocks, list):
+        return []
+    out = []
+    for raw in blocks:
+        if not isinstance(raw, dict):
+            continue
+        kind = raw.get("type")
+        if kind not in BLOCK_TYPES:
+            continue
+        made = blank(kind)
+        for key in list(made):
+            if key in ("type", "style"):
+                continue
+            if raw.get(key) is not None:
+                made[key] = raw[key]
+        if kind == "heading":
+            try:
+                made["level"] = int(made.get("level") or 2)
+            except (TypeError, ValueError):
+                made["level"] = 2
+            if made["level"] not in (1, 2, 3):
+                made["level"] = 2
+        made["style"] = _clean_style(raw.get("style"))
+        out.append(made)
+    return out
+
+
+#  A newsletter written under the old named-slot model, read as blocks.
+#  Kept because these are somebody's drafts: the shape changed, what they
+#  wrote did not, and an upgrade that silently empties a draft is worse
+#  than one that refuses to run.
+_OLD_ORDER = (
+    ("image", "image"),
+    ("heading", "heading"),
+    ("body", "text"),
+    ("left_heading", "heading"),
+    ("left_body", "text"),
+    ("right_heading", "heading"),
+    ("right_body", "text"),
+)
+
+
+def from_named_slots(values):
+    """The old {heading: ..., body: ...} shape, as blocks."""
+    values = values or {}
+    out = []
+    for key, kind in _OLD_ORDER:
+        text = (values.get(key) or "").strip()
+        if not text:
+            continue
+        if kind == "image":
+            out.append(dict(blank("image"), src=text))
+        elif kind == "heading":
+            out.append(dict(blank("heading"), text=text))
+        else:
+            out.append(dict(blank("text"), text=text))
+    label = (values.get("button_label") or "").strip()
+    url = (values.get("button_url") or "").strip()
+    if label or url:
+        out.append(dict(blank("button"), label=label, url=url,
+                        style={"align": "center"}))
+    return normalise(out)
+
+
+#  ---------------------------------------------------------------
+#  Layouts: a starting arrangement, not a kind
+#  ---------------------------------------------------------------
+
+def _h(text, level=2, **style):
+    return {"type": "heading", "text": text, "level": level, "style": style}
+
+
+def _t(text, **style):
+    return {"type": "text", "text": text, "style": style}
+
+
+def _img(**style):
+    return {"type": "image", "src": "", "alt": "", "url": "", "style": style}
+
+
+def _btn(label, **style):
+    return {"type": "button", "label": label, "url": "", "style": style}
+
+
+def _rule(**style):
+    return {"type": "divider", "style": style}
 
 
 LAYOUTS = {
     "letter": {
         "name": "A letter",
-        "blurb": "Just words. A heading and as much as you want to say — the plainest thing to send, and the one least likely to look wrong anywhere.",
-        "fields": [
-            _field("heading", "Heading", TEXT, "The first thing they read. Say what this is about.", True),
-            _field("body", "What you want to say", PARAGRAPHS,
-                   "Leave a blank line between paragraphs. No formatting needed.", True),
+        "blurb": "Just words. The plainest thing to send, and the one least likely to look wrong anywhere.",
+        "blocks": [
+            _h("A heading"),
+            _t("What you want to say."),
         ],
     },
     "story": {
         "name": "One story with a picture",
         "blurb": "A picture, a heading, some words and a button. The usual shape for announcing one thing.",
-        "fields": [
-            _field("image", "Picture", IMAGE, "Shown full width at the top. Landscape works best."),
-            _field("heading", "Heading", TEXT, "One line, above the words.", True),
-            _field("body", "What you want to say", PARAGRAPHS, "Leave a blank line between paragraphs.", True),
-            _field("button_label", "Button", TEXT, "What the button says, e.g. 'Read the rest'. Leave blank for no button."),
-            _field("button_url", "Button goes to", URL, "The web address the button opens."),
+        "blocks": [
+            _img(),
+            _h("A heading"),
+            _t("What you want to say."),
+            _btn("Read the rest", align="center"),
         ],
     },
     "two-up": {
-        "name": "Two things side by side",
-        "blurb": "Two short items in a row, which fall one above the other on a phone. Good for a round-up.",
-        "fields": [
-            _field("left_heading", "First heading", TEXT, "", True),
-            _field("left_body", "First item", PARAGRAPHS, "Keep it short — it only has half the width."),
-            _field("right_heading", "Second heading", TEXT, "", True),
-            _field("right_body", "Second item", PARAGRAPHS, "Keep it short — it only has half the width."),
+        "name": "Two things, one after the other",
+        "blurb": "Two short items with a line between them. Good for a round-up.",
+        "blocks": [
+            _h("The first thing", level=3),
+            _t("Keep it short."),
+            _rule(),
+            _h("The second thing", level=3),
+            _t("Keep this one short too."),
         ],
     },
     "announcement": {
         "name": "An announcement",
         "blurb": "A big heading, a line or two, and one button. For when there is exactly one thing to say.",
-        "fields": [
-            _field("heading", "Heading", TEXT, "Big and short. This is the whole message.", True),
-            _field("body", "A line or two", PARAGRAPHS, "Optional. Anything longer belongs in a letter."),
-            _field("button_label", "Button", TEXT, "What the button says.", True),
-            _field("button_url", "Button goes to", URL, "The web address the button opens.", True),
+        "blocks": [
+            _h("The announcement", level=1, align="center"),
+            _t("A line or two.", align="center"),
+            _btn("Find out more", align="center"),
         ],
     },
 }
 
 
 def choices():
-    """(key, name, blurb) for the picker, in a fixed order so the list does
-    not shuffle between visits."""
+    """(key, name, blurb) for the dropdown, in a fixed order so the list
+    does not shuffle between visits."""
     return [(key, LAYOUTS[key]["name"], LAYOUTS[key]["blurb"])
             for key in ("letter", "story", "two-up", "announcement")]
 
 
-def fields_for(key):
-    return LAYOUTS.get(key, LAYOUTS["letter"])["fields"]
+def starting_blocks(key):
+    """A fresh copy of one layout's arrangement.
+
+    A copy, because these are module-level dictionaries: handing the real
+    ones out would let the first newsletter somebody wrote edit the
+    template for every newsletter written after it.
+    """
+    layout = LAYOUTS.get(key) or LAYOUTS["letter"]
+    return normalise([dict(b, style=dict(b.get("style") or {}))
+                      for b in layout["blocks"]])
 
 
 #  Schemes a link in a newsletter may use. The same list a button holds
@@ -133,41 +330,67 @@ def _spans(escaped):
     return out
 
 
-def block_styles(look, size=16):
-    """The inline style each kind of block carries.
+def block_styles(look, size=16, style=None):
+    """The inline style each kind of thing inside a block carries.
 
     Named separately because the EDITOR needs the same strings: a heading
     made by the toolbar has to arrive looking exactly like the heading
     that will be sent, and the only way to be sure of that is for both to
-    read the same dictionary rather than two hand-copied lists that drift.
+    read the same dictionary rather than two hand-copied lists that
+    drift.
+
+    `style` is one block's own overrides. A block that says nothing gets
+    the site's look, which is what almost every block does.
     """
     look = look or {}
-    body_font = look.get("body_font") or "Arial, sans-serif"
-    heading_font = look.get("heading_font") or body_font
+    style = style or {}
+    body_font = style.get("font") or look.get("body_font") or "Arial, sans-serif"
+    heading_font = style.get("font") or look.get("heading_font") or body_font
     accent = look.get("accent") or "#1a5fd0"
+    body_colour = style.get("color") or "#333c47"
+    head_colour = style.get("color") or "#1c2430"
     return {
-        "p": "margin:0 0 14px;font-size:%dpx;line-height:1.65;color:#333c47;"
-             "font-family:%s;" % (size, body_font),
-        "li": "margin:0 0 8px;font-size:%dpx;line-height:1.6;color:#333c47;"
-              "font-family:%s;" % (size, body_font),
+        "p": "margin:0 0 14px;font-size:%dpx;line-height:1.65;color:%s;"
+             "font-family:%s;" % (size, body_colour, body_font),
+        "li": "margin:0 0 8px;font-size:%dpx;line-height:1.6;color:%s;"
+              "font-family:%s;" % (size, body_colour, body_font),
         "ul": "margin:0 0 16px;padding-left:22px;",
-        "h2": "margin:22px 0 10px;font-size:%dpx;line-height:1.3;font-weight:700;"
-              "color:#1c2430;font-family:%s;" % (size + 5, heading_font),
-        "h3": "margin:18px 0 8px;font-size:%dpx;line-height:1.35;font-weight:700;"
-              "color:#1c2430;font-family:%s;" % (size + 1, heading_font),
+        "h1": "margin:0 0 14px;font-size:%dpx;line-height:1.2;font-weight:700;"
+              "color:%s;font-family:%s;" % (size + 10, head_colour, heading_font),
+        "h2": "margin:0 0 10px;font-size:%dpx;line-height:1.3;font-weight:700;"
+              "color:%s;font-family:%s;" % (size + 5, head_colour, heading_font),
+        "h3": "margin:0 0 8px;font-size:%dpx;line-height:1.35;font-weight:700;"
+              "color:%s;font-family:%s;" % (size + 1, head_colour, heading_font),
         "a": "color:%s;text-decoration:underline;" % accent,
     }
 
 
-def rich(text, look, size=16):
-    """One body field as finished, inline-styled email blocks.
+def cell_style(style):
+    """What the table cell around one block carries.
+
+    Background and alignment live here rather than on the words, because
+    a background on a heading paints only as far as the letters go: the
+    cell is the box, so the cell is what gets the colour. Padding follows
+    the background for the same reason -- an unpadded colour hugs the
+    text and looks like a mistake.
+    """
+    style = style or {}
+    bits = ["text-align:%s;" % (style.get("align") or "left")]
+    if style.get("bg"):
+        bits.append("background-color:%s;" % style["bg"])
+        bits.append("padding:18px 20px;")
+    return "".join(bits)
+
+
+def rich(text, look, size=16, style=None):
+    """One text block as finished, inline-styled email blocks.
 
     Every style is written onto the tag itself, because most clients
     strip a stylesheet -- which is also why this returns whole blocks
     rather than text for a macro to wrap: a heading and a bullet are not
     paragraphs and cannot be styled as though they were.
     """
-    st = block_styles(look, size)
+    st = block_styles(look, size, style)
     _LINK_STYLE[0] = st["a"]
     para, item = st["p"], st["li"]
     head = {2: st["h2"], 3: st["h3"]}
@@ -225,71 +448,77 @@ def rich(text, look, size=16):
 def paragraphs(text):
     """Plain text as escaped paragraphs.
 
-    The owner never types HTML -- this app has no raw-HTML box for
-    anything a person writes, and an email is the worst place to start.
+    Still used by anything that wants the words without a look to style
+    them with.
     """
     out = []
     for block in re.split(r"\n\s*\n", (text or "").strip()):
         block = block.strip()
         if block:
-            out.append(escape(block).replace("\n", "<br>"))
+            out.append(escape(block).replace(chr(10), "<br>"))
     return out
 
 
-def missing(key, values):
-    """Which required slots are still empty, by label, so the screen can
-    say what is stopping a send rather than refusing without a reason."""
-    return [f["label"] for f in fields_for(key)
-            if f["required"] and not (values or {}).get(f["key"], "").strip()]
+def describe(block):
+    """One block, named the way the editor labels it."""
+    return BLOCK_TYPES.get(block.get("type"), {}).get("name", "Block")
 
 
-#  Words for a specimen. Real sentences rather than "Lorem ipsum" or a
-#  field name, because the point of a specimen is to show what the shape
-#  does to WRITING -- how long a heading can be before it wraps, what two
-#  paragraphs look like beside a button.
-SAMPLE = {
-    "heading": "A quiet week, and one thing worth saying",
-    "body": ("I have been asked the same question three times this month."
-             + chr(10) * 2
-             + "When people say they want more time, they rarely mean more hours."),
-    "image": "",
-    "button_label": "Read the rest",
-    "button_url": "#",
-    "left_heading": "Evening slots",
-    "left_body": "Thursdays now run until 8pm.",
-    "right_heading": "Two spaces left",
-    "right_body": "The next block starts in October.",
-}
+def missing(blocks):
+    """What is still empty, by name, so the screen can say what is
+    stopping a send rather than refusing without a reason.
+
+    A block is only a problem if it would arrive BROKEN. An empty text
+    block is skipped on send and costs nothing; a button with words and
+    nowhere to go, or a picture slot with no picture, is a hole in the
+    email somebody meant to fill.
+    """
+    gaps = []
+    for i, block in enumerate(normalise(blocks), start=1):
+        kind = block["type"]
+        where = "%s %d" % (describe(block), i)
+        if kind == "button":
+            if block.get("label") and not block.get("url"):
+                gaps.append("%s has no web address" % where)
+            elif block.get("url") and not block.get("label"):
+                gaps.append("%s has no words on it" % where)
+        elif kind == "image" and not block.get("src"):
+            gaps.append("%s has no picture in it" % where)
+    if not any((b["type"] in ("heading", "text") and (b.get("text") or "").strip())
+               for b in normalise(blocks)):
+        gaps.insert(0, "There are no words in it yet")
+    return gaps
+
+
+def render(blocks, look, edit=False):
+    """The email BODY for one newsletter. The wrapper adds the rest.
+
+    `edit=True` returns the SAME email with its blocks opened up: each one
+    boxed and named, its words made editable in place, and the empty ones
+    drawn so the shape can be seen before it is filled. That is the whole
+    point -- the thing being written into is the thing being sent, rather
+    than a column of boxes beside a picture of it.
+
+    What an inbox receives is untouched by this: with edit false, not one
+    extra attribute is emitted.
+    """
+    prepared = []
+    for block in normalise(blocks):
+        made = dict(block)
+        made["cell"] = cell_style(block["style"])
+        made["st"] = block_styles(look, style=block["style"])
+        if block["type"] == "text":
+            made["html"] = rich(block.get("text") or "", look, style=block["style"])
+        prepared.append(made)
+    return render_template("emails/blocks.html", look=look, blocks=prepared, edit=edit)
 
 
 def sample(key, look):
     """One layout, filled in, for somebody choosing between them.
 
     A name and a sentence cannot show what a shape looks like -- which is
-    the whole basis on which one is picked. This renders the real layout
+    the whole basis on which one is picked. This renders the real blocks
     with real words, so the picker shows the thing itself rather than a
     description of it.
     """
-    return render(key, SAMPLE, look)
-
-
-def render(key, values, look, edit=False):
-    """The email BODY for one layout. The wrapper adds the rest.
-
-    `edit=True` returns the SAME email with its slots opened up: each one
-    named, the words made editable in place, and the empty ones drawn so
-    the shape can be seen before it is filled. That is the whole point --
-    the thing being written into is the thing being sent, rather than a
-    column of boxes beside a picture of it.
-
-    What an inbox receives is untouched by this: with edit false, not one
-    extra attribute is emitted.
-    """
-    key = key if key in LAYOUTS else "letter"
-    values = values or {}
-    prepared = {}
-    for field in fields_for(key):
-        raw = (values.get(field["key"]) or "").strip()
-        prepared[field["key"]] = (rich(raw, look) if field["kind"] == PARAGRAPHS
-                                  else raw)
-    return render_template("emails/layouts/%s.html" % key, look=look, v=prepared, edit=edit)
+    return render(starting_blocks(key), look)

@@ -40,9 +40,9 @@ app/
                        # card styling, starter-HTML builders, image-library
                        # listing — the biggest one, matches the biggest
                        # feature area
-    email_layouts.py   # what a NEWSLETTER is made of: the layouts and
-                       # their named fields, declared so the editing
-                       # screen builds itself. An email is not a page —
+    email_layouts.py   # what a NEWSLETTER is made of: the BLOCKS, and
+                       # the arrangements of them each template starts
+                       # from. An email is not a page —
                        # see "Newsletters" below.
     menu.py            # the Menu-tool builder, shared by body sections,
                        # template zones, and demo/package content
@@ -64,7 +64,12 @@ app/
     js/admin/           # extracted admin-panel JS — one file per template,
                          # plus shared helpers: modal.js (the cmsModal()
                          # confirm/prompt dialog), elapsed-timer.js (the
-                         # "Generating... Ns" counter pattern)
+                         # "Generating... Ns" counter pattern),
+                         # image-picker.js (window.cmsImagePicker -- the
+                         # Media Library chooser, pulled out of
+                         # inline-editor.js so an ADMIN screen can ask
+                         # for a picture without a second one being
+                         # written)
     js/inline-editor.js # the live-page WYSIWYG editor (contenteditable,
                          # drag-drop, uses window.cmsModal from modal.js)
     css/                # site-base.css (shared structure) + one theme.css
@@ -804,13 +809,37 @@ Each of these follows the structure above — thin routes, logic in
   survive the trip: measured, Blog/Shop/Buy button/Contact form/FAQ
   Reader arrive EMPTY (each is a marker resolved against live data an
   inbox does not have), Search arrives as a magnifying glass, and Columns
-  as the literal text `{}`. So a newsletter is being remade as a LAYOUT
-  with named slots — `services/email_layouts.py` plus table-structured
-  templates under `templates/emails/layouts/`, every style inline. The
-  layouts and their checks exist; the screen that uses them does not yet.
-  What the wrapper owns does not move and must not become editable: the
-  ground, the light card, the sender line and the unsubscribe link.
-  When adding a layout, add a template and an entry — never a tool.
+  as the literal text `{}`. So a newsletter is an ordered list of
+  **blocks** -- `email_layouts.BLOCK_TYPES` (heading, text, picture,
+  button, divider), rendered by ONE template,
+  `templates/emails/blocks.html`, which is both the email that is sent
+  and the canvas that is written into (`edit` is the only difference,
+  and with it false not one extra attribute is emitted). Table
+  structure, every style inline. What the wrapper owns does not move and
+  must not become editable: the ground, the light card, the sender line
+  and the unsubscribe link.
+- **A newsletter LAYOUT is a starting arrangement, not a kind** -- the
+  same shape `PAGE_LAYOUTS` takes for pages, and here for the same
+  reason. Layouts were a fixed set of named slots, so a letter could
+  never carry a picture and a story could never carry two, and every
+  newsletter had exactly the parts its layout declared whether it wanted
+  them or not. `starting_blocks(key)` seeds the blocks; every one can be
+  added, removed, reordered or restyled afterwards, and nothing later
+  asks which layout a newsletter was made from. Adding a layout is a
+  dictionary entry -- never a template, and never a tool. Adding a kind
+  of BLOCK is a considered addition to `BLOCK_TYPES`, because everything
+  in it has to survive an inbox.
+- **A block's style is admitted on two tests, not one**: an inbox has to
+  honour it AND the stored form has to be able to write it down.
+  Background, text colour, alignment and a font family pass -- they are
+  inline attributes on a table cell, which is the one thing every client
+  renders. `@font-face` fails (Gmail strips it), so `EMAIL_FONTS` is
+  real installed families only. This corrects an earlier, too-strong
+  reading that fonts and colours "mean nothing in an inbox": the real
+  reason those controls lied was that a flat text field could not record
+  them, which a block can. **A control that is discarded on save is a
+  control that lies** -- that rule stands, and the second test is what
+  it actually means.
 - **Newsletters**: `services/newsletter.py`. A newsletter IS a page,
   sent as email by translating its sections to inline-styled HTML. One
   message per person, refused without a postal address. `page_type=
@@ -880,16 +909,26 @@ Each of these follows the structure above — thin routes, logic in
   not a plain box: `## `/`### `, `**bold**`, `*italic*`,
   `[words](address)`, `- ` bullets (`email_layouts.rich`, escaped first
   and converted second -- the same shape `faq_markdown` takes, for the
-  same reasons). The editing canvas IS the email, and its toolbar is the
-  shared one with `include_layout=false`, because alignment, fonts and
-  colours mean nothing in an inbox and the serialiser cannot write them
-  down -- **a control that is discarded on save is a control that lies**.
+  same reasons). The editing canvas IS the email, and there is ONE
+  toolbar above it in four groups: the template (a dropdown -- changing
+  it lays the blocks out again, and asks first), what can be added, the
+  shared writing tools (`include_layout=false`, because alignment, font
+  and colour act on a BLOCK here, and two controls that look alike but
+  differ would be worse than either), and the selected block's own
+  style.
   Three things travel together and must stay in step: `rich()`,
   `newsletter-editor.js`'s serialiser (its exact inverse), and
   `block_styles()`, which both the sent email and the editor read so a
   heading made by the toolbar looks like the heading that arrives. In the
   editor, writing a style attribute is safe while typing; REPLACING a
   node moves the caret and may only happen on blur or before saving.
+  **Structure is saved and re-rendered by the server, never rebuilt in
+  JavaScript** -- adding, removing, moving or restyling a block submits
+  the form, so the canvas always comes from `blocks.html`, the same
+  template that renders what is sent. Two renderers would drift, and a
+  preview that has drifted is worse than none. Every structural action
+  reads the canvas into the block list BEFORE it splices, because that
+  re-read matches DOM to blocks by index.
   `tools/newsletter_editor_check.py` drives the real thing in a browser
   and compares what is sent against what was on screen -- run it after
   touching any of the three.

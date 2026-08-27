@@ -124,8 +124,22 @@ def newsletters():
 #  posts unchanged: a layout's body is one HTML section, which is what
 #  `sections` has always been.
 def _composed_sections(db, row):
-    body = email_layouts.render(row["layout"], newsletter.composed_values(row), _look(db))
+    body = email_layouts.render(newsletter.composed_blocks(row), _look(db))
     return [{"type": "html", "title": "", "content": body}]
+
+
+def _blocks_from_form(form):
+    """What the editor posted, as blocks.
+
+    One field, because the canvas IS the form: newsletter-editor.js reads
+    the whole arrangement out of the page and writes it here as JSON.
+    Posting one named input per slot is what the old fixed-slot model
+    did, and it is exactly what stopped a newsletter having two pictures.
+    """
+    try:
+        return email_layouts.normalise(json.loads(form.get("blocks_json") or "[]"))
+    except (ValueError, TypeError):
+        return []
 
 
 @bp.route("/newsletters/issue/new", methods=["POST"])
@@ -136,6 +150,10 @@ def newsletter_issue_new():
     if layout not in email_layouts.LAYOUTS:
         layout = "letter"
     new_id = newsletter.create_composed(db, layout)
+    #  A new newsletter opens with its layout's arrangement already in
+    #  it, because an empty canvas does not show what a template IS --
+    #  which is the whole reason for choosing one.
+    newsletter.save_blocks(db, new_id, "", email_layouts.starting_blocks(layout))
     db.commit()
     return redirect(url_for("admin.newsletter_issue_edit", newsletter_id=new_id))
 
@@ -148,9 +166,11 @@ def newsletter_issue_edit(newsletter_id):
     if not row:
         return redirect(url_for("admin.newsletters"))
     if request.method == "POST":
-        fields = email_layouts.fields_for(row["layout"])
-        values = {f["key"]: (request.form.get(f["key"]) or "").strip() for f in fields}
-        newsletter.save_composed(db, newsletter_id, (request.form.get("subject") or "").strip(), values)
+        newsletter.save_blocks(
+            db, newsletter_id,
+            (request.form.get("subject") or "").strip(),
+            _blocks_from_form(request.form),
+            layout=(request.form.get("layout") or "").strip() or None)
         db.commit()
         flash("Saved.", "success")
         return redirect(url_for("admin.newsletter_issue_edit", newsletter_id=newsletter_id))
@@ -163,16 +183,25 @@ def newsletter_issue_edit(newsletter_id):
         item=row,
         #  The email itself, with its slots opened up. This IS the editor:
         #  what is written into is what is sent.
-        canvas=email_layouts.render(row["layout"], newsletter.composed_values(row),
-                                    look, edit=True),
+        canvas=email_layouts.render(newsletter.composed_blocks(row), look, edit=True),
         #  What the sent email writes onto each block, so the editor can
         #  write the same thing onto a block the toolbar has just made.
         block_styles=email_layouts.block_styles(look),
         look=look,
         layout=email_layouts.LAYOUTS[row["layout"]],
-        fields=email_layouts.fields_for(row["layout"]),
-        values=newsletter.composed_values(row),
-        missing=email_layouts.missing(row["layout"], newsletter.composed_values(row)),
+        layout_choices=email_layouts.choices(),
+        #  What each template would lay out, so changing the dropdown can
+        #  show the new arrangement without a round trip to ask what it
+        #  is. Data, not logic: the arrangements are still decided in one
+        #  place, here.
+        layout_starts={key: email_layouts.starting_blocks(key)
+                       for key, _n, _b in email_layouts.choices()},
+        blocks=newsletter.composed_blocks(row),
+        block_types=email_layouts.BLOCK_TYPES,
+        block_order=email_layouts.BLOCK_ORDER,
+        email_fonts=email_layouts.EMAIL_FONTS,
+        alignments=email_layouts.ALIGNMENTS,
+        missing=email_layouts.missing(newsletter.composed_blocks(row)),
         audiences=subscribers.AUDIENCES,
         audience_counts={key: subscribers.audience_count(db, key)
                          for key, _label in subscribers.AUDIENCES},
@@ -199,10 +228,8 @@ def newsletter_issue_preview(newsletter_id):
     if not row:
         return redirect(url_for("admin.newsletters"))
     if request.method == "POST":
-        typed = {f["key"]: (request.form.get(f["key"]) or "")
-                 for f in email_layouts.fields_for(row["layout"])}
         row = dict(row, subject=request.form.get("subject") or row["subject"],
-                   values_json=json.dumps(typed))
+                   values_json=json.dumps({"blocks": _blocks_from_form(request.form)}))
     site_title = (get_site_settings(db) or {}).get("site_title") or "Our newsletter"
     line, _ = newsletter.sender_line(legal.settings_for(db), site_title)
     intro, outro = _wrapped(db, row["subject"], None)
@@ -219,7 +246,7 @@ def newsletter_issue_send(newsletter_id):
     back = url_for("admin.newsletter_issue_edit", newsletter_id=newsletter_id)
     if not row:
         return redirect(url_for("admin.newsletters"))
-    still_missing = email_layouts.missing(row["layout"], newsletter.composed_values(row))
+    still_missing = email_layouts.missing(newsletter.composed_blocks(row))
     if still_missing or not (row["subject"] or "").strip():
         #  Named, so the refusal says what to do rather than that
         #  something is wrong.

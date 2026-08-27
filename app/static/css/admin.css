@@ -861,10 +861,10 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
 
     Only the frame around it is styled here. Everything inside carries
     its own inline styles, because it has to survive an inbox. */
-/*  The toolbar is the app talking, not the email -- so it wears the
-    editor's own clothes and sits ABOVE the canvas rather than in it.
-    Sticky, because a newsletter is longer than a screen and a toolbar
-    you have to scroll back up to reach is one nobody uses. */
+/*  ONE toolbar, in four groups. It is the app talking, not the email, so
+    it wears the editor's own clothes and sits above the canvas. Sticky,
+    because a newsletter is longer than a screen and a toolbar you have
+    to scroll back up to reach is one nobody uses. */
 .cms-issue-toolbar {
   position: sticky; top: 0; z-index: 5;
   /*  Pinned, not var(--primary): this is the editor's own chrome and its
@@ -872,10 +872,89 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
   background: #fff;
   border: 1px solid #e2e4e9;
   border-radius: var(--cms-ui-radius-surface);
-  padding: 8px 10px 4px; margin: 0 0 10px;
+  padding: 8px 10px; margin: 0 0 6px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px;
 }
-.cms-issue-toolbar .hint { margin: 6px 2px 2px; }
+/*  A visible seam between the groups, so five controls in a row read as
+    "pick a shape / add something / write / style it" rather than as
+    fifteen buttons. */
+.cms-toolbar-group {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
+  padding: 2px 10px 2px 0;
+  border-right: 1px solid #e8eaee;
+}
+.cms-toolbar-group:last-child { border-right: 0; padding-right: 0; }
+.cms-toolbar-label {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
+  color: #6b7480; margin-right: 2px;
+}
+/*  The shared toolbar brings its own box; inside this one it is a group
+    like the others rather than a panel of its own. */
+.cms-toolbar-writing .cms-wysiwyg-toolbar {
+  border: 0; padding: 0; margin: 0; background: none; box-shadow: none;
+}
+.cms-add-block {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px;
+}
+/*  Admin form controls are full-width by default, which is right in a
+    form and wrong in a toolbar: two selects took a line each and the one
+    bar became four rows. In here they are as wide as their words. */
+.cms-issue-toolbar select,
+.cms-issue-toolbar input[type=url],
+.cms-issue-toolbar input[type=text] {
+  width: auto; min-width: 0; max-width: 190px;
+  padding: 5px 8px; font-size: 13px; border-width: 1px;
+}
+.cms-issue-toolbar button { padding: 5px 8px; font-size: 13px; }
+.cms-issue-toolbar .cms-color-label { display: inline-flex; align-items: center; gap: 3px; }
+.cms-issue-toolbar input[type=color] { width: 30px; height: 26px; padding: 0; border-width: 1px; }
+/*  Disabled until a block is selected: a control that acts on nothing is
+    a control that looks broken. Dimmed rather than hidden, so the row
+    does not change shape every time something is clicked. */
+.cms-block-tools.cms-tools-idle { opacity: .5; }
+.cms-block-remove { color: #b42318; font-weight: 700; }
+
+/*  ---- the canvas, and the blocks in it ---- */
+
 .cms-issue-canvas-ground { padding: 26px 14px; border-radius: var(--cms-ui-radius-surface); margin: 0 0 14px; }
+
+/*  A block is a BOX you can see the edge of, but only while editing and
+    only faintly: the whole claim of this screen is that what is on it is
+    the email, and a heavy outline around every part would make that
+    false. A dashed hairline on hover, a solid accent when selected. */
+.cms-issue-canvas [data-block] {
+  position: relative;
+  outline: 1px dashed transparent;
+  outline-offset: 2px;
+  transition: outline-color .12s ease;
+}
+.cms-issue-canvas [data-block]:hover { outline-color: #c9d2dd; }
+.cms-issue-canvas [data-block].cms-block-selected {
+  outline: 2px solid var(--cms-ui-accent, #2563eb);
+  outline-offset: 2px;
+}
+/*  An empty block still has to be visible -- a slot you cannot see is a
+    slot you cannot fill. */
+.cms-issue-canvas .cms-slot-blank::before {
+  content: attr(data-placeholder);
+  color: #9aa3ae; font-style: italic;
+}
+.cms-block-empty {
+  border: 2px dashed #c9d2dd; border-radius: var(--cms-ui-radius-surface);
+  padding: 26px; text-align: center; color: #7c8794; font-size: 14px;
+  cursor: pointer;
+}
+.cms-block-empty:hover { border-color: var(--cms-ui-accent, #2563eb); color: #4b5563; }
+
+/*  Where a button or a picture points: under the canvas, because it
+    cannot be typed INTO the email and must not float over it. */
+.cms-issue-asides { margin: 0 0 14px; }
+/*  `hidden` is a UA rule and a class beats it, so `.card` kept painting
+    the aside for every block -- including the ones with nowhere to
+    point, which then asked "where does this go?" about a heading. */
+.cms-issue-asides[hidden] { display: none; }
+
 .cms-issue-canvas {
   width: 600px; max-width: 100%; margin: 0 auto; background: #fff;
   border-radius: 10px; padding: 32px; box-shadow: 0 2px 14px rgba(0,0,0,.08);

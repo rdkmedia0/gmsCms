@@ -1,9 +1,0 @@
-{% from "emails/layouts/_parts.html" import heading, body, button, picture %}
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-  <tr><td>
-    {{ picture(v.image, slot='image', edit=edit) }}
-    {{ heading(v.heading, look, slot='heading', edit=edit) }}
-    {{ body(v.body, look, slot='body', edit=edit) }}
-    {{ button(v.button_label, v.button_url, look, slot='button_label', url_slot='button_url', edit=edit) }}
-  </td></tr>
-</table>

@@ -303,6 +303,30 @@ def save_composed(db, newsletter_id, subject, values):
         (subject, json.dumps(values or {}), newsletter_id))
 
 
+def composed_blocks(row):
+    """One newsletter's blocks, whatever shape it was saved in.
+
+    A newsletter written under the old named-slot model still opens: its
+    values are read as blocks rather than discarded. An upgrade that
+    silently empties somebody's draft is worse than one that refuses to
+    run.
+    """
+    from app.services import email_layouts
+    stored = composed_values(row)
+    if isinstance(stored, dict) and "blocks" in stored:
+        return email_layouts.normalise(stored.get("blocks"))
+    return email_layouts.from_named_slots(stored if isinstance(stored, dict) else {})
+
+
+def save_blocks(db, newsletter_id, subject, blocks, layout=None):
+    """Blocks are the whole of what a newsletter is now."""
+    from app.services import email_layouts
+    stored = {"blocks": email_layouts.normalise(blocks)}
+    if layout:
+        db.execute("UPDATE newsletters SET layout = ? WHERE id = ?", (layout, newsletter_id))
+    save_composed(db, newsletter_id, subject, stored)
+
+
 def composed_values(row):
     """The filled-in slots, forgiving of a row written before a layout
     changed -- a missing slot is empty, not an error."""

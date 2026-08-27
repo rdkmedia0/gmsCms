@@ -5606,6 +5606,117 @@ happens: a serialiser in JavaScript and a renderer in Python have to
 agree exactly, and neither language can prove that alone. A drift between
 them raises nothing; it just quietly changes what somebody wrote.
 
+## A newsletter stopped being a set of slots (2026-08-27)
+
+Asked for directly: buttons and pictures should be optional and come from
+the toolbar; the template should be a dropdown in one toolbar; a template
+should lay out boxed positions the writer can then replace and restyle,
+background and font included.
+
+Taken together those are not four adjustments to the fixed-slot model --
+they are a different model, and the one this project already uses
+everywhere else. A layout was a declared set of named fields, which meant
+**a letter could never carry a picture and a story could never carry
+two**. Every newsletter had exactly the parts its layout declared,
+whether it wanted them or not. That is a page TYPE wearing a different
+coat, and the answer is the one `PAGE_LAYOUTS` already gives for pages:
+a layout is a **starting arrangement**, nothing more. A template seeds
+the blocks; every one can be added, removed, moved or restyled
+afterwards; and nothing later asks what a newsletter was made from.
+
+### I had to take back something I told the user
+
+I had turned alignment, fonts and colours off in the newsletter toolbar
+and written that they "mean nothing in an inbox". That was too strong and
+the user was right to push. Inline `background-color`, `color`,
+`font-family` and `text-align` are standard HTML-email practice -- they
+are attributes on a table cell, which is the one thing every client
+renders. What actually fails is `@font-face` (Gmail strips it), CSS
+classes and flexbox.
+
+The rule I had reached for -- **a control that is discarded on save is a
+control that lies** -- was sound; I had just misdiagnosed which half was
+failing. Those controls lied because the STORED FORM was a flat text
+field that could not record them, not because an inbox would ignore them.
+A block can record them. So the test for admitting a style control is two
+parts, and both have to pass:
+
+  1. does an inbox honour it, and
+  2. can the stored form write it down?
+
+`EMAIL_FONTS` is real installed families only, for the first test.
+`_clean_style` drops anything not on the list, for the second.
+
+### The shape
+
+  * `BLOCK_TYPES` -- heading, text, picture, button, divider. Closed, like
+    `PAGE_TYPES`, and for the same reason: everything in it has to survive
+    an inbox, which is a question with a fixed answer rather than a matter
+    of taste.
+  * **One template renders both.** `emails/blocks.html` is the email that
+    is sent AND the canvas that is written into; `edit` is the only
+    difference, and with it false not one extra attribute is emitted.
+  * **One toolbar**, in four groups, in the order somebody works in: pick
+    a shape, add things, write, style what you wrote. Alignment/font/
+    colour sit in the block group rather than the writing group, because
+    "make this word red" and "make this block red" are different acts and
+    two controls that look alike but differ would be worse than either.
+  * **Structure is saved and re-rendered by the server.** Adding, moving
+    or restyling submits the form. Rebuilding the canvas in JavaScript
+    would mean two renderers, and this screen's entire claim is that what
+    is on it is the email. Scroll position and the selected block are
+    carried across, so it reads as updating rather than reloading.
+  * Old drafts still open: `from_named_slots` reads the previous shape as
+    blocks. An upgrade that silently empties somebody's draft is worse
+    than one that refuses to run.
+
+### Four bugs worth writing down
+
+  * **`tojson` in an attribute is cut at its first quote.** The blocks
+    went into `value="{{ blocks | tojson }}"`; tojson escapes for a
+    SCRIPT block, leaving the double quotes JSON is made of intact, so
+    the browser ended the value at the first one and the field arrived as
+    the two characters `[{`. Everything downstream then behaved quietly
+    as though the newsletter had no blocks in it -- no error anywhere.
+    `| forceescape` is the fix, and the tell is that a control which
+    should act on N things acts on none.
+
+  * **Re-reading the canvas by index, after moving something.** The
+    submit handler reads each editable back into the block at the same
+    position, which is right on Save and destroys the newsletter straight
+    after a splice: the DOM still shows the old arrangement, so block 3's
+    words go into whatever is at position 3 NOW. Every structural action
+    collects first, then moves, then submits with the re-read skipped.
+
+  * **`hidden` loses to a class.** The "where does this point" panel is a
+    `.card`, and `.card`'s `display` beat the UA rule for `[hidden]`, so
+    it stayed on screen for every block -- asking where a HEADING goes.
+    Needs `.cms-issue-asides[hidden] { display: none; }` said explicitly.
+
+  * **An invisible non-breaking space, again.** I wrote `/ /g` in a regex
+    with a real U+00A0 in it. It works, and it is unreadable and
+    unmaintainable -- the same class of fault as the literal backspace
+    that cost a day earlier. Written out as ` `, and
+    `email_layout_check.py`'s invisible-character sweep now catches a
+    raw U+00A0 in `.py`/`.js`/`.css` (allowed in templates, where it can
+    be a real typographic choice).
+
+### One thing extracted rather than duplicated
+
+The Media Library picker lived inside `inline-editor.js`, which only ever
+loads on the public page -- so an admin screen had no way to ask for a
+picture, and this one was about to grow a second picker. Pulled out to
+`static/js/admin/image-picker.js` as `window.cmsImagePicker`, the same
+move `modal.js` and `wysiwyg-commands.js` already are. It builds its own
+markup, and uses the page's copy where one already exists.
+
+**Checked by driving it**: `tools/newsletter_editor_check.py` is 35
+assertions now -- it adds a button and a picture, removes one, moves a
+block and checks its words moved with it, styles one and checks the
+colour arrives on the cell of the SENT email, writes with the toolbar,
+and changes the template (confirming that it asks first, and that what
+gets laid out is what the server declares).
+
 ## Where this stands, and what is left (2026-08-27)
 
 Written at the end of a long day on a live install, so the next person --

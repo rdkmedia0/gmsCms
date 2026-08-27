@@ -1,0 +1,105 @@
+{#  Every kind of block a newsletter can be made of, rendered once.
+
+    This one file is BOTH the email that gets sent and the canvas that is
+    written into -- `edit` is the only difference, and with it false not
+    one extra attribute is emitted. Two templates would have drifted, and
+    a preview that has drifted from what is sent is worse than no preview
+    at all.
+
+    Two rules hold everywhere in here, and they are what makes an inbox
+    render it: it is a TABLE, because table structure is the only layout
+    every client agrees on, and every style is INLINE, because most
+    clients strip a stylesheet. No classes on anything that gets sent.
+
+    Where the styles come from: `b.st` is email_layouts.block_styles()
+    for that block -- the same dictionary the editor is handed as JSON,
+    so a heading made by the toolbar looks like the heading that arrives.
+    `b.cell` is the box around it: background, padding and alignment,
+    which belong on the cell rather than the words because a background
+    on a heading paints only as far as the letters go. #}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+  {% for b in blocks %}
+  <tr>
+    <td style="{{ b.cell }}"
+        {%- if edit %} data-block="{{ loop.index0 }}" data-block-type="{{ b.type }}"
+        data-styles="{{ b.st | tojson | forceescape }}"{% endif %}>
+
+      {%- if b.type == 'heading' %}
+        {%- set tag = 'h' ~ b.level %}
+        <{{ tag }} style="{{ b.st[tag] }}{% if edit %}outline:none;{% endif %}"
+           {%- if edit %} data-field="text" contenteditable="true"
+           data-placeholder="Write the heading"{% endif %}>{{ b.text }}</{{ tag }}>
+
+      {%- elif b.type == 'text' %}
+        {#  One editable box holding every paragraph, not one box per
+            paragraph -- otherwise pressing Return could not make a new
+            paragraph, which is the first thing anybody tries. #}
+        {%- if edit %}
+        <div data-field="text" data-rich="1" contenteditable="true"
+             data-placeholder="Write what you want to say. Select some words to style them."
+             style="outline:none;">
+          {%- for part in b.html %}{{ part | safe }}{% endfor %}
+          {%- if not b.html %}<p style="{{ b.st.p }}"><br></p>{% endif %}
+        </div>
+        {%- else %}
+          {%- for part in b.html %}{{ part | safe }}{% endfor %}
+        {%- endif %}
+
+      {%- elif b.type == 'image' %}
+        {#  An empty picture slot you can SEE: the shape says it has one,
+            and an empty frame is how somebody knows to fill it. Nothing
+            is sent unless there is a picture. #}
+        {%- if b.src %}
+          {%- if b.url %}<a href="{{ b.url }}">{% endif %}
+          <img src="{{ b.src }}" width="536" alt="{{ b.alt }}"
+               style="display:block;width:100%;max-width:536px;height:auto;border:0;
+                      border-radius:6px;margin:0 auto;">
+          {%- if b.url %}</a>{% endif %}
+        {%- elif edit %}
+        <div class="cms-block-empty" data-pick-image
+             title="Choose a picture from your Media Library.">
+          Click to add a picture
+        </div>
+        {%- endif %}
+
+      {%- elif b.type == 'button' %}
+        {#  A button is a table, not an <a> with padding: Outlook ignores
+            padding on an inline element and the click target collapses
+            to the text. While editing it is always drawn, even empty --
+            an empty slot you can see is how somebody knows the shape has
+            a button. Sent, it appears only once it has both its words
+            and its address, because a button that goes nowhere is worse
+            than no button. #}
+        {%- if (b.label and b.url) or edit %}
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0"
+               style="margin:6px 0 4px;width:auto;
+                      {% if (b.style.align or 'left') == 'center' %}margin-left:auto;margin-right:auto;
+                      {% elif b.style.align == 'right' %}margin-left:auto;{% endif %}">
+          <tr>
+            <td align="center" bgcolor="{{ b.style.bg or look.accent }}"
+                style="border-radius:6px;">
+              <a href="{{ b.url or '#' }}"
+                 {%- if edit %} data-field="label" contenteditable="true"
+                 data-placeholder="Button words"{% endif %}
+                 style="display:inline-block;padding:13px 26px;font-size:16px;font-weight:600;
+                        color:{{ b.style.color or '#ffffff' }};text-decoration:none;
+                        font-family:{{ b.style.font or look.body_font }};
+                        {%- if edit %}outline:none;{% endif %}">{{ b.label }}</a>
+            </td>
+          </tr>
+        </table>
+        {%- endif %}
+
+      {%- elif b.type == 'divider' %}
+        {#  A rule as a bordered cell, not <hr>: several clients give <hr>
+            a shadow or a colour of their own choosing. #}
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr><td style="border-top:1px solid {{ b.style.color or '#e3e8ee' }};
+                         font-size:0;line-height:0;height:1px;">&nbsp;</td></tr>
+        </table>
+      {%- endif %}
+
+    </td>
+  </tr>
+  {% endfor %}
+</table>
