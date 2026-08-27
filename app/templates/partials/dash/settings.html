@@ -1,0 +1,103 @@
+{#  The dashboard's button row.
+
+    Lifted out of admin/dashboard.html, which had grown into six long
+    sections on one screen. The markup is unchanged; only where it is
+    rendered moved. #}
+<section class="card">
+  {#  There used to be a card here listing "pages from templates you are
+      not using", with its own Remove button. It said the same thing Your
+      Pages says, in a second place, about rows that are already in that
+      list -- and a page is deleted from the page, or from the row that
+      names it, not from a separate box that has opinions about which
+      pages count. What it knew that was worth keeping is which template a
+      page arrived with, and that now sits on the page's own row. #}
+
+  <div class="card-header">
+    <h2>Settings</h2>
+  </div>
+  {#  One flat row. Headings over four groups of two were more structure
+      than eight buttons can carry -- the labels took as much reading as
+      the things they were labelling. What survives from that attempt is
+      the ORDER: related things sit next to each other, which does the
+      grouping quietly and costs nothing.
+
+      The real consolidation was not a heading either. AI Settings and
+      Integrations became one page (see partials/ai_settings_card.html),
+      which is why this row is eight buttons rather than ten. #}
+  <div class="settings-row">
+    <a href="{{ url_for('admin.pages_screen') }}" class="btn" title="Your pages, the templates you can wear, where the header and footer sit, and the AI theme generator">🎨 Design</a>
+    <a href="{{ url_for('admin.blogs_screen') }}" class="btn" title="Your blogs and every post in them">📰 Blog</a>
+    <a href="{{ url_for('admin.image_library') }}" class="btn" title="Every picture and file on this site, yours and your template's">🖼️ Media</a>
+    <a href="{{ url_for('admin.settings_integrations') }}" class="btn" title="Stripe for payments, Cal.com for bookings, and an AI provider — every key this site holds, on one page">🔌 Connections</a>
+    <a href="{{ url_for('admin.newsletters') }}" class="btn" title="Newsletters, who is on the list, and the mail server it all sends through">✉️ Email</a>
+    <a href="{{ url_for('admin.commerce_fulfilment') }}" class="btn" title="What you sell, every sale, and your diary — products, orders and bookings">🛍️ Commerce</a>
+    <a href="{{ url_for('admin.legal_pages') }}" class="btn" title="Refunds, terms, privacy and site details — written from your own information">⚖️ Legal pages</a>
+    <a href="{{ url_for('admin.backups') }}" class="btn" title="Copy everything, restore it, and set automatic backups">💾 Backups</a>
+  </div>
+  <p class="muted">Site Name — shown in the header, browser tab, and page titles across the whole site.</p>
+  <form method="post" action="{{ url_for('admin.settings_site') }}" class="inline-form">
+    <input type="text" name="site_title" value="{{ site_settings.site_title }}" placeholder="My Site" maxlength="80" title="Your site/business name">
+    <input type="text" name="site_tagline" value="{{ site_settings.site_tagline }}" placeholder="Tagline (optional)" maxlength="140" title="A short tagline, shown next to your site name in the browser tab title">
+    <button type="submit" class="btn btn-small btn-primary">Save</button>
+  </form>
+  <p class="muted" style="margin-top:16px;">Site address &mdash; where this site lives on the internet. Used for every link that has to work somewhere else: the address Stripe sends buyers back to, the link we email with someone's purchases, the pictures Stripe shows on its payment page, and the address Stripe calls back on when a payment succeeds.</p>
+  <form method="post" action="{{ url_for('admin.settings_site_address') }}" class="inline-form">
+    <input type="text" name="site_public_url" value="{{ site_base }}"
+           placeholder="{{ detected_base }}" size="34"
+           title="The address people type to reach this site, e.g. https://shop.example.com. Change it here whenever the domain changes and everything follows.">
+    <button type="submit" class="btn btn-small btn-primary" title="Save the site address and re-point Stripe's callback at it">Save</button>
+  </form>
+  {% if not site_base %}
+  <p class="hint">Not set. Links are built from whatever address you happen to be using ({{ detected_base }}), which won't work for anyone else if that's a local one.</p>
+  {% elif not site_is_public %}
+  <p class="hint">This address only works on this machine or network. Emailed links and Stripe's return address won't work for a buyer elsewhere.</p>
+  {% endif %}
+
+  <p class="muted" style="margin-top:16px;">Favicon — shown in the browser tab, bookmarks, and search results.</p>
+  <div class="favicon-row">
+    <div class="favicon-preview">
+      {% if site_settings.favicon_url %}
+      <img src="{{ site_settings.favicon_url }}" alt="Current favicon">
+      <form method="post" action="{{ url_for('admin.settings_favicon_clear') }}" class="favicon-remove-form">
+        <button type="submit" class="favicon-remove-btn" title="Remove favicon">&times;</button>
+      </form>
+      {% else %}<span class="favicon-preview-empty" title="No favicon set">?</span>{% endif %}
+    </div>
+
+    <form method="post" action="{{ url_for('admin.settings_favicon_upload') }}" enctype="multipart/form-data" class="inline-form favicon-upload-form">
+      <button type="button" class="favicon-text-btn favicon-upload-trigger" title="Upload an image file">⬆️ Upload</button>
+      <input type="file" name="image" accept="image/*" class="favicon-upload-input" hidden>
+    </form>
+
+    <details class="favicon-emoji-picker">
+      <summary class="favicon-text-btn" title="Pick an emoji">🙂 Emoji</summary>
+      <div class="favicon-emoji-grid">
+        {% for emoji in favicon_emoji_choices %}
+        <form method="post" action="{{ url_for('admin.settings_favicon_emoji') }}" class="inline-form">
+          <input type="hidden" name="emoji" value="{{ emoji }}">
+          <button type="submit" class="favicon-emoji-btn" title="Use {{ emoji }} as favicon">{{ emoji }}</button>
+        </form>
+        {% endfor %}
+      </div>
+    </details>
+
+    <details class="favicon-ai-gen">
+      <summary class="favicon-text-btn" title="Generate a favicon with AI">✨ AI</summary>
+      <form method="post" action="{{ url_for('admin.settings_favicon_generate') }}" class="inline-form">
+        <input type="text" name="prompt" placeholder="e.g. a coffee bean" maxlength="200" title="Describe the icon you want">
+        <button type="submit" class="btn btn-small btn-primary">Generate</button>
+      </form>
+    </details>
+  </div>
+  <p class="muted" style="margin-top:16px;">Default Section Width — applies to any section that hasn't had its own width set (via the section's own "Section width" control) — that's every section until it's touched individually.</p>
+  <form method="post" action="{{ url_for('admin.settings_layout') }}" class="inline-form">
+    <select name="default_section_width" id="default-width-select" title="How wide new sections start out. Every section can still be changed on its own afterwards.">
+      <option value="auto" {{ 'selected' if layout_settings.default_section_width == 'auto' }}>Auto</option>
+      <option value="full" {{ 'selected' if layout_settings.default_section_width == 'full' }}>Full width</option>
+      <option value="custom" {{ 'selected' if layout_settings.default_section_width == 'custom' }}>Custom %</option>
+    </select>
+    <input type="number" name="default_section_width_pct" min="10" max="100" value="{{ layout_settings.default_section_width_pct }}" title="Width as a % of the full viewport (100% = same as Full width)" {{ 'hidden' if layout_settings.default_section_width != 'custom' }} id="default-width-pct-input">
+    <button type="submit" class="btn btn-small btn-primary">Save</button>
+  </form>
+  <p class="hint" style="margin-top:14px;">Managing who can sign in (admins, Google Sign-In)? That's on your <a href="{{ url_for('auth.account') }}">Account</a> page now, not here.</p>
+</section>

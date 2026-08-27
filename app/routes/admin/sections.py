@@ -1042,7 +1042,24 @@ def generate_image_from_library():
 @bp.route("/images/<path:filename>/delete", methods=["POST"])
 @login_required
 def generated_image_delete(filename):
+    """Deletes one of the owner's OWN files.
+
+    A template's pictures are listed in the Library too now, and they are
+    not deletable here -- they belong to the template, which would be left
+    with a hole in it. That is enforced rather than only hidden: this
+    takes a bare name and looks for it in the uploads folder, so a
+    template picture that happens to share a name with an upload would
+    otherwise have deleted the upload instead.
+    """
     filename = os.path.basename(filename)
+    upload_dir = current_app.config["UPLOAD_FOLDER"]
+    if not os.path.isfile(os.path.join(upload_dir, filename)):
+        if wants_json():
+            return jsonify({"ok": False,
+                            "error": "That file belongs to a template and cannot be deleted here."}), 400
+        flash("That file belongs to a template, so it cannot be deleted here. "
+              "Delete the template itself if you want it gone.", "error")
+        return redirect(url_for("admin.image_library"))
     db = get_db()
     db.execute("DELETE FROM generated_images WHERE url = ?", (f"/static/uploads/{filename}",))
     db.commit()

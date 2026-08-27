@@ -18,7 +18,12 @@ app/
       __init__.py     # `bp` + cross-cutting shared state: settings getters,
                        # sidebar/footer layout application, the demo/package
                        # content merge engine, undo snapshots, _list_tools
-      dashboard.py     # dashboard, help, theme-generator routes
+      dashboard.py     # the Dashboard (now a row of buttons), the screens
+                       # its six sections became — Blog, and Design's
+                       # Pages/Templates/Layout tabs — plus help and the
+                       # theme generator. All five share _screen_context()
+                       # rather than growing four near-copies of one query
+                       # set; the markup lives in partials/dash/*.html.
       pages.py         # page/blog-post CRUD, undo route, per-page layout
       sections.py      # every section/column/banner/card/image-library
                        # route, plus the Tools-panel routes
@@ -75,6 +80,27 @@ app/
   theme_generator.py, theme_layouts.py   # AI Theme Generator (distinct
                                           # from Template Packages — see below)
 ```
+
+## The admin is buttons, then tabs
+
+The Dashboard was six long sections on one screen — blogs, settings,
+pages, the theme generator, templates, layout — and it read as a wall.
+It is a row of buttons now, and anything with more than one screen groups
+them behind tabs along the top: **Design** (Pages / Templates / Layout /
+Theme Generator), **Commerce** (Products / Orders / Bookings), **Email**
+(Newsletters / Email list / Sending email).
+
+Three rules for adding a screen:
+
+- **A tab list lives in ONE partial** and is included by each of its
+  screens — `partials/design_tabs.html`, `partials/commerce_tabs.html`,
+  `partials/email_tabs.html`. They were pasted into each template once
+  and that is exactly how a fourth screen ends up missing one.
+- **Tabs are links** (see `partials/tabs.html`), so a tab can be
+  bookmarked, opened in a new window and found again by the back button.
+- **A section's markup is a partial**, not a block inside a bigger
+  template. `partials/dash/*.html` are the Dashboard's old sections,
+  unchanged, rendered from their own routes.
 
 ## No monolith files
 

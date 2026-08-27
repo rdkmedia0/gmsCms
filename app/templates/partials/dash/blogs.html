@@ -1,0 +1,81 @@
+{#  Your blogs and their posts. Its own screen now: it is a list of things you write, not a setting.
+
+    Lifted out of admin/dashboard.html, which had grown into six long
+    sections on one screen. The markup is unchanged; only where it is
+    rendered moved. #}
+<div class="card">
+  <h2>Your Blogs</h2>
+  <p class="hint">A blog is a set of posts. Show one anywhere by adding a <strong>Blog</strong>
+    tool to a page &mdash; on more than one page if you like, without copying anything. Posts are
+    normally written on the site itself; this is the list view if you would rather work here.</p>
+  {% if blogs %}
+  {#  A blog and its posts, as the tree they actually are: a blog IS a set
+      of posts, and listing blogs here and posts on another screen made
+      you hold that relationship in your head. Every row carries the same
+      two actions -- a pencil to change it, a red × to remove it. #}
+  <ul class="blog-tree">
+    {% for b in blogs %}
+    <li>
+      <div class="tree-row">
+        <span class="tree-name">{{ b.name }}</span>
+        <code class="blog-address" title="Where posts in this blog live. Renaming does not change it.">/blog/{{ b.slug }}/&hellip;</code>
+        <span class="row-actions">
+          <a class="icon-btn" href="{{ url_for('admin.blog_post_new', blog_id=b.id) }}"
+             data-confirm="You are about to start writing a new post in &quot;{{ b.name }}&quot;."
+             title="Write a new post in this blog">+</a>
+          {#  The pencil opens the rename without a line of script: the
+              summary IS the button, and what it reveals sits under the
+              row it belongs to. #}
+          <details class="tree-edit">
+            <summary class="icon-btn" title="Rename this blog. Its web address does not change, so links to its posts keep working.">✎</summary>
+            <form method="post" action="{{ url_for('admin.blog_rename', blog_id=b.id) }}" class="tree-edit-body">
+              <input type="text" name="name" value="{{ b.name }}" aria-label="Blog name"
+                     title="What this blog is called. Its web address does not change — post links keep working.">
+              <button type="submit" class="btn btn-small">Save</button>
+            </form>
+          </details>
+          <form method="post" action="{{ url_for('admin.blog_delete', blog_id=b.id) }}">
+            <button type="submit" class="icon-btn icon-btn-danger"
+                    data-confirm="You are about to delete the blog &quot;{{ b.name }}&quot; and its {{ b.posts }} post{{ 's' if b.posts != 1 }}. A blog is a set of posts, so the posts go with it. This cannot be undone."
+                    data-confirm-danger="1"
+                    title="Delete this blog and every post in it">&times;</button>
+          </form>
+        </span>
+      </div>
+      <ul class="tree-children">
+        {% for post in b.post_list %}
+        <li class="tree-row">
+          <span class="tree-name">{{ post.title }}</span>
+          {% if not post.published_at %}<span class="hint" title="Written but not published — nobody else can see it yet">draft</span>{% endif %}
+          <span class="row-actions">
+            <a class="icon-btn" href="{{ url_for('admin.blog_post_edit', blog_id=b.id, post_id=post.id) }}"
+               data-confirm="You are about to open the post &quot;{{ post.title }}&quot; to edit it."
+               title="Edit this post">✎</a>
+            <form method="post" action="{{ url_for('admin.blog_post_delete', blog_id=b.id, post_id=post.id) }}">
+              <button type="submit" class="icon-btn icon-btn-danger"
+                      data-confirm="You are about to delete the post &quot;{{ post.title }}&quot;. This cannot be undone."
+                      data-confirm-danger="1"
+                      title="Delete this post">&times;</button>
+            </form>
+          </span>
+        </li>
+        {% else %}
+        <li class="tree-empty">No posts yet &mdash; the + above writes the first one.</li>
+        {% endfor %}
+      </ul>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted">No blogs yet.</p>
+  {% endif %}
+  {#  Making one was the gap: the Dashboard could list blogs and open
+      them, but the only way to CREATE one was to drop a Blog tool on a
+      page and let it make one for you. A fine shortcut; a poor only
+      route. #}
+  <form method="post" action="{{ url_for('admin.blog_new') }}" class="inline-form">
+    <input type="text" name="name" placeholder="Journal, News, Recipes&hellip;"
+           title="What to call the new blog. Its web address is made from this.">
+    <button type="submit" class="btn btn-small" title="Start a new blog">+ Add a blog</button>
+  </form>
+</div>

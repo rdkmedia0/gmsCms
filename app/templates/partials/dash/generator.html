@@ -1,0 +1,12 @@
+{#  The AI Theme Generator's own entry point.
+
+    Lifted out of admin/dashboard.html, which had grown into six long
+    sections on one screen. The markup is unchanged; only where it is
+    rendered moved. #}
+<section class="card">
+  <div class="card-header">
+    <h2>AI Theme Generator</h2>
+    <a href="{{ url_for('admin.theme_generator') }}" class="btn btn-primary">✨ Generate Page Content</a>
+  </div>
+  <p class="muted">Describe your site in plain text and the AI builds real, editable sections (Banner/Text/Cards) onto a page you pick — never raw HTML. Nothing is deleted; it only adds to whatever's already there.</p>
+</section>

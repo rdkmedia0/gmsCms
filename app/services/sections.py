@@ -1463,7 +1463,59 @@ def _list_media(image_only=False):
             })
     items.sort(key=lambda it: it["created_at"] or "", reverse=False)
     items.sort(key=lambda it: it["mtime"], reverse=True)
-    return items
+    for item in items:
+        #  An upload is the owner's own file and theirs to delete. What
+        #  follows below is not.
+        item["owned_by"] = None
+        item["can_delete"] = True
+    return items + _installed_template_media(db, image_only=image_only)
+
+
+def _installed_template_media(db, image_only=False):
+    """The pictures every INSTALLED template brought with it.
+
+    The Media Library used to list uploads only, and on a site whose
+    pictures all came from its template that means an empty screen headed
+    "Media Library" -- which reads as "you have no pictures" while
+    seventy-seven of them are on disk and on the page.
+
+    They are listed and NOT deletable, and that is the honest pair: they
+    are on screen because an owner looking for a picture should find every
+    picture, and they are locked because each belongs to a template that
+    would be left with a hole in it. Deleting the template removes them,
+    which is where that decision belongs.
+    """
+    themes = os.path.join(current_app.static_folder, "themes")
+    if not os.path.isdir(themes):
+        return []
+    names = {row["slug"]: row["name"]
+             for row in db.execute("SELECT slug, name FROM templates").fetchall()}
+    out = []
+    for slug in sorted(os.listdir(themes)):
+        folder = os.path.join(themes, slug, "media")
+        if not os.path.isdir(folder):
+            continue
+        for filename in sorted(os.listdir(folder)):
+            path = os.path.join(folder, filename)
+            if not os.path.isfile(path):
+                continue
+            ext = os.path.splitext(filename)[1].lower()
+            #  Same rule the uploads listing uses: everything, unless the
+            #  caller asked for pictures only.
+            if image_only and ext not in MEDIA_IMAGE_EXTS:
+                continue
+            out.append({
+                "filename": filename,
+                "url": f"/static/themes/{slug}/media/{filename}",
+                "is_image": ext in MEDIA_IMAGE_EXTS,
+                "prompt": None,
+                "source": "From the %s template" % (names.get(slug) or slug),
+                "owned_by": names.get(slug) or slug,
+                "can_delete": False,
+                "created_at": None,
+                "mtime": os.path.getmtime(path),
+            })
+    return out
 
 
 

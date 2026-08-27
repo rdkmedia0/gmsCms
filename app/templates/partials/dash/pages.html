@@ -1,0 +1,88 @@
+{#  The site's pages. Under Design because that is where their layout and the template they came from are decided.
+
+    Lifted out of admin/dashboard.html, which had grown into six long
+    sections on one screen. The markup is unchanged; only where it is
+    rendered moved. #}
+<section class="card">
+  <div class="card-header">
+    <h2>Your Pages</h2>
+    <a href="{{ url_for('admin.page_new') }}" class="btn btn-primary">+ Add New Page</a>
+  </div>
+  <div class="table-scroll">
+    <table class="simple-table">
+      {#  "Home" alone: the tick under it says which one, so the word does
+          not have to be repeated in every row. #}
+      {#  "Home" and "Action" over the two icon columns: a column of
+            symbols with nothing above it leaves you guessing at all of
+            them at once. #}
+      <thead><tr><th>Page</th><th>Web Address</th><th class="col-icons">Home</th><th class="col-icons">Action</th></tr></thead>
+      <tbody>
+        {% for page in pages %}
+        <tr{% if page.source_template %} title="This page came with the {{ template_names.get(page.source_template, page.source_template) }} template{{ ', the one this site is using.' if page.source_template == active_template_slug else ', which is not the one this site is using now.' }}"{% endif %}>
+          <td>
+            {{ page.title }}
+            {#  Where this page came from, on the page's own row. A page you
+                wrote yourself says nothing; one that arrived with a
+                template says which, and whether that template is still the
+                one in use -- which is the whole of what the removed card
+                was for. #}
+            {#  Only when it is news. A line under every page saying it
+                came with the template that is in use says nothing at all
+                -- that is where pages normally come from -- and it read
+                as an accusation: every row on this site said "not in
+                use" because the site had taken its own copy of the
+                built-in it started from, which is the one moment the
+                pages are MOST in use. The tooltip on the row carries the
+                answer either way, for the case where you do want to ask. #}
+            {% if page.source_template and page.source_template != active_template_slug %}
+            <br><span class="hint" title="This page arrived with the {{ template_names.get(page.source_template, page.source_template) }} template, which is not the one this site is using now. It is still a page like any other — this is only here so a page you have forgotten about does not look like one you made.">from {{ template_names.get(page.source_template, page.source_template) }} · not in use</span>
+            {% endif %}
+          </td>
+          <td><code>{{ '/' if page.is_home else '/' + page.slug }}</code></td>
+          <td class="col-icons">
+            {% if page.is_home %}
+              <span class="icon-state" title="This is your home page — the one a visitor lands on">✔</span>
+            {% else %}
+              <form method="post" action="{{ url_for('admin.page_set_home', page_id=page.id) }}">
+                <button type="submit" class="icon-btn"
+                        data-confirm="You are about to make &quot;{{ page.title }}&quot; the home page — the page a visitor lands on at your site's own address. The page that is home now moves to its own address."
+                        title="Make this the home page — the one a visitor lands on">⌂</button>
+              </form>
+            {% endif %}
+          </td>
+          <td class="col-icons">
+            <span class="row-actions">
+              {#  A pencil edits and a red × deletes, here as everywhere
+                  else. The words they replace -- "Edit on Page", "Delete" --
+                  were four times the width of the thing they named, and in
+                  an 85px column one of them broke across three lines and
+                  made a button taller than its own row. #}
+              <a class="icon-btn"
+                 data-confirm="You are about to open &quot;{{ page.title }}&quot; to edit it — its headings, text, pictures and sections, on the page itself."
+                 title="Open this page and edit it there — headings, text, pictures and sections, on the page itself"
+                 href="{{ url_for('public.home') if page.is_home else url_for('public.page', slug=page.slug) }}">✎</a>
+              {% if not page.is_home %}
+              <form method="post" action="{{ url_for('admin.page_delete', page_id=page.id) }}">
+                <button type="submit" class="icon-btn icon-btn-danger"
+                        data-confirm="You are about to delete the page &quot;{{ page.title }}&quot; and everything on it. This cannot be undone."
+                        data-confirm-danger="1"
+                        title="Delete this page and everything on it">&times;</button>
+              </form>
+              {% endif %}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <details style="margin-top: 16px;">
+    <summary class="hint" style="cursor:pointer;">Reset all page content</summary>
+    <p class="hint">A theme's colors/fonts/header/footer and a page's own content (sections) are independent — switching or deleting a theme never touches what's already on your pages. If you want every page blanked back to empty (e.g. to start fresh with a different theme or demo), do it here. Pages themselves, their titles/addresses, and your blog posts are not affected.</p>
+    <form method="post" action="{{ url_for('admin.content_reset_all') }}"
+          data-confirm="You are about to clear the content of every page on this site. The pages themselves and your blog posts are kept, but every section on every one of them is deleted. This cannot be undone."
+          data-confirm-danger="1">
+      <button type="submit" class="btn btn-danger" title="Replace every page with the active template's own example pages. What you have written is lost.">Reset All Content</button>
+    </form>
+  </details>
+</section>

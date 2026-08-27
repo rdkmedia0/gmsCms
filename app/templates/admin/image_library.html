@@ -2,10 +2,11 @@
 {% block title %}Media Library — My Site Admin{% endblock %}
 {% block content %}
 <h1>Media Library</h1>
-<p class="hint">Every file that's ever been uploaded or AI-generated on this site, in one place — reusable anywhere an Image/Banner/Card asks for one. Click an image to view it full size, generate a variation, or delete it. Deleting removes the file itself, even if it's still in use somewhere.</p>
+<p class="hint">Every picture and file on this site in one place &mdash; the ones you uploaded or generated, and the ones each installed template brought with it. Any of them can be used anywhere an Image, Banner or Card asks for one. Click a picture to see it full size or generate a variation.</p>
+<p class="hint"><strong>A template&rsquo;s own pictures cannot be deleted here.</strong> They belong to the template and it would be left with a hole in it &mdash; delete the template itself if you want them gone. Your own uploads can be deleted, and deleting one removes the file even if a page is still using it.</p>
 
 {% if not images %}
-<div class="card"><p>Nothing here yet — upload a file or generate an image somewhere on the site and it'll show up here.</p></div>
+<div class="card"><p>Nothing here yet &mdash; upload a file or generate a picture and it will show up here, alongside whatever your template brought with it.</p></div>
 {% else %}
 <div class="media-library-grid" id="media-library-grid">
   {% for item in images %}
@@ -17,7 +18,14 @@
     {% else %}
     <a href="{{ item.url }}" target="_blank" class="media-library-thumb-btn media-library-file" title="{{ item.filename }}">📄</a>
     {% endif %}
-    <button type="button" class="media-library-delete" data-filename="{{ item.filename }}" title="Delete">&times;</button>
+    {% if item.can_delete %}
+    <button type="button" class="media-library-delete" data-filename="{{ item.filename }}"
+            title="Delete {{ item.filename }} &mdash; the file goes, even if a page is still using it">&times;</button>
+    {% else %}
+    {#  Shown, not hidden: an owner should be able to see WHY they cannot
+        remove it, rather than wonder where the button went. #}
+    <span class="media-library-owned" title="{{ item.source }}. It belongs to that template and cannot be deleted here.">🔒</span>
+    {% endif %}
   </div>
   {% endfor %}
 </div>

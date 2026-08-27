@@ -11,12 +11,12 @@
     <li>A section's own toolbar has a <strong>Divide</strong> control to split it into 1–6 side-by-side cells (columns); each cell can itself be split into rows.</li>
     <li>Content only comes from <strong>Tools</strong>, dragged (or tapped) from the 🧰 Tools panel into a frame or a specific cell — this replaces just that cell, not the whole frame.</li>
     <li>Frames/cells are reordered by dragging the ⠿ handle.</li>
-    <li>Every section can set its own width (Auto / Full width / Custom %) from its own toolbar, or inherit the site-wide default (Dashboard → Site Settings).</li>
+    <li>Every section can set its own width (Auto / Full width / Custom %) from its own toolbar, or inherit the site-wide default (Design → Layout).</li>
   </ul>
 
   <h3>Default Tools</h3>
   <ul>
-    <li><strong>Text</strong> — rich WYSIWYG: bold/italic/underline/lists/headings/links/align/fonts/colors/insert-image/insert-icon (a large curated emoji picker).</li>
+    <li><strong>Text</strong> — rich WYSIWYG (the same editor writes a blog post): bold/italic/underline/lists/headings/links/align/fonts/colors/insert-image/insert-icon (a large curated emoji picker).</li>
     <li><strong>Image</strong> — size/shape mask/link/animation, plus an AI ✨ Generate button.</li>
     <li><strong>Media Player</strong> — YouTube link, or an uploaded video/audio file.</li>
     <li><strong>File / Download</strong> — an uploaded file, displayed as a card/button/text-link/icon.</li>
@@ -24,7 +24,7 @@
     <li><strong>Video Gallery</strong> — a grid of YouTube clips: paste a link for each one, give it an optional caption, and choose how many sit side by side. Visitors play a clip in a popup without leaving the page.</li>
     <li><strong>Image Accordion</strong> — five picture panels, each with its own image (upload or AI-generate) and caption. Three displays: Panels (hover to expand), Carousel (swipe or arrows), Masonry (staggered grid) — the same panels either way, so switching display never loses anything. Tick "Click to enlarge" and visitors can click any panel to see the full picture in a popup — that works with all three displays.</li>
     <li><strong>Columns</strong> — splits a frame into side-by-side cells, each holding its own tool.</li>
-    <li><strong>Menu</strong> — pick pages to link, plus custom links, dividers, and per-item icons. Styles: Plain / Buttons / Dropdown (with submenus). Button style: Solid, Outline, Soft, Floating, Tabs, Fade. Submenu style (Dropdown only): Card, Minimal, Dark, Bordered, Pill.</li>
+    <li><strong>Menu</strong> — pick pages to link, plus custom links, dividers, and per-item icons. Styles: Plain / Buttons / Pill badge on the page you are on / Dropdown (with submenus). Button style: Solid, Outline, Soft, Floating, Tabs, Fade. Submenu style (Dropdown only): Card, Minimal, Dark, Bordered, Pill.</li>
     <li><strong>Breadcrumb</strong> — size/style.</li>
     <li><strong>Banner</strong> — background image + overlay headline/text, optional shape mask, AI ✨ Generate button.</li>
     <li><strong>Card</strong> — a background shape (rectangle/rounded/oval/circle/pill) with an optional custom color and/or AI-generated image, that you write text directly over.</li>
@@ -43,28 +43,82 @@
     <li><strong>🎨 Colors</strong> — the active theme/template's colors: pick a curated preset collection, or fine-tune each color under "Advanced". Per the currently <em>active</em> template, not a Dashboard setting.</li>
   </ul>
   <p class="hint">Drag the small handle in a panel's top-left corner to resize it wider/taller — this is remembered across visits.</p>
+  <p>The bar at the very top also has <strong>📱 Preview at&hellip;</strong> &mdash; it
+    opens the page at a phone, tablet or desktop width, exactly as a visitor sees it,
+    in a frame over the editor. It is a real preview rather than the page squeezed
+    narrow, so anything that changes on a small screen actually changes.</p>
 </div>
 
 <div class="card">
-  <h2>Dashboard</h2>
+  <h2>Where everything is</h2>
+  <p>The Dashboard is a row of buttons. Each opens its own screen, and the bigger
+    ones group related screens behind tabs along the top.</p>
   <ul>
-    <li><strong>Your Pages</strong> — add/rename/delete pages, set the home page, and <strong>Reset All Content</strong> (blanks every page's sections back to empty — pages/titles/addresses/blog posts are untouched). A theme and a page's own content are independent: switching themes never touches existing page content.</li>
-    <li><strong>Pages are just pages</strong> &mdash; what a page can do comes from the
-      tools on it, not from a kind chosen when it was made. Creating a page lets you
-      start it as a Blog, FAQ or Contact page, but that only decides which tools are
-      already on it: you can add a second blog beside the first, put an FAQ on your
-      home page, or move any of it later. The one exception is a
-      <strong>newsletter</strong>, which really is a different kind of page &mdash; it
-      stays out of your navigation, is listed in the public archive, and can be sent to
-      your mailing list.</li>
-    <li><strong>Blogs and FAQs belong to your site, not to a page</strong> &mdash; a blog
-      is a named set of posts, shown wherever you drop a Blog tool (on one page or
-      several, without copying anything). Questions work the same way: an FAQ Content
-      tool holds them, and an FAQ Reader elsewhere shows the ones you tick. Edit a
-      question where it was written and every page repeating it follows.</li>
-    <li><strong>Site Look (Templates)</strong> — pick which template/theme is active; a template's original layout can be "Insert"-ed into a chosen page.</li>
-    <li><strong>Site Settings</strong> — Email Settings (SMTP, for the Contact Form tool), AI Settings (below), and Default Section Width.</li>
+    <li><strong>🎨 Design</strong> &mdash; four tabs.
+      <em>Pages</em> adds, renames, reorders and deletes pages and sets the home page.
+      <em>Templates</em> is your library of looks: activate one, export it as a .zip,
+      import somebody else&rsquo;s, or save your current site as a new template.
+      <em>Layout</em> decides where the header, sidebars and footer sit.
+      <em>Theme Generator</em> writes a whole look and its words from a description.</li>
+    <li><strong>📰 Blog</strong> &mdash; your blogs and every post in them. A blog is a
+      named set of posts with its own address; the Blog tool shows one wherever you
+      drop it, on as many pages as you like.</li>
+    <li><strong>🖼️ Media</strong> &mdash; every picture and file on the site: the ones
+      you uploaded or generated, and the ones each installed template brought with it.
+      A template&rsquo;s own pictures are marked 🔒 and cannot be deleted here &mdash;
+      they belong to the template, which would be left with a hole in it.</li>
+    <li><strong>🔌 Connections</strong> &mdash; Stripe, Cal.com and your AI provider,
+      with a Test button beside each. &ldquo;Connected&rdquo; means a real call
+      succeeded, not that a key is stored.</li>
+    <li><strong>✉️ Email</strong> &mdash; three tabs. <em>Newsletters</em> writes and
+      sends them, <em>Email list</em> is who has confirmed, <em>Sending email</em> is
+      the mail server it all goes through.</li>
+    <li><strong>🛍️ Commerce</strong> &mdash; three tabs. <em>Products</em> is what you
+      sell and what each sale delivers, <em>Orders</em> is every sale (filter by buyer,
+      product, kind or date), <em>Bookings</em> is your diary.</li>
+    <li><strong>⚖️ Legal pages</strong>, <strong>💾 Backups</strong> &mdash; written
+      from your own details, and a copy of everything you can restore.</li>
   </ul>
+
+  <h3>Pages are just pages</h3>
+  <p>What a page can do comes from the tools on it, not from a kind chosen when it was
+    made. Creating one lets you start it as a Blog, FAQ or Contact page, but that only
+    decides which tools are already there: you can add a second blog beside the first,
+    put an FAQ on your home page, or move any of it later.</p>
+  <p>Two things are decided per page rather than by its type: whether it appears in a
+    menu (you tick it), and whether visitors can read it at all (&ldquo;public&rdquo;
+    &mdash; a private page opens for you and 404s for everybody else).</p>
+
+  <h3>Blogs and FAQs belong to your site, not to a page</h3>
+  <p>A blog is a named set of posts, shown wherever you drop a Blog tool &mdash; on one
+    page or several, without copying anything. Questions work the same way: an FAQ
+    Content tool holds them, and an FAQ Reader elsewhere shows the ones you tick. Edit
+    a question where it was written and every page repeating it follows.</p>
+</div>
+
+<div class="card">
+  <h2>Newsletters and the emails your site sends</h2>
+  <p>A newsletter is <strong>not</strong> a page. Most page tools cannot survive an
+    inbox &mdash; a Shop or a Blog is filled in when a page is drawn, and there is
+    nothing to fill it in from inside an email &mdash; so a newsletter is written from
+    a <strong>layout</strong> instead: a shape built for email, with slots you fill in.</p>
+  <ul>
+    <li><strong>Email &rarr; Newsletters</strong> &rarr; pick a shape (a letter, one
+      story with a picture, two things side by side, or an announcement), fill it in,
+      <em>Preview</em> to see exactly what will land, then send.</li>
+    <li>You can also send <strong>a blog post</strong> as a newsletter. A post already
+      has a title, a date, a permanent address and an online copy, so it is an issue
+      without inventing one.</li>
+    <li>Only people who have <strong>confirmed</strong> their address are ever written
+      to. Signing up sends one invitation; nothing else goes out until it is answered.</li>
+    <li>Every newsletter carries your postal address and an unsubscribe link, by law.
+      Both are added for you and cannot be edited away. The greeting and sign-off
+      around them are yours (Email &rarr; Newsletters).</li>
+  </ul>
+  <p class="hint">Order confirmations, the note telling you about a sale, and the two
+    subscription emails are dressed in your site&rsquo;s colours and fonts too &mdash;
+    but they carry no unsubscribe link, because there is nothing to unsubscribe from.
+    A receipt is one half of something the buyer just did.</p>
 </div>
 
 <div class="card">
@@ -80,7 +134,7 @@
 
 <div class="card">
   <h2>AI Settings</h2>
-  <p>Dashboard → Site Settings → AI Settings.</p>
+  <p>🔌 <strong>Connections</strong> → the AI tab.</p>
   <ul>
     <li><strong>Provider</strong> — Open WebUI, Ollama, or Google Gemini. Fill in its URL/key, then use "Load Models" to pick from a live list instead of typing a name. This is what powers the 💬 AI Assistant chat.</li>
     <li><strong>Image generation</strong> (the ✨ Generate buttons on Image/Banner/Card) — works via Gemini (needs a <em>billing-enabled</em> account — the free tier doesn't support image output) or Open WebUI (proxies to whatever image backend it's configured with, e.g. ComfyUI — set an "Image Generation Model/Workflow" name if it needs one). Ollama has no image-generation API of its own.</li>

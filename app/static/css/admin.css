@@ -827,3 +827,13 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
 .cms-layout-choice:hover { border-color: var(--cms-ui-accent); }
 .cms-layout-choice strong { font-size: 1rem; }
 .cms-layout-choice span { font-size: .86rem; opacity: .8; line-height: 1.45; }
+
+/*  A template's own picture in the Media Library: shown, and marked as
+    not yours to delete. A lock rather than a missing button, so the
+    reason is visible instead of the control merely being absent. */
+.media-library-owned {
+  position: absolute; top: 4px; right: 4px;
+  width: 22px; height: 22px; display: grid; place-items: center;
+  font-size: 12px; border-radius: 999px;
+  background: rgba(255,255,255,.9); cursor: help;
+}

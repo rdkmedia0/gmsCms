@@ -16,9 +16,14 @@ from . import (
 from .settings import FAVICON_EMOJI_CHOICES
 from .templates import dashboard_template_maps
 
-@bp.route("/")
-@login_required
-def dashboard():
+def _screen_context(db):
+    """Everything the Dashboard's old six sections needed.
+
+    They are four screens now -- Dashboard, Blog, and Design's tabs -- and
+    they share this rather than each growing its own query set. It fetches
+    a little more than any one screen uses; the alternative is four
+    near-copies that drift, and these are small selects on an admin page.
+    """
     db = get_db()
     pages = db.execute("SELECT * FROM pages ORDER BY nav_order, title").fetchall()
     templates = db.execute("SELECT * FROM templates ORDER BY is_builtin DESC, name").fetchall()
@@ -38,8 +43,7 @@ def dashboard():
     # activating now loads both look and content in one step.
     activate_conflict_map, active_content = dashboard_template_maps(db, current_app.static_folder, templates)
 
-    return render_template(
-        "admin/dashboard.html",
+    return dict(
         pages=pages,
         #  With how many posts in each, because the delete has to be able
         #  to say what it is about to destroy rather than "are you sure".
@@ -86,6 +90,41 @@ def dashboard():
         active_content=active_content,
         activate_conflict_map=activate_conflict_map,
     )
+
+
+@bp.route("/")
+@login_required
+def dashboard():
+    """What is left of it: where you are, what still needs doing, and the
+    way to everything else."""
+    return render_template("admin/dashboard.html", **_screen_context(get_db()))
+
+
+@bp.route("/blogs")
+@login_required
+def blogs_screen():
+    """Your blogs and their posts. A list of things you write is not a
+    setting, so it is not on the Settings row -- it has a button of its
+    own."""
+    return render_template("admin/blogs.html", **_screen_context(get_db()))
+
+
+@bp.route("/design/pages")
+@login_required
+def pages_screen():
+    return render_template("admin/design_pages.html", **_screen_context(get_db()))
+
+
+@bp.route("/design/templates")
+@login_required
+def templates_screen():
+    return render_template("admin/design_templates.html", **_screen_context(get_db()))
+
+
+@bp.route("/design/layout")
+@login_required
+def layout_screen():
+    return render_template("admin/design_layout.html", **_screen_context(get_db()))
 
 
 @bp.route("/help")

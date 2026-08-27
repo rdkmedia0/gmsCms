@@ -5696,3 +5696,45 @@ output looked identical either way.
     bar is drawn for anyone signed in and a preview showing a strip no
     visitor will ever see is not a preview.
 
+### The admin becomes buttons and tabs; the Library stops lying (2026-08-27)
+
+**The Dashboard was six long sections on one screen** -- blogs, settings,
+pages, the theme generator, templates, layout -- and it read as a wall.
+It is a row of buttons now. The sections became screens: **Blog** on its
+own (a list of things you write is not a setting), and **Design** with
+tabs for Pages, Templates, Layout and the Theme Generator, the shape
+Commerce and Email already had.
+
+The markup did not change, only where it is rendered: each section is a
+partial under `partials/dash/`, and five thin routes share one
+`_screen_context()`. That fetches a little more than any single screen
+needs, which is the right trade against four query sets that drift.
+
+One thing the split caught, and it is the usual shape: a macro import sat
+in the GAP between two blocks, belonging to neither, so the Layout screen
+raised `'nav_layout_diagram' is undefined`. Cutting a template into
+pieces has to account for what lives between the pieces.
+
+**The Media Library said "Nothing here yet" on a site with 77 pictures.**
+It listed uploads only, and on a site whose pictures all came with its
+template that is an empty screen headed Media Library -- which reads as
+"you have none" while they are on disk and on the page. It now lists
+every installed template's pictures too, 80 items where there were 0.
+
+They are shown and **locked**, which is the honest pair: on screen
+because somebody looking for a picture should find every picture, locked
+because each belongs to a template that would be left with a hole in it.
+A padlock rather than a missing button, so the reason is visible. And the
+delete route refuses them rather than trusting the screen to hide the
+control -- it takes a bare filename and looks in the uploads folder, so a
+template picture sharing a name with an upload would otherwise have
+deleted the upload instead.
+
+**Help was describing an admin that no longer exists** -- "Dashboard →
+Site Settings", a Templates section on the Dashboard -- and still said a
+newsletter "really is a different kind of page" that "stays out of your
+navigation", which stopped being true twice over: a page is in a menu
+because somebody ticked it, and a newsletter is not a page at all any
+more. Rewritten against what is actually there, including what a template
+picture's padlock means and why a receipt carries no unsubscribe link.
+

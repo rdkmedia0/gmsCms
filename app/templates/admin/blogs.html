@@ -1,0 +1,6 @@
+{% extends "admin/base.html" %}
+{% block title %}Blog — My Site Admin{% endblock %}
+{% block content %}
+{% include "partials/dash/blogs.html" %}
+<script src="{{ static_url('js/admin/dashboard.js') }}"></script>
+{% endblock %}

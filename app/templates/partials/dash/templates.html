@@ -1,0 +1,94 @@
+{#  The template library.
+
+    Lifted out of admin/dashboard.html, which had grown into six long
+    sections on one screen. The markup is unchanged; only where it is
+    rendered moved. #}
+<section class="card">
+  <h2>Templates</h2>
+  <p class="muted">A template is a <strong>complete package</strong> — colors, fonts, and (if it has any) ready-made page content. Activate one here to apply all of it at once; the Layout section below then lets you customize whichever template is active, without switching templates.</p>
+  {#  Always here, always re-runnable: somebody changing template a year
+      later wants the same walk-through, and running it again changes
+      nothing they have already set. #}
+  <form method="post" action="{{ url_for('admin.setup_restart') }}" class="inline-form">
+    <button type="submit" class="btn btn-small"
+            data-confirm="You are about to start the setup walk-through from the beginning. Nothing you have already set is changed or cleared — it asks again, with your answers filled in."
+            title="Six short steps: the site's name, its look, your details, and what you have not set up yet">Walk me through setting this up</button>
+  </form>
+  <div class="table-scroll">
+    <table class="simple-table">
+      {#  "Active" was a column of its own beside "Type", and on a narrow
+          screen the badge sat on top of the word next to it. It is not a
+          type, it is a state, and it belongs with the name of the thing it
+          is a state of. Three columns instead of four also gives the rest
+          room to breathe. #}
+      <thead><tr><th>Template</th><th>Type</th><th class="col-icons">Action</th></tr></thead>
+      <tbody>
+        {% for t in templates %}
+        <tr>
+          <td>
+            {{ t.name }}
+            {% if t.is_active %} <span class="badge">✔ Active</span>{% endif %}
+            {% if t.header_sections or t.footer_sections %}<br><span class="hint">includes header/footer</span>{% endif %}
+          </td>
+          <td>{{ 'Built-in' if t.is_builtin else 'Imported/Saved' }}</td>
+          <td class="col-icons">
+            <span class="row-actions">
+              {#  Same four actions, same four words' worth of room: use it,
+                  take a copy away with you, reload what it ships, remove it. #}
+              {% if not t.is_active %}
+              <button type="button" class="icon-btn cms-tpl-activate-btn" data-activate-url="{{ url_for('admin.template_activate', template_id=t.id) }}" data-conflict="{{ 'true' if activate_conflict_map.get(t.id) else 'false' }}" title="Use this look — its colours, fonts, layout and content">▶</button>
+              {% endif %}
+              <a href="{{ url_for('admin.template_export', template_id=t.id) }}" class="icon-btn"
+                 data-confirm="You are about to download &quot;{{ t.name }}&quot; as a .zip file — its look, and any pages it carries. It can be imported into another site running this same CMS."
+                 title="Download this template as a .zip — reusable on another install running this same CMS">⤓</a>
+              {% if not t.is_active %}
+              {% set confirm_msg = 'You are about to remove the built-in template &quot;' ~ t.name ~ '&quot; from your library. It ships with the app, so it comes back the next time the app restarts.' if t.is_builtin else 'You are about to delete the template &quot;' ~ t.name ~ '&quot;. Your pages keep their content — this removes the saved look from your library.' %}
+              <form method="post" action="{{ url_for('admin.template_delete', template_id=t.id) }}">
+                <button type="submit" class="icon-btn icon-btn-danger"
+                        data-confirm="{{ confirm_msg }}"
+                        data-confirm-danger="1"
+                        title="Remove this template from your library">&times;</button>
+              </form>
+              {% elif active_content and active_content.template_id == t.id %}
+              <button type="button" class="icon-btn cms-load-content-btn" data-url="{{ url_for('admin.template_load_content', template_id=active_content.template_id) }}" title="Reload all of this template's pages, overwriting any of them you have since changed">↻</button>
+              {% endif %}
+            </span>
+          </td>
+        </tr>
+        {% if t.palette_json and t.is_active %}
+        <tr>
+          <td colspan="3">
+            <p class="hint">🎨 This look's colors — presets and per-color pickers — are set from the 🎨 Colors panel on the edit bar at the top of any page while editing, not here.</p>
+          </td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <details style="margin-top: 16px;">
+    <summary class="hint" style="cursor:pointer;">Import Template Package</summary>
+    <p class="hint">Upload a .zip exported from "Export" above (from this site or another install running this same CMS). Installs its theme immediately; if it also carries page content, that's merged into your site's matching pages the same way "Load Content" above works. If you already have that template you'll be asked what to do: <strong>Overwrite</strong> keeps one template and puts the uploaded files in place of the ones with the same name, <strong>Keep both</strong> installs this one beside the original under its own numbered name, and <strong>Cancel</strong> changes nothing. A built-in template is reinstalled on every restart, so it can't be overwritten — for those, Keep both is the only choice offered.</p>
+    <form method="post" action="{{ url_for('admin.package_import') }}" enctype="multipart/form-data" class="inline-form cms-import-package-form">
+      <input type="file" name="package" accept=".zip" required title="Choose a .zip file exported from this or another install.">
+      <button type="submit" class="btn btn-small" title="Install the uploaded package. If you already have this template, you'll be asked whether to overwrite it, keep both, or cancel.">Import</button>
+    </form>
+  </details>
+  <details style="margin-top: 16px;">
+    <summary class="hint" style="cursor:pointer;">Save current site as a new template</summary>
+    <p class="hint">Captures the active template's look, layout, and every page's content as a brand new, independent template — saved into your library immediately, right alongside built-in and imported ones. This is also your "get back to this later" point: save one before a risky change, then activate it again to restore everything. Leave the name blank to use a timestamped default you can rename later; exporting a .zip (above) stays a separate action.</p>
+    <form method="post" action="{{ url_for('admin.template_save_current') }}" class="inline-form">
+      <input type="text" name="name" placeholder="New template name (optional)" maxlength="80" title="What to call this new template in your library. Leave blank to use a timestamped default you can rename later.">
+      <button type="submit" class="btn btn-small" title="Save the active look, layout, and every page's content as a brand new template.">Save as New Template</button>
+      {% if active_tpl and not active_tpl.is_builtin %}
+      {# Once the first edit has given the site a template of its own,
+         "save my work" usually means updating that one rather than
+         collecting another copy. Offered only for a template the site
+         owns: a built-in comes back from the image on every boot, so
+         overwriting one would not survive a restart. #}
+      <button type="submit" name="overwrite" value="1" class="btn btn-small"
+              title="Update &quot;{{ active_tpl.name }}&quot; so it matches the site as it is now, instead of making another copy.">Update "{{ active_tpl.name }}"</button>
+      {% endif %}
+    </form>
+  </details>
+</section>

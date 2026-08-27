@@ -1,0 +1,10 @@
+{#  The Design section's tabs. One list, included by each of its screens,
+    the way Commerce and Email already do it -- see partials/tabs.html for
+    why they are links rather than script. #}
+{% set tabs = [
+  ("Pages", url_for('admin.pages_screen'), request.endpoint == 'admin.pages_screen'),
+  ("Templates", url_for('admin.templates_screen'), request.endpoint == 'admin.templates_screen'),
+  ("Layout", url_for('admin.layout_screen'), request.endpoint == 'admin.layout_screen'),
+  ("Theme Generator", url_for('admin.theme_generator'), request.endpoint == 'admin.theme_generator'),
+] %}
+{% include "partials/tabs.html" %}

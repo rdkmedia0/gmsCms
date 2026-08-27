@@ -1,0 +1,42 @@
+{#  Where the site's furniture sits -- header, sidebars, footer.
+
+    Lifted out of admin/dashboard.html, which had grown into six long
+    sections on one screen. The markup is unchanged; only where it is
+    rendered moved. #}
+{% from "partials/nav_layout_diagram.html" import nav_layout_diagram, sidebar_layout_diagram, footer_layout_diagram %}
+<section class="card">
+  <h2>Layout</h2>
+  <p class="muted">Customizations layered on top of whichever template is active above — not templates of their own. Structure — where the logo/navigation sit, and what shape the sidebars start in. One site-wide choice each, reused by whichever template is active. Click to apply (saves immediately).</p>
+  <div class="nav-layout-picker" id="cms-tpl-structure-grid" data-has-sidebar-content="{{ 'true' if has_sidebar_content else 'false' }}">
+    {% for key, info in nav_layouts.items() %}
+    <button type="button" class="nav-layout-option {{ 'nav-layout-option-selected' if nav_layout == key }}"
+            data-nav-url="{{ url_for('admin.settings_nav_layout') }}" data-nav-layout="{{ key }}" title="{{ info[0] }} — {{ info[1] }}">
+      {{ nav_layout_diagram(key) }}
+      <span class="nav-layout-option-label">{{ info[0] }}</span>
+    </button>
+    {% endfor %}
+  </div>
+  {% if active_tpl %}
+  <p class="cms-tpl-section-label" style="margin-top:14px;">Page layout <span class="hint">— the page's structural shape: sidebars (or none); asks first if a side already has one</span></p>
+  <div class="nav-layout-picker" id="cms-tpl-sidebar-grid">
+    {% for key, preset in sidebar_layout_presets.items() %}
+    <button type="button" class="nav-layout-option"
+            data-sidebar-url="{{ url_for('admin.template_apply_sidebar_layout', template_id=active_tpl.id) }}" data-preset="{{ key }}" title="{{ preset.name }} — {{ preset.description }}">
+      {{ sidebar_layout_diagram(key) }}
+      <span class="nav-layout-option-label">{{ preset.name }}</span>
+    </button>
+    {% endfor %}
+  </div>
+
+  <p class="cms-tpl-section-label" style="margin-top:14px;">Footer layout <span class="hint">— drops ordinary, editable sections (menu, contact icons, columns) into the footer; replaces what's there if it isn't empty</span></p>
+  <div class="nav-layout-picker" id="cms-tpl-footer-grid">
+    {% for key, preset in footer_layout_presets.items() %}
+    <button type="button" class="nav-layout-option"
+            data-footer-url="{{ url_for('admin.template_apply_footer_layout', template_id=active_tpl.id) }}" data-preset="{{ key }}" title="{{ preset.name }} — {{ preset.description }}">
+      {{ footer_layout_diagram(key) }}
+      <span class="nav-layout-option-label">{{ preset.name }}</span>
+    </button>
+    {% endfor %}
+  </div>
+  {% endif %}
+</section>
