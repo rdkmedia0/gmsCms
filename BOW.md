@@ -5828,7 +5828,20 @@ reason written down rather than mailing anyway. The poller was also
 watched firing on its own against the live container, arranged so the job
 would be refused rather than sent.
 
-## Where this stands, and what is left (2026-08-27)
+## Where this stands, and what is left (2026-08-27, end of day)
+Everything the previous summary listed as "specified and unbuilt" is
+built. What is below is either a decision waiting on the owner, or work
+that has been named and scoped and not started. Nothing here is a fix
+somebody forgot.
+
+Built today, after that summary was written: the scheduled-sends list and
+scheduled blog posts; the base currency (and the basket bug it turned
+up); the wording editor for the four messages that send themselves; the
+two shape variables; the template lifecycle with its fork question,
+promotion and completeness check; the rate limit `captcha.py` had always
+claimed; and the WhatsApp link. Each has its own entry above and its own
+checker.
+
 
 Written at the end of a long day on a live install, so the next person --
 including me -- does not have to reconstruct it from thirty entries
