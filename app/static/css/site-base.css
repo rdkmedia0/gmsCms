@@ -1021,6 +1021,12 @@ video, .cms-media video, .cms-video {
 .block-html:has(.cms-breadcrumb) {
   padding-top: var(--pad-menu-block, 12px);
   padding-bottom: var(--pad-menu-block, 12px);
+  /*  The SIDES too, and for the same reason the top and bottom needed
+      changing: the generic figure is sized for a tall content block. A
+      strip is short, so its corners are small -- a 409x122 block gets
+      61px corners, and content 12px down needs 25px of side clearance,
+      not the 90px that min(22%, 104px) hands it. */
+  padding-inline: var(--pad-menu-block-side, 32px);
 }
 .cms-card-shape { border-radius: var(--site-radius, var(--corner-card, 0)); }
 .cms-banner { border-radius: var(--site-radius, var(--corner-banner, 0)); }
