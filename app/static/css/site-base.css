@@ -418,6 +418,29 @@ body.has-sidebar-right > .site-sidebar.site-sidebar-right.site-sidebar-empty { f
   margin-left: calc(50% - (var(--cms-width-pct, 100) * 0.5vw));
   margin-right: calc(50% - (var(--cms-width-pct, 100) * 0.5vw));
 }
+/*  A custom width is a share of the VIEWPORT, so it means something quite
+    different on a phone: 25% is a comfortable 360px column on a desktop
+    and 98px on a 390px screen -- narrow enough to break a menu into one
+    word per line. Below the breakpoint where this layout is a single
+    column anyway, a section takes the column. The sidebar zone is
+    excluded because the same control means height there, not width. */
+@media (max-width: 700px) {
+  /*  No :not() with a combinator in it -- a complex selector inside
+      :not() is not universally parsed, and an invalid selector takes the
+      whole rule with it, which is why the first attempt changed nothing.
+      The sidebar zone needs no exclusion: its own rule governs height
+      there, and a rail section already spans the rail. */
+  .cms-section[data-layout-width="custom"] {
+    /*  width:auto is not enough: the header zone is a flex container, so
+        an auto-width item shrinks to its contents and the open menu is
+        still squeezed. It has to claim the row. */
+    width: 100%;
+    max-width: 100%;
+    flex: 1 1 100%;
+    margin-left: 0;
+    margin-right: 0;
+  }
+}
 /* Same Width control, reinterpreted as HEIGHT/REACH inside the sidebar —
    a sidebar section already always spans the rail's full (conventional)
    width, so width isn't a free axis there. "Full" doesn't need its own
