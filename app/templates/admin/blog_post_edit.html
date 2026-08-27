@@ -1,6 +1,7 @@
 {% extends "admin/base.html" %}
 {% block title %}{{ 'Edit Post' if post else 'New Post' }} — My Site Admin{% endblock %}
 {% block content %}
+{% from "partials/wysiwyg_toolbar.html" import wysiwyg_toolbar with context %}
 <div class="page-edit-header">
   <h1>{{ 'Editing: ' ~ post.title if post else 'New Post' }}</h1>
   {% if post %}
@@ -26,14 +27,19 @@
            title="The date readers see. Leave blank and today's date is used when you publish.">
 
     <label for="content">Content</label>
+    {#  The same toolbar the live page uses -- one macro, both places
+        (partials/wysiwyg_toolbar.html). Without the image and icon
+        buttons: this form has no upload target, and it carries its own
+        icon control below. #}
     <div class="cms-blog-content-tools">
       <button type="button" class="btn cms-insert-icon-textarea-btn" data-target="content" title="Insert an icon at the cursor">{{ icon_svg(icon_choices[0][0] if icon_choices else '') | safe }} Insert Icon</button>
     </div>
-    {#  data-richtext: admin/rich-text.js replaces this with a small
-        WYSIWYG and keeps the textarea in step, so the form, the route and
-        everything downstream see exactly what they always did. A post's
-        content is HTML, and nobody should have to type HTML to write
-        one. #}
+    <div class="cms-richtext" data-for="content">
+      {{ wysiwyg_toolbar(include_media=false) }}
+    </div>
+    {#  data-richtext: admin/rich-text.js puts the editable surface inside
+        the box above and keeps this field in step, so the form, the route
+        and everything downstream see exactly what they always did. #}
     <textarea id="content" name="content" rows="14" data-richtext
               title="Write your post here. Use the buttons above for headings, lists and links."
               placeholder="Write your post.">{{ post.content if post else '' }}</textarea>
@@ -106,6 +112,7 @@
 
 {% from "partials/icon_picker.html" import icon_picker_grid with context %}
 {{ icon_picker_grid(include_none=false) }}
+<script src="{{ static_url('js/wysiwyg-commands.js') }}"></script>
 <script src="{{ static_url('js/admin/rich-text.js') }}"></script>
 <script src="{{ static_url('js/admin/icon-picker-textarea.js') }}"></script>
 

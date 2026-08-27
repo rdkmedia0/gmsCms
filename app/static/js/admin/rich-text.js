@@ -1,38 +1,27 @@
-// Turns a <textarea data-richtext> into a small WYSIWYG.
+// Turns a <textarea data-richtext> into the same rich-text editor the
+// live page uses.
 //
 // A blog post's content is HTML, and it was being typed AS HTML in a
-// plain textarea -- the exact thing this project removed from the page
-// editor once already: "never a raw HTML textarea as the way to
-// accomplish ordinary styling or layout". Somebody writing a post should
-// not have to know what a <p> is.
+// plain textarea -- the thing this project removed from the page editor
+// once already: "never a raw HTML textarea as the way to accomplish
+// ordinary styling or layout".
 //
-// The textarea stays in the form and keeps its name, so the server, the
-// route and everything downstream see exactly what they saw before. It
-// is only hidden, and kept in step with what the person is actually
-// editing.
+// The first version of this grew its own small toolbar, which was a
+// second implementation of something already built. It now renders the
+// shared toolbar markup (partials/wysiwyg_toolbar.html) and binds the
+// shared behaviour (js/wysiwyg-commands.js), so the blog editor has the
+// live tool's features and a button added in one place appears in both.
 //
-// The command set is the live editor's core vocabulary (see the
-// wysiwyg_toolbar macro in public/page.html) minus the page-layout ones:
-// alignment, fonts and colours belong to a section on a page, not to the
-// words of a post.
+// The textarea stays in the form, keeps its name and stays what the
+// server reads -- hidden, and kept in step -- so the route, the model and
+// blog.post_html() see exactly what they always saw.
 (function () {
   "use strict";
 
-  var COMMANDS = [
-    { cmd: "bold", label: "<b>B</b>", title: "Bold" },
-    { cmd: "italic", label: "<i>I</i>", title: "Italic" },
-    { cmd: "formatBlock", value: "h2", label: "H2", title: "Heading" },
-    { cmd: "formatBlock", value: "p", label: "\u00b6", title: "Normal paragraph" },
-    { cmd: "insertUnorderedList", label: "\u2022 List", title: "Bullet list" },
-    { cmd: "insertOrderedList", label: "1. List", title: "Numbered list" },
-    { cmd: "createLink", label: "\uD83D\uDD17", title: "Link" },
-    { cmd: "removeFormat", label: "\u2715", title: "Clear formatting" }
-  ];
-
   //  Plain text with blank lines between paragraphs is how older posts
   //  were written, and post_html() still renders them that way. Same
-  //  conversion here, so opening an old post shows paragraphs rather
-  //  than one run-on block.
+  //  conversion here, so an old post opens as paragraphs rather than one
+  //  run-on block.
   function asHtml(value) {
     var text = (value || "").trim();
     if (!text) return "";
@@ -44,52 +33,40 @@
   }
 
   document.querySelectorAll("textarea[data-richtext]").forEach(function (textarea) {
-    var wrap = document.createElement("div");
-    wrap.className = "cms-richtext";
-
-    var bar = document.createElement("div");
-    bar.className = "cms-richtext-toolbar";
-    COMMANDS.forEach(function (item) {
-      var b = document.createElement("button");
-      b.type = "button";
-      b.innerHTML = item.label;
-      b.title = item.title;
-      //  mousedown, not click: clicking a button blurs the editable and
-      //  the selection goes with it, so the command lands on nothing.
-      b.addEventListener("mousedown", function (e) {
-        e.preventDefault();
-        editable.focus();
-        if (item.cmd === "createLink") {
-          var url = window.prompt("Link to which web address?", "https://");
-          if (url) document.execCommand("createLink", false, url);
-        } else {
-          document.execCommand(item.cmd, false, item.value || null);
-        }
-        sync();
-      });
-      bar.appendChild(b);
-    });
+    //  The toolbar for this field is rendered by the template, right
+    //  before the textarea, so the markup stays in the template layer.
+    var wrap = document.querySelector('.cms-richtext[data-for="' + textarea.id + '"]');
+    if (!wrap) return;
+    var bar = wrap.querySelector(".cms-wysiwyg-toolbar");
 
     var editable = document.createElement("div");
-    editable.className = "cms-richtext-surface";
+    //  cms-wysiwyg-body is what the shared toolbar looks for, and what
+    //  the site's own body styles key off, so the words look here much
+    //  as they will once published.
+    editable.className = "cms-wysiwyg-body cms-richtext-surface";
     editable.contentEditable = "true";
     editable.setAttribute("role", "textbox");
     editable.setAttribute("aria-multiline", "true");
-    editable.setAttribute("aria-label", textarea.getAttribute("aria-label") || "Post content");
+    editable.setAttribute("aria-label", "Post content");
     editable.title = textarea.title || "Write your post here. Use the buttons above for headings, lists and links.";
     editable.innerHTML = asHtml(textarea.value);
+    wrap.appendChild(editable);
 
     function sync() { textarea.value = editable.innerHTML; }
     editable.addEventListener("input", sync);
     editable.addEventListener("blur", sync);
 
-    textarea.parentNode.insertBefore(wrap, textarea);
-    wrap.appendChild(bar);
-    wrap.appendChild(editable);
     textarea.hidden = true;
-    //  So the icon inserter can find the surface it should write into
-    //  rather than a textarea nobody is looking at.
+    //  So the icon inserter writes into the surface somebody is looking
+    //  at rather than a hidden textarea's caret.
     textarea.richtextSurface = editable;
+
+    if (bar && window.cmsWysiwyg) {
+      window.cmsWysiwyg.bindToolbar(bar, {
+        findBody: function () { return editable; },
+        afterCommand: function () { sync(); },
+      });
+    }
 
     var form = textarea.closest("form");
     if (form) form.addEventListener("submit", sync);

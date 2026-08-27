@@ -1051,13 +1051,15 @@
     }
   });
 
-  bindEach(".cms-wysiwyg-toolbar button[data-cmd]", (btn) => {
-    btn.addEventListener("mousedown", (e) => e.preventDefault()); // keep focus/selection in the editable area
-    btn.addEventListener("click", () => {
-      const cmd = btn.dataset.cmd;
-      const value = btn.dataset.value || null;
-      if (cmd === "createLink") {
-        const body = currentWysiwygBody(btn);
+  //  The toolbar's behaviour is shared with the admin's rich-text field
+  //  (static/js/wysiwyg-commands.js). Only the three things that genuinely
+  //  differ are passed in: which editable a control acts on, what to do
+  //  afterwards, and how to ask for a URL.
+  bindEach(".cms-wysiwyg-toolbar", (bar) => {
+    window.cmsWysiwyg.bindToolbar(bar, {
+      findBody: (el) => currentWysiwygBody(el),
+      afterCommand: (body) => { if (body) saveWysiwygBody(body); },
+      askForLink: (done, body) => {
         const hasTextSelection = (window.getSelection()?.toString() || "").length > 0;
         const linkingImage = !hasTextSelection && lastClickedImage && body?.contains(lastClickedImage);
         cmsModal({
@@ -1065,56 +1067,25 @@
           showInput: true,
           confirmLabel: "Add Link",
           danger: false,
-        }).then(({ confirmed, value: url }) => {
-          if (confirmed && url) {
-            if (linkingImage) {
-              const existingLink = lastClickedImage.closest("a");
-              if (existingLink) {
-                existingLink.href = url;
-              } else {
-                const a = document.createElement("a");
-                a.href = url;
-                lastClickedImage.replaceWith(a);
-                a.appendChild(lastClickedImage);
-              }
-            } else {
-              document.execCommand("createLink", false, url);
-            }
-          }
-          if (body) saveWysiwygBody(body);
-        });
-        return;
-      }
-      document.execCommand(cmd, false, value);
-      const body = currentWysiwygBody(btn);
-      if (body) saveWysiwygBody(body);
-    });
-  });
-
-  bindEach(".cms-wysiwyg-toolbar select[data-cmd], .cms-wysiwyg-toolbar input[data-cmd]", (ctrl) => {
-    const eventName = ctrl.tagName === "SELECT" ? "change" : "input";
-    ctrl.addEventListener(eventName, () => {
-      const cmd = ctrl.dataset.cmd;
-      const value = ctrl.value;
-      if (!value) return;
-      document.execCommand("styleWithCSS", false, true);
-      document.execCommand(cmd, false, value);
-      if (ctrl.tagName === "SELECT") ctrl.value = ""; // reset the "Font..." picker after applying
-      const body = currentWysiwygBody(ctrl);
-      if (body) saveWysiwygBody(body);
-    });
-  });
-
-  // Reset text/highlight color back to whatever the theme's CSS would
-  // naturally apply, instead of being stuck with a manually picked color.
-  bindEach(".cms-color-reset", (btn) => {
-    btn.addEventListener("mousedown", (e) => e.preventDefault());
-    btn.addEventListener("click", () => {
-      document.execCommand("styleWithCSS", false, true);
-      const cmd = btn.dataset.resetCmd;
-      document.execCommand(cmd, false, cmd === "hiliteColor" ? "transparent" : "inherit");
-      const body = currentWysiwygBody(btn);
-      if (body) saveWysiwygBody(body);
+        }).then(({ confirmed, value: url }) => done(confirmed ? url : null));
+      },
+      //  A link on a picture is not a link in the words: with nothing
+      //  selected, createLink would do nothing at all, so the anchor is
+      //  put around the image by hand.
+      onLinkImage: (body, url) => {
+        const hasTextSelection = (window.getSelection()?.toString() || "").length > 0;
+        if (hasTextSelection || !lastClickedImage || !body?.contains(lastClickedImage)) return false;
+        const existingLink = lastClickedImage.closest("a");
+        if (existingLink) {
+          existingLink.href = url;
+        } else {
+          const a = document.createElement("a");
+          a.href = url;
+          lastClickedImage.replaceWith(a);
+          a.appendChild(lastClickedImage);
+        }
+        return true;
+      },
     });
   });
 

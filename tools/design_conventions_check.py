@@ -90,6 +90,35 @@ check("the badge drops the underline", "text-decoration: none" in _all)
 check("and the bold", "font-weight: inherit" in _all)
 
 print()
+print("The rich-text toolbar exists once")
+print("-" * 70)
+#  It was defined in public/page.html and reimplemented, smaller, for the
+#  blog editor. One markup source and one dispatch now, so a button added
+#  in one place appears in both.
+_tpl = os.path.join(_here, "app", "templates")
+_defs = []
+for _root, _dirs, _files in os.walk(_tpl):
+    for _f in _files:
+        if not _f.endswith(".html"):
+            continue
+        _t = open(os.path.join(_root, _f), encoding="utf-8").read()
+        if "macro wysiwyg_toolbar" in _t:
+            _defs.append(os.path.relpath(os.path.join(_root, _f), _tpl))
+check("the toolbar markup is declared in one place", len(_defs) == 1, ", ".join(_defs))
+check("and it is the shared partial",
+      _defs == [os.path.join("partials", "wysiwyg_toolbar.html")], str(_defs))
+
+_js = os.path.join(_here, "app", "static", "js")
+check("the command dispatch has its own module",
+      os.path.isfile(os.path.join(_js, "wysiwyg-commands.js")))
+_inline = open(os.path.join(_js, "inline-editor.js"), encoding="utf-8").read()
+_rich = open(os.path.join(_js, "admin", "rich-text.js"), encoding="utf-8").read()
+check("the live editor uses it", "cmsWysiwyg.bindToolbar" in _inline)
+check("the admin field uses it too", "cmsWysiwyg.bindToolbar" in _rich)
+check("and neither runs execCommand for the toolbar itself",
+      "execCommand" not in _rich, "rich-text.js still dispatches its own")
+
+print()
 print("Nobody is asked to type HTML")
 print("-" * 70)
 #  CLAUDE.md: never a raw HTML textarea as the way to accomplish ordinary

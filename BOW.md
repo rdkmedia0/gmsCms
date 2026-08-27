@@ -5403,3 +5403,40 @@ for, so it now inserts into the surface the person is actually looking at.
 `design_conventions_check.py` asserts no admin form takes a post's
 writing as raw HTML, so the hole cannot reopen quietly in a third place.
 
+### One toolbar, two places (2026-08-27)
+
+The blog editor's WYSIWYG was written fresh, with a smaller command set,
+while the live page already had a full one. The owner asked the obvious
+question -- why not reuse the live text tool, it has more features and is
+prebuilt -- and they were right; this project's own rule says so:
+"Before adding a new inline block to a template, check whether the same
+interaction already exists elsewhere."
+
+Reusing it whole was not the answer either. `inline-editor.js` is 2,463
+lines that bind drag-and-drop, section menus and autosave; loading that
+into an admin form to obtain a toolbar is the wrong granularity. The
+right seam is narrower and it was already there:
+
+  * **The markup** moved to `partials/wysiwyg_toolbar.html`, included by
+    both. `include_media` is the only difference between the callers --
+    the live page can upload an image into the words and insert an icon
+    from its own grid, an admin form has no upload target and carries its
+    own icon control.
+  * **The dispatch** moved to `static/js/wysiwyg-commands.js`. Three
+    things differ between callers and are passed in, because each is a
+    genuinely different question: which editable a control acts on (the
+    live page walks up to a section; a form has exactly one), what to do
+    afterwards (autosave, or copy into the hidden field the server
+    reads), and how to ask for a URL (the live page's modal, or the
+    browser's prompt).
+
+The blog editor now has alignment, fonts and colours it did not have, and
+sixty-seven lines came out of `inline-editor.js`. Both were exercised in
+a browser afterwards -- bold and italic on the live page, bold and the
+hidden-field sync on the form, no console errors on either.
+
+**What I got wrong** is worth naming, since it is the same shape as the
+automatic fork earlier the same day: I answered "this field needs a rich
+text editor" by building one, rather than asking what already answered
+it. The smaller build looked like less work and was more code.
+

@@ -1,0 +1,65 @@
+{#  The rich-text toolbar, written once.
+
+    It was defined in public/page.html and reimplemented, smaller, for the
+    blog editor -- two toolbars for one job, which is the drift this
+    project keeps warning about. One macro now, included by both, so a
+    button added here appears in both places.
+
+    `include_media` is the only difference between the two callers: the
+    live page can upload an image into the words and insert an icon from
+    its own grid; an admin form has no upload target and carries its own
+    icon control. Everything else is identical, deliberately.
+
+    The behaviour lives in static/js/wysiwyg-commands.js, shared the same
+    way -- see that file for why a command needs a caller to say what to
+    do afterwards. #}
+  {% macro wysiwyg_toolbar(include_media=true) %}
+    <div class="cms-wysiwyg-toolbar">
+      <button type="button" data-cmd="bold" title="Bold"><b>B</b></button>
+      <button type="button" data-cmd="italic" title="Italic"><i>I</i></button>
+      <button type="button" data-cmd="underline" title="Underline"><u>U</u></button>
+      <button type="button" data-cmd="insertUnorderedList" title="Bullet list">&bull; List</button>
+      <button type="button" data-cmd="formatBlock" data-value="h2" title="Heading">H2</button>
+      <button type="button" data-cmd="formatBlock" data-value="p" title="Paragraph">¶</button>
+      <button type="button" data-cmd="createLink" title="Link">🔗</button>
+      <button type="button" data-cmd="justifyLeft" title="Align left">⯇</button>
+      <button type="button" data-cmd="justifyCenter" title="Align center">☰</button>
+      <button type="button" data-cmd="justifyRight" title="Align right">⯈</button>
+      <button type="button" data-cmd="justifyFull" title="Justify">▤</button>
+      <select data-cmd="fontName" title="Font" class="cms-toolbar-select">
+        <option value="">Font…</option>
+        <optgroup label="System">
+          <option value="Arial, sans-serif">Arial</option>
+          <option value="Georgia, serif">Georgia</option>
+          <option value="'Times New Roman', serif">Times New Roman</option>
+          <option value="'Courier New', monospace">Courier New</option>
+          <option value="Verdana, sans-serif">Verdana</option>
+          <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+        </optgroup>
+        {% if google_font_choices %}
+        <optgroup label="Google Fonts">
+          {% for name, fallback in google_font_choices %}
+          <option value="'{{ name }}', {{ fallback }}" style="font-family: '{{ name }}', {{ fallback }};">{{ name }}</option>
+          {% endfor %}
+        </optgroup>
+        {% endif %}
+      </select>
+      <label class="cms-color-label" title="Text color">A
+        <input type="color" data-cmd="foreColor" value="#000000">
+      </label>
+      <button type="button" class="cms-color-reset" data-reset-cmd="foreColor" title="Reset text color to the theme's default">⟲A</button>
+      <label class="cms-color-label cms-color-label-bg" title="Highlight / cell color">A
+        <input type="color" data-cmd="hiliteColor" value="#ffff00">
+      </label>
+      <button type="button" class="cms-color-reset" data-reset-cmd="hiliteColor" title="Remove the highlight color">⟲A</button>
+      {%- if include_media %}
+      <button type="button" class="cms-insert-image-btn" title="Insert an image here">🖼️ Image</button>
+      {%- endif %}
+      {%- if include_media %}
+      <input type="file" class="cms-insert-image-input" accept="image/*" hidden>
+      {%- endif %}
+      {%- if include_media %}
+      <button type="button" class="cms-insert-icon-btn" title="Insert an icon here">{{ icon_svg(icon_choices[0][0] if icon_choices else '') | safe }} Icon</button>
+      {%- endif %}
+    </div>
+  {% endmacro %}
