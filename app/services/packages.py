@@ -513,6 +513,12 @@ def install_theme_package(db, slug, static_folder, pkg_dir_override=None, is_bui
                 "UPDATE templates SET font_overrides = ? WHERE id = ?",
                 (json.dumps(manifest["font_overrides"]), existing["id"]),
             )
+        #  The shipped defaults are recorded on every install, override
+        #  or not: they are what the package SAYS about itself, and an
+        #  owner's own choice lives in the *_override columns beside them.
+        db.execute("UPDATE templates SET shape_default = ?, shadow_default = ? WHERE id = ?",
+                   (manifest.get("shape_override"), manifest.get("shadow_override"),
+                    existing["id"]))
         if adopt_manifest_overrides and manifest.get("shape_override"):
             db.execute("UPDATE templates SET shape_override = ? WHERE id = ?", (manifest["shape_override"], existing["id"]))
         if adopt_manifest_overrides and manifest.get("shadow_override"):
@@ -529,8 +535,9 @@ def install_theme_package(db, slug, static_folder, pkg_dir_override=None, is_bui
         cur = db.execute(
             "INSERT INTO templates "
             "(name, slug, css_path, is_active, is_builtin, palette_json, google_fonts_url, "
-            "font_overrides, shape_override, shadow_override, zone_style_overrides) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "font_overrides, shape_override, shadow_override, zone_style_overrides, "
+            "shape_default, shadow_default) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 manifest["name"], slug, css_path,
                 1 if manifest.get("default_active") else 0,
@@ -541,6 +548,8 @@ def install_theme_package(db, slug, static_folder, pkg_dir_override=None, is_bui
                 manifest.get("shape_override"),
                 manifest.get("shadow_override"),
                 json.dumps(manifest["zone_style_overrides"]) if manifest.get("zone_style_overrides") else None,
+                manifest.get("shape_override"),
+                manifest.get("shadow_override"),
             ),
         )
         return cur.lastrowid

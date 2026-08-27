@@ -5537,13 +5537,25 @@ converter. Start with the first.
 
 ### Gaps found by using it, worth building
 
-**A template cannot carry its own shape.** No `theme.css` sets
-`--site-radius`; the built-ins state per-kind defaults and leave the
-site-wide shape to the owner's Corners setting. So activating a template
-does not restore the look it was designed with, and a pill-cornered
-template is not expressible. Sits beside the older gap that **a template
-cannot ship header/footer-zone sections** -- both are "a template brings
-a look" being less true than it sounds.
+**A template's shape, and a claim I got wrong.** I recorded that a
+template cannot carry its own shape. It can, and always could: all
+sixteen manifests declare `shape_override`, `install_theme_package`
+writes it, and forking copies it. What I had actually seen was a site
+whose Corners control had been set to Auto, which is a different thing.
+
+The real gap was narrower and is now fixed. `shape_override` is BOTH the
+shipped shape and the Corners control's own value, so choosing Auto
+erased what the template was designed with and nothing remembered it --
+a site that arrived pill-cornered simply stopped being one, with no way
+back short of reinstalling. A template's shipped shape and shadow are now
+recorded separately (`shape_default`, `shadow_default`, written on every
+install because they are the package's statement about itself), and Auto
+falls back to them. Auto now means "this template's own look", which is
+what an owner reads it as.
+
+Worth keeping the mistake as well as the fix: I diagnosed a missing
+feature from one observation of a live site, and wrote it down as fact.
+The setting had been changed. Reading the code would have taken a minute.
 
 **A short wide box needs an inline-only inset.** `--site-radius-pad` is
 percentages of WIDTH, which is right for a block roughly as tall as it is
@@ -5652,4 +5664,35 @@ same words rather than a second draft that can drift.
 whole signup flow broken. The checker captures both now -- worth noting
 because it was a checker that failed, not the thing it checks, and the
 output looked identical either way.
+
+### The four small ones, and a preview that does not lie (2026-08-27)
+
+  * **The duplicate pictures resolved themselves.** The live picker fell
+    from 154 files to 77 once the stale-PNG cleanup ran. Two duplicates
+    remain and are correct: the same picture in a builtin and in a saved
+    copy of it, which is the design -- a template's pictures belong to
+    the template, and de-duplicating across them would break that.
+  * **"Added" is green now**, not `--primary-dark`. On an orange site the
+    site's own colour gone darker reads as the button being pressed, not
+    as success. This is one of the few things a site should not restate in
+    its own palette.
+  * **Protecting a purchases page further is already done**, by the
+    buyer's own optional password. The item predated it and described the
+    weaker version -- asking for their email as well as the link. A
+    password they choose is strictly better: it is something they know
+    rather than something they were told, and it is opt-in rather than
+    friction on everybody. Closed rather than built.
+  * **The responsive preview is a frame, not a narrowed page.** The
+    obvious implementation squeezes the page into a 390px column, and it
+    lies: a media query answers the VIEWPORT, so a page pushed into a
+    narrow box on a wide screen still lays itself out as a wide one and
+    shows the wrong thing confidently. It loads the page in an iframe at
+    the chosen width instead, where the queries fire exactly as they will
+    on a phone.
+
+    That needed `?preview=1` -- one request rendered as a visitor sees it,
+    without touching the session, so the editor stays open behind the
+    frame. It clears `logged_in` as well as `editing`, because the admin
+    bar is drawn for anyone signed in and a preview showing a strip no
+    visitor will ever see is not a preview.
 

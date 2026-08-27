@@ -71,6 +71,20 @@
       {% endfor %}
     </select>
     {% endif %}
+    {% if editing %}
+    {#  A real preview, not a narrowed wrapper: media queries answer the
+        VIEWPORT, so a page squeezed into a narrow box on a wide screen
+        still lays itself out as a wide one and would lie. This opens the
+        page as a visitor sees it inside a frame of the chosen width,
+        where the queries fire properly. #}
+    <select class="cms-mode-select cms-preview-width"
+            title="See this page at another screen size, exactly as a visitor would">
+      <option value="">📱 Preview at…</option>
+      <option value="390">Phone (390px)</option>
+      <option value="768">Tablet (768px)</option>
+      <option value="1280">Desktop (1280px)</option>
+    </select>
+    {% endif %}
     <a href="{{ url_for('admin.dashboard') }}">Dashboard</a>
     <a href="{{ url_for('auth.account') }}">Account</a>
     <a href="{{ url_for('auth.logout') }}">Log out</a>
@@ -2266,6 +2280,15 @@
     </div>
   </div>
 
+  <div id="cms-preview-frame" class="cms-preview-frame" hidden>
+    <div class="cms-preview-bar">
+      <span class="cms-preview-size"></span>
+      <button type="button" id="cms-preview-close" class="cms-action-btn"
+              title="Close the preview and go back to editing">Close preview</button>
+    </div>
+    <iframe title="Preview" class="cms-preview-viewport"></iframe>
+  </div>
+
   <div id="cms-toast" class="cms-toast" hidden></div>
 
   {# One shared picker for every "Insert Icon" button on the page (every
@@ -2277,6 +2300,7 @@
   <script src="{{ static_url('js/admin/live-refresh.js') }}"></script>
   <script src="{{ static_url('js/wysiwyg-commands.js') }}"></script>
   <script src="{{ static_url('js/inline-editor.js') }}"></script>
+  <script src="{{ static_url('js/admin/preview-width.js') }}"></script>
   <script src="{{ static_url('js/admin/faq-editor.js') }}"></script>
   {% endif %}
 </body>

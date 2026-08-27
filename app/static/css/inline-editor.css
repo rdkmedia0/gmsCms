@@ -1240,3 +1240,26 @@ html:has(.cms-dock-panel), body:has(.cms-dock-panel) { overflow-x: clip; }
 .cms-contact-tool-form .cms-icon-grid-view {
   position: absolute; z-index: 40; right: 0; max-width: 100%;
 }
+
+/*  The responsive preview. A frame over the editor rather than beside it:
+    the point is to look at the page, and half a screen of editor next to
+    it would be neither. */
+.cms-preview-frame {
+  position: fixed; inset: 0; z-index: 4000;
+  background: rgba(24, 28, 34, .82);
+  display: flex; flex-direction: column; align-items: center;
+  padding: 14px 14px 24px;
+}
+.cms-preview-frame[hidden] { display: none; }
+.cms-preview-bar {
+  display: flex; align-items: center; gap: 14px;
+  color: #fff; font: 600 13px var(--cms-ui-font, system-ui, sans-serif);
+  padding: 6px 4px 12px;
+}
+.cms-preview-viewport {
+  flex: 1 1 auto; max-width: 100%; height: 100%;
+  border: 0; border-radius: var(--cms-ui-radius-surface, 8px);
+  background: #fff; box-shadow: 0 18px 50px rgba(0,0,0,.45);
+}
+/*  Nothing behind it should scroll while it is open. */
+body.cms-preview-open { overflow: hidden; }

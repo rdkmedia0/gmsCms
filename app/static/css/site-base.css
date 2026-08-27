@@ -2349,7 +2349,11 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
 /*  The moment after adding something. Deliberately brief and on the
     button itself: a shopper who has just clicked is looking at the
     button, not at the top of the page. */
-.cms-action-btn.is-added { background: var(--primary-dark, #15803d); }
+/*  A real green, not the site's own colour gone darker. "It worked" is
+    one of the few things a site should not restate in its own palette --
+    on an orange site --primary-dark is just a darker orange, and the
+    moment reads as the button being pressed rather than as success. */
+.cms-action-btn.is-added { background: #15803d; color: #ffffff; }
 .cms-action-btn.is-refused { opacity: .75; }
 .cms-basket-count { transition: background-color .2s ease; }
 

@@ -986,6 +986,14 @@ def _pickable_images(template):
     return items
 
 
+def _column(row, name, default=None):
+    """A column that may not exist yet on an older row."""
+    try:
+        return row[name]
+    except (IndexError, KeyError):
+        return default
+
+
 def _active_template(db):
     tpl = db.execute("SELECT * FROM templates WHERE is_active = 1").fetchone()
     if not tpl:
@@ -1795,8 +1803,13 @@ def _theme_override_css(template):
             lines.append(f"--site-font-family: {fonts['body_font_family']};")
         if fonts.get("footer_font_family"):
             lines.append(f"--site-footer-font-family: {fonts['footer_font_family']};")
-    if template["shape_override"]:
-        shape = SHAPE_PRESETS.get(template["shape_override"])
+    #  The owner's choice if they have made one, otherwise whatever the
+    #  template ships. "Auto" is read as "this template's own look", which
+    #  is what it says -- it used to mean "none at all", so choosing it
+    #  silently discarded the shape the template was designed with.
+    shape_key = template["shape_override"] or _column(template, "shape_default")
+    if shape_key:
+        shape = SHAPE_PRESETS.get(shape_key)
         if shape:
             lines.append(f"--site-radius: {shape['radius']};")
             #  The strongly-curved shapes reach into their own box, so
@@ -1809,8 +1822,9 @@ def _theme_override_css(template):
             if shape.get("content_padding"):
                 lines.append(f"--site-radius-pad: {shape['content_padding']};")
 
-    if template["shadow_override"]:
-        shadow = SHADOW_PRESETS.get(template["shadow_override"])
+    shadow_key = template["shadow_override"] or _column(template, "shadow_default")
+    if shadow_key:
+        shadow = SHADOW_PRESETS.get(shadow_key)
         if shadow:
             lines.append(f"--site-shadow: {shadow['shadow']};")
             #  ...and re-state the rule that READS it after the :root
@@ -1890,6 +1904,20 @@ def _render_page(db, page, post=None, post_content=""):
     logged_in = bool(session.get("user_id"))
     view_mode = session.get("view_mode", "editing")
     editing = logged_in and view_mode == "editing"
+    #  ?preview=1 renders this ONE request as a visitor sees it, without
+    #  touching the session -- which is what lets the responsive preview
+    #  show the real page inside a frame while the editor stays open
+    #  behind it. A visitor gains nothing by passing it: they were never
+    #  editing.
+    preview = request.args.get("preview") == "1"
+    if preview:
+        editing = False
+        view_mode = "viewing"
+        #  The admin bar is drawn for anybody logged in, not only while
+        #  editing -- so a preview has to say "pretend I am not" or it
+        #  shows a strip no visitor will ever see, at the top of a frame
+        #  whose whole job is to be honest about what they see.
+        logged_in = False
     nav_html = _build_nav_html(nav_pages, editing)
     #  A post is one level below the page its blog sits on, and the trail
     #  should say so rather than stopping at the page.

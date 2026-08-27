@@ -460,6 +460,15 @@ def _migrate(db):
     # to guard against, unlike colors' arbitrary hex input.
     _add_column(db, "templates", "font_overrides", "TEXT")
     _add_column(db, "templates", "shape_override", "TEXT")
+    #  What the template was DESIGNED with, kept apart from what the owner
+    #  has chosen since. `shape_override` is the Corners control's own
+    #  value, so setting Corners to Auto used to clear the shipped shape
+    #  with no way back short of reinstalling the template -- a site that
+    #  came pill-cornered simply stopped being one, and nothing said what
+    #  it had been. Auto now means "whatever this template ships", which
+    #  is what an owner reads it as.
+    _add_column(db, "templates", "shape_default", "TEXT")
+    _add_column(db, "templates", "shadow_default", "TEXT")
     # Elevation, the same preset-only override as shape_override above
     # (SHADOW_PRESETS). NULL means "whatever the theme itself does".
     _add_column(db, "templates", "shadow_override", "TEXT")
