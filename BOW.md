@@ -5171,3 +5171,39 @@ now a top-level menu style. Everything that asked "is this buttons?" now
 asks "does this draw buttons?", because a pill menu is a button menu and
 only its shape differs.
 
+### Centring a last row that is not full (2026-08-27)
+
+Four products in three columns left the fourth hard against the left
+edge, which reads as a mistake anywhere and, inside a strongly curved
+section, puts it where the shape is narrowest. Asked for: one product on
+the centre line, two straddling it, three filling the row as before.
+
+**Twice as many columns as products across, each product spanning two.**
+That is the whole trick -- a half-column step exists, so a short row can
+be centred on it. `:nth-child(3n+1)` means "first in its row", so a
+`:last-child` that is also first in its row is a row of one.
+
+Two things went wrong on the way, and both are worth keeping.
+
+**Flex was the obvious answer and it was wrong.** `justify-content:
+center` centres a short last row for free, and it silently tripled the
+cards' padding: percentage padding resolves against the CONTAINING BLOCK,
+which for a grid item is its own grid area (234px) and for a flex item is
+the whole flex container (742px). `--site-radius-pad` is percentages, so
+a card went from 131px of content to **26px**, with the button spilling
+out of it. Anything that changes how these items are laid out has to keep
+the containing block the size of one card.
+
+**Two overlapping media queries argued, and the earlier one won.** Below
+600px the grid is a single column, and every placement above had to be let
+go -- but the two-column rule from the `max-width: 900px` block also
+applied on a phone, and `:last-child:nth-child(2n+1)` (0,4,0) outranks a
+plain `:last-child` (0,3,0). Specificity beats source order, so a lone
+last product was placed into a column the one-column grid does not have,
+and only ODD counts were wrong. Fixed by making the ranges not overlap.
+A `max-width` stacked under another `max-width` is not a cascade, it is
+two rules that are both live and will be sorted by specificity.
+
+Checked at 8 product counts across 5 widths: 40 combinations, every row
+centred, no overflow.
+
