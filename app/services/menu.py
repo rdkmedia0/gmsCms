@@ -1,3 +1,12 @@
+#  "pill" is NOT a kind of button, and making it one was the mistake.
+#  Filled pills on every item is a row of buttons with a rounder corner,
+#  which is what the owner said when they saw it: rebranded buttons.
+#
+#  What a badge actually does is mark ONE thing -- where you are. The
+#  Breadcrumb already does exactly that, tinting only its current crumb,
+#  so the Menu wears the same treatment rather than inventing a second
+#  meaning for the same word.
+MENU_STYLES = ("plain", "buttons", "pill", "dropdown")
 """Menu-building logic — used by body-section Menu tools, template header/
 sidebar/footer zone routes, and demo/package content application. Pure
 functions apart from url_for/db reads — no request/session coupling."""
@@ -30,7 +39,7 @@ MENU_SIZES = ("small", "medium", "large")
 #  setting, because a menu can be pill-shaped on a square-cornered site
 #  and often should be -- it is the one row of chrome where the shape is
 #  doing the work of separating one word from the next.
-MENU_BUTTON_STYLES = ("solid", "outline", "soft", "floating", "tabs", "fade", "pill", "pill-outline")
+MENU_BUTTON_STYLES = ("solid", "outline", "soft", "floating", "tabs", "fade")
 MENU_SUBMENU_STYLES = ("card", "minimal", "dark", "bordered", "pill")
 MENU_DIRECTIONS = ("horizontal", "vertical")
 
@@ -293,10 +302,7 @@ def _build_menu_links_html(db, items, style="plain", size="medium", bg_color="",
             + toggle_btn + '<div class="cms-menu-links"><ul>' + "".join(parts) + "</ul></div></nav>"
         )
 
-    #  A pill menu IS a button menu; only its shape differs, so every
-            #  question below asks "does this draw buttons", not "is the
-            #  style the string 'buttons'".
-    draws_buttons = style in ("buttons", "pill")
+    draws_buttons = style == "buttons"
     link_class = ' class="cms-menu-btn"' if draws_buttons else ""
     parts = []
     for it in resolved:
@@ -305,9 +311,13 @@ def _build_menu_links_html(db, items, style="plain", size="medium", bg_color="",
             continue
         href, label = _href_label(it)
         parts.append(f'<a href="{html_escape(href)}" data-menu-key="{html_escape(it["key"])}"{link_class}>{_icon_span(it)}{html_escape(label)}</a>')
-    shape = "pill" if style == "pill" else button_style
-    button_style_class = f" cms-menu-btnstyle-{shape}" if draws_buttons else ""
-    menu_class = f"cms-menu cms-menu-{size}{align_class}{link_style_class}{direction_class}" + (" cms-menu-buttons" + button_style_class if draws_buttons else "")
+    button_style_class = f" cms-menu-btnstyle-{button_style}" if draws_buttons else ""
+    #  A badge menu is plain links plus a mark on the one you are on. It
+    #  carries no button class at all, so nothing about it can inherit
+    #  the button look it was briefly mistaken for.
+    badge_class = " cms-menu-badge" if style == "pill" else ""
+    menu_class = (f"cms-menu cms-menu-{size}{align_class}{link_style_class}{direction_class}{badge_class}"
+                  + (" cms-menu-buttons" + button_style_class if draws_buttons else ""))
     button_style_attr = f' data-menu-button-style="{button_style}"' if style == "buttons" else ""
     return (
         f'<nav class="{menu_class}" data-menu-items="{items_json}" data-menu-style="{style}" '

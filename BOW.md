@@ -5334,3 +5334,33 @@ The Basket panel's padding and this both come down to the same question,
 which is worth asking of anything automatic: *what did the person do that
 asked for this?*
 
+### A badge marks one thing, or it is not a badge (2026-08-27)
+
+The Menu's "pill badge" was added as a BUTTON style: a filled pill on
+every item. Put beside the Buttons style, the two screenshots are the
+same control with a different corner radius, which is what the owner
+said -- rebranded buttons.
+
+The word was already in use in this app and already meant something
+precise. The Breadcrumb's pill tints ONLY its current crumb, in
+`--accent-100`, with no other marking. A badge marks one thing: where you
+are. A filled pill on every item marks nothing.
+
+So the Menu's pill is no longer a button style at all. It carries no
+button class, its links stay plain links, and the current page wears the
+Breadcrumb's exact declarations -- same tint, same padding, same radius,
+and the colour comes from the palette rather than from the button colour,
+which is what stops it reading as something to click.
+
+**One fact gets one mark.** The usual current-page treatment is bold plus
+an underline; with a badge on top that is three marks for one fact, and
+the Breadcrumb's badge carries neither. The badge style drops both.
+
+`tools/design_conventions_check.py` asserts it: the two rules must
+declare the same thing, the badge must take a palette colour rather than
+the button colour, a badge menu must carry no button class, and "pill"
+must not also be offered as a button style. Nothing in a stylesheet stops
+two tools drifting apart again, so the rule is checked rather than
+trusted -- an editor stops being learnable the moment one word means two
+things in it.
+

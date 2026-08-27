@@ -2323,36 +2323,26 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
 /*  No number to balance the bag, so it needs no extra room beside it. */
 .cms-basket-link.cms-basket-style-bag { gap: 0; }
 
-/*  Pill menu buttons — the same capsule the basket count wears, so a
-    header carrying both reads as one set of controls rather than two.
-    999px unconditionally: this is the tool's own chosen shape, not the
-    site's corner setting, which is why it does not read --site-radius. */
-.cms-menu-btnstyle-pill a.cms-menu-btn,
-.cms-menu-btnstyle-pill-outline a.cms-menu-btn {
+/*  The Pill badge menu: plain links, and a badge on the page you are on.
+    Not a button style -- a filled pill on every item is a row of buttons
+    with a rounder corner, which is all it was.
+
+    Deliberately the same declarations as the Breadcrumb's own pill
+    (see .cms-breadcrumb-style-pill above): same tint, same padding, same
+    radius. One word, one meaning, in both tools -- and the colour comes
+    from the palette rather than from the button colour, so it reads as a
+    mark rather than as something to click. */
+.cms-menu-badge a.cms-menu-current {
+  background: var(--accent-100, #eee);
+  padding: 2px 10px;
   border-radius: 999px;
-  padding: 8px 18px;
 }
-.cms-menu-btnstyle-pill a.cms-menu-btn {
-  background: var(--menu-btn-color);
-  color: var(--menu-btn-text);
-  border: 1px solid transparent;
-}
-.cms-menu-btnstyle-pill a.cms-menu-btn:hover { opacity: .88; }
-/*  The outline version keeps the capsule and gives the ground back, for
-    a header that already has a colour of its own. */
-.cms-menu-btnstyle-pill-outline a.cms-menu-btn {
-  background: transparent;
-  color: var(--menu-btn-color);
-  border: 1.5px solid color-mix(in srgb, var(--menu-btn-color) 45%, transparent);
-}
-.cms-menu-btnstyle-pill-outline a.cms-menu-btn:hover {
-  background: var(--menu-btn-color); color: var(--menu-btn-text);
-  border-color: var(--menu-btn-color); opacity: 1;
-}
-/*  The page you are on, in either pill style. */
-.cms-menu-btnstyle-pill a.cms-menu-btn.is-current,
-.cms-menu-btnstyle-pill-outline a.cms-menu-btn.is-current {
-  background: var(--menu-btn-color); color: var(--menu-btn-text);
-  border-color: var(--menu-btn-color);
+/*  The badge IS the mark, so the underline and the bold that normally
+    say "you are here" come off. Three marks for one fact reads as an
+    accident, and the Breadcrumb's badge -- the thing this is copying --
+    carries neither. */
+.cms-menu-badge a.cms-menu-current {
+  text-decoration: none;
+  font-weight: inherit;
 }
 

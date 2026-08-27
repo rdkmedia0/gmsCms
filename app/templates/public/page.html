@@ -444,7 +444,7 @@
         <select name="menu_style" class="cms-menu-style-select" onchange="this.form.requestSubmit()" title="Menu display style">
           <option value="plain" {{ 'selected' if cell.menu_style == 'plain' }}>Plain links</option>
           <option value="buttons" {{ 'selected' if cell.menu_style == 'buttons' }}>Buttons</option>
-          <option value="pill" {{ 'selected' if cell.menu_style == 'pill' }}>Pill badges</option>
+          <option value="pill" {{ 'selected' if cell.menu_style == 'pill' }}>Pill badge on the page you are on</option>
           <option value="dropdown" {{ 'selected' if cell.menu_style == 'dropdown' }}>Dropdown (submenus)</option>
         </select>
         <select name="menu_size" onchange="this.form.requestSubmit()" title="Font size">
@@ -474,8 +474,6 @@
           <option value="floating" {{ 'selected' if cell.menu_button_style == 'floating' }}>Floating (pill + shadow)</option>
           <option value="tabs" {{ 'selected' if cell.menu_button_style == 'tabs' }}>Tabs (underline)</option>
           <option value="fade" {{ 'selected' if cell.menu_button_style == 'fade' }}>Fade (gradient)</option>
-          <option value="pill" {{ 'selected' if cell.menu_button_style == 'pill' }}>Pill badge (filled)</option>
-          <option value="pill-outline" {{ 'selected' if cell.menu_button_style == 'pill-outline' }}>Pill badge (outline)</option>
         </select>
         {% endif %}
         {% if cell.menu_style == 'dropdown' %}
