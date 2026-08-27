@@ -4594,3 +4594,51 @@ must not be scaled with the page -- it is the app talking, not the site,
 and it should stay at its own size while the CANVAS narrows. That is the
 chrome-vs-content boundary again, in a new place.
 
+### Forking, settled: ask, name it, and only when a LOOK changes (2026-08-27)
+
+The design to build, refined from the owner's proposal after finding what
+the fork actually does.
+
+**What it does now.** `fork_builtin_before_content_edit` is a
+before_request hook that fires on any POST to a content endpoint: "the
+first content change of a site running a built-in makes it theirs". But a
+content edit writes to pages and sections -- the SITE's data. It does not
+touch the template package or its row. So the fork on a content edit is
+about identity, not protection: it exists so that what you are running is
+called yours once you have typed in it.
+
+**Which suggests the boundary is in the wrong place.** The template's own
+data is its look: `color_overrides`, `font_overrides`, the shape, the
+theme files. Changing THOSE on a builtin genuinely writes to a shipped
+template. Changing a paragraph does not.
+
+So:
+
+  * **Content edits do not fork at all.** They never needed to. A site
+    running the shipped Bakery with its own words is exactly what it
+    says it is.
+  * **Changing the LOOK of a builtin asks**: "Make this a custom copy?"
+    -- because that is the first moment anything shipped would be
+    altered.
+  * If no copy of that template exists, it makes one, and the owner names
+    it. A name they chose is a name they will recognise in the library.
+  * If a copy already exists, it asks: **overwrite that one, or make
+    another?** -- which is the case that produced three identical entries
+    on a live install, and the one no automatic rule can answer, because
+    only the owner knows whether the old copy still matters.
+  * The library shows the two kinds apart: as shipped, and custom.
+  * A template can be activated as often as you like and nothing is
+    created, because activation is not a change.
+
+**The open question before building**, and it should be answered rather
+than assumed: `_retire_foreign_pack_pages` deletes pages whose
+`source_template` differs from the active slug. If a site keeps running
+the builtin instead of a fork, check what that does to pages the owner
+has since edited when they later activate something else. The fork may
+have been quietly protecting those, in which case the fix is to update
+`source_template` when a page is edited, not to keep the fork.
+
+The result an owner sees: nothing appears in their library that they did
+not ask for and name. Which is the whole argument of the product, applied
+to the one place it was not.
+
