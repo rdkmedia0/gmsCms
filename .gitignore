@@ -25,3 +25,4 @@ initpwd.txt
 *.secret
 *credentials*
 app/data/template-packages/
+preview-emails.html

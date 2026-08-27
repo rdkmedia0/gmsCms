@@ -12,7 +12,8 @@ import os
 import re
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, _here)
 
 from app import create_app                                         # noqa: E402
 from app.services import email_layouts, newsletter                 # noqa: E402
@@ -110,8 +111,15 @@ with app.test_request_context("/"):
     wrapped = newsletter.to_email_html(
         [{"type": "html", "title": "", "content": bodies["story"]}],
         "S", "u", "s", look=look)
+    #  Proof the rule can fail: the same test against markup that really
+    #  does carry two style attributes must come back False. A regex with
+    #  a mistyped escape matches nothing and passes everything, which is
+    #  how this file shipped a check that could never fail.
+    check("...and this rule can actually fail",
+          bool(re.search(r"<[a-z]+ [^>]*style=[^>]*style=",
+                         '<a style="a" href="#" style="b">x</a>', re.I)))
     check("no element ends up with two style attributes",
-          not re.search(r"<[a-z]+[^>]*style=[^>]*style=", wrapped, re.I))
+          not re.search(r"<[a-z]+\b[^>]*style=[^>]*style=", wrapped, re.I))
     #  The label sat on the accent and was recoloured to the accent.
     label = re.search(r"<a[^>]*>Read it</a>", wrapped, re.I)
     check("a button label keeps its own colour",
@@ -126,6 +134,31 @@ with app.test_request_context("/"):
     check("the unsubscribe link survives", "https://example.com/u" in full)
     check("the sender line survives", "Sender line here" in full)
     check("the card stays light", "background:#ffffff" in full)
+
+print()
+print("Nothing carries an invisible character")
+print("-" * 68)
+#  A mistyped escape put a literal backspace (chr 8) where a regex word
+#  boundary belonged. The pattern then matched nothing -- silently, since
+#  a rule written as `not re.search(...)` passes when it matches nothing.
+#  It is invisible in an editor, in grep and in inspect.getsource. So it
+#  is looked for by code from now on, across everything shipped.
+import os as _os
+WHITESPACE = (chr(9), chr(10), chr(13))
+_bad = []
+for _root, _dirs, _files in _os.walk(_os.path.join(_here, "app")):
+    _dirs[:] = [d for d in _dirs if d not in ("__pycache__", "fonts", "themes", "uploads")]
+    for _f in _files:
+        if not _f.endswith((".py", ".html", ".css", ".js", ".j2")):
+            continue
+        _p = _os.path.join(_root, _f)
+        try:
+            _s = open(_p, encoding="utf-8").read()
+        except Exception:
+            continue
+        if any(ord(c) < 32 and c not in WHITESPACE for c in _s):
+            _bad.append(_os.path.relpath(_p, _here))
+check("no control characters anywhere in app/", not _bad, ", ".join(_bad[:3]))
 
 print()
 print("%d checks, %d failed" % (passed + failed, failed))

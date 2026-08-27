@@ -5207,3 +5207,58 @@ two rules that are both live and will be sorted by specificity.
 Checked at 8 product counts across 5 widths: 40 combinations, every row
 centred, no overflow.
 
+### An email is not a page (2026-08-27)
+
+Measured, because the Newsletters screen makes a claim: *"A newsletter is
+just a page. Write it in the normal editor with the same tools you use
+everywhere else."* Of that tool menu, in an inbox:
+
+  * **Blog, Shop, Buy button, Contact form, FAQ Reader arrive EMPTY.**
+    Each is a marker resolved against live data at render time, and none
+    of that data exists in an email.
+  * **Search** arrives as a magnifying glass, a **Video gallery** as
+    three play triangles, an **Accordion** as labels with no pictures.
+  * **Columns** arrives as the literal text `{}` -- its stored JSON.
+
+So the owner is right and the screen is wrong: an email is a different
+medium, not a kind of page. `services/email_layouts.py` declares layouts
+with named slots, rendered from table-structured templates with every
+style inline, because tables and inline styles are what clients actually
+render. The wrapper keeps what it owns and what must not become editable
+-- the ground, the light card, the sender line, the unsubscribe link.
+
+Note this does NOT break "features are tools, never page types". That
+rule is about capabilities on a page. A newsletter composed of email
+layouts is not a page with a special type; it is a different thing
+entirely, which is why the tools stop being a question.
+
+**A long-standing bug found on the way.** The style inliner PREPENDED a
+second `style` attribute, and a browser reads the first -- so a layout
+setting white text on a coloured button had the look's link colour put in
+front of it, and the label went the same colour as the button under it.
+Invisible, and only in some clients. It merges now: the look first, the
+element's own declarations last, which is the order that lets the
+specific one win inside one attribute. Skipping styled elements instead
+was tried and was worse -- it stopped the look reaching anything a
+section had styled, which is most of a section.
+
+### A character you cannot see, in a test that cannot fail
+
+Writing that fix, an escaping slip put a literal **backspace (chr 8)**
+where a regex word boundary belonged: `<a...` became `<a␈...`, which
+matches nothing. The loop ran fifteen times and did nothing. The
+character is invisible in an editor, in `grep`, and in
+`inspect.getsource` -- an hour went into re-reading code that was, as
+printed, correct. `cat -A` found it.
+
+Then the sweep found the same character in the CHECKER, in a rule written
+as `not re.search(...)`. A pattern that matches nothing makes that rule
+pass every time: **a check that cannot fail is worse than no check**,
+because it is counted. That rule now proves it can fail before asserting
+that it does not.
+
+Two things came out of it. Every backslash escape written through this
+pipeline today came out as the character it names, so generated code uses
+`chr(9)` and friends rather than escapes. And `email_layout_check.py`
+sweeps all of `app/` for control characters, by code, every run.
+
