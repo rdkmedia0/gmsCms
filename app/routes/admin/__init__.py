@@ -1133,11 +1133,19 @@ def fork_active_builtin(db):
         db.execute("UPDATE templates SET is_active = 1 WHERE id = ?", (active["id"],))
         db.commit()
 
+    #  The NAME is disambiguated too, not just the slug. Forking the same
+    #  builtin more than once -- which happens whenever somebody activates
+    #  it again and then edits -- left a library holding three entries all
+    #  called "Life Coaching (your copy)", identical in the picker and
+    #  impossible to tell apart. The slug was unique the whole time, but
+    #  nobody reads slugs.
     name = f'{active["name"]} (your copy)'
     slug = slugify(name)
     base, i = slug, 2
     while db.execute("SELECT 1 FROM templates WHERE slug = ?", (slug,)).fetchone():
-        slug, i = f"{base}-{i}", i + 1
+        slug = f"{base}-{i}"
+        name = f'{active["name"]} (your copy {i})'
+        i += 1
     source = packages.template_package_dir(current_app.static_folder, active["slug"], True)
     dest = os.path.join(current_app.static_folder, "themes", slug)
     if not os.path.isdir(source):
