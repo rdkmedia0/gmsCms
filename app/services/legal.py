@@ -54,6 +54,46 @@ OTHER_COUNTRIES = {"CH": "Switzerland", "GB": "United Kingdom", "NO": "Norway",
 COUNTRIES = {**EU_COUNTRIES, **OTHER_COUNTRIES}
 
 
+def whatsapp_link(phone):
+    """A working wa.me link built from a phone number, or "".
+
+    Why this exists rather than "paste a link into a Button": a `wa.me`
+    address is `https://`, so a Button or a Menu item already accepts one
+    and no new tool is needed. What people get WRONG is the number.
+    wa.me takes the full international number and NOTHING else -- no
+    plus, no spaces, no dashes, no brackets, no leading zero -- and a
+    number with any of those in it produces a link that opens WhatsApp to
+    nobody at all, with no error and nothing to see. It is the one part a
+    person cannot be expected to know.
+
+    So this does the one thing, from the number the site already has, and
+    the screen offers the result to copy. Anything further -- a chat
+    widget, the Business API -- is a decision about whether this product
+    holds customer conversations, which is not a formatting problem.
+
+    Returns "" rather than a broken link when the number cannot be a
+    international one: a link that silently goes nowhere is worse than no
+    link, which is the whole fault being fixed.
+    """
+    digits = "".join(c for c in (phone or "") if c.isdigit())
+    if not digits:
+        return ""
+    #  A number written for local dialling starts with a trunk 0, which
+    #  is not part of the international number. Without a country code in
+    #  front of it there is nothing to replace that 0 with, so this
+    #  refuses rather than guessing a country -- guessing would produce a
+    #  link that reaches somebody, just not the right somebody.
+    international = (phone or "").strip().startswith("+") or (phone or "").strip().startswith("00")
+    if not international:
+        return ""
+    if digits.startswith("00"):
+        digits = digits[2:]
+    #  Shortest real international number is 7 digits + country code.
+    if len(digits) < 8 or len(digits) > 15:
+        return ""
+    return "https://wa.me/" + digits
+
+
 def settings_for(db):
     rows = {
         r["key"]: r["value"]

@@ -19,6 +19,10 @@ def legal_pages():
     return render_template(
         "admin/legal.html",
         settings=legal.settings_for(db),
+        #  Built from the number already on file, because the one thing a
+        #  person cannot be expected to know is that wa.me wants the
+        #  international number and nothing else. See legal.whatsapp_link.
+        whatsapp=legal.whatsapp_link(legal.settings_for(db).get("phone")),
         site_name=((db.execute(
             "SELECT value FROM settings WHERE key = 'site_title'").fetchone() or {"value": ""})["value"] or "").strip(),
         documents=legal.DOCUMENTS,

@@ -6050,11 +6050,26 @@ It has the tighter allowance now, and the same honeypot, deliberately
 using the same field NAME, so a bot that has learned to leave `website`
 alone on one form has learned it on both.
 
-Still open, and both genuinely decisions rather than tasks: a
-visitor-facing AI assistant that has to start from refusal rather than
-retrieval, and WhatsApp -- where a `wa.me` link is an afternoon and the
-Business API is a decision about whether this product holds customer
-conversations at all. Both are written out above and unchanged.
+**WhatsApp: the half that was a task is done, the half that is a decision
+is not.** The note said "a `wa.me` link is an afternoon". Looking at it,
+most of that afternoon was already spent: a `wa.me` address is `https://`,
+so it passes `BUTTON_SCHEMES` and an owner can paste one into a Button or
+a Menu item today. No tool was needed and none was added.
+
+What they cannot be expected to know is the NUMBER. wa.me takes the full
+international number and nothing else -- no plus, no spaces, no dashes,
+no brackets, no leading trunk zero -- and a number with any of those in
+it produces a link that opens WhatsApp to nobody, with no error and
+nothing to see. So `legal.whatsapp_link()` formats it from the number the
+site already has, and the Legal screen offers the result to copy. It
+REFUSES a local number rather than guessing a country code: guessing
+produces a link that reaches somebody, just not the right somebody, which
+is the worst outcome available.
+
+Still open, and genuinely a decision rather than a task: the WhatsApp
+Business API -- whether this product holds customer conversations at all
+-- and a visitor-facing AI assistant that has to start from refusal
+rather than retrieval. Both are written out above and unchanged.
 
 ### Should the featured image live in the text toolbar? (asked 2026-08-27)
 

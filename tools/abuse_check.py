@@ -137,6 +137,31 @@ with app.app_context():
           "captcha.HONEYPOT_FIELD" in public
           and public.count("captcha.HONEYPOT_FIELD") >= 2)
 
+    print()
+    print("A WhatsApp link is built, or refused — never silently wrong")
+    print("-" * 70)
+    #  wa.me takes the international number and NOTHING else. A number
+    #  with a plus, a space or a leading trunk zero in it produces a link
+    #  that opens WhatsApp to nobody at all, with no error and nothing to
+    #  see -- which is why this is done for the owner rather than left as
+    #  "paste a link into a Button", something they can already do.
+    from app.services.legal import whatsapp_link
+    for given, want, why in (
+        ("+41 79 123 45 67", "https://wa.me/41791234567", "spaces and a plus"),
+        ("+1 (555) 010-9999", "https://wa.me/15550109999", "brackets and dashes"),
+        ("0041 79 123 45 67", "https://wa.me/41791234567", "00 instead of +"),
+        #  Refused rather than guessed. A local number needs a country
+        #  code, and guessing one produces a link that reaches somebody
+        #  -- just not the right somebody, which is the worst outcome
+        #  available here.
+        ("079 123 45 67", "", "local, so there is no country code to use"),
+        ("+41 79", "", "too short to be a real number"),
+        ("not a number", "", "not a number at all"),
+        ("", "", "nothing to work from"),
+    ):
+        check("%s: %s" % (why, whatsapp_link(given) or "refused"),
+              whatsapp_link(given) == want, repr(whatsapp_link(given)))
+
 shutil.rmtree(DATA_DIR, ignore_errors=True)
 print()
 print("%d checks, %d failed" % (passed + len(failures), len(failures)))

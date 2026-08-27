@@ -1,5 +1,6 @@
 {% extends "admin/base.html" %}
-{% block title %}Legal pages — My Site Admin{% endblock %}
+{% block title %}Legal pages — My Site Admin<script src="{{ static_url('js/admin/copy-button.js') }}"></script>
+{% endblock %}
 {% block content %}
 <h1>Legal pages</h1>
 <p class="hint">Selling to people in Europe means telling them a few things in writing before they pay: who you are, what happens if they change their mind, and what you do with their details. Answer the questions below and these pages get written for you.</p>
@@ -28,7 +29,26 @@
            title="Where cancellations and questions should go">
 
     <label for="phone">Phone (optional)</label>
-    <input type="text" id="phone" name="phone" value="{{ settings.phone }}" maxlength="60" title="Shown on your legal pages as a way to reach you. Optional in most countries.">
+    <input type="text" id="phone" name="phone" value="{{ settings.phone }}" maxlength="60" title="Shown on your legal pages as a way to reach you. Optional in most countries. Write it internationally (+41 …) and a WhatsApp link is offered below.">
+    {#  A wa.me address is https://, so a Button or a Menu item already
+        takes one and no new tool is needed. What people get wrong is the
+        NUMBER -- wa.me wants the international number and nothing else,
+        and any plus, space or dash in it produces a link that opens
+        WhatsApp to nobody, silently. So the number is formatted here,
+        once, and offered to paste wherever they want it. #}
+    {% if whatsapp %}
+    <p class="hint">Your WhatsApp link:
+      <code>{{ whatsapp }}</code>
+      <button type="button" class="btn btn-small" data-copy="{{ whatsapp }}"
+              title="Copy this, then paste it into a Button or a Menu item wherever you want people to message you.">Copy</button>
+      <br>Paste it into a Button or a Menu item. It opens a chat with you
+      on whatever device the visitor is using.</p>
+    {% elif settings.phone %}
+    <p class="hint">To offer a WhatsApp link, write the number internationally &mdash;
+      starting <code>+</code> and its country code, like <code>+41 79 123 45 67</code>.
+      WhatsApp needs the country code, and a number without one would open a chat with
+      the wrong person or with nobody.</p>
+    {% endif %}
 
     <label for="country">Where you're based</label>
     <select id="country" name="country" title="Decides which rules the wording follows">
