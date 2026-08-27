@@ -4952,3 +4952,78 @@ worth knowing: a dict key called `items` is unreachable, because
 `entry.items` resolves to `dict.items`, the method, and the template gets
 something it cannot loop over.
 
+### A lock the buyer chooses, on a link that stays the same (2026-08-27)
+
+Two things were asked at once: one URL per buyer rather than one per
+order, and a way to protect it.
+
+The first was already fixed and is now proven on the live site -- two
+purchases by the same person returned the identical link. What arrived as
+three links was from before that deploy.
+
+For the second, the choice was between a password on the existing link
+and a sign-in page where a buyer types their email. **The link won**, and
+the reason is worth writing down: an email typed into a public form is a
+credential, and it drags in everything a credential needs -- rate
+limiting, address enumeration, a reset flow, and an account for somebody
+who only wanted the thing they bought. The link is already the credential
+and it is already delivered. So the password is a SECOND thing, opt-in,
+offered once, on a page they reached by proving they had the link.
+
+**Hashed, not encrypted, and that distinction is the whole point.** The
+token above is encrypted because it has to be SHOWN again. A password
+never does -- it is only ever compared -- so nothing should be able to
+read it back. Same database, two secrets, two different storages, chosen
+by what has to be done with each.
+
+Three details that follow from it not being an account:
+
+  * **The owner is the reset mechanism.** There is nowhere safe to send a
+    reset that is not the address the link already went to, so a forgotten
+    password is a message to the owner, who clears it from the Orders
+    screen. That was the conversation anyway.
+  * **Unlock attempts get their own budget.** They shared the
+    `login_attempts` table with the admin login, so a stranger guessing at
+    a buyer's orders page could have locked the OWNER out of their own
+    admin. The table now records which kind an attempt was.
+  * **The answer lives in the session, never in the URL.** A password in a
+    link is worse than no password.
+
+### Nobody told the seller, and nobody sent an invoice
+
+Asked, checked, and both were true. One email went out per sale, to the
+buyer. The owner learned about a sale by opening the Orders screen and
+noticing a new row -- fine for a download, which delivers itself, useless
+for something in a cupboard waiting to be posted.
+
+There is now a second message, to the site's own contact address, that
+opens with what to DO ("ACTION: post 1 item") and then says who, what and
+how much. It carries no link, because it is a job list rather than a way
+in. It is sent inside its own try, after the buyer's: a mail failure to
+the owner must not cost the buyer the email they actually need.
+
+**A receipt is not an invoice**, and the checkout was asking for neither.
+Stripe emails a receipt only if the account has that switched on, and a
+receipt is not a numbered document anybody can put through their books.
+The session now sets `invoice_creation[enabled]`, so Stripe produces and
+sends a real invoice carrying the seller's own business details -- which
+is right, because this app has no business generating tax documents.
+
+### A download that outlives its hosting
+
+The email said a download was waiting and the page said "a few
+downloads", where there was one. Neither said for how long, and the
+answer was "forever, but the link dies in thirty days" -- the worst
+arrangement available: the file never expires, and the way to it quietly
+does, while the email tells them to keep it.
+
+Both halves fixed, in opposite directions. **The link now rolls forward**
+-- using it pushes its expiry out again, so a link in use never dies and
+an abandoned one still ages out. And **downloads now expire**, because
+nobody hosts a file forever and pretending otherwise is a promise made on
+the owner's behalf. Thirty days by default, settable beside the session
+term (they are different promises: one is time the owner will honour, the
+other is time they keep paying to host). The buyer is told the DATE, not
+a duration -- "30 days" needs them to remember when they bought it, and
+they are reading the email weeks later.
+

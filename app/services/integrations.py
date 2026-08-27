@@ -481,6 +481,15 @@ def stripe_checkout_session(db, items, success_url, cancel_url, shipping=None):
         #  buyer never makes an account. Subscription mode always creates a
         #  customer, and rejects the parameter as redundant.
         data["customer_creation"] = "always"
+        #  A receipt is not an invoice. Stripe emails a receipt only if
+        #  the account has that switched on, and a receipt is not a
+        #  numbered document somebody can put through their books. Asking
+        #  for an invoice makes Stripe produce and send a real one, with
+        #  the seller's own business details on it, at no cost to this
+        #  app -- which has no business generating tax documents itself.
+        #  Subscription mode invoices every cycle already, and rejects
+        #  this parameter as redundant.
+        data["invoice_creation[enabled]"] = "true"
     if shipping:
         for n, code in enumerate(shipping["countries"]):
             data[f"shipping_address_collection[allowed_countries][{n}]"] = code

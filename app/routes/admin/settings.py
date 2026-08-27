@@ -296,7 +296,7 @@ def commerce_orders():
     since = (request.args.get("since") or "").strip()
     until = (request.args.get("until") or "").strip()
 
-    sql = ("SELECT o.*, c.email, c.name FROM orders o "
+    sql = ("SELECT o.*, c.email, c.name, c.page_password_hash FROM orders o "
            "LEFT JOIN customers c ON c.id = o.customer_id WHERE 1=1")
     args = []
     if who:
@@ -381,6 +381,22 @@ def commerce_order_resend(order_id):
     })
 
 
+@bp.route("/commerce/customers/<int:customer_id>/unlock", methods=["POST"])
+@login_required
+def commerce_customer_unlock(customer_id):
+    """Takes a buyer's own password off their purchases page.
+
+    The owner is the reset mechanism, deliberately: a buyer has no account
+    and no address we could safely send a reset to that is not the same
+    address the link already went to. Removing it costs them nothing --
+    the link still works, and nothing they bought is touched.
+    """
+    db = get_db()
+    commerce.set_page_password(db, customer_id, "")
+    db.commit()
+    return jsonify({"ok": True, "message": "Password removed. Their link opens the page again."})
+
+
 @bp.route("/commerce/fulfilment", methods=["GET"])
 @login_required
 def commerce_fulfilment():
@@ -408,6 +424,9 @@ def commerce_fulfilment():
         r["price_id"]: r
         for r in db.execute("SELECT * FROM fulfilment_rules").fetchall()
     }
+    download_row = db.execute(
+        "SELECT value FROM settings WHERE key = 'commerce_download_expiry_days'"
+    ).fetchone()
     expiry_row = db.execute(
         "SELECT value FROM settings WHERE key = 'commerce_credit_expiry_months'"
     ).fetchone()
@@ -440,6 +459,7 @@ def commerce_fulfilment():
         stripe_ready=integrations.is_configured(db, "stripe"),
         calcom_ready=integrations.is_configured(db, "calcom"),
         credit_expiry_months=(expiry_row["value"] if expiry_row else "") or "",
+        download_expiry_days=(download_row["value"] if download_row else None),
     )
 
 
@@ -734,6 +754,25 @@ def commerce_credit_expiry():
     db.commit()
     flash("Session credits never expire." if months <= 0
           else f"Session credits now expire {months} months after purchase.", "success")
+    return redirect(url_for("admin.commerce_fulfilment"))
+
+
+@bp.route("/commerce/download-expiry", methods=["POST"])
+@login_required
+def commerce_download_expiry():
+    """How long a paid file stays downloadable.
+
+    Its own term, not the session one: a session is something the owner
+    will honour, a download is something they have to keep hosting, and
+    those are different promises.
+    """
+    db = get_db()
+    days = request.form.get("days", type=int)
+    days = 0 if days is None or days < 0 else days
+    _set_setting(db, "commerce_download_expiry_days", str(days))
+    db.commit()
+    flash("Paid files never stop being downloadable." if days == 0
+          else f"Buyers can download what they paid for for {days} days.", "success")
     return redirect(url_for("admin.commerce_fulfilment"))
 
 

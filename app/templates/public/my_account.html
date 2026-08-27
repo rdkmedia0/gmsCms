@@ -8,6 +8,42 @@
   <h1>Hello{{ ' ' ~ customer.name if customer.name }}</h1>
   <p class="cms-account-sub">Everything you&rsquo;ve bought from us, on one page. Keep the email that brought you here &mdash; it&rsquo;s how you get back.</p>
 
+  {% if note %}
+  <p class="cms-account-flash ok">{{ note }}</p>
+  {% endif %}
+  {#  Offered once. Somebody who says no is not asked again, and somebody
+      who says yes can change or remove it from the same place. #}
+  {% if not customer.page_password_hash and not customer.page_lock_asked %}
+  <section class="cms-account-block">
+    <h2>Want to put a password on this page?</h2>
+    <p>Anyone with your link can open this page. If you&rsquo;d rather they couldn&rsquo;t &mdash; a shared inbox, a forwarded email &mdash; set a password and you&rsquo;ll be asked for it next time.</p>
+    <form method="post" action="{{ url_for('public.my_account_lock', token=token) }}" class="cms-inline-form">
+      <label for="new-page-password">Choose a password</label>
+      <input type="password" id="new-page-password" name="password" minlength="8"
+             autocomplete="new-password"
+             title="At least 8 characters. Only for this page — don't reuse one that opens anything else.">
+      <button type="submit" class="cms-action-btn"
+              title="Ask for this password before opening this page from now on">Lock this page</button>
+      <button type="submit" name="decline" value="1" class="cms-action-btn cms-btn-quiet"
+              title="Leave the page open to anyone with the link, and stop asking">No thanks</button>
+      <p class="hint">There&rsquo;s no sign-up and no account. If you forget it, ask us and we&rsquo;ll take it off.</p>
+    </form>
+  </section>
+  {% elif customer.page_password_hash %}
+  <details class="cms-account-block">
+    <summary title="Change the password on this page, or take it off">This page is password protected</summary>
+    <form method="post" action="{{ url_for('public.my_account_lock', token=token) }}" class="cms-inline-form">
+      <label for="change-page-password">New password</label>
+      <input type="password" id="change-page-password" name="password" minlength="8"
+             autocomplete="new-password"
+             title="At least 8 characters. Leave blank and press Remove to take the password off.">
+      <button type="submit" class="cms-action-btn" title="Use this password from now on">Change it</button>
+      <button type="submit" name="password" value="" class="cms-action-btn cms-btn-quiet"
+              title="Take the password off — the link alone will open this page again">Remove it</button>
+    </form>
+  </details>
+  {% endif %}
+
   {% if booked %}
   <p class="cms-account-flash ok">Booked{{ ' for ' ~ booked_label if booked_label }}. Check your email for the confirmation and the joining link.</p>
   {% elif cancelled %}
@@ -131,7 +167,7 @@
       {% for d in downloads %}
       <li>
         <span>{{ d.file_name or 'Your file' }}
-          <small class="cms-account-sub">{{ d.granted - d.used }} download{{ 's' if (d.granted - d.used) != 1 }} left</small>
+          <small class="cms-account-sub">{{ d.granted - d.used }} download{{ 's' if (d.granted - d.used) != 1 }} left{% if d.expires_at %} &middot; available until {{ d.expires_at[:10] }}{% endif %}</small>
         </span>
         {% if d.granted > d.used %}
         <a class="cms-action-btn" href="{{ url_for('public.my_account_download', token=token, entitlement_id=d.id) }}"
@@ -140,7 +176,7 @@
       </li>
       {% endfor %}
     </ul>
-    <p class="cms-account-sub">Save it somewhere safe — you have a few downloads, not unlimited ones.</p>
+    <p class="cms-account-sub">Save it somewhere safe. The number left is shown above and doesn&rsquo;t go up, and each file stops being available on the date shown beside it &mdash; download it before then and it&rsquo;s yours to keep.</p>
   </section>
   {% endif %}
 

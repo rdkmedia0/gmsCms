@@ -100,6 +100,11 @@
     <button type="button" class="btn btn-small cms-resend-order"
             data-url="{{ url_for('admin.commerce_order_resend', order_id=order.id) }}"
             title="Email this buyer a fresh link to their purchases">Resend their link</button>
+    {% if order.page_password_hash %}
+    <button type="button" class="btn btn-small cms-clear-page-password"
+            data-url="{{ url_for('admin.commerce_customer_unlock', customer_id=order.customer_id) }}"
+            title="This buyer put their own password on their purchases page. Remove it if they have forgotten it — their link still works and nothing they bought is affected.">Remove their page password</button>
+    {% endif %}
   </div>
   <p class="integration-result" hidden></p>
   {% endif %}

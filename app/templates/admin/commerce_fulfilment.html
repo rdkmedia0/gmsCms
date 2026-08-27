@@ -196,6 +196,21 @@
   <p class="hint">Applies to sessions bought from now on. Sessions someone has already paid for keep whatever term they were sold under.</p>
 </div>
 
+<div class="card">
+  <h2>Files you sell</h2>
+  <form method="post" action="{{ url_for('admin.commerce_download_expiry') }}" class="inline-form">
+    <label for="download_days">How long can a buyer download what they paid for?</label>
+    <select id="download_days" name="days" title="How long you promise to keep a paid file available. The buyer is told this in their order email.">
+      <option value="30" {{ 'selected' if download_expiry_days in (None, '', '30') }}>30 days after purchase (recommended)</option>
+      <option value="90" {{ 'selected' if download_expiry_days == '90' }}>90 days after purchase</option>
+      <option value="365" {{ 'selected' if download_expiry_days == '365' }}>A year after purchase</option>
+      <option value="0" {{ 'selected' if download_expiry_days == '0' }}>Never expire &mdash; you keep hosting it</option>
+    </select>
+    <button type="submit" class="btn btn-small" title="Save how long paid files stay available">Save</button>
+  </form>
+  <p class="hint">Nobody hosts a file forever, so a buyer is told how long they have and can save it in time. Applies to files bought from now on &mdash; anything already sold keeps the term it was sold under. Choosing Never is a promise to keep the file up indefinitely.</p>
+</div>
+
 {% for item in catalogue %}
 {% set rule = rules.get(item.price_id) %}
 <div class="card fulfilment-card">

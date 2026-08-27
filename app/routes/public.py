@@ -87,6 +87,23 @@ def _send_order_email(db, order_id):
             commerce.order_email_body(db, order, url, site),
             from_name=site,
         )
+        #  And tell the owner. Separate message, separate address: the
+        #  buyer's email is their way back in and says nothing about what
+        #  needs doing; this one is a job list and carries no link.
+        #  Wrapped on its own so a failure here cannot cost the buyer
+        #  theirs, which has already been sent by this point.
+        try:
+            seller = (settings.get("to_email") or settings.get("from_email") or "").strip()
+            if seller and seller != customer["email"]:
+                mailer.send(
+                    settings, seller,
+                    f"Sale: {(order['amount_total'] or 0) / 100:.2f} "
+                    f"{(order['currency'] or '').upper()} — {site}",
+                    commerce.sale_notice_body(db, order, site),
+                    from_name=site,
+                )
+        except Exception as e:  # noqa: BLE001
+            current_app.logger.warning("Sale notice could not be sent: %s", e)
         return True
     except Exception as e:  # noqa: BLE001 - see docstring: never fail the order
         current_app.logger.warning("Order email could not be sent: %s", e)
@@ -107,6 +124,11 @@ def my_account(token):
     if not customer:
         return render_template("public/my_account.html", customer=None, token=token), 404
     db.commit()
+    #  A buyer who locked this page has to say so before it opens. The
+    #  link alone is still what identifies them; this is the second thing.
+    if customer["page_password_hash"] and not _page_unlocked(customer["id"]):
+        return render_template("public/my_account_locked.html",
+                               token=token, error=request.args.get("error")), 200
     calcom_ready = integrations.is_configured(db, "calcom")
     #  A session that leaves the calendar — cancelled, or the entry
     #  deleted outright — has to come back to the person who paid for it.
@@ -176,8 +198,105 @@ def my_account(token):
         booked=request.args.get("booked"),
         booked_label=integrations.describe_slot(request.args.get("booked"), tz) if request.args.get("booked") else None,
         booking_error=request.args.get("error"),
+        note=request.args.get("note"),
         cancelled=request.args.get("cancelled"),
     )
+
+
+UNLOCK_ATTEMPT_LIMIT = 10
+UNLOCK_WINDOW_MINUTES = 15
+
+
+def _client_ip():
+    #  ProxyFix has already rewritten this from X-Forwarded-For when a
+    #  proxy in front is trusted, so it is the real caller either way.
+    return request.remote_addr or "unknown"
+
+
+def record_failed_unlock(db, ip):
+    db.execute("INSERT INTO login_attempts (ip, kind) VALUES (?, 'page')", (ip,))
+    db.execute("DELETE FROM login_attempts WHERE attempted_at < datetime('now', '-1 hour')")
+    db.commit()
+
+
+def unlock_rate_limited(db, ip):
+    row = db.execute(
+        "SELECT COUNT(*) AS n FROM login_attempts WHERE ip = ? AND kind = 'page' "
+        "AND attempted_at > datetime('now', ?)",
+        (ip, f"-{UNLOCK_WINDOW_MINUTES} minutes"),
+    ).fetchone()
+    return row["n"] >= UNLOCK_ATTEMPT_LIMIT
+
+
+def _page_unlocked(customer_id):
+    """Whether this browser has already answered this page's password.
+
+    Kept in the session rather than in another token, so it lasts as long
+    as the browser is open and travels nowhere near the URL -- a password
+    in a link would be worse than no password at all.
+    """
+    return customer_id in (session.get("unlocked_pages") or [])
+
+
+def _remember_unlocked(customer_id):
+    open_ones = list(session.get("unlocked_pages") or [])
+    if customer_id not in open_ones:
+        open_ones.append(customer_id)
+        session["unlocked_pages"] = open_ones
+
+
+@bp.route("/my/<token>/lock", methods=["POST"])
+def my_account_lock(token):
+    """Sets, changes or clears the buyer's own password on their page.
+
+    Offered once, on a page they reached with a link that is already a
+    credential -- so this is opt-in hardening, not a sign-up. Changing or
+    clearing it requires the page to be open, which means the current
+    password has already been given.
+    """
+    db = get_db()
+    customer = commerce.customer_for_token(db, token)
+    if not customer:
+        return redirect(url_for("public.home"))
+    if customer["page_password_hash"] and not _page_unlocked(customer["id"]):
+        return redirect(url_for("public.my_account", token=token))
+    if request.form.get("decline"):
+        commerce.decline_page_password(db, customer["id"])
+        db.commit()
+        return redirect(url_for("public.my_account", token=token))
+    password = request.form.get("password") or ""
+    if password and len(password) < 8:
+        return redirect(url_for("public.my_account", token=token,
+                                error="Please use at least 8 characters."))
+    commerce.set_page_password(db, customer["id"], password)
+    db.commit()
+    _remember_unlocked(customer["id"])
+    return redirect(url_for("public.my_account", token=token,
+                            note="Locked. You'll be asked for this next time."
+                            if password else "The password has been removed."))
+
+
+@bp.route("/my/<token>/unlock", methods=["POST"])
+def my_account_unlock(token):
+    """Answers the password on a locked page.
+
+    Rate limited by address, like the admin login: guessing this needs the
+    link as well, which is 32 bytes of randomness, but a lock that never
+    tires is not much of one.
+    """
+    db = get_db()
+    customer = commerce.customer_for_token(db, token)
+    if not customer:
+        return redirect(url_for("public.home"))
+    if unlock_rate_limited(db, _client_ip()):
+        return redirect(url_for("public.my_account", token=token,
+                                error="Too many tries. Wait a few minutes and try again."))
+    if commerce.page_password_ok(db, customer["id"], request.form.get("password")):
+        _remember_unlocked(customer["id"])
+        return redirect(url_for("public.my_account", token=token))
+    record_failed_unlock(db, _client_ip())
+    return redirect(url_for("public.my_account", token=token,
+                            error="That password didn't match."))
 
 
 @bp.route("/my/<token>/book", methods=["POST"])
@@ -274,8 +393,7 @@ def my_account_download(token, entitlement_id):
     row, error = downloads.claim(db, entitlement_id, customer["id"])
     db.commit()
     if error:
-        return redirect(url_for("public.my_account", token=token,
-                                error=integrations.explain(error, "the booking calendar")))
+        return redirect(url_for("public.my_account", token=token, error=error))
     response = send_file(
         downloads.path_for(row),
         as_attachment=True,

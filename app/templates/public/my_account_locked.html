@@ -1,0 +1,23 @@
+{% extends "public/checkout_shell.html" %}
+{% block title %}Your purchases{% endblock %}
+{% block checkout_content %}
+{#  The buyer chose to lock this page. The link they followed already
+    says who they are; this is the second thing they asked to be asked. #}
+<h1>This page is locked</h1>
+<p class="cms-account-sub">You put a password on your purchases. Type it to open them.</p>
+
+{% if error %}
+<p class="cms-account-flash bad">{{ error }}</p>
+{% endif %}
+
+<form method="post" action="{{ url_for('public.my_account_unlock', token=token) }}"
+      class="cms-account-block cms-inline-form">
+  <label for="page-password">Your password</label>
+  <input type="password" id="page-password" name="password" required
+         autocomplete="current-password" autofocus
+         title="The password you set on this page. It is not the password for anything else.">
+  <button type="submit" class="cms-action-btn"
+          title="Open your purchases">Open my purchases</button>
+  <p class="hint">Forgotten it? Reply to any of your order emails and we&rsquo;ll take it off for you &mdash; nothing you bought is lost.</p>
+</form>
+{% endblock %}

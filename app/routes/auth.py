@@ -198,7 +198,7 @@ def _client_ip():
 
 
 def _record_failed_login(db, ip):
-    db.execute("INSERT INTO login_attempts (ip) VALUES (?)", (ip,))
+    db.execute("INSERT INTO login_attempts (ip, kind) VALUES (?, 'admin')", (ip,))
     # Opportunistic cleanup — cheap, and keeps the table from growing
     # forever on a public-facing login form without needing a cron job.
     db.execute("DELETE FROM login_attempts WHERE attempted_at < datetime('now', '-1 hour')")
@@ -207,7 +207,8 @@ def _record_failed_login(db, ip):
 
 def _login_rate_limited(db, ip):
     row = db.execute(
-        "SELECT COUNT(*) AS n FROM login_attempts WHERE ip = ? AND attempted_at > datetime('now', ?)",
+        "SELECT COUNT(*) AS n FROM login_attempts WHERE ip = ? AND kind = 'admin' "
+        "AND attempted_at > datetime('now', ?)",
         (ip, f"-{LOGIN_ATTEMPT_WINDOW_MINUTES} minutes"),
     ).fetchone()
     return row["n"] >= LOGIN_ATTEMPT_LIMIT

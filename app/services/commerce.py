@@ -32,6 +32,8 @@ import json
 import secrets
 import time
 
+from werkzeug.security import check_password_hash, generate_password_hash
+
 from .. import crypto
 
 #  Stripe signs with a timestamp inside the signed payload specifically so
@@ -168,7 +170,11 @@ def grant_for_line_item(db, customer_id, order_id, price_id, quantity, expires_a
         "INSERT INTO entitlements (customer_id, order_id, kind, ref, granted, expires_at) "
         "VALUES (?, ?, ?, ?, ?, ?)",
         (customer_id, order_id, rule["kind"], rule["ref"], granted,
-         expires_at if rule["kind"] == KIND_CREDIT else None),
+         #  Sessions take the owner's own term; a download takes the
+         #  hosting one, which is a different promise about a different
+         #  thing. Neither belongs to a posted item.
+         expires_at if rule["kind"] == KIND_CREDIT
+         else (download_expiry_at(db) if rule["kind"] == KIND_DOWNLOAD else None)),
     )
     return rule["kind"]
 
@@ -286,6 +292,12 @@ def reconcile_stripe(db, integrations, limit=25, credit_expiry_at=None):
 #  ---------------------------------------------------------------------
 ACCESS_TOKEN_DAYS = 30
 
+#  A paid file is hosted by the owner, and nobody promises to host
+#  anything forever. Thirty days is the default answer, said out loud to
+#  the buyer rather than discovered when a link stops working. 0 means
+#  never, for an owner who would rather promise forever.
+DOWNLOAD_EXPIRY_DAYS_DEFAULT = 30
+
 
 def create_access_token(db, customer_id, days=ACCESS_TOKEN_DAYS):
     """Returns the raw token to put in a link. Only its hash is stored, so
@@ -340,6 +352,52 @@ def get_or_create_token(db, customer_id, days=ACCESS_TOKEN_DAYS):
     return create_access_token(db, customer_id, days), True
 
 
+#  A buyer's optional lock on their own purchases page.
+#
+#  The link is still the credential; this is a second one, for somebody
+#  who would rather a forwarded email did not open their orders. It is
+#  deliberately not an account: no sign-up, no address to remember, no
+#  reset mail to send -- if it is forgotten the owner clears it, which is
+#  the same conversation they would have had anyway.
+def download_expiry_at(db):
+    """When a download bought right now stops being available, or None."""
+    row = db.execute(
+        "SELECT value FROM settings WHERE key = 'commerce_download_expiry_days'"
+    ).fetchone()
+    try:
+        days = int(row["value"]) if row and row["value"] not in (None, "")             else DOWNLOAD_EXPIRY_DAYS_DEFAULT
+    except (TypeError, ValueError):
+        days = DOWNLOAD_EXPIRY_DAYS_DEFAULT
+    if days <= 0:
+        return None
+    return (datetime.datetime.utcnow()
+            + datetime.timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def set_page_password(db, customer_id, password):
+    """Locks a buyer's page. An empty password clears the lock."""
+    if not password:
+        db.execute("UPDATE customers SET page_password_hash = NULL, page_lock_asked = 1 "
+                   "WHERE id = ?", (customer_id,))
+        return
+    db.execute("UPDATE customers SET page_password_hash = ?, page_lock_asked = 1 WHERE id = ?",
+               (generate_password_hash(password), customer_id))
+
+
+def decline_page_password(db, customer_id):
+    """Remembers that they were offered a lock and said no, so the offer
+    is made once rather than on every visit."""
+    db.execute("UPDATE customers SET page_lock_asked = 1 WHERE id = ?", (customer_id,))
+
+
+def page_password_ok(db, customer_id, password):
+    row = db.execute("SELECT page_password_hash FROM customers WHERE id = ?",
+                     (customer_id,)).fetchone()
+    if not row or not row["page_password_hash"]:
+        return True
+    return check_password_hash(row["page_password_hash"], password or "")
+
+
 def customer_for_token(db, token):
     """The customer a link belongs to, or None if it is unknown, expired
     or tampered with. Looked up by hash, so the raw token never has to
@@ -352,9 +410,15 @@ def customer_for_token(db, token):
         (hashlib.sha256(token.encode()).hexdigest(),),
     ).fetchone()
     if row:
+        #  Using the link pushes its expiry out again. A download never
+        #  expires and sessions may be spent over months, so a link that
+        #  died on a fixed date would strand somebody who did exactly what
+        #  the email told them to do -- keep it. An abandoned link still
+        #  ages out; one that is in use does not.
         db.execute(
-            "UPDATE access_tokens SET last_used_at = CURRENT_TIMESTAMP WHERE token_hash = ?",
-            (hashlib.sha256(token.encode()).hexdigest(),),
+            "UPDATE access_tokens SET last_used_at = CURRENT_TIMESTAMP, "
+            "expires_at = datetime('now', ?) WHERE token_hash = ?",
+            (f"+{ACCESS_TOKEN_DAYS} days", hashlib.sha256(token.encode()).hexdigest()),
         )
     return row
 
@@ -396,12 +460,67 @@ def order_email_body(db, order, token_url, site_name):
     if credits:
         lines.append(f"You have {credits} session{'s' if credits != 1 else ''} to book.")
     if downloads:
-        lines.append(f"You have {len(downloads)} download{'s' if len(downloads) != 1 else ''} waiting.")
+        left = sum(e["granted"] - e["used"] for e in downloads)
+        lines.append(
+            f"You have {len(downloads)} download{'s' if len(downloads) != 1 else ''} waiting"
+            f" ({left} download{'s' if left != 1 else ''} left)."
+        )
+        #  The date, not a duration: "30 days" needs the reader to know
+        #  when they bought it, and they are reading this weeks later.
+        last = min((e["expires_at"] for e in downloads if e["expires_at"]), default=None)
+        if last:
+            lines.append(f"Please save {'them' if len(downloads) != 1 else 'it'} before "
+                         f"{last[:10]} — we don't keep paid files up forever.")
     if credits or downloads:
-        lines += ["", "Everything is here, and you don't need a password:", token_url, ""]
+        lines += ["", "Everything is here:", token_url, ""]
+        #  Said plainly, because the next line tells them to keep the
+        #  email: a link that quietly expires while they are keeping it is
+        #  the worst version of this.
+        lines.append(
+            f"The link keeps working for {ACCESS_TOKEN_DAYS} days after the last time "
+            "you use it, so opening it now and again is enough to keep it alive. "
+            "If it ever stops working, reply to this email and we'll send a new one."
+        )
     else:
         lines += ["", "We'll be in touch shortly.", ""]
     lines.append("Keep this email — the link above is how you get back to it.")
+    return chr(10).join(lines)
+
+
+def sale_notice_body(db, order, site_name):
+    """What the OWNER needs to know about a sale, in the order they need
+    it: what to do, then who, then what, then how much.
+
+    There was no seller notification at all -- the only way to learn a
+    sale had happened was to open the Orders screen and notice a new row.
+    That is fine for a download, which delivers itself, and no good at all
+    for something sitting in a cupboard waiting to be posted.
+    """
+    ents = entitlements_for(db, order["customer_id"]) if order["customer_id"] else []
+    mine = [e for e in ents if e["order_id"] == order["id"]]
+    to_post = sum(e["granted"] for e in mine if e["kind"] == "physical")
+    lines = []
+    if to_post:
+        lines += [f"ACTION: post {to_post} item{'s' if to_post != 1 else ''}."
+                  " The delivery address is on the payment in Stripe.", ""]
+    else:
+        lines += ["Nothing to post — this one delivers itself.", ""]
+    try:
+        items = json.loads(order["line_items"] or "[]")
+    except (ValueError, TypeError):
+        items = []
+    bought = [f"{i.get('description') or 'item'} x{i.get('quantity') or 1}" for i in items]
+    customer = db.execute("SELECT email, name FROM customers WHERE id = ?",
+                          (order["customer_id"],)).fetchone() if order["customer_id"] else None
+    amount = f"{(order['amount_total'] or 0) / 100:.2f} {(order['currency'] or '').upper()}"
+    lines += [
+        f"Sold: {', '.join(bought) if bought else 'see Stripe'}",
+        f"To:   {customer['email'] if customer else 'unknown'}"
+        + (f" ({customer['name']})" if customer and customer["name"] else ""),
+        f"For:  {amount}",
+        "",
+        f"This is an automatic note from {site_name}. The buyer has had their own email.",
+    ]
     return chr(10).join(lines)
 
 

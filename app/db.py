@@ -635,6 +635,19 @@ def _migrate(db):
     #  not a link you can keep. Encrypted with the same key the API keys
     #  use, so a copy of the database is still not enough on its own.
     _add_column(db, "access_tokens", "token_enc", "TEXT")
+
+    #  A buyer may lock their own purchases page. HASHED, not encrypted:
+    #  a password only ever has to be COMPARED, so nothing should be able
+    #  to read it back -- unlike the token above, which has to be shown
+    #  again and is therefore encrypted. Different jobs, different
+    #  storage. `page_lock_asked` stops the offer nagging somebody who
+    #  has already said no.
+    _add_column(db, "customers", "page_password_hash", "TEXT")
+    _add_column(db, "customers", "page_lock_asked", "INTEGER NOT NULL DEFAULT 0")
+    #  Buyer page-unlock attempts share this table with admin logins but
+    #  must not share a budget: a stranger guessing at somebody's orders
+    #  page could otherwise lock the owner out of their own admin.
+    _add_column(db, "login_attempts", "kind", "TEXT NOT NULL DEFAULT 'admin'")
     #  Idempotency for every provider webhook: an event id we have already
     #  processed is dropped rather than replayed.
     db.execute("""

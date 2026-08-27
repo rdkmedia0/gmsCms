@@ -26,3 +26,32 @@
     });
   });
 })();
+
+//  Taking a buyer's own password off their purchases page, when they have
+//  forgotten it. Confirmed first: it is their lock, not the owner's.
+document.querySelectorAll(".cms-clear-page-password").forEach(function (btn) {
+  btn.addEventListener("click", async function () {
+    var { confirmed } = await window.cmsModal({
+      message: "Remove this buyer's password from their purchases page? " +
+        "Their link will open it again on its own, and nothing they bought changes.",
+      confirmLabel: "Remove it",
+    });
+    if (!confirmed) return;
+    var result = btn.closest(".card").querySelector(".integration-result");
+    btn.disabled = true;
+    try {
+      var resp = await fetch(btn.dataset.url, {
+        method: "POST",
+        headers: { "Accept": "application/json" },
+      });
+      var data = await resp.json();
+      result.textContent = data.ok ? data.message : data.error;
+      result.hidden = false;
+      if (data.ok) btn.remove();
+    } catch (e) {
+      result.textContent = "Couldn't do that just now.";
+      result.hidden = false;
+      btn.disabled = false;
+    }
+  });
+});
