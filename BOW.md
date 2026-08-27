@@ -4642,3 +4642,53 @@ The result an owner sees: nothing appears in their library that they did
 not ask for and name. Which is the whole argument of the product, applied
 to the one place it was not.
 
+### Templates have a lifecycle: source, custom, promoted (2026-08-27)
+
+The owner's final shape, and it resolves the fork by making it a stage
+rather than an accident.
+
+**Two kinds, one rule.**
+
+  * A **source** template never changes. The sixteen shipped ones are
+    sources; so is any custom template the owner has finished with and
+    promoted. A source is a starting point, and a starting point that
+    moves is not one.
+  * A **custom** template is work in progress: forked from a source,
+    freely editable, and the only kind that can be written to.
+
+**The fork becomes a question, asked at the only moment it matters.**
+Change the LOOK of a source -- its colours, fonts, shape, theme -- and it
+asks: you have changed a source template, do you want to fork it? If yes
+and no copy exists, it makes one and the owner names it. If a copy
+already exists, it asks whether to overwrite that one or make another,
+because only the owner knows whether the old one still matters. Content
+edits do not fork at all: they write to the site, not the template.
+Activation never creates anything, however often it is done.
+
+**Promotion closes the loop.** When a custom template is finished, the
+owner moves it to the sources. It becomes immutable like the rest, and
+from then on editing it asks the same question and forks the same way.
+That is what makes the model hold together rather than being a special
+case for shipped things: "shipped" stops being a category the code cares
+about, and `is_builtin` becomes one reason among two for a template being
+a source.
+
+**What this replaces**, in the code: the fork guard currently reads
+`if not active["is_builtin"]: return None`. It would read "is this a
+source", which is true for shipped templates AND promoted ones, so a
+promoted template gets the same protection without a second mechanism.
+
+Three things to settle while building:
+
+  * A promoted template lives in `static/themes/<slug>/`, not in the
+    shipped zips, so the boot-time reinstall must leave it alone. It
+    already does -- reinstall is driven by the zip list -- but a
+    promoted template needs its own flag rather than borrowing
+    `is_builtin`, or a rebuild would try to find a package for it.
+  * Promotion should be reversible while nothing depends on it, and
+    refused once something does -- the same shape as "the active
+    template cannot be deleted", which is the guard that made today's
+    cleanup safe.
+  * The library shows the two groups apart, so an owner can see at a
+    glance what is a starting point and what is theirs in progress.
+
