@@ -338,6 +338,12 @@ def install_template_zip(db, slug, zip_path, static_folder, adopt_manifest_overr
         )
     finally:
         shutil.rmtree(work_dir, ignore_errors=True)
+    #  After a real install as well as after a skipped one. Extracting
+    #  adds files and removes none, so the reinstall path is the one that
+    #  most obviously leaves a previous version's pictures behind -- and
+    #  it was the path this cleanup originally missed, which showed up as
+    #  four templates still carrying PNGs while the rest came clean.
+    _drop_stale_media(zip_path, installed_dir)
     try:
         os.makedirs(installed_dir, exist_ok=True)
         with open(stamp, "w", encoding="utf-8") as f:

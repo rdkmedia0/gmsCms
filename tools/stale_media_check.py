@@ -81,6 +81,17 @@ try:
 finally:
     shutil.rmtree(work, ignore_errors=True)
 
+#  Both paths, because the first version of this only cleaned the boot
+#  that SKIPPED reinstalling, and the templates that actually reinstalled
+#  kept their old pictures.
+import inspect                                                     # noqa: E402
+from app.services import packages                                  # noqa: E402
+_src = inspect.getsource(packages.install_template_zip)
+check("the skipped-reinstall path cleans up",
+      _src.count("_drop_stale_media") >= 1)
+check("the real-install path cleans up too",
+      _src.count("_drop_stale_media") >= 2, "%d call(s)" % _src.count("_drop_stale_media"))
+
 print()
 print("%d checks, %d failed" % (passed + failed, failed))
 sys.exit(1 if failed else 0)
