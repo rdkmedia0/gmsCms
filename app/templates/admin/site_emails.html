@@ -1,0 +1,85 @@
+{% extends "admin/base.html" %}
+{% block title %}Message wording — My Site Admin{% endblock %}
+{% block content %}
+{% include "partials/email_tabs.html" %}
+<h1>Message wording</h1>
+<p class="hint">These four go out on their own &mdash; when somebody buys something, signs up,
+  or confirms. The words this site ships with are fine, but they are ours: they say the same
+  thing for a shop that answers within the hour and one that ships on Thursdays. Write a
+  greeting and a sign-off in your own voice, and they will be wrapped around what each message
+  has to say.</p>
+
+{% if not email_ready %}
+<p class="flash flash-warning">Email isn&rsquo;t set up, so none of these can be sent yet.
+  <a href="{{ url_for('admin.settings_email') }}">Set it up &rarr;</a></p>
+{% endif %}
+
+{% for key in order %}
+{% set spec = messages[key] %}
+<div class="card">
+  <div class="integration-head">
+    <h2>{{ spec.name }}</h2>
+    <span class="hint">{{ spec.when }}</span>
+  </div>
+
+  <form method="post" action="{{ url_for('admin.site_email_save', message=key) }}">
+    <label for="{{ key }}_intro" title="Your own opening line. Leave it blank for none.">Your greeting</label>
+    <textarea id="{{ key }}_intro" name="intro" rows="2"
+              title="Your own opening line, above what this message has to say. Leave it blank for none."
+              placeholder="Nothing extra at the top">{{ wording[key][0] }}</textarea>
+
+    {#  What the code always says, shown between the two boxes and NOT
+        editable. An owner writing a greeting should be able to see what
+        it is a greeting to -- and every line of this is either a fact
+        about what happened or something the reader needs in order to
+        act, which is why it is not a field. #}
+    <div class="site-email-fixed" title="This part is written for you and cannot be changed.">
+      <span class="hint">{{ spec.fixed }}</span>
+    </div>
+
+    <label for="{{ key }}_outro" title="Your own closing line. Leave it blank for none.">Your sign-off</label>
+    <textarea id="{{ key }}_outro" name="outro" rows="2"
+              title="Your own closing line, below what this message has to say. Leave it blank for none."
+              placeholder="Nothing extra at the bottom">{{ wording[key][1] }}</textarea>
+
+    {#  Offered, never remembered. Clicking one puts it where the cursor
+        was, so nobody has to know the spelling. #}
+    <p class="hint">Click to insert &mdash; these are filled in when the message is sent:</p>
+    <p class="site-email-placeholders">
+      {% for ph in spec.placeholders %}
+      <button type="button" class="btn btn-small" data-insert="{{ '{{' ~ ph.name ~ '}}' }}"
+              data-into="{{ key }}"
+              title="Insert {{ ph.name }} — {{ ph.means }}">{{ '{{' ~ ph.name ~ '}}' }}</button>
+      {% endfor %}
+    </p>
+
+    <div class="cms-post-save-bar">
+      <button type="submit" class="btn btn-primary"
+              title="Save these words. They are used on the next message of this kind.">Save</button>
+      <button type="submit" name="reset" value="1" class="btn"
+              title="Put this message back to the words the site ships with.">Use the standard wording</button>
+    </div>
+  </form>
+
+  {#  Against believable sample data, not the placeholders repeated back:
+      the point of a preview is to show how the WORDS read once they are
+      filled in. #}
+  <details class="site-email-preview">
+    <summary title="See this message as it would arrive, filled in with example details.">See it as it would arrive</summary>
+    <pre>{{ previews[key] }}</pre>
+  </details>
+</div>
+{% endfor %}
+
+<div class="card">
+  <div class="integration-head">
+    <h2>Newsletters</h2>
+    <span class="hint">Sent when you press Send or Schedule.</span>
+  </div>
+  <p class="hint">A newsletter&rsquo;s greeting and sign-off are edited on the
+    <a href="{{ url_for('admin.newsletters') }}">Newsletters</a> screen, beside the
+    newsletters themselves &mdash; that is where you are when you think about them.</p>
+</div>
+
+<script src="{{ static_url('js/admin/insert-placeholder.js') }}"></script>
+{% endblock %}

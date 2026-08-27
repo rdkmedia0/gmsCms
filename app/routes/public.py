@@ -30,7 +30,7 @@ from ..services import palette as palette_service
 from ..services.menu import _parse_menu_meta, _page_href
 from ..services import blog as blog_service
 from ..services import (blocks, captcha, cart as cart_service, commerce, downloads,
-                        integrations, legal, newsletter, site, subscribers)
+                        integrations, legal, newsletter, site, site_emails, subscribers)
 from .admin import (
     _list_tools, get_email_settings, get_layout_settings, get_site_settings, COLOR_PRESETS,
     NAV_LAYOUTS, get_nav_layout, SIDEBAR_LAYOUT_PRESETS, FOOTER_LAYOUT_PRESETS,
@@ -100,7 +100,12 @@ def _send_order_email(db, order_id):
         url = _public_url("public.my_account", token=token)
         site = (get_site_settings(db) or {}).get("site_title") or "our website"
         subject = f"Your order from {site}"
-        html, text = _dressed(db, commerce.order_email_body(db, order, url, site), subject)
+        body = site_emails.wrap(
+            db, "order", commerce.order_email_body(db, order, url, site),
+            {"site": site, "link": url,
+             "total": "%.2f %s" % ((order["amount_total"] or 0) / 100,
+                                   (order["currency"] or "").upper())})
+        html, text = _dressed(db, body, subject)
         mailer.send_html(settings, customer["email"], subject, html, text, from_name=site)
         #  And tell the owner. Separate message, separate address: the
         #  buyer's email is their way back in and says nothing about what
@@ -119,7 +124,12 @@ def _send_order_email(db, order_id):
                 subject = ("Sale: %.2f %s — %s"
                            % ((order["amount_total"] or 0) / 100,
                               (order["currency"] or "").upper(), site))
-                html, text = _dressed(db, commerce.sale_notice_body(db, order, site), subject)
+                body = site_emails.wrap(
+                    db, "sale", commerce.sale_notice_body(db, order, site),
+                    {"site": site, "buyer": customer["email"],
+                     "total": "%.2f %s" % ((order["amount_total"] or 0) / 100,
+                                           (order["currency"] or "").upper())})
+                html, text = _dressed(db, body, subject)
                 mailer.send_html(settings, seller, subject, html, text, from_name=site)
         except Exception as e:  # noqa: BLE001
             current_app.logger.warning("Sale notice could not be sent: %s", e)
@@ -565,9 +575,10 @@ def subscribe():
         #  Not a list message yet -- they have not confirmed -- so it
         #  carries no unsubscribe, which is also why it is dressed with
         #  the transactional shell rather than the newsletter's.
-        html, text = _dressed(db, render_template(
+        html, text = _dressed(db, site_emails.wrap(db, "confirm", render_template(
             "emails/confirm_subscription.txt", site_title=site_title,
-            confirm_url=confirm_url, consent_text=consent_text, sender_line=line), subject)
+            confirm_url=confirm_url, consent_text=consent_text, sender_line=line),
+            {"site": site_title, "link": confirm_url}), subject)
         mailer.send_html(email_settings, request.form.get("email"), subject, html, text,
                          from_name=site_title)
     except Exception:  # noqa: BLE001 - a bad address must not 500 the page
@@ -628,10 +639,11 @@ def _send_welcome(db, row):
         #  This one IS a list message, so the unsubscribe link stays --
         #  it is already in the words, and the headers go with it. The
         #  shell only dresses what is written.
-        html, text = _dressed(db, render_template(
+        html, text = _dressed(db, site_emails.wrap(db, "subscribed", render_template(
             "emails/subscribed.txt", site_title=site_title,
             consent_text=row["consent_text"], unsubscribe_url=unsubscribe_url,
-            sender_line=sender_line), subject)
+            sender_line=sender_line),
+            {"site": site_title, "link": unsubscribe_url}), subject)
         mailer.send_html(email_settings, row["email"], subject, html, text,
                          from_name=site_title,
                          headers=unsubscribe_headers(unsubscribe_url))

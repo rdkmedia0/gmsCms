@@ -290,6 +290,20 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--c
 /*  A currency that is stated rather than chosen. It sits where a select
     used to, so it has to hold that place in the row without pretending
     to be something you can click. */
+/*  What the code always says, between the two boxes an owner writes.
+    Deliberately not a field: it is either a fact about what happened or
+    something the reader needs in order to act. Shown so a greeting can
+    be written knowing what it is a greeting TO. */
+.site-email-fixed {
+  border-left: 3px solid #d7dde5; padding: 8px 0 8px 12px; margin: 10px 0;
+}
+.site-email-placeholders { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+.site-email-placeholders button { font-family: ui-monospace, "Consolas", monospace; }
+.site-email-preview { margin-top: 10px; }
+.site-email-preview pre {
+  white-space: pre-wrap; background: #f6f7f9; padding: 12px;
+  border-radius: var(--cms-ui-radius-surface); margin: 8px 0 0; font-size: 14px;
+}
 .product-currency {
   display: inline-flex; align-items: center; padding: 0 10px;
   font-weight: 600; color: #55606d; white-space: nowrap;

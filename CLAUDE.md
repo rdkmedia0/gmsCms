@@ -979,6 +979,22 @@ Each of these follows the structure above — thin routes, logic in
   copy; restore pushes back through SQLite's backup API rather than
   swapping a file under a running app. The encryption key is excluded by
   default so a leaked archive cannot spend money.
+- **The messages that send themselves have the owner's voice**
+  (`services/site_emails.py`): an order landing, a sign-up, a
+  confirmation. Each has a greeting and a sign-off the owner writes,
+  wrapped around a body the CODE renders -- the same shape
+  `newsletter_intro`/`newsletter_outro` already had, applied to the other
+  four with one screen (Email -> Message wording). **The facts are not a
+  field**: the link back in, how many sessions or downloads are waiting
+  and by when, what somebody agreed to, the unsubscribe link and the
+  sender line. That is the sign-up form's rule again -- an owner
+  rewording "a confirmation email is coming" into "you're subscribed"
+  would make the site lie about its own mechanism -- so an owner writes
+  AROUND those, never over them. A placeholder this app cannot fill is
+  left visible as `{{whatever}}` rather than becoming a blank, because a
+  visible mistake gets fixed and a gap does not. Adding a fifth message
+  means adding it to `MESSAGES` and wrapping it where it is sent;
+  `site_emails_check.py` fails if a sender forgets.
 - **Legal pages**: `services/legal.py` + `templates/legal/*.j2`, written
   from the owner's own details and what the site actually sells. They go
   on **one page called Terms & Conditions** (`/terms-and-conditions`) by default, each document a marked section
@@ -1139,6 +1155,8 @@ part that constrains the CODE.
   longer ships, and refuses to when it cannot read the archive),
   `currency_check.py` (that one shop is one currency and a basket cannot
   add two of them together),
+  `site_emails_check.py` (that an owner's words reach the four messages
+  that send themselves, and that no field can delete a fact),
   `schedule_check.py` (that a send put on the clock goes exactly once
   even when two workers claim it together, and refuses for the same
   reasons a live send refuses), and

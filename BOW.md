@@ -5888,14 +5888,28 @@ borrowing `is_builtin`, and promotion should be reversible until
 something depends on it. Note this supersedes CLAUDE.md's "exporting
 stays an always-available action on any library entry".
 
-**An editor for the other site emails.** Facts the code always renders --
-name, address, order reference, session count, download deadline, links,
-unsubscribe -- with slots the owner writes around them, each email's own
-placeholders listed on screen to click in rather than typed from memory,
-and a preview against sample data. Five messages: Your order, Sale,
-Confirm your subscription, You're subscribed, and newsletter sends. The
-pattern already exists in miniature: `newsletter_intro`/`newsletter_outro`
-are editable while the sender line and unsubscribe are not.
+**An editor for the other site emails.** ~~Not built.~~ **BUILT**
+(2026-08-27) -- `services/site_emails.py`, Email -> Message wording.
+
+Built as specified, and the one thing worth adding is why the split
+landed where it did. The tempting version gives the owner the whole
+message; the right one gives them a greeting and a sign-off around a body
+the code renders, and the reason is the sign-up form's rule generalised.
+That line ("a confirmation email is coming") is fixed because an owner
+rewording it into "you're subscribed" would make the site lie about its
+own mechanism. Every fact in these four messages is the same kind of
+thing: what actually happened, or what the reader needs in order to act.
+An owner writing AROUND them is adding their voice; an owner writing OVER
+them is deleting something somebody needs, usually without meaning to. So
+there is no field that can.
+
+Two smaller decisions: a placeholder this app cannot fill is left visible
+as `{{whatever}}` rather than becoming a blank -- a visible mistake gets
+fixed and a gap does not -- and the placeholders are clicked in rather
+than typed, because `{{ site }}` with spaces does not substitute and what
+arrives is the literal braces. The newsletter's own greeting and sign-off
+stayed on the Newsletters screen: that is where somebody is standing when
+they think about them.
 
 **Currency.** ~~Three separate features that keep being asked for as
 one.~~ **The base currency is BUILT** (2026-08-27). Regional detection

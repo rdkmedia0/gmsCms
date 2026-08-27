@@ -16,7 +16,7 @@ import json
 
 from . import FONT_PAIRINGS
 from ...services import (blog as blog_service, email_layouts, legal, newsletter, palette,
-                         scheduling, site, subscribers)
+                         scheduling, site, site_emails, subscribers)
 
 
 #  Two settings and nothing else. The greeting and the sign-off are the
@@ -121,6 +121,63 @@ def newsletters():
         sender_line=line,
         has_address=has_address,
     )
+
+
+#  ---- What the site says when it writes on its own ----
+
+
+#  The endpoint is named explicitly because the FUNCTION cannot be:
+#  `site_emails` is the service this module imports, and a view of that
+#  name would shadow it for everything below.
+@bp.route("/emails", endpoint="site_emails")
+@login_required
+def site_emails_screen():
+    """The wording of the four messages nobody presses Send on."""
+    db = get_db()
+    #  A sample of what each message's own body looks like, so the
+    #  preview shows words in position rather than a shape.
+    bodies = {
+        "order": ("You have 3 sessions to book." + chr(10)
+                  + "You have 1 download waiting (2 downloads left)." + chr(10)
+                  + "Please save it before 2027-01-31 — we don't keep paid files up forever."
+                  + chr(10) * 2 + "Everything is here:" + chr(10)
+                  + site_emails.SAMPLE["link"]),
+        "sale": ("Somebody bought Coaching pack — 24.00 CHF." + chr(10)
+                 + "They have 3 sessions to book."),
+        "confirm": ("Somebody — we hope you — asked to receive email from Your site."
+                    + chr(10) * 2 + "To confirm, open this link:" + chr(10)
+                    + site_emails.SAMPLE["link"]),
+        "subscribed": ("You confirmed your subscription to Your site." + chr(10) * 2
+                       + "Unsubscribe: " + site_emails.SAMPLE["link"]),
+    }
+    return render_template(
+        "admin/site_emails.html",
+        messages=site_emails.MESSAGES,
+        order=site_emails.ORDER,
+        wording={key: site_emails.wording(db, key) for key in site_emails.ORDER},
+        previews={key: site_emails.preview(db, key, bodies[key])
+                  for key in site_emails.ORDER},
+        email_ready=mailer.is_configured(get_email_settings(db)),
+    )
+
+
+@bp.route("/emails/<message>", methods=["POST"])
+@login_required
+def site_email_save(message):
+    db = get_db()
+    if request.form.get("reset"):
+        site_emails.reset(db, message)
+        db.commit()
+        flash("Put back to the standard wording.", "success")
+        return redirect(url_for("admin.site_emails"))
+    saved, error = site_emails.save(db, message, request.form.get("intro"),
+                                    request.form.get("outro"))
+    if error:
+        flash(error, "error")
+    else:
+        db.commit()
+        flash("Saved. The next message of that kind uses these words.", "success")
+    return redirect(url_for("admin.site_emails"))
 
 
 #  ---- A newsletter of its own ----
