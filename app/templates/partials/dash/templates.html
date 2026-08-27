@@ -30,7 +30,21 @@
             {% if t.is_active %} <span class="badge">✔ Active</span>{% endif %}
             {% if t.header_sections or t.footer_sections %}<br><span class="hint">includes header/footer</span>{% endif %}
           </td>
-          <td>{{ 'Built-in' if t.is_builtin else 'Imported/Saved' }}</td>
+          {#  Three states, not two, and the words are about what you can
+              DO with each rather than where it came from. A starting
+              point does not change; work in progress does. See
+              services/lifecycle.py. #}
+          <td>
+            {% if t.is_builtin %}
+            <span title="Came with the app. A starting point: it does not change, and editing its look offers to make you a copy.">Starting point</span>
+            <br><span class="hint">came with the app</span>
+            {% elif t.is_promoted %}
+            <span title="You finished this and moved it to your starting points. It is packaged, exportable, and does not change.">Starting point</span>
+            <br><span class="hint">yours, finished</span>
+            {% else %}
+            <span title="Work in progress. Freely editable, private to this site, and not yet packaged — so it cannot be exported until you finish it.">Work in progress</span>
+            {% endif %}
+          </td>
           <td class="col-icons">
             <span class="row-actions">
               {#  Same four actions, same four words' worth of room: use it,
@@ -38,9 +52,28 @@
               {% if not t.is_active %}
               <button type="button" class="icon-btn cms-tpl-activate-btn" data-activate-url="{{ url_for('admin.template_activate', template_id=t.id) }}" data-conflict="{{ 'true' if activate_conflict_map.get(t.id) else 'false' }}" title="Use this look — its colours, fonts, layout and content">▶</button>
               {% endif %}
+              {#  Only a starting point has an artefact to hand over. A
+                  work-in-progress template is a draft, and handing
+                  somebody a draft as though it were a template is how a
+                  package once went out missing its pages. #}
+              {% if t.is_builtin or t.is_promoted %}
               <a href="{{ url_for('admin.template_export', template_id=t.id) }}" class="icon-btn"
                  data-confirm="You are about to download &quot;{{ t.name }}&quot; as a .zip file — its look, and any pages it carries. It can be imported into another site running this same CMS."
                  title="Download this template as a .zip — reusable on another install running this same CMS">⤓</a>
+              {% else %}
+              <form method="post" action="{{ url_for('admin.template_promote', template_id=t.id) }}">
+                <button type="submit" class="icon-btn"
+                        data-confirm="You are about to move &quot;{{ t.name }}&quot; to your starting points. It gets packaged and checked, and from then on it does not change — editing its look will offer you a copy instead. You can move it back while nothing depends on it."
+                        title="Finished with this? Move it to your starting points — that packages it and makes it exportable">⇧</button>
+              </form>
+              {% endif %}
+              {% if t.is_promoted %}
+              <form method="post" action="{{ url_for('admin.template_demote', template_id=t.id) }}">
+                <button type="submit" class="icon-btn"
+                        data-confirm="You are about to move &quot;{{ t.name }}&quot; back to work in progress. It stops being exportable until you finish it again."
+                        title="Move this back to work in progress, so you can change it again">⇩</button>
+              </form>
+              {% endif %}
               {% if not t.is_active %}
               {% set confirm_msg = 'You are about to remove the built-in template &quot;' ~ t.name ~ '&quot; from your library. It ships with the app, so it comes back the next time the app restarts.' if t.is_builtin else 'You are about to delete the template &quot;' ~ t.name ~ '&quot;. Your pages keep their content — this removes the saved look from your library.' %}
               <form method="post" action="{{ url_for('admin.template_delete', template_id=t.id) }}">

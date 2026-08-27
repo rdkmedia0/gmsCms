@@ -598,6 +598,38 @@ def _migrate(db):
             sent_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    #  A template is a SOURCE or it is CUSTOM, and `is_builtin` cannot
+    #  say which: a shipped template is a source, and so is one the owner
+    #  finished and promoted, but only the first has a zip behind it that
+    #  the boot-time reinstall knows how to find. Two columns, because
+    #  they answer two questions -- "did this arrive with the app" and
+    #  "is this finished".
+    _add_column(db, "templates", "is_promoted", "INTEGER NOT NULL DEFAULT 0")
+    #  Which source this was forked from, so promotion can be refused
+    #  while something still depends on it -- the same shape as "the
+    #  active template cannot be deleted".
+    _add_column(db, "templates", "forked_from", "TEXT")
+    _add_column(db, "templates", "promoted_at", "TEXT")
+
+    #  Whether somebody has written in this page. It still remembers the
+    #  pack it came from -- Load Content has to be able to find it and put
+    #  it back -- but it is no longer content another template may
+    #  silently delete on its way in. See _retire_foreign_pack_pages.
+    _add_column(db, "pages", "owner_edited", "INTEGER NOT NULL DEFAULT 0")
+
+    #  Kept in step by triggers rather than by every save path
+    #  remembering to. A dozen places write a section; one of them
+    #  forgetting would be a page quietly deleted months later, which is
+    #  exactly the class of fault this column exists to stop.
+    for _when, _on in (("INSERT", "NEW"), ("UPDATE", "NEW"), ("DELETE", "OLD")):
+        db.execute("""
+            CREATE TRIGGER IF NOT EXISTS sections_mark_page_edited_%s
+            AFTER %s ON sections
+            BEGIN
+                UPDATE pages SET owner_edited = 1 WHERE id = %s.page_id;
+            END
+        """ % (_when.lower(), _when, _on))
+
     #  A send put on the clock. See services/scheduling.py for why the
     #  claim is the lock and why a failure is never retried by itself.
     #

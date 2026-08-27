@@ -67,6 +67,37 @@
       }
     }
 
+    //  "You have changed a starting point. What would you like instead?"
+    //
+    //  Two answers, and only the owner can pick: overwrite a copy they
+    //  already made, or make another. That is the exact question that
+    //  produced three identically-named copies on a live install when
+    //  the code tried to answer it itself.
+    async function askToFork(info) {
+      if (info.copies && info.copies.length) {
+        const { confirmed, alt } = await window.cmsModal({
+          message: info.template + " is a starting point, so it does not change. "
+            + "You already have a copy of it (" + info.copies[0].name + "). "
+            + "Put this change there, or start another copy?",
+          confirmLabel: "Use " + info.copies[0].name,
+          altLabel: "Start another",
+          danger: false,
+        });
+        if (confirmed) return "fork_into=" + encodeURIComponent(info.copies[0].id);
+        if (!alt) return null;
+      }
+      const { confirmed, value } = await window.cmsModal({
+        message: info.template + " is a starting point, so it does not change. "
+          + "Make it yours to work on? Give the copy a name you will recognise.",
+        showInput: true,
+        defaultValue: info.suggested || "",
+        confirmLabel: "Make it mine",
+        danger: false,
+      });
+      if (!confirmed) return null;
+      return "fork_as=" + encodeURIComponent((value || info.suggested || "").trim());
+    }
+
     async function apply(btn, url, body) {
       if (btn.disabled) return;
       const grid = btn.parentElement;
@@ -87,9 +118,26 @@
         //  Reloading blindly is what put people on a "page not found"
         //  after activating a template that does not have the page they
         //  were looking at.
-        let go = null;
-        try { go = (await res.json()).go; } catch {}
-        await refresh(go);
+        let answer = null;
+        try { answer = await res.json(); } catch {}
+
+        //  A source template does not change. The server says so rather
+        //  than silently editing something shipped, and this is where
+        //  the owner is asked what they want instead. See
+        //  services/lifecycle.py and the guard in routes/admin/templates.
+        if (answer && answer.needs_fork) {
+          const retry = await askToFork(answer);
+          if (!retry) return;
+          const again = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded",
+                       "X-Inline-Edit": "1" },
+            body: (body ? body + "&" : "") + retry +
+                  "&from=" + encodeURIComponent(location.pathname),
+          });
+          try { answer = await again.json(); } catch { answer = null; }
+        }
+        await refresh(answer && answer.go);
       } catch {
         // fall through to the same tidy-up as a successful apply
       } finally {

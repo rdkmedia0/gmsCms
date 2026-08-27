@@ -10,7 +10,7 @@ from . import bp
 from ..auth import login_required
 from ...db import get_db
 from ...services.menu import refresh_site_menus
-from ...services import packages
+from ...services import lifecycle, packages
 from ...services.palette import _match_palette_roles, color_scheme_choices
 from . import (
     COLOR_PRESETS, FONT_PAIRINGS, SHAPE_PRESETS, SHADOW_PRESETS, SHADE_SPREADS,
@@ -88,7 +88,7 @@ def pages_tidy():
     active = db.execute("SELECT slug FROM templates WHERE is_active = 1").fetchone()
     if not active:
         return redirect(url_for("admin.dashboard"))
-    removed = _retire_foreign_pack_pages(db, active["slug"])
+    removed, kept = _retire_foreign_pack_pages(db, active["slug"])
     db.commit()
     if removed:
         flash("Removed " + ", ".join(removed) + ". Those pages came with templates you are no "
@@ -96,7 +96,118 @@ def pages_tidy():
     else:
         flash("Nothing to tidy — every page belongs to the template you are using, or to you.",
               "success")
+    #  Said out loud, because it is the surprising half: a page from an
+    #  old template that somebody has since written in is kept, and an
+    #  owner who expected a clean sweep should know why it is still there.
+    if kept:
+        flash("Kept " + ", ".join(kept) + " — you have written in " +
+              ("those, so they are" if len(kept) > 1 else "that, so it is") +
+              " yours now, whatever they arrived as.", "success")
     return redirect(url_for("admin.dashboard"))
+
+
+#  ---- Changing a source's look asks first ----
+#
+#  Every endpoint here writes to a TEMPLATE's own data -- its colours, its
+#  fonts, its shape, its shadow. That is the first moment anything shipped
+#  would actually be altered, and it is therefore the only moment a fork
+#  is the right question. Content edits are not in this list and never
+#  fork: they write to pages and sections, which belong to the site.
+#
+#  A named set rather than a decorator on each, because a set can be
+#  CHECKED. tools/template_check.py asserts that every route whose path
+#  changes a look is in here, so a seventeenth one that forgets is a
+#  failing check rather than a shipped template somebody quietly edited.
+LOOK_ENDPOINTS = frozenset({
+    "admin.template_colors", "admin.template_colors_preset", "admin.template_colors_reset",
+    "admin.template_fonts_preset", "admin.template_fonts_reset",
+    "admin.template_heading_font", "admin.template_body_font",
+    "admin.template_footer_font", "admin.template_footer_font_reset",
+    "admin.template_shadow_preset", "admin.template_shadow_reset",
+    "admin.template_shades_preset", "admin.template_shades_reset",
+    "admin.template_shape_preset",
+    "admin.template_shape_reset", "admin.template_zone_style",
+})
+
+
+@bp.before_request
+def _ask_before_changing_a_source():
+    """A source never changes. Offer to fork it instead.
+
+    Answered rather than blocked: `fork_as` names a new copy and
+    `fork_into` overwrites an existing one, and either lets the same
+    request carry on against the copy. Only the owner can decide which,
+    which is exactly why it is asked.
+    """
+    if request.endpoint not in LOOK_ENDPOINTS:
+        return None
+    db = get_db()
+    tpl = db.execute("SELECT * FROM templates WHERE id = ?",
+                     (request.view_args.get("template_id"),)).fetchone()
+    if not tpl or not lifecycle.is_source(tpl):
+        return None
+    if not tpl["is_active"]:
+        #  Only the active template can be forked -- a fork is "give this
+        #  SITE its own copy of what it is running". Changing the look of
+        #  an inactive source is refused outright rather than forked into
+        #  something nobody asked for.
+        message = ("%s is a starting point, so it cannot be changed. Activate it first, "
+                   "then make it yours." % tpl["name"])
+        if wants_json():
+            return jsonify({"ok": False, "error": message}), 409
+        flash(message, "error")
+        return _redirect_next("admin.dashboard")
+
+    name = (request.form.get("fork_as") or "").strip()
+    into = request.form.get("fork_into")
+    if not name and not into:
+        #  The question. Existing copies are listed because "overwrite
+        #  that one or make another" is the case that produced three
+        #  identical entries on a live install, and no automatic rule can
+        #  answer it.
+        copies = db.execute(
+            "SELECT id, name FROM templates WHERE forked_from = ? AND is_promoted = 0",
+            (tpl["slug"],)).fetchall()
+        payload = {
+            "ok": False, "needs_fork": True,
+            "template": tpl["name"],
+            "suggested": "%s (mine)" % tpl["name"],
+            "copies": [{"id": c["id"], "name": c["name"]} for c in copies],
+        }
+        if wants_json():
+            return jsonify(payload), 409
+        flash("%s is a starting point and does not change. Make it yours first, from the "
+              "Template & Layout panel." % tpl["name"], "error")
+        return _redirect_next("admin.dashboard")
+
+    if into:
+        #  Overwriting an existing copy: activate it and let the change
+        #  land on it. Nothing is created.
+        copy = db.execute("SELECT * FROM templates WHERE id = ? AND is_promoted = 0",
+                          (into,)).fetchone()
+        if not copy:
+            flash("That copy no longer exists.", "error")
+            return _redirect_next("admin.dashboard")
+        db.execute("UPDATE templates SET is_active = 0")
+        db.execute("UPDATE templates SET is_active = 1 WHERE id = ?", (copy["id"],))
+        db.commit()
+        new_id = copy["id"]
+    else:
+        #  Imported here rather than at the top: this module is imported
+        #  BY the package that defines it, several lines before the
+        #  definition, so a module-level import cannot see it.
+        from . import fork_active_source
+        new_id = fork_active_source(db, name=name)
+        if not new_id:
+            flash("That copy could not be made.", "error")
+            return _redirect_next("admin.dashboard")
+
+    #  The change was aimed at the source; it lands on the copy. Rewriting
+    #  the view argument is what lets the route below run unchanged --
+    #  fifteen routes that each had to know about forking would be
+    #  fifteen places for it to be got wrong.
+    request.view_args["template_id"] = new_id
+    return None
 
 
 @bp.route("/templates/<int:template_id>/colors", methods=["POST"])
@@ -527,10 +638,14 @@ def template_activate(template_id):
             #  And take away what the last template left. Same
             #  all-or-nothing confirmation as replacing the content: this
             #  only runs once the admin has agreed to that.
-            retired = _retire_foreign_pack_pages(db, tpl["slug"])
+            retired, kept = _retire_foreign_pack_pages(db, tpl["slug"])
             if retired:
                 flash("Removed " + ", ".join(retired) +
                       " — those pages belonged to the template you were using before.", "success")
+            if kept:
+                flash("Kept " + ", ".join(kept) + " — you have written in " +
+                      ("those, so they are" if len(kept) > 1 else "that, so it is") +
+                      " yours now.", "success")
         elif content_conflict:
             needs_confirm = True
     #  After the content, not before it. A template's header menu is built
@@ -599,17 +714,121 @@ def template_delete(template_id):
 @bp.route("/templates/<int:template_id>/export")
 @login_required
 def template_export(template_id):
-    """Downloads this template (CSS + palette, no page content — see
-    CLAUDE.md's Template Packages section) as a .zip, importable on any
-    other install via 'Import Template Package' below."""
+    """Downloads this template as a .zip, importable on any other install.
+
+    Only a SOURCE can be exported. A custom template is a draft -- work
+    in progress, private to this install, with no artefact behind it --
+    and handing somebody a draft as though it were a template is exactly
+    how a package once went out missing its pages and its pictures.
+    Promote it first; promotion is what builds the artefact and checks it.
+    """
     db = get_db()
+    tpl = db.execute("SELECT * FROM templates WHERE id = ?", (template_id,)).fetchone()
+    if not tpl:
+        flash("That template doesn't exist.", "error")
+        return redirect(url_for("admin.dashboard"))
+    if not lifecycle.can_export(tpl):
+        flash("%s is still yours to work on, so there is nothing to hand over yet. "
+              "Move it to your starting points first — that is what packages it."
+              % tpl["name"], "error")
+        return redirect(url_for("admin.dashboard"))
     try:
         zip_path = packages.export_package_zip(db, template_id, current_app.static_folder)
     except packages.PackageError as e:
         flash(str(e), "error")
         return redirect(url_for("admin.dashboard"))
-    tpl = db.execute("SELECT slug FROM templates WHERE id = ?", (template_id,)).fetchone()
     return send_file(zip_path, as_attachment=True, download_name=f"{tpl['slug']}.zip")
+
+
+@bp.route("/templates/<int:template_id>/promote", methods=["POST"])
+@login_required
+def template_promote(template_id):
+    """Finish a custom template: check it, package it, freeze it.
+
+    This is the moment the artefact is built, and the moment the
+    completeness check runs. Both belong here rather than at export
+    because promotion is a deliberate act with a person waiting on it --
+    the one point where "this references four pictures and three of them
+    exist" can be reported to somebody who can fix it, instead of being
+    discovered by whoever installs it later.
+    """
+    db = get_db()
+    tpl = db.execute("SELECT * FROM templates WHERE id = ?", (template_id,)).fetchone()
+    if not tpl:
+        flash("That template doesn't exist.", "error")
+        return redirect(url_for("admin.dashboard"))
+    if lifecycle.is_source(tpl):
+        flash("%s is already one of your starting points." % tpl["name"], "error")
+        return redirect(url_for("admin.dashboard"))
+
+    #  Built from the LIVE template, so what is frozen is what is on
+    #  screen -- not whatever the folder happened to be left holding.
+    work_dir = tempfile.mkdtemp(prefix="promote-")
+    try:
+        pkg_dir = packages._build_package_dir(
+            db, tpl, current_app.static_folder, None, work_dir, tpl["slug"],
+            capture_layout=True)
+        problems = lifecycle.completeness(pkg_dir)
+        if problems:
+            #  Refused, not warned. The whole value of doing this here is
+            #  that somebody is waiting to be told.
+            flash("%s isn't ready to be a starting point yet: %s"
+                  % (tpl["name"], " ".join(problems)), "error")
+            return redirect(url_for("admin.dashboard"))
+        #  The folder it lives in becomes the frozen copy, and the
+        #  inventory says what installing it will do -- every page and its
+        #  section count, every picture with size and checksum -- so that
+        #  can be read before letting it do it.
+        home = packages.template_package_dir(current_app.static_folder, tpl["slug"], False)
+        packages.copy_tree_contents(pkg_dir, home)
+        packages.write_install_json(home)
+    except packages.PackageError as e:
+        flash("It could not be packaged — %s" % e, "error")
+        return redirect(url_for("admin.dashboard"))
+    finally:
+        shutil.rmtree(work_dir, ignore_errors=True)
+
+    db.execute("UPDATE templates SET is_promoted = 1, promoted_at = CURRENT_TIMESTAMP "
+               "WHERE id = ?", (template_id,))
+    db.commit()
+    flash("%s is one of your starting points now. It is packaged, exportable, and will not "
+          "change again — editing its look asks to make a copy, the same as any other."
+          % tpl["name"], "success")
+    return redirect(url_for("admin.dashboard"))
+
+
+@bp.route("/templates/<int:template_id>/demote", methods=["POST"])
+@login_required
+def template_demote(template_id):
+    """Put a promoted template back to being work in progress.
+
+    Reversible while nothing depends on it and refused once something
+    does -- the same shape as "the active template cannot be deleted",
+    which is the guard that made an earlier cleanup safe. A SHIPPED
+    template can never be demoted: its package is in the image and comes
+    back on the next boot regardless.
+    """
+    db = get_db()
+    tpl = db.execute("SELECT * FROM templates WHERE id = ?", (template_id,)).fetchone()
+    if not tpl:
+        flash("That template doesn't exist.", "error")
+        return redirect(url_for("admin.dashboard"))
+    if tpl["is_builtin"]:
+        flash("%s came with the app, so it stays a starting point." % tpl["name"], "error")
+        return redirect(url_for("admin.dashboard"))
+    if not tpl["is_promoted"]:
+        flash("%s is already yours to work on." % tpl["name"], "error")
+        return redirect(url_for("admin.dashboard"))
+    blocking = lifecycle.depends_on(db, tpl)
+    if blocking:
+        flash("%s cannot go back to being work in progress: %s."
+              % (tpl["name"], ", and ".join(blocking)), "error")
+        return redirect(url_for("admin.dashboard"))
+    db.execute("UPDATE templates SET is_promoted = 0, promoted_at = NULL WHERE id = ?",
+               (template_id,))
+    db.commit()
+    flash("%s is yours to work on again." % tpl["name"], "success")
+    return redirect(url_for("admin.dashboard"))
 
 
 @bp.route("/packages/import", methods=["POST"])
@@ -829,11 +1048,14 @@ def template_save_current():
     db = get_db()
     active = db.execute("SELECT * FROM templates WHERE is_active = 1").fetchone()
     #  Overwrite updates the template the site is already on, which is
-    #  what "save my work" means once the first edit has given the site a
-    #  template of its own (see fork_active_builtin). Refused for a
-    #  builtin: its package ships in the image and is reinstalled on every
-    #  boot, so an overwrite would last until the next restart.
-    overwrite = request.form.get("overwrite") == "1" and active and not active["is_builtin"]
+    #  what "save my work" means once the site has a template of its own.
+    #  Refused for a SOURCE, which is the whole of what a source is: a
+    #  shipped one is reinstalled from its zip on every boot so an
+    #  overwrite would last until the next restart, and a promoted one is
+    #  a finished starting point, and a starting point that moves is not
+    #  one. See services/lifecycle.py.
+    overwrite = (request.form.get("overwrite") == "1"
+                 and active and not lifecycle.is_source(active))
     name = (request.form.get("name") or "").strip()
     if overwrite:
         name = name or active["name"]

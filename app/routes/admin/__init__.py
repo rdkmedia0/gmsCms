@@ -404,17 +404,32 @@ def _retire_foreign_pack_pages(db, slug):
     the owner made themselves has no source template and is never touched,
     and neither is the home page.
 
-    Returns the titles removed, so the flash can say what happened rather
-    than have pages quietly vanish.
+    Returns (removed, kept) titles, so the flash can say what happened
+    rather than have pages quietly vanish -- and can say what it SPARED,
+    which is the more surprising half.
     """
+    #  `owner_edited = 0` is the whole of the change here, and it answers
+    #  a question BOW.md flagged before this was built: what happens to a
+    #  page somebody has since written in? It was deleted. An edited page
+    #  still carries the slug of the pack that created it -- it has to, so
+    #  Load Content can find it and put it back -- so switching template
+    #  threw the owner's work away with the rest of the demo content, and
+    #  said only "removed 4 pages".
+    #
+    #  A page somebody has written in is the SITE'S now, whatever it
+    #  arrived as. It is left alone, and the caller says so.
     doomed = db.execute(
         "SELECT id, title FROM pages WHERE source_template IS NOT NULL "
-        "AND source_template != ? AND is_home = 0", (slug,)
+        "AND source_template != ? AND is_home = 0 AND owner_edited = 0", (slug,)
+    ).fetchall()
+    kept = db.execute(
+        "SELECT title FROM pages WHERE source_template IS NOT NULL "
+        "AND source_template != ? AND is_home = 0 AND owner_edited = 1", (slug,)
     ).fetchall()
     for page in doomed:
         db.execute("DELETE FROM sections WHERE page_id = ?", (page["id"],))
         db.execute("DELETE FROM pages WHERE id = ?", (page["id"],))
-    return [p["title"] for p in doomed]
+    return [p["title"] for p in doomed], [p["title"] for p in kept]
 
 
 def demo_identity_names(db):
@@ -824,6 +839,11 @@ def _apply_pack_content(db, pack, page_slugs=None):
         #  Stamped whether the page was created here or already existed:
         #  either way its content is now this pack's, and that is what
         #  makes it removable when a different template takes over.
+        #  Written by the pack, so it is the pack's copy again -- the
+        #  trigger on `sections` has just marked it edited, and that was
+        #  this code writing, not a person. Load Content putting a page
+        #  back is exactly the act that un-edits it.
+        db.execute("UPDATE pages SET owner_edited = 0 WHERE id = ?", (page_id,))
         db.execute("UPDATE pages SET source_template = ? WHERE id = ?",
                    (pack.get("slug"), page_id))
         #  A page can arrive with its own backdrop — a picture behind the
@@ -1100,12 +1120,26 @@ def inject_password_warning():
 #  they started from.
 
 
-def fork_active_builtin(db):
-    """Give this site its own copy of the built-in it is using. Returns
-    the new template's id, or None if there was nothing to do."""
-    from ...services import packages
+def fork_active_source(db, name=None, into_id=None):
+    """Give this site its own copy of the SOURCE it is using.
+
+    `name` is what the owner called it -- a name they chose is a name
+    they will recognise in the library, which is the whole difference
+    between this and the automatic version that produced three entries
+    called "(your copy)". `into_id` overwrites an existing custom copy
+    instead of making another, which is the case no automatic rule can
+    decide because only the owner knows whether the old one still
+    matters.
+
+    Returns the new template's id, or None if there was nothing to do.
+    """
+    from ...services import lifecycle, packages
     active = db.execute("SELECT * FROM templates WHERE is_active = 1").fetchone()
-    if not active or not active["is_builtin"]:
+    #  "Is this a source", not "is this shipped". A promoted template gets
+    #  the same protection without a second mechanism, which is the point
+    #  of the lifecycle: shipped stops being a category the code cares
+    #  about.
+    if not active or not lifecycle.is_source(active):
         return None
 
     #  Claim the fork before doing any of it. Gunicorn runs several
@@ -1139,7 +1173,7 @@ def fork_active_builtin(db):
     #  called "Life Coaching (your copy)", identical in the picker and
     #  impossible to tell apart. The slug was unique the whole time, but
     #  nobody reads slugs.
-    name = f'{active["name"]} (your copy)'
+    name = (name or "").strip() or f'{active["name"]} (your copy)'
     slug = slugify(name)
     base, i = slug, 2
     while db.execute("SELECT 1 FROM templates WHERE slug = ?", (slug,)).fetchone():
@@ -1158,7 +1192,8 @@ def fork_active_builtin(db):
     except packages.PackageError:
         _give_it_back()
         return None
-    db.execute("UPDATE templates SET name = ? WHERE id = ?", (name, new_id))
+    db.execute("UPDATE templates SET name = ?, forked_from = ? WHERE id = ?",
+               (name, active["slug"], new_id))
     db.execute("UPDATE templates SET is_active = 1 WHERE id = ?", (new_id,))
     #  The look the admin had customised on top of the builtin travels
     #  with the copy — otherwise forking would quietly reset their colours.
@@ -1200,12 +1235,16 @@ def fork_active_builtin(db):
 #
 #  It was not guarding _retire_foreign_pack_pages either, which was the
 #  one plausible defence: that function spares any page whose
-#  source_template is NULL, and fork_active_builtin never touched
-#  source_template at all.
+#  source_template is NULL, and the fork never touched source_template at
+#  all. That gap is closed separately and properly -- a page somebody has
+#  written in carries `owner_edited` and is spared on its own account,
+#  whatever pack it came from.
 #
-#  Forking stays, as something the owner ASKS for when they change a
-#  LOOK -- see BOW.md, "Forking, settled". fork_active_builtin is kept
-#  for that; only the automatic trigger is removed.
+#  Forking is now what the owner ASKS for when they change a LOOK, and
+#  `fork_active_source` is what does it: named by them, recorded against
+#  what it was forked from, and guarded on "is this a source" so a
+#  promoted template gets the same protection as a shipped one. See
+#  services/lifecycle.py.
 
 
 @bp.before_request

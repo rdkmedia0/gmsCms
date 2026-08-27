@@ -136,6 +136,21 @@ def _sha256(path):
     return h.hexdigest()
 
 
+def write_install_json(pkg_dir):
+    """Freeze a folder's own account of itself, beside it.
+
+    A shipped template gets this written INTO its zip at build time. A
+    promoted one has no zip -- it lives in `static/themes/<slug>/` -- so
+    the same description is written into the folder, and export picks it
+    up from there like any other file. Same inventory, same question
+    answered before installing: what is this about to do to my site?
+    """
+    inventory = package_inventory(pkg_dir)
+    with open(os.path.join(pkg_dir, "install.json"), "w", encoding="utf-8") as fh:
+        json.dump(inventory, fh, indent=2, ensure_ascii=False, sort_keys=True)
+    return inventory
+
+
 def package_inventory(pkg_dir):
     """What installing this package will actually do, as data.
 

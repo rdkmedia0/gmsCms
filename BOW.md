@@ -5877,8 +5877,39 @@ style group collapses behind one button until a block is selected.
 
 ### Specified, agreed, not built
 
-**The fork, and the template lifecycle.** Three entries above work it
-out: content edits never fork (the automatic trigger IS now removed),
+**The fork, and the template lifecycle.** ~~Specified, not built.~~
+**BUILT** (2026-08-27) -- `services/lifecycle.py`,
+`tools/template_check.py`. Built as the three entries below work it out,
+with the open question answered and one thing found that none of them
+anticipated:
+
+  * **The open question, answered.** `_retire_foreign_pack_pages` deletes
+    any page whose `source_template` differs from the newly-activated
+    slug -- and an edited page still carries the slug it arrived with, so
+    switching template threw the owner's work away and reported only
+    "removed 4 pages". The fork was never protecting it, as suspected.
+    The fix is `pages.owner_edited`, set by a TRIGGER on `sections`
+    rather than by every save path remembering to: a dozen places write a
+    section, and one of them forgetting would be a page silently deleted
+    months later. Load Content clears it, because putting the pack's own
+    copy back is exactly the act that un-edits a page. The flash now says
+    what it SPARED, which is the more surprising half.
+  * **The guard is a named SET, not a decorator on each route**, and that
+    is about the seventeenth route rather than the fifteen that exist. A
+    set can be checked against the routing table; a decorator that
+    somebody forgets cannot. `template_check.py` found one on its first
+    run -- `template_shades_reset` -- which is the entire argument for
+    doing it that way.
+  * **Not anticipated**: what to do about a source that is not ACTIVE. A
+    fork is "give this site its own copy of what it is running", so
+    changing the look of an inactive source has nothing to fork into. It
+    is refused outright, and told to activate it first.
+
+The three entries below are kept as written, because they are the
+reasoning rather than the record.
+
+**The fork, and the template lifecycle** (original entry). Three entries
+above work it out: content edits never fork (the automatic trigger IS now removed),
 changing a LOOK on a source asks first, the owner names the copy,
 overwrite-or-new when one exists, and a finished custom template is
 promoted to a source -- which is also the moment it gets packaged and

@@ -454,19 +454,54 @@ package happens to have `pages/`:
   active template's look plus every live page's content, writing
   straight into `app/static/themes/<new-slug>/` + a new `templates` row —
   the same place an imported `.zip` lands, immediately
-  activatable/exportable/loadable like any other entry. Exporting to a
-  `.zip` (`export_package_zip()`) stays a separate, always-available
-  action on any library entry, builtin or not.
-- **Editing content never forks a template.** There WAS a
+  activatable/loadable like any other entry. It arrives as WORK IN
+  PROGRESS -- see the lifecycle below -- so it is not exportable until
+  it is promoted.
+- **A template is a SOURCE or it is CUSTOM** (`services/lifecycle.py`),
+  and that one distinction decides what may happen to it. A **source**
+  never changes: the sixteen shipped ones are sources, and so is any
+  custom template the owner has finished and PROMOTED. It is packaged,
+  and therefore exportable. A **custom** template is work in progress:
+  freely editable, private to this install, with no artefact behind it
+  and so nothing to export. `is_builtin` is no longer what the code
+  branches on -- "shipped" is one of two reasons a template is a source,
+  which is what stops promoted ones being a special case beside them.
+- **Editing content never forks. Changing a LOOK asks.** There WAS a
   `before_request` that copied the active builtin on the first content
-  edit — "the first content change of a site makes it theirs" — and it
-  produced three identically-named "(your copy)" entries on one install,
-  each with its own duplicate of the pictures. Editing a page writes to
-  `pages` and `sections`, never to the template package or its row, so
-  nothing about it needed a copy. `fork_active_builtin` is kept for the
-  case that DOES want one — an owner changing a LOOK, asked and named —
-  but nothing calls it automatically. See BOW.md for the agreed design of
-  the consented fork and the source/custom/promoted lifecycle.
+  edit, and it produced three identically-named "(your copy)" entries on
+  one install, each with its own duplicate of the pictures. Editing a
+  page writes to `pages` and `sections` -- the SITE's data -- so nothing
+  about it needed a copy. Changing a template's colours, fonts, shape or
+  shadow is the first moment anything shipped would actually be altered,
+  so that is where the question belongs: `LOOK_ENDPOINTS` in
+  `routes/admin/templates.py` and the `before_request` beside it answer
+  `needs_fork`, the panel asks for a NAME (a name they chose is one they
+  will recognise), and `fork_as` / `fork_into` carry the answer back.
+  Overwrite-or-another is asked rather than decided, because only the
+  owner knows whether the old copy still matters. **The endpoint set is
+  named rather than decorated so it can be CHECKED** -- `template_check.py`
+  fails if a route whose path changes a look is not in it.
+- **Promotion is when the artefact is built, and the only place the
+  completeness check belongs.** A custom template has no zip, so there is
+  nothing to keep in step with the edits; promoting it writes the folder
+  and its `install.json` inventory and freezes it. The check runs there
+  because promotion is a deliberate act with a person waiting on it --
+  the one moment "this references four pictures and three of them exist"
+  can be REFUSED rather than discovered by whoever installs it later.
+  Promotion is reversible while nothing depends on it (`lifecycle.depends_on`)
+  and refused once something does, the same shape as "the active template
+  cannot be deleted". A shipped template can never be demoted: its
+  package is in the image and comes back on the next boot.
+- **A page somebody has written in is the site's, whatever it arrived
+  as.** `pages.owner_edited` is set by a trigger on `sections` -- a dozen
+  places write one, and any of them forgetting would be a page quietly
+  deleted months later. `_retire_foreign_pack_pages` spares those and
+  says which it spared, because an owner expecting a clean sweep should
+  know why something is still there. Load Content clears the flag: putting
+  the pack's own copy back is exactly the act that un-edits a page.
+  Before this, switching template deleted every page whose
+  `source_template` was a different pack -- including ones the owner had
+  rewritten, since an edited page still carries the slug it arrived with.
 - **Delete** works on any template, including builtins — a deleted
   builtin's `templates` row (and its copied `static/themes/<slug>/`
   asset) just comes back the next time the app restarts, since the seed
@@ -1184,6 +1219,9 @@ part that constrains the CODE.
   `shape_check.py` (that every shape survives a video, a textarea and a
   short wide box, measured in a browser because no server-side check can
   see a dropped declaration),
+  `template_check.py` (that no look-changing route escapes the fork
+  guard, that only a source can be exported, and that a page somebody
+  wrote in survives a template change),
   `schedule_check.py` (that a send put on the clock goes exactly once
   even when two workers claim it together, and refuses for the same
   reasons a live send refuses), and
