@@ -1,0 +1,87 @@
+{% extends "admin/base.html" %}
+{% block title %}{{ item.subject or 'Newsletter' }} — My Site Admin{% endblock %}
+{% block content %}
+{% include "partials/email_tabs.html" %}
+<h1>{{ item.subject or 'Untitled newsletter' }}</h1>
+<p class="hint">{{ layout.blurb }}</p>
+
+{% if not email_ready %}
+<p class="flash flash-warning">Email isn't set up, so nothing can be sent yet.
+  <a href="{{ url_for('admin.settings_email') }}">Set it up →</a></p>
+{% endif %}
+{% if not has_address %}
+<p class="flash flash-warning">A newsletter has to carry your postal address by law, and there isn't one yet.
+  <a href="{{ url_for('admin.legal_pages') }}">Add it →</a></p>
+{% endif %}
+
+<form method="post" class="card">
+  <label for="subject" title="What people see in their inbox before they open it">Subject</label>
+  <input type="text" id="subject" name="subject" maxlength="200" value="{{ item.subject }}"
+         placeholder="What this one is about"
+         title="What people see in their inbox before they open it. Say the thing, don't tease it.">
+  <p class="hint">The line people decide on. Say what is inside rather than hinting at it.</p>
+
+  {#  One control per slot the layout declares, built from
+      services/email_layouts.py -- so a new layout needs a template and a
+      dictionary entry, and this screen builds itself. #}
+  {% for field in fields %}
+  <label for="{{ field.key }}" title="{{ field.hint or field.label }}">
+    {{ field.label }}{% if field.required %} <span class="hint">(needed)</span>{% endif %}
+  </label>
+  {% if field.kind == 'paragraphs' %}
+  <textarea id="{{ field.key }}" name="{{ field.key }}" rows="8"
+            title="{{ field.hint or field.label }}">{{ values.get(field.key, '') }}</textarea>
+  {% elif field.kind == 'image' %}
+  <input type="url" id="{{ field.key }}" name="{{ field.key }}" value="{{ values.get(field.key, '') }}"
+         placeholder="https://…/picture.jpg"
+         title="{{ field.hint or field.label }}">
+  {% elif field.kind == 'url' %}
+  <input type="url" id="{{ field.key }}" name="{{ field.key }}" value="{{ values.get(field.key, '') }}"
+         placeholder="https://" title="{{ field.hint or field.label }}">
+  {% else %}
+  <input type="text" id="{{ field.key }}" name="{{ field.key }}" maxlength="200"
+         value="{{ values.get(field.key, '') }}" title="{{ field.hint or field.label }}">
+  {% endif %}
+  {% if field.hint %}<p class="hint">{{ field.hint }}</p>{% endif %}
+  {% endfor %}
+
+  <div class="cms-post-save-bar">
+    <button type="submit" class="btn btn-primary" title="Keep these words. Nothing is sent.">Save</button>
+    <a class="btn" href="{{ url_for('admin.newsletter_issue_preview', newsletter_id=item.id) }}" target="_blank"
+       title="See exactly what will land in somebody's inbox, wrapper and all">Preview</a>
+  </div>
+</form>
+
+<div class="card">
+  <h2>Send it</h2>
+  {% if missing %}
+  <p class="flash flash-warning">Still needed before this can go: {{ missing | join(', ') }}.</p>
+  {% endif %}
+  {% if last %}
+  <p class="hint">Last sent {{ last.sent_at[:16] }} to {{ last.sent_count }}
+    {{ 'person' if last.sent_count == 1 else 'people' }}.</p>
+  {% endif %}
+  <form method="post" action="{{ url_for('admin.newsletter_issue_send', newsletter_id=item.id) }}"
+        class="inline-form cms-delete-form"
+        data-confirm="Send this to your list? It cannot be unsent.">
+    <label for="audience" title="Who gets it">Who gets it</label>
+    <select id="audience" name="audience" title="Everyone who has confirmed, or only people who have bought something">
+      {% for key, label in audiences %}
+      <option value="{{ key }}">{{ label }} ({{ audience_counts[key] }})</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-primary"
+            title="Send this newsletter to the people you chose. This cannot be undone.">Send</button>
+  </form>
+  <p class="hint">Only people who have confirmed their address are ever written to.</p>
+</div>
+
+<div class="card">
+  <form method="post" action="{{ url_for('admin.newsletter_issue_delete', newsletter_id=item.id) }}"
+        class="cms-delete-form" data-confirm="Delete this newsletter? What was already sent stays on the record.">
+    <button type="submit" class="btn btn-small"
+            title="Delete this newsletter. Anything already sent stays recorded.">Delete</button>
+  </form>
+</div>
+<script src="{{ static_url('js/admin/modal.js') }}"></script>
+{% endblock %}

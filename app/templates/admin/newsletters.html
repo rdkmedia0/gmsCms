@@ -6,12 +6,41 @@
     leaves the building. They are separate screens because they are used
     at different moments -- but they all stand or fall on the same mail
     setup, so they are reachable from each other. #}
-{% set tabs = [
-  ("Newsletters", url_for('admin.newsletters'), request.endpoint == 'admin.newsletters'),
-  ("Email list", url_for('admin.subscriber_list'), request.endpoint == 'admin.subscriber_list'),
-  ("Sending email", url_for('admin.settings_email'), request.endpoint == 'admin.settings_email'),
-] %}
-{% include "partials/tabs.html" %}
+{% include "partials/email_tabs.html" %}
+{#  A newsletter of its own comes first, because it is the one built for
+    the job. Sending a page or a post still works and is below. #}
+<h1>Newsletters</h1>
+<div class="card">
+  <h2>Write a newsletter</h2>
+  <p class="hint">Pick a shape and fill it in. These are built for email &mdash; they use tables and inline styling, which is what an inbox can actually draw, and they take your site&rsquo;s colours and fonts as closely as email allows.</p>
+  <form method="post" action="{{ url_for('admin.newsletter_issue_new') }}" class="cms-layout-choices">
+    {% for key, name, blurb in layout_choices %}
+    <button type="submit" name="layout" value="{{ key }}" class="cms-layout-choice"
+            title="Start a newsletter using the &quot;{{ name }}&quot; shape">
+      <strong>{{ name }}</strong>
+      <span>{{ blurb }}</span>
+    </button>
+    {% endfor %}
+  </form>
+</div>
+
+{% if composed %}
+<div class="card">
+  <h2>Yours</h2>
+  <ul class="cms-account-list">
+    {% for row in composed %}
+    <li>
+      <a href="{{ url_for('admin.newsletter_issue_edit', newsletter_id=row.id) }}"
+         title="Open this newsletter">{{ row.subject or 'Untitled' }}</a>
+      <span class="hint">&middot; {{ layout_names.get(row.layout, row.layout) }}
+        {%- if composed_sends[row.id] %} &middot; sent {{ composed_sends[row.id].sent_at[:10] }}
+          to {{ composed_sends[row.id].sent_count }}{% else %} &middot; not sent{% endif %}</span>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
 
 <p class="hint">A newsletter is just a page. Write it in the normal editor with the same tools you use everywhere else, then send it to your list from here — and because it stays on the site, anyone can read it later without digging through their inbox.</p>
 

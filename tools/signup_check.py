@@ -45,6 +45,22 @@ def _capture(settings, to_email, subject, body, reply_to=None, from_name=None, h
 
 
 mailer.send = _capture
+
+
+def _capture_html(settings, to_email, subject, html_body, text_body,
+                  from_name=None, headers=None):
+    """The same, for the dressed messages.
+
+    Transactional mail carries both halves now -- HTML so it looks like
+    the site, text because some people read mail as text and a
+    HTML-only message looks more like spam. The TEXT half is what is
+    recorded, because every assertion below is about the words, and the
+    words are the same in both.
+    """
+    _capture(settings, to_email, subject, text_body, from_name=from_name, headers=headers)
+
+
+mailer.send_html = _capture_html
 mailer.is_configured = lambda settings: True
 
 failures = []

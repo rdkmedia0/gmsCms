@@ -58,6 +58,24 @@ def _public_url(endpoint, **values):
     return site.absolute(get_db(), url_for(endpoint, **values), request.host_url)
 
 
+def _dressed(db, text_body, subject):
+    """(html, text) for a transactional message.
+
+    The words are the plain text already written for it -- one wording to
+    keep true, and the text half of the mail is those same words rather
+    than a second draft that can drift. See
+    newsletter.to_transactional_html for why the footer is not the
+    newsletter's.
+    """
+    site_title = (get_site_settings(db) or {}).get("site_title") or "our website"
+    line, _has = newsletter.sender_line(legal.settings_for(db), site_title)
+    template = _active_template(db)
+    look = newsletter.look_from(
+        _role_color_ramps(template) if template else None,
+        FONT_PAIRINGS.get((get_site_settings(db) or {}).get("font_pairing")))
+    return newsletter.to_transactional_html(text_body, site_title, line, look), text_body
+
+
 def _send_order_email(db, order_id):
     """Emails the buyer their way back in. Best-effort by design: an
     order is already paid and recorded by the time this runs, so a mail
@@ -80,13 +98,9 @@ def _send_order_email(db, order_id):
         #  configured site address wins whenever it is set.
         url = _public_url("public.my_account", token=token)
         site = (get_site_settings(db) or {}).get("site_title") or "our website"
-        mailer.send(
-            settings,
-            customer["email"],
-            f"Your order from {site}",
-            commerce.order_email_body(db, order, url, site),
-            from_name=site,
-        )
+        subject = f"Your order from {site}"
+        html, text = _dressed(db, commerce.order_email_body(db, order, url, site), subject)
+        mailer.send_html(settings, customer["email"], subject, html, text, from_name=site)
         #  And tell the owner. Separate message, separate address: the
         #  buyer's email is their way back in and says nothing about what
         #  needs doing; this one is a job list and carries no link.
@@ -101,13 +115,11 @@ def _send_order_email(db, order_id):
             #  every owner testing their own shop, which is everyone on
             #  their first day.
             if seller:
-                mailer.send(
-                    settings, seller,
-                    f"Sale: {(order['amount_total'] or 0) / 100:.2f} "
-                    f"{(order['currency'] or '').upper()} — {site}",
-                    commerce.sale_notice_body(db, order, site),
-                    from_name=site,
-                )
+                subject = ("Sale: %.2f %s — %s"
+                           % ((order["amount_total"] or 0) / 100,
+                              (order["currency"] or "").upper(), site))
+                html, text = _dressed(db, commerce.sale_notice_body(db, order, site), subject)
+                mailer.send_html(settings, seller, subject, html, text, from_name=site)
         except Exception as e:  # noqa: BLE001
             current_app.logger.warning("Sale notice could not be sent: %s", e)
         return True
@@ -548,14 +560,15 @@ def subscribe():
 
     confirm_url = site.absolute(db, url_for("public.subscribe_confirm", token=confirm_token))
     try:
-        mailer.send(
-            email_settings, request.form.get("email"),
-            f"Confirm your subscription to {site_title}",
-            render_template("emails/confirm_subscription.txt",
-                            site_title=site_title, confirm_url=confirm_url,
-                            consent_text=consent_text, sender_line=line),
-            from_name=site_title,
-        )
+        subject = f"Confirm your subscription to {site_title}"
+        #  Not a list message yet -- they have not confirmed -- so it
+        #  carries no unsubscribe, which is also why it is dressed with
+        #  the transactional shell rather than the newsletter's.
+        html, text = _dressed(db, render_template(
+            "emails/confirm_subscription.txt", site_title=site_title,
+            confirm_url=confirm_url, consent_text=consent_text, sender_line=line), subject)
+        mailer.send_html(email_settings, request.form.get("email"), subject, html, text,
+                         from_name=site_title)
     except Exception:  # noqa: BLE001 - a bad address must not 500 the page
         db.rollback()
         current_app.logger.exception("Could not send the confirmation email")
@@ -610,15 +623,17 @@ def _send_welcome(db, row):
         return
     unsubscribe_url = site.absolute(db, url_for("public.unsubscribe", token=row["token"]))
     try:
-        mailer.send(
-            email_settings, row["email"],
-            f"You're subscribed to {site_title}",
-            render_template("emails/subscribed.txt", site_title=site_title,
-                            consent_text=row["consent_text"],
-                            unsubscribe_url=unsubscribe_url, sender_line=sender_line),
-            from_name=site_title,
-            headers=unsubscribe_headers(unsubscribe_url),
-        )
+        subject = f"You're subscribed to {site_title}"
+        #  This one IS a list message, so the unsubscribe link stays --
+        #  it is already in the words, and the headers go with it. The
+        #  shell only dresses what is written.
+        html, text = _dressed(db, render_template(
+            "emails/subscribed.txt", site_title=site_title,
+            consent_text=row["consent_text"], unsubscribe_url=unsubscribe_url,
+            sender_line=sender_line), subject)
+        mailer.send_html(email_settings, row["email"], subject, html, text,
+                         from_name=site_title,
+                         headers=unsubscribe_headers(unsubscribe_url))
     except Exception:  # noqa: BLE001 - they are subscribed either way
         current_app.logger.exception("Could not send the welcome email")
 

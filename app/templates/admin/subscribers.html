@@ -6,12 +6,7 @@
     leaves the building. They are separate screens because they are used
     at different moments -- but they all stand or fall on the same mail
     setup, so they are reachable from each other. #}
-{% set tabs = [
-  ("Newsletters", url_for('admin.newsletters'), request.endpoint == 'admin.newsletters'),
-  ("Email list", url_for('admin.subscriber_list'), request.endpoint == 'admin.subscriber_list'),
-  ("Sending email", url_for('admin.settings_email'), request.endpoint == 'admin.settings_email'),
-] %}
-{% include "partials/tabs.html" %}
+{% include "partials/email_tabs.html" %}
 
 <p class="hint">Everyone who asked to hear from you through an Email sign-up block, and what each of them agreed to. Keeping the wording matters: "we had consent" is something you have to be able to show, and a list of addresses on its own shows nothing.</p>
 

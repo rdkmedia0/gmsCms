@@ -553,6 +553,29 @@ def _migrate(db):
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    #  A newsletter of its own: a layout and the words filled into it.
+    #
+    #  It used to be a PAGE, written with the tools every other page uses,
+    #  and most of them do not survive an inbox -- a Shop or a Blog is a
+    #  marker resolved against live data that does not exist there, and
+    #  arrives empty. So a newsletter is a layout with named slots
+    #  (services/email_layouts.py) and the values are JSON, because the
+    #  slots differ per layout and a column per slot would be a migration
+    #  every time somebody adds one.
+    #
+    #  Sending a PAGE or a POST still works and is unchanged; this is a
+    #  third thing you can send, and the one built for the job.
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS newsletters (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            subject TEXT NOT NULL DEFAULT '',
+            layout TEXT NOT NULL DEFAULT 'letter',
+            values_json TEXT NOT NULL DEFAULT '{}',
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
     #  What was sent, to how many, and when. A newsletter is a page; this
     #  is the history of it having gone out, which is the one thing the
     #  page itself cannot record.

@@ -5603,3 +5603,53 @@ bring it up beside the title where it belongs, let it be set while
 writing rather than only afterwards, and make it one control rather than
 a form of its own.
 
+### The newsletter, wired; the receipts, dressed (2026-08-27)
+
+Both halves of the question above, answered by the owner: dress the
+transactional mail, and wire the layouts up.
+
+**Wired.** A newsletter is now a thing of its own -- a `newsletters` row
+holding a layout and the words filled into it, at
+`/admin/newsletters/issue/...`. Pick a shape from four cards (a name in a
+dropdown cannot show what a shape looks like), fill the slots the layout
+declares, preview exactly what will be sent, send it. The send path is
+the one pages and posts already used, unchanged: a layout's body is one
+HTML section, which is what `sections` has always been.
+
+Two details worth keeping. The values are JSON because the slots differ
+per layout and a column each would be a migration every time somebody
+adds one. And a send is refused BY NAME -- "Fill in a subject, Button,
+Button goes to" -- rather than by a generic complaint, because the point
+of a refusal is to say what to do.
+
+The URL space needed care: `/newsletters/<int>` already belongs to
+sending a PAGE, so these live under `/newsletters/issue/`. A blanket
+rename to get there also caught `newsletter_send_post` by substring and
+turned it into `newsletter_issue_send_post`, which the screen then failed
+to build a URL for -- a reminder that a rename across templates wants a
+list of endpoints, not a string replace.
+
+**Dressed.** All four transactional messages now carry an HTML half:
+the order confirmation, the sale notice to the owner, the confirmation
+invitation and the welcome. Same card, ground, colour and font stack the
+newsletter gets.
+
+`to_transactional_html` is deliberately NOT the newsletter's wrapper, and
+the difference is one paragraph: a newsletter says "you are getting this
+because you asked us to" and carries an unsubscribe link, because it is a
+message to a list. **An order confirmation is not.** There is nothing to
+unsubscribe from, and offering it would invite somebody to opt out of
+their own receipt. The welcome mail keeps its unsubscribe because that
+one IS a list message -- and it already had it in the words, so the shell
+only dressed what was written.
+
+The words come from the plain text each message already had, converted to
+paragraphs, so there is one wording to keep true and the text half is the
+same words rather than a second draft that can drift.
+
+`tools/signup_check.py` was capturing `mailer.send` and these now call
+`mailer.send_html`, so it attempted a real SMTP login and reported the
+whole signup flow broken. The checker captures both now -- worth noting
+because it was a checker that failed, not the thing it checks, and the
+output looked identical either way.
+

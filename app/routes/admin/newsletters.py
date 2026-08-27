@@ -15,7 +15,7 @@ from ... import mailer
 import json
 
 from . import FONT_PAIRINGS
-from ...services import (blog as blog_service, legal, newsletter, palette, site,
+from ...services import (blog as blog_service, email_layouts, legal, newsletter, palette, site,
                          subscribers)
 
 
@@ -77,6 +77,13 @@ def newsletters():
     return render_template(
         "admin/newsletters.html",
         pages=pages,
+        #  The newsletters built for the job, newest first, and the
+        #  layouts one can be started from.
+        composed=newsletter.list_composed(db),
+        composed_sends={row["id"]: newsletter.last_send(db, "newsletter", row["id"])
+                        for row in newsletter.list_composed(db)},
+        layout_choices=email_layouts.choices(),
+        layout_names={key: email_layouts.LAYOUTS[key]["name"] for key in email_layouts.LAYOUTS},
         sends={p["id"]: newsletter.last_send(db, "page", p["id"]) for p in pages},
         #  Every post, newest first, grouped by the blog it belongs to --
         #  the thing an owner actually reaches for when they think "send
@@ -104,6 +111,109 @@ def newsletters():
         sender_line=line,
         has_address=has_address,
     )
+
+
+#  ---- A newsletter of its own ----
+#
+#  A layout with named slots, rather than a page written with tools that
+#  do not survive an inbox. The send path below is shared with pages and
+#  posts unchanged: a layout's body is one HTML section, which is what
+#  `sections` has always been.
+def _composed_sections(db, row):
+    body = email_layouts.render(row["layout"], newsletter.composed_values(row), _look(db))
+    return [{"type": "html", "title": "", "content": body}]
+
+
+@bp.route("/newsletters/issue/new", methods=["POST"])
+@login_required
+def newsletter_issue_new():
+    db = get_db()
+    layout = (request.form.get("layout") or "letter").strip()
+    if layout not in email_layouts.LAYOUTS:
+        layout = "letter"
+    new_id = newsletter.create_composed(db, layout)
+    db.commit()
+    return redirect(url_for("admin.newsletter_issue_edit", newsletter_id=new_id))
+
+
+@bp.route("/newsletters/issue/<int:newsletter_id>", methods=["GET", "POST"])
+@login_required
+def newsletter_issue_edit(newsletter_id):
+    db = get_db()
+    row = newsletter.get_composed(db, newsletter_id)
+    if not row:
+        return redirect(url_for("admin.newsletters"))
+    if request.method == "POST":
+        fields = email_layouts.fields_for(row["layout"])
+        values = {f["key"]: (request.form.get(f["key"]) or "").strip() for f in fields}
+        newsletter.save_composed(db, newsletter_id, (request.form.get("subject") or "").strip(), values)
+        db.commit()
+        flash("Saved.", "success")
+        return redirect(url_for("admin.newsletter_issue_edit", newsletter_id=newsletter_id))
+
+    line, has_address = newsletter.sender_line(
+        legal.settings_for(db), (get_site_settings(db) or {}).get("site_title"))
+    return render_template(
+        "admin/newsletter_issue_edit.html",
+        item=row,
+        layout=email_layouts.LAYOUTS[row["layout"]],
+        fields=email_layouts.fields_for(row["layout"]),
+        values=newsletter.composed_values(row),
+        missing=email_layouts.missing(row["layout"], newsletter.composed_values(row)),
+        audiences=subscribers.AUDIENCES,
+        audience_counts={key: subscribers.audience_count(db, key)
+                         for key, _label in subscribers.AUDIENCES},
+        last=newsletter.last_send(db, "newsletter", newsletter_id),
+        email_ready=mailer.is_configured(get_email_settings(db)),
+        sender_line=line,
+        has_address=has_address,
+    )
+
+
+@bp.route("/newsletters/issue/<int:newsletter_id>/preview")
+@login_required
+def newsletter_issue_preview(newsletter_id):
+    """Exactly what will be sent, wrapper and all -- a preview of
+    something else is not a preview."""
+    db = get_db()
+    row = newsletter.get_composed(db, newsletter_id)
+    if not row:
+        return redirect(url_for("admin.newsletters"))
+    site_title = (get_site_settings(db) or {}).get("site_title") or "Our newsletter"
+    line, _ = newsletter.sender_line(legal.settings_for(db), site_title)
+    intro, outro = _wrapped(db, row["subject"], None)
+    return newsletter.to_email_html(
+        _composed_sections(db, row), site_title, "#unsubscribe-link", line,
+        None, look=_look(db), intro=intro, outro=outro)
+
+
+@bp.route("/newsletters/issue/<int:newsletter_id>/send", methods=["POST"])
+@login_required
+def newsletter_issue_send(newsletter_id):
+    db = get_db()
+    row = newsletter.get_composed(db, newsletter_id)
+    back = url_for("admin.newsletter_issue_edit", newsletter_id=newsletter_id)
+    if not row:
+        return redirect(url_for("admin.newsletters"))
+    still_missing = email_layouts.missing(row["layout"], newsletter.composed_values(row))
+    if still_missing or not (row["subject"] or "").strip():
+        #  Named, so the refusal says what to do rather than that
+        #  something is wrong.
+        wanted = (["a subject"] if not (row["subject"] or "").strip() else []) + still_missing
+        flash("Fill in %s first." % ", ".join(wanted), "error")
+        return redirect(back)
+    return _send_it(db, "newsletter", newsletter_id, _composed_sections(db, row),
+                    row["subject"], None, back)
+
+
+@bp.route("/newsletters/issue/<int:newsletter_id>/delete", methods=["POST"])
+@login_required
+def newsletter_issue_delete(newsletter_id):
+    db = get_db()
+    newsletter.delete_composed(db, newsletter_id)
+    db.commit()
+    flash("Newsletter deleted. What was already sent is still recorded.", "success")
+    return redirect(url_for("admin.newsletters"))
 
 
 def _send_it(db, kind, target_id, sections, subject, view_url, back):

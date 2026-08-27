@@ -813,3 +813,17 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
 .cms-richtext-surface:focus { box-shadow: inset 0 0 0 2px var(--cms-ui-accent); }
 .cms-richtext-surface h2 { font-size: 1.25rem; margin: 1.1em 0 .4em; }
 .cms-richtext-surface p { margin: 0 0 1em; }
+
+/*  Choosing a shape for a newsletter. Cards rather than a dropdown: the
+    difference between them is what they look like, and a name in a list
+    does not show that. */
+.cms-layout-choices { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.cms-layout-choice {
+  display: flex; flex-direction: column; gap: 6px; text-align: left;
+  padding: 14px 16px; cursor: pointer;
+  border: 2px solid var(--border); border-radius: var(--cms-ui-radius-surface);
+  background: var(--card-bg); color: var(--cms-ui-text); font: inherit;
+}
+.cms-layout-choice:hover { border-color: var(--cms-ui-accent); }
+.cms-layout-choice strong { font-size: 1rem; }
+.cms-layout-choice span { font-size: .86rem; opacity: .8; line-height: 1.45; }

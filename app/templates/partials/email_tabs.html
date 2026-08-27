@@ -1,0 +1,9 @@
+{#  The Email section's tabs, in one place. They were copied into each of
+    the three templates that show them, which is how a fourth screen ends
+    up missing one. See partials/tabs.html for why they are links. #}
+{% set tabs = [
+  ("Newsletters", url_for('admin.newsletters'), request.endpoint in ('admin.newsletters', 'admin.newsletter_issue_edit')),
+  ("Email list", url_for('admin.subscriber_list'), request.endpoint == 'admin.subscriber_list'),
+  ("Sending email", url_for('admin.settings_email'), request.endpoint == 'admin.settings_email'),
+] %}
+{% include "partials/tabs.html" %}

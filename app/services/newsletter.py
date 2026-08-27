@@ -21,6 +21,7 @@ places this app is likely to be used, and the address is already on file
 from the legal pages.
 """
 import datetime
+import json
 import re
 import time
 
@@ -208,6 +209,53 @@ You are getting this because you asked us to.
 </body></html>"""
 
 
+def to_transactional_html(text_body, site_title, sender_line, look=None):
+    """One receipt or confirmation, dressed like the site.
+
+    The same card, ground, colour and font stack a newsletter gets -- and
+    deliberately NOT the same footer. A newsletter says "you are getting
+    this because you asked us to" and carries an unsubscribe link,
+    because it is a message to a list. An order confirmation is not: it
+    is one half of a transaction the person just made, there is nothing
+    to unsubscribe from, and offering it would be inviting somebody to
+    opt out of their own receipt.
+
+    The words are the plain-text body already written for each message,
+    converted to paragraphs -- so there is one wording to keep true, and
+    the text half of the mail is the same words rather than a second
+    draft that can drift.
+    """
+    styles = styles_for(look)
+    look = look or {"accent": "#1a5fd0", "ground": "#f4f6f8",
+                    "heading_font": DEFAULT_BODY_FONT, "body_font": DEFAULT_BODY_FONT}
+    body = wrapper_html(text_body)
+    #  Links are not marked up in the plain text, so make bare URLs
+    #  clickable -- a receipt whose link has to be copied out by hand is a
+    #  worse receipt.
+    body = re.sub(r'(?<!")(https?://[^\s<>"]+)',
+                  lambda m: '<a href="%s">%s</a>' % (m.group(1), m.group(1)), body)
+    for tag, style in styles.items():
+        body = re.sub(rf"<{tag}\b([^>]*)>",
+                      lambda m, st=style, t=tag: f'<{t} style="{st}"{m.group(1)}>',
+                      body, flags=re.I)
+    return f"""<!doctype html>
+<html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:{look['ground']};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:{look['ground']};">
+<tr><td align="center" style="padding:28px 12px;">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0"
+       style="width:600px;max-width:100%;background:#ffffff;border-radius:10px;padding:32px;
+              font-family:{look['body_font']};">
+<tr><td>
+{body}
+<hr style="{styles['hr']}">
+<p style="font-size:12px;line-height:1.6;color:#8a939d;margin:0;">{sender_line}</p>
+</td></tr></table>
+</td></tr></table>
+</body></html>"""
+
+
 def plain_text(sections, unsubscribe_url, sender_line, intro="", outro=""):
     """The text half. Some people read mail as text, and a message with no
     text part looks more like spam to a filter than one with it."""
@@ -229,6 +277,43 @@ def plain_text(sections, unsubscribe_url, sender_line, intro="", outro=""):
         out.append(re.sub(r"<[^>]+>", "", outro).strip())
     return "\n\n".join(p for p in out if p) + (
         f"\n\n---\n{sender_line}\nUnsubscribe: {unsubscribe_url}\n")
+
+
+#  A newsletter of its own -- a layout and the words in it. See db.py for
+#  why the values are JSON and why this is not a page.
+def list_composed(db):
+    return db.execute("SELECT * FROM newsletters ORDER BY id DESC").fetchall()
+
+
+def get_composed(db, newsletter_id):
+    return db.execute("SELECT * FROM newsletters WHERE id = ?", (newsletter_id,)).fetchone()
+
+
+def create_composed(db, layout, subject=""):
+    cur = db.execute(
+        "INSERT INTO newsletters (subject, layout, values_json) VALUES (?, ?, '{}')",
+        (subject, layout))
+    return cur.lastrowid
+
+
+def save_composed(db, newsletter_id, subject, values):
+    db.execute(
+        "UPDATE newsletters SET subject = ?, values_json = ?, "
+        "updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        (subject, json.dumps(values or {}), newsletter_id))
+
+
+def composed_values(row):
+    """The filled-in slots, forgiving of a row written before a layout
+    changed -- a missing slot is empty, not an error."""
+    try:
+        return json.loads(row["values_json"] or "{}")
+    except (ValueError, TypeError):
+        return {}
+
+
+def delete_composed(db, newsletter_id):
+    db.execute("DELETE FROM newsletters WHERE id = ?", (newsletter_id,))
 
 
 def record_send(db, kind, target_id, subject, sent, failed, audience="all"):
