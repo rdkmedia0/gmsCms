@@ -5262,3 +5262,40 @@ pipeline today came out as the character it names, so generated code uses
 `chr(9)` and friends rather than escapes. And `email_layout_check.py`
 sweeps all of `app/` for control characters, by code, every run.
 
+### The duplicate pictures were not duplicates (2026-08-27)
+
+Reported: the image picker is full of duplicates. Checked by BYTES rather
+than by name, because that distinction has caught this project out
+before. Of 154 files in the picker, **150 are distinct images** -- four
+genuine copies, 2.6MB. So the library was not full of duplicates.
+
+What the eye was seeing is real all the same: **every one of the 77
+pictures exists twice, once as `.png` and once as `.webp`**, and the
+picker lists files rather than pictures. 154 tiles, 77 pictures, each
+shown twice and identical.
+
+The authored templates ship **only** `.webp` -- there is not one `.png`
+among them. Nothing on the site references a `.png`; not a page, not the
+active theme's own CSS. So all 77 are orphans of a template version that
+predated the format change.
+
+**Extracting a package adds files and never removes any.** That is the
+whole cause. A reinstall unpacks the new archive over the old folder, so
+anything the previous version had and this one does not simply stays --
+forever, on every install that ever ran the earlier version, invisible
+until somebody opens a picker and sees everything twice.
+
+`_drop_stale_media` now makes the installed folder match the archive.
+Reading a zip's index costs nothing next to extracting it, so it runs
+even on the boots that SKIP reinstalling -- which is the point, because
+an install already carrying the leftovers has a matching stamp and would
+otherwise never clean itself. Scoped to `media/` and to files, so a stamp
+survives; a missing or unreadable archive removes nothing at all, since
+"I cannot read what this should contain" must never mean "so delete it".
+
+The lesson is the one the owner asked about the first time this came up:
+**compare the images, not the names.** Doing so this time turned "a lot
+of duplicates" into two separate facts -- four real copies, and a picker
+counting formats as pictures -- with different causes and different
+fixes.
+

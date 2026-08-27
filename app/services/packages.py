@@ -264,6 +264,45 @@ def list_template_zips(zips_dir=None):
 INSTALLED_STAMP = ".installed-from"
 
 
+def _drop_stale_media(zip_path, installed_dir):
+    """Remove pictures the installed copy has and the archive does not.
+
+    Extracting a package ADDS files; it never takes any away. So a
+    template whose pictures changed format left every old one behind, on
+    every install that had ever run the earlier version -- 77 orphaned
+    PNGs on one site, referenced by nothing, doubling the Media Library
+    and making the image picker show every picture twice.
+
+    Reading a zip's index is cheap (no extraction), so this runs even on
+    the boots that skip reinstalling, which is what lets an install
+    already carrying the leftovers clean itself up. Only `media/`, and
+    only files: nothing else in the folder is the archive's to own, and a
+    stamp or a saved copy must survive.
+    """
+    media_dir = os.path.join(installed_dir, "media")
+    if not os.path.isdir(media_dir):
+        return 0
+    try:
+        with zipfile.ZipFile(zip_path) as zf:
+            keep = {os.path.basename(n) for n in zf.namelist()
+                    if n.startswith("media/") and not n.endswith("/")}
+    except (OSError, zipfile.BadZipFile):
+        return 0
+    if not keep:
+        return 0
+    removed = 0
+    for name in os.listdir(media_dir):
+        path = os.path.join(media_dir, name)
+        if name in keep or not os.path.isfile(path):
+            continue
+        try:
+            os.remove(path)
+            removed += 1
+        except OSError:
+            pass
+    return removed
+
+
 def install_template_zip(db, slug, zip_path, static_folder, adopt_manifest_overrides=False):
     """Install one shipped template from its zip, through the same
     extractor an uploaded package goes through.
@@ -284,6 +323,7 @@ def install_template_zip(db, slug, zip_path, static_folder, adopt_manifest_overr
         try:
             with open(stamp, encoding="utf-8") as f:
                 if f.read().strip() == digest:
+                    _drop_stale_media(zip_path, installed_dir)
                     return row["id"]
         except OSError:
             pass
