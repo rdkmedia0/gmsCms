@@ -209,6 +209,16 @@ check("HSTS once it is served over https",
       https_headers.get("Strict-Transport-Security", "").startswith("max-age="))
 check("and without includeSubDomains or preload",
       "includeSubDomains" not in https_headers.get("Strict-Transport-Security", ""))
+#  form-action is enforced across a form's whole redirect chain, so
+#  'self' alone refuses the 303 that hands a buyer to Stripe -- in a
+#  browser only. Every command-line check passes while nobody can pay.
+_csp = https_headers.get("Content-Security-Policy", "")
+_form_action = next((d.strip() for d in _csp.split(";") if d.strip().startswith("form-action")), "")
+check("checkout may reach Stripe (form-action covers redirects)",
+      "checkout.stripe.com" in _form_action, _form_action or "no form-action set")
+check("and forms still may not post anywhere else",
+      "*" not in _form_action and "https:" not in _form_action.replace("https://", ""),
+      _form_action)
 check("the health answer is not cached", https_headers.get("Cache-Control") == "no-store")
 check("and says nothing about the site",
       app.test_client().get("/healthz").get_data(as_text=True).strip() == "ok")

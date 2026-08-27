@@ -4729,3 +4729,36 @@ always-available and becomes a property of being a source. Update that
 line in the same change, or the two documents will disagree about
 something a reader has no way to test.
 
+### Nobody could pay, and every command-line check said they could (2026-08-27)
+
+The shop rendered, the basket totalled, `/checkout` answered `303` to a
+`cs_test_` Stripe session. In a browser the Checkout button did nothing at
+all.
+
+`form-action 'self'` is enforced across a form submission's **whole
+redirect chain**, not just its immediate target. Checkout is a form that
+posts to this site and is then redirected to Stripe's payment page, so the
+browser refused the redirect and silently stayed on the basket. One line
+in the console; no error on the page; nothing in the server log, because
+from the server's side the request was served perfectly.
+
+`curl` ignores CSP entirely, which is why every check written against this
+flow passed. The whole of commerce -- the Buy Button and the basket both,
+since they share the one route -- had never worked in a browser, and could
+not have been found without one.
+
+Fixed by naming the payment host: `form-action 'self'
+https://checkout.stripe.com https://pay.stripe.com`. Proved by serving the
+same form and the same 303 under the old header and the new one and asking
+a real browser where it ended up: blocked, then reached.
+
+**Two checks in `tools/prod_check.py`** so it cannot come back -- that the
+directive admits Stripe, and that it has not been widened to `*` or a bare
+`https:` while doing so.
+
+The general lesson is about the shape of the test, not about CSP. A check
+that speaks HTTP tests the server; a browser is a second implementation
+with rules of its own, and anything whose failure mode lives in those
+rules -- CSP, mixed content, cookie policy, autoplay, clipboard -- is
+invisible to every tool that is not one.
+

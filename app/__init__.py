@@ -236,7 +236,11 @@ def create_app():
         #  framed BY someone else is not, hence frame-ancestors.
         "frame-src https:",
         "frame-ancestors 'none'",
-        "form-action 'self'",
+        #  Checkout is a form that redirects to Stripe's own payment page,
+        #  and form-action is enforced across the whole redirect chain --
+        #  so 'self' alone silently refuses every purchase in a browser
+        #  while curl, which ignores CSP, sails through.
+        "form-action 'self' https://checkout.stripe.com https://pay.stripe.com",
         "base-uri 'self'",
         "object-src 'none'",
     ))
