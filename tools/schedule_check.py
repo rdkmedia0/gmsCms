@@ -207,6 +207,47 @@ with app.app_context():
           scheduling.cancel(db, "newsletter", nid4) == 0)
 
     print()
+    print("A blog post goes on the same clock")
+    print("-" * 70)
+    #  Same table, same claim, same poller -- only what is looked up when
+    #  it falls due differs.
+    db.execute("UPDATE subscribers SET confirmed_at = CURRENT_TIMESTAMP "
+               "WHERE email = 'reader@example.test'")
+    from app.services import blog as blog_service
+    blog_id = blog_service.create_blog(db, "Journal")
+    post_id = db.execute(
+        "INSERT INTO blog_posts (blog_id, title, slug, excerpt, content, published_at, position) "
+        "VALUES (?, ?, ?, '', ?, NULL, 0)",
+        (blog_id, "A scheduled post", "a-scheduled-post",
+         "<p>Written ahead of time.</p>")).lastrowid
+    db.commit()
+    draft = db.execute("SELECT published_at FROM blog_posts WHERE id = ?",
+                       (post_id,)).fetchone()
+    check("a post starts unpublished", not draft["published_at"])
+
+    scheduling.schedule(db, "post", post_id, "A scheduled post", "all",
+                        scheduling.utcnow() - datetime.timedelta(minutes=1))
+    db.commit()
+    still = db.execute("SELECT published_at FROM blog_posts WHERE id = ?",
+                       (post_id,)).fetchone()
+    check("scheduling it does not publish it", not still["published_at"])
+
+    row = scheduling.due(db)[0]
+    scheduling.claim(db, row["id"])
+    SENT[:] = []
+    _run_scheduled(app, row)
+    check("it was sent", len(SENT) == 1, str(SENT))
+    check("with the subject it was given",
+          SENT and SENT[0]["subject"] == "A scheduled post", str(SENT[:1]))
+    now = db.execute("SELECT published_at FROM blog_posts WHERE id = ?",
+                     (post_id,)).fetchone()
+    #  An email whose "read it online" link answers Not Found is worse
+    #  than either -- so going out publishes it, exactly as Send does.
+    check("...and going out published it", bool(now["published_at"]))
+    check("the send is on the record as a post",
+          newsletter.last_send(db, "post", post_id) is not None)
+
+    print()
     print("Scheduling twice means the second time")
     print("-" * 70)
     nid5 = make_newsletter(db, "Twice")

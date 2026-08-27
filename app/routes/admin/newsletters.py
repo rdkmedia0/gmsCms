@@ -79,6 +79,12 @@ def newsletters():
         pages=pages,
         #  The newsletters built for the job, newest first, and the
         #  layouts one can be started from.
+        #  Everything on the clock, in one place: a schedule was only
+        #  visible from inside whatever it belonged to, so "what is going
+        #  out this week" meant opening each one.
+        on_the_clock=scheduling.recent(db),
+        post_scheduled={row["target_id"]: row for row in scheduling.recent(db, limit=100)
+                        if row["kind"] == "post" and not row["claimed_at"]},
         composed=newsletter.list_composed(db),
         composed_sends={row["id"]: newsletter.last_send(db, "newsletter", row["id"])
                         for row in newsletter.list_composed(db)},
@@ -252,8 +258,9 @@ def newsletter_issue_preview(newsletter_id):
 
 
 def _sections_for_schedule(db, row):
-    """What a due job should actually send, looked up now rather than
-    frozen when it was scheduled.
+    """What a due job should actually send: (sections, subject, view_url).
+
+    Looked up NOW rather than frozen when it was scheduled.
 
     Deliberate: somebody who schedules a newsletter and then fixes a typo
     in it expects the fixed one to go. The subject is stored on the job
@@ -264,14 +271,27 @@ def _sections_for_schedule(db, row):
     if row["kind"] == "newsletter":
         item = newsletter.get_composed(db, row["target_id"])
         if not item:
-            return None, ""
-        return _composed_sections(db, item), item["subject"] or ""
-    #  Only newsletters can be put on the clock today. `kind` is on the
-    #  table anyway, because the send RECORD already names what went out
-    #  that way and a schedule that could not say what it was for would
-    #  be the odd one out -- and because a scheduled blog post is the
-    #  obvious next caller.
-    return None, ""
+            return None, "", None
+        return _composed_sections(db, item), item["subject"] or "", None
+    if row["kind"] == "post":
+        post, blog = _post_and_blog(db, row["target_id"])
+        if not post:
+            return None, "", None
+        #  A scheduled post publishes itself on the way out, the same way
+        #  pressing Send does -- an email whose "read it online" link
+        #  answers Not Found is worse than either. Done HERE rather than
+        #  when the schedule was made, because scheduling a post is not
+        #  publishing it either: it stays a draft until the moment it
+        #  goes.
+        if not post["published_at"]:
+            db.execute("UPDATE blog_posts SET published_at = CURRENT_TIMESTAMP WHERE id = ?",
+                       (row["target_id"],))
+            db.commit()
+            post = db.execute("SELECT * FROM blog_posts WHERE id = ?",
+                              (row["target_id"],)).fetchone()
+        return (newsletter.as_sections(post["title"], blog_service.post_html(post["content"])),
+                post["title"], _post_view_url(db, blog, post))
+    return None, "", None
 
 
 def _run_scheduled(app, row):
@@ -301,8 +321,7 @@ def _run_scheduled(app, row):
     with app.test_request_context(base_url=base):
         db = get_db()
         try:
-            sections, subject = _sections_for_schedule(db, row)
-            view_url = None      # a composed newsletter has no page to read
+            sections, subject, view_url = _sections_for_schedule(db, row)
             if not sections:
                 scheduling.finish(db, row["id"], 0, 0,
                                   "There is nothing to send — it may have been deleted.")
@@ -337,6 +356,75 @@ def arm_scheduler(app):
     return scheduling.start(app, _run_scheduled)
 
 
+@bp.route("/newsletters/post/<int:post_id>/schedule", methods=["POST"])
+@login_required
+def newsletter_post_schedule(post_id):
+    """A blog post, on the clock.
+
+    It goes through the same routine as a newsletter -- the guards, the
+    claim, the poller -- because it is the same act. What differs is only
+    what gets looked up when it becomes due, and that lives in
+    `_sections_for_schedule`. A post is NOT published by scheduling it:
+    scheduling is not publishing, and it stays a draft until the moment
+    it actually goes.
+    """
+    db = get_db()
+    post, blog = _post_and_blog(db, post_id)
+    back = _back_to(None)
+    if not post:
+        flash("That post doesn't exist.", "error")
+        return redirect(url_for("admin.newsletters"))
+    if request.form.get("cancel"):
+        scheduling.cancel(db, "post", post_id)
+        db.commit()
+        flash("That send is off the clock.", "success")
+        return redirect(back)
+    subject = (request.form.get("subject") or post["title"]).strip()
+    sections = newsletter.as_sections(post["title"],
+                                      blog_service.post_html(post["content"]))
+    return _put_on_clock(db, "post", post_id, subject, sections, back)
+
+
+def _put_on_clock(db, kind, target_id, subject, sections, back):
+    """The refusals a schedule makes, and the booking if it makes none.
+
+    Every one of these is a refusal a SEND would make. Made now rather
+    than in the middle of the night with nobody watching: a schedule that
+    was always going to fail is worse than a refusal, because it looks
+    like it worked.
+    """
+    when = scheduling.to_utc(request.form.get("send_at"), request.form.get("tz_offset"))
+    if not when:
+        flash("Choose a date and time to send it.", "error")
+        return redirect(back)
+    if when <= scheduling.utcnow():
+        flash("That time has already passed — pick one in the future, or press Send now.",
+              "error")
+        return redirect(back)
+    if not subject:
+        flash("Give it a subject first — that is the line people decide on.", "error")
+        return redirect(back)
+
+    site_title = (get_site_settings(db) or {}).get("site_title") or "Our newsletter"
+    audience = request.form.get("audience") or "all"
+    verdict = newsletter.preflight(
+        db, mailer, subscribers, legal, sections, audience,
+        get_email_settings(db), legal.settings_for(db), site_title)
+    if isinstance(verdict, newsletter.Blocked):
+        flash(verdict.message, "error")
+        return redirect(url_for(verdict.where) if verdict.where else back)
+    if not site.public_base(db):
+        flash("This site does not know its own web address yet, and a scheduled send needs "
+              "one to build the unsubscribe link. Set it on the Sending email screen.", "error")
+        return redirect(url_for("admin.settings_email"))
+
+    scheduling.schedule(db, kind, target_id, subject, audience, when)
+    db.commit()
+    arm_scheduler(current_app._get_current_object())
+    flash("Scheduled. It goes out on its own — you do not have to be here.", "success")
+    return redirect(back)
+
+
 @bp.route("/newsletters/issue/<int:newsletter_id>/schedule", methods=["POST"])
 @login_required
 def newsletter_issue_schedule(newsletter_id):
@@ -353,46 +441,14 @@ def newsletter_issue_schedule(newsletter_id):
         flash("That send is off the clock.", "success")
         return redirect(back)
 
-    when = scheduling.to_utc(request.form.get("send_at"),
-                             request.form.get("tz_offset"))
-    if not when:
-        flash("Choose a date and time to send it.", "error")
-        return redirect(back)
-    if when <= scheduling.utcnow():
-        flash("That time has already passed — pick one in the future, or press Send now.",
-              "error")
-        return redirect(back)
-
-    #  The same refusals a send would make, made NOW rather than in the
-    #  middle of the night with nobody watching. A schedule that was
-    #  always going to fail is worse than a refusal, because it looks
-    #  like it worked.
-    sections = _composed_sections(db, row)
-    site_title = (get_site_settings(db) or {}).get("site_title") or "Our newsletter"
-    audience = request.form.get("audience") or "all"
-    verdict = newsletter.preflight(
-        db, mailer, subscribers, legal, sections, audience,
-        get_email_settings(db), legal.settings_for(db), site_title)
-    if isinstance(verdict, newsletter.Blocked):
-        flash(verdict.message, "error")
-        return redirect(url_for(verdict.where) if verdict.where else back)
-    if not (row["subject"] or "").strip():
-        flash("Give it a subject first — that is the line people decide on.", "error")
-        return redirect(back)
+    #  A newsletter has one refusal a post does not: an empty block that
+    #  would arrive broken.
     still_missing = email_layouts.missing(newsletter.composed_blocks(row))
     if still_missing:
         flash("Fill in %s first." % ", ".join(still_missing), "error")
         return redirect(back)
-    if not site.public_base(db):
-        flash("This site does not know its own web address yet, and a scheduled send needs "
-              "one to build the unsubscribe link. Set it on the Sending email screen.", "error")
-        return redirect(url_for("admin.settings_email"))
-
-    scheduling.schedule(db, "newsletter", newsletter_id, row["subject"], audience, when)
-    db.commit()
-    arm_scheduler(current_app._get_current_object())
-    flash("Scheduled. It goes out on its own — you do not have to be here.", "success")
-    return redirect(back)
+    return _put_on_clock(db, "newsletter", newsletter_id, (row["subject"] or "").strip(),
+                         _composed_sections(db, row), back)
 
 
 @bp.route("/newsletters/issue/<int:newsletter_id>/send", methods=["POST"])

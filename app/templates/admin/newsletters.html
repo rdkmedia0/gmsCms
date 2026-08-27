@@ -30,6 +30,60 @@
   </form>
 </div>
 
+{% if on_the_clock %}
+<div class="card">
+  <div class="integration-head">
+    <h2>Going out on its own</h2>
+    <span class="hint">These send themselves. You do not have to be here.</span>
+  </div>
+  <div class="table-scroll">
+    <table class="simple-table">
+      <thead><tr><th>What</th><th>When</th><th>To</th><th>State</th><th class="col-icons">Action</th></tr></thead>
+      <tbody>
+        {% for job in on_the_clock %}
+        <tr>
+          <td>{{ job.subject or 'Untitled' }}
+            <br><span class="hint">{{ 'newsletter' if job.kind == 'newsletter' else 'blog post' }}</span></td>
+          <td data-local-time="{{ job.send_at }}Z">{{ job.send_at }} UTC</td>
+          <td class="hint">{{ 'Customers' if job.audience == 'customers' else 'Everyone' }}</td>
+          <td>
+            {% if job.error %}
+            {#  A failed job is never retried by itself -- an automatic
+                retry cannot tell "the mail server was down" from "half of
+                them already got it". So it says what happened and waits
+                for a person. #}
+            <span class="integration-badge is-off" title="{{ job.error }}">Did not go</span>
+            <br><span class="hint">{{ job.error }}</span>
+            {% elif job.done_at %}
+            <span class="integration-badge is-on"
+                  title="This went out on its own.">Sent to {{ job.sent }}</span>
+            {% elif job.claimed_at %}
+            <span class="hint" title="It is going out right now, so it can no longer be recalled.">Going out now</span>
+            {% else %}
+            <span class="hint">Waiting</span>
+            {% endif %}
+          </td>
+          <td class="col-icons">
+            {% if not job.claimed_at %}
+            <form method="post" class="cms-delete-form"
+                  data-confirm="Take &quot;{{ job.subject or 'this' }}&quot; off the clock? Nothing is sent and nothing is lost."
+                  action="{{ url_for('admin.newsletter_issue_schedule', newsletter_id=job.target_id)
+                             if job.kind == 'newsletter'
+                             else url_for('admin.newsletter_post_schedule', post_id=job.target_id) }}">
+              <input type="hidden" name="cancel" value="1">
+              <button type="submit" class="icon-btn"
+                      title="Take this off the clock. Nothing is sent and nothing is lost.">&times;</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
 {% if composed %}
 <div class="card">
   <h2>Yours</h2>
@@ -48,7 +102,11 @@
 {% endif %}
 
 
-<p class="hint">A newsletter is just a page. Write it in the normal editor with the same tools you use everywhere else, then send it to your list from here — and because it stays on the site, anyone can read it later without digging through their inbox.</p>
+<p class="hint">You can also send an ordinary page to your list &mdash; useful when the thing you
+  want to send already exists on the site, and because it stays there, anyone can read it later
+  without digging through their inbox. Note that page tools built for a website
+  (a shop, a booking form, a search box) cannot travel to an inbox; a newsletter of its own,
+  above, is made of blocks that can.</p>
 
 {% if not email_ready %}
 <p class="flash flash-warning">Email isn't set up, so nothing can be sent yet. <a href="{{ url_for('admin.settings_email') }}">Set it up →</a></p>
@@ -162,7 +220,7 @@
   </div>
   <div class="table-scroll">
     <table class="simple-table">
-      <thead><tr><th>Post</th><th>Sent</th><th>To</th><th>Subject</th><th class="col-icons">Action</th></tr></thead>
+      <thead><tr><th>Post</th><th>Sent</th><th>To</th><th>Subject</th><th>Send later</th><th class="col-icons">Action</th></tr></thead>
       <tbody>
         {% for post in entry.posts %}
         {% set last = post_sends.get(post.id) %}
@@ -175,7 +233,10 @@
           <td>
             <form method="post" id="send-post-{{ post.id }}"
                   action="{{ url_for('admin.newsletter_send_post', post_id=post.id) }}"></form>
-            <select name="audience" form="send-post-{{ post.id }}"
+            {#  One control, read by whichever of the two forms is used --
+                a second audience picker that had to agree with this one
+                is a bug waiting to be written. #}
+            <select name="audience" form="send-post-{{ post.id }} clock-post-{{ post.id }}"
                     title="Who this goes to. A customer is somebody on the list who has paid for something, or who you have flagged as one.">
               {% for key, label in audiences %}
               <option value="{{ key }}">{{ label }} ({{ audience_counts[key] }})</option>
@@ -183,8 +244,31 @@
             </select>
           </td>
           <td>
-            <input type="text" name="subject" form="send-post-{{ post.id }}" value="{{ post.title }}"
+            <input type="text" name="subject"
+                   form="send-post-{{ post.id }} clock-post-{{ post.id }}" value="{{ post.title }}"
                    maxlength="120" title="What people see in their inbox. The post's title is used if you leave it.">
+          </td>
+          <td>
+            {#  On the clock from the same row it is sent from. The
+                schedule posts to its own action rather than the send
+                form's, so the two cannot be confused for each other. #}
+            {% set booked = post_scheduled.get(post.id) %}
+            <form method="post" id="clock-post-{{ post.id }}"
+                  action="{{ url_for('admin.newsletter_post_schedule', post_id=post.id) }}"></form>
+            {% if booked %}
+            <span class="hint" data-local-time="{{ booked.send_at }}Z"
+                  title="This post goes out on its own at this time.">{{ booked.send_at }} UTC</span>
+            <button type="submit" class="btn btn-small" form="clock-post-{{ post.id }}"
+                    name="cancel" value="1"
+                    title="Take this off the clock. Nothing is sent and nothing is lost.">Cancel</button>
+            {% else %}
+            <input type="datetime-local" name="send_at" form="clock-post-{{ post.id }}"
+                   title="When to send it. This is your own clock — the time you see is the time it goes.">
+            <input type="hidden" name="tz_offset" data-tz-offset form="clock-post-{{ post.id }}" value="0">
+            <button type="submit" class="btn btn-small" form="clock-post-{{ post.id }}"
+                    {{ 'disabled' if not email_ready or not has_address or not counts.active }}
+                    title="Send this post automatically at the time beside it. It stays a draft until it goes.">Schedule</button>
+            {% endif %}
           </td>
           <td class="col-icons">
             <span class="row-actions">
@@ -255,4 +339,5 @@
 {% endif %}
 
 <script src="{{ static_url('js/admin/modal.js') }}"></script>
+<script src="{{ static_url('js/admin/local-time.js') }}"></script>
 {% endblock %}
