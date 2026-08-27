@@ -157,9 +157,15 @@ def newsletter_issue_edit(newsletter_id):
 
     line, has_address = newsletter.sender_line(
         legal.settings_for(db), (get_site_settings(db) or {}).get("site_title"))
+    look = _look(db)
     return render_template(
         "admin/newsletter_issue_edit.html",
         item=row,
+        #  The email itself, with its slots opened up. This IS the editor:
+        #  what is written into is what is sent.
+        canvas=email_layouts.render(row["layout"], newsletter.composed_values(row),
+                                    look, edit=True),
+        look=look,
         layout=email_layouts.LAYOUTS[row["layout"]],
         fields=email_layouts.fields_for(row["layout"]),
         values=newsletter.composed_values(row),

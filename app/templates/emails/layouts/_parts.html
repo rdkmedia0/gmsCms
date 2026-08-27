@@ -1,22 +1,49 @@
 {#  Shared pieces, so four layouts cannot drift apart on the one thing
     that matters here -- that every style is inline and every box is a
     table cell. Nothing in an email may rely on a class or a stylesheet. #}
-{% macro heading(text, look, size=24) -%}
-<h1 style="margin:0 0 14px;font-size:{{ size }}px;line-height:1.25;font-weight:700;
-           font-family:{{ look.heading_font }};color:#1c2430;">{{ text }}</h1>
+{#  `slot` names the field this stands for and `edit` turns it into the
+    thing you type into. An inbox never sees either: render() passes
+    edit=false, so the markup that is sent carries no extra attribute. #}
+{% macro heading(text, look, size=24, slot='', edit=false) -%}
+<h1 {% if edit and slot %}data-slot="{{ slot }}"{% endif %}{% if edit %} contenteditable="true"
+    data-placeholder="Write the heading"{% endif %}
+    style="margin:0 0 14px;font-size:{{ size }}px;line-height:1.25;font-weight:700;
+           font-family:{{ look.heading_font }};color:#1c2430;{% if edit %}outline:none;{% endif %}">{{ text }}</h1>
 {%- endmacro %}
 
-{% macro body(blocks, look, size=16) -%}
+{#  While editing, the paragraphs live inside ONE editable box rather
+    than one box per paragraph -- otherwise pressing Return could not make
+    a new paragraph, which is the first thing anybody tries. #}
+{% macro body(blocks, look, size=16, slot='', edit=false) -%}
+{% if edit %}
+<div data-slot="{{ slot }}" data-multiline="1" contenteditable="true"
+     data-placeholder="Write what you want to say. Leave a blank line between paragraphs."
+     style="outline:none;">
 {% for block in blocks %}
 <p style="margin:0 0 14px;font-size:{{ size }}px;line-height:1.65;color:#333c47;
           font-family:{{ look.body_font }};">{{ block | safe }}</p>
 {% endfor %}
+{% if not blocks %}
+<p style="margin:0 0 14px;font-size:{{ size }}px;line-height:1.65;color:#333c47;
+          font-family:{{ look.body_font }};"><br></p>
+{% endif %}
+</div>
+{% else %}
+{% for block in blocks %}
+<p style="margin:0 0 14px;font-size:{{ size }}px;line-height:1.65;color:#333c47;
+          font-family:{{ look.body_font }};">{{ block | safe }}</p>
+{% endfor %}
+{% endif %}
 {%- endmacro %}
 
 {#  A button is a table, not an <a> with padding: Outlook ignores padding
     on an inline element and the click target collapses to the text. #}
-{% macro button(label, url, look) -%}
-{% if label and url %}
+{% macro button(label, url, look, slot='', url_slot='', edit=false) -%}
+{#  While editing the button is always drawn, even with nothing in it --
+    an empty slot you can see is how somebody knows the shape HAS a
+    button. Sent, it appears only once it has both its words and its
+    address, because a button that goes nowhere is worse than none. #}
+{% if (label and url) or edit %}
 {#  width:auto on purpose. The wrapper inlines a `table` style carrying
     width:100%, and a button as wide as the card does not read as a
     button -- it reads as a coloured band. Set here so the merge has
@@ -24,14 +51,45 @@
 <table role="presentation" cellpadding="0" cellspacing="0" border="0"
        style="margin:6px 0 4px;width:auto;">
   <tr><td align="center" bgcolor="{{ look.accent }}" style="border-radius:6px;">
-    <a href="{{ url }}" style="display:inline-block;padding:13px 26px;font-size:16px;
-       font-weight:600;color:#ffffff;text-decoration:none;font-family:{{ look.body_font }};">{{ label }}</a>
+    <a href="{{ url or '#' }}"
+       {% if edit and slot %}data-slot="{{ slot }}"{% endif %}{% if edit %} contenteditable="true"
+       data-placeholder="Button words"{% endif %}
+       style="display:inline-block;padding:13px 26px;font-size:16px;
+       font-weight:600;color:#ffffff;text-decoration:none;font-family:{{ look.body_font }};{% if edit %}outline:none;{% endif %}">{{ label }}</a>
   </td></tr>
 </table>
+{% if edit and url_slot %}
+{#  Where it goes is not something you can type INTO a button, so it sits
+    under it while editing and is not in the message at all. #}
+<div class="cms-slot-aside" data-aside-for="{{ url_slot }}">
+  <label>Button goes to
+    <input type="url" data-slot="{{ url_slot }}" value="{{ url }}" placeholder="https://"
+           title="The web address this button opens.">
+  </label>
+</div>
+{% endif %}
 {% endif %}
 {%- endmacro %}
 
-{% macro picture(src) -%}
+{% macro picture(src, slot='', edit=false) -%}
+{#  A picture slot you can see even when empty: the shape says it has one,
+    and an empty frame is how somebody knows to fill it. Nothing is sent
+    unless there is a picture. #}
+{% if edit and not src %}
+<div class="cms-slot-empty" data-slot-image="{{ slot }}"
+     style="border:2px dashed #c9d2dd;border-radius:6px;padding:26px;text-align:center;
+            color:#7c8794;font-size:14px;margin:0 0 18px;cursor:pointer;">
+  Click to add a picture
+</div>
+{% endif %}
+{% if edit and slot %}
+<div class="cms-slot-aside" data-aside-for="{{ slot }}">
+  <label>Picture address
+    <input type="url" data-slot="{{ slot }}" value="{{ src }}" placeholder="https://…/picture.jpg"
+           title="The web address of the picture. Paste one from your Media Library.">
+  </label>
+</div>
+{% endif %}
 {% if src %}
 <img src="{{ src }}" width="536" alt=""
      style="display:block;width:100%;max-width:536px;height:auto;border:0;

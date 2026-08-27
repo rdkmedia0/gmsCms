@@ -146,12 +146,22 @@ def sample(key, look):
     return render(key, SAMPLE, look)
 
 
-def render(key, values, look):
-    """The email BODY for one layout. The wrapper adds the rest."""
+def render(key, values, look, edit=False):
+    """The email BODY for one layout. The wrapper adds the rest.
+
+    `edit=True` returns the SAME email with its slots opened up: each one
+    named, the words made editable in place, and the empty ones drawn so
+    the shape can be seen before it is filled. That is the whole point --
+    the thing being written into is the thing being sent, rather than a
+    column of boxes beside a picture of it.
+
+    What an inbox receives is untouched by this: with edit false, not one
+    extra attribute is emitted.
+    """
     key = key if key in LAYOUTS else "letter"
     values = values or {}
     prepared = {}
     for field in fields_for(key):
         raw = (values.get(field["key"]) or "").strip()
         prepared[field["key"]] = paragraphs(raw) if field["kind"] == PARAGRAPHS else raw
-    return render_template("emails/layouts/%s.html" % key, look=look, v=prepared)
+    return render_template("emails/layouts/%s.html" % key, look=look, v=prepared, edit=edit)

@@ -3,8 +3,8 @@
   {#  Centred throughout: `align` alone does not reach a block child that
       brings its own text-align, so it is stated on the cell as well. #}
   <tr><td align="center" style="padding:8px 0 4px;text-align:center;">
-    {{ heading(v.heading, look, 30) }}
-    {{ body(v.body, look, 17) }}
-    {{ button(v.button_label, v.button_url, look) }}
+    {{ heading(v.heading, look, 30, slot='heading', edit=edit) }}
+    {{ body(v.body, look, 17, slot='body', edit=edit) }}
+    {{ button(v.button_label, v.button_url, look, slot='button_label', url_slot='button_url', edit=edit) }}
   </td></tr>
 </table>

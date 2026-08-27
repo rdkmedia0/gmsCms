@@ -852,24 +852,38 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
 }
 .cms-layout-choice:hover .cms-layout-preview { border-color: var(--cms-ui-accent); }
 
-/*  Writing a newsletter: the words on the left, the email on the right.
-    Side by side down to a tablet, then stacked -- on a narrow screen the
-    preview under the fields is still worth having, just not beside them. */
-.cms-issue-editor { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
-.cms-issue-preview {
-  position: sticky; top: 14px;
-  border: 2px solid var(--border); border-radius: var(--cms-ui-radius-surface);
-  overflow: hidden; background: #fff;
+/*  The newsletter canvas: the email, written into directly.
+    ------------------------------------------------------------------
+    A column of text boxes beside a picture of the email asks somebody to
+    hold the two in their head at once. This is the email -- the same
+    body markup, in a card the same width, on the ground colour it will
+    have in the inbox -- with its slots opened up.
+
+    Only the frame around it is styled here. Everything inside carries
+    its own inline styles, because it has to survive an inbox. */
+.cms-issue-canvas-ground { padding: 26px 14px; border-radius: var(--cms-ui-radius-surface); margin: 0 0 14px; }
+.cms-issue-canvas {
+  width: 600px; max-width: 100%; margin: 0 auto; background: #fff;
+  border-radius: 10px; padding: 32px; box-shadow: 0 2px 14px rgba(0,0,0,.08);
 }
-.cms-issue-preview-bar {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 8px 12px; background: #f7f8fa; border-bottom: 1px solid var(--border);
-  font-size: .82rem; font-weight: 600; color: var(--cms-ui-text);
+/*  A slot you can write in says so on hover, and shows what belongs in it
+    while it is empty. Deliberately quiet: the point is to look like the
+    email, not like a form. */
+.cms-issue-canvas [data-slot]:hover { box-shadow: 0 0 0 2px rgba(80,120,200,.25); border-radius: 3px; }
+.cms-issue-canvas [data-slot]:focus { box-shadow: 0 0 0 2px var(--cms-ui-accent); border-radius: 3px; }
+.cms-issue-canvas .cms-slot-blank::before {
+  content: attr(data-placeholder); color: #9aa4b1; font-style: italic;
 }
-.cms-issue-preview-state { font-weight: 400; opacity: .7; }
-.cms-issue-preview-frame { display: block; width: 100%; height: 620px; border: 0; background: #fff; }
-@media (max-width: 900px) {
-  .cms-issue-editor { grid-template-columns: 1fr; }
-  .cms-issue-preview { position: static; }
-  .cms-issue-preview-frame { height: 460px; }
-}
+.cms-issue-canvas .cms-slot-blank p:only-child { min-height: 1.2em; }
+/*  What is added for them, shown greyed so it is clearly not theirs to
+    write -- rather than left off the canvas, which would make the email
+    they are looking at a different length from the one that arrives. */
+.cms-issue-canvas-foot { margin-top: 22px; color: #8a939d; font-size: 12px; line-height: 1.6; }
+.cms-issue-canvas-foot hr { border: 0; border-top: 1px solid #e6e9ee; margin: 0 0 12px; }
+.cms-issue-canvas-foot p { margin: 0 0 6px; }
+.cms-issue-canvas-note { font-style: italic; opacity: .8; }
+/*  Where a button points, where a picture lives: under the canvas, since
+    they are not part of the message. */
+.cms-issue-asides { display: grid; gap: 12px; }
+.cms-slot-aside label { display: grid; gap: 4px; font-size: .85rem; font-weight: 600; }
+

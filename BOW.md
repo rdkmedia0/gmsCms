@@ -5818,3 +5818,47 @@ The lesson is about the report, not the bar: "I can't see X" was true,
 and X was present, styled and working. Checking that it renders answers a
 different question from whether anybody can reach it.
 
+### The view IS the editor (2026-08-27)
+
+Two attempts short of what was asked for. First a column of text boxes.
+Then the same boxes with a live preview beside them -- better, and still
+wrong: it asks somebody to hold two things in their head and look between
+them. The ask was plainer than either. **Write into the email.**
+
+`email_layouts.render(..., edit=True)` returns the SAME email with its
+slots opened up: each one named, its words editable in place, and the
+empty ones drawn so the shape can be seen before it is filled. The editor
+page is that, in a card the width of the real one, on the ground colour
+it will have in an inbox.
+
+What makes it safe to do this to something that has to survive email:
+
+  * **With `edit` false, not one extra attribute is emitted.** The slot
+    names go only to the editor -- they were briefly emitted always,
+    harmless in an inbox and still wrong to ship.
+  * **The route that saves it never learned any of this happened.** A
+    hidden input per slot is kept in step, so the form still posts
+    `heading`, `body`, `button_url` exactly as when they were text boxes.
+  * **The serialiser is the exact inverse of `paragraphs()`** -- that
+    turns blank-line-separated text into `<p>` blocks, this turns them
+    back. Written down in both places, because if one changes and the
+    other does not, a newsletter stops reading back the way it was
+    written. Same rule the FAQ editor already follows.
+
+Three details that decided themselves once the canvas existed:
+
+  * **An empty slot is drawn, not hidden.** A picture frame saying "click
+    to add a picture" is how somebody learns the shape HAS one. Sent, it
+    appears only when filled.
+  * **What an email cannot hold moves under it.** Where a button points
+    and where a picture lives are not part of the message, so they sit
+    beneath the canvas rather than floating over it.
+  * **The footer is shown, greyed, and marked as not theirs.** Leaving it
+    off would make the email being written a different length from the
+    one that arrives; making it editable would let somebody delete the
+    two things the law requires.
+
+Pasting is forced to plain text, because a paragraph copied from a web
+page brings its fonts and colours with it and an email that half matches
+the site looks like a mistake.
+

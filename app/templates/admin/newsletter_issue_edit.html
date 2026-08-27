@@ -3,68 +3,60 @@
 {% block content %}
 {% include "partials/email_tabs.html" %}
 <h1>{{ item.subject or 'Untitled newsletter' }}</h1>
-<p class="hint">{{ layout.blurb }}</p>
+<p class="hint">{{ layout.blurb }} &mdash; write straight into it below. What you see is the email.</p>
 
 {% if not email_ready %}
-<p class="flash flash-warning">Email isn't set up, so nothing can be sent yet.
-  <a href="{{ url_for('admin.settings_email') }}">Set it up →</a></p>
+<p class="flash flash-warning">Email isn&rsquo;t set up, so nothing can be sent yet.
+  <a href="{{ url_for('admin.settings_email') }}">Set it up &rarr;</a></p>
 {% endif %}
 {% if not has_address %}
-<p class="flash flash-warning">A newsletter has to carry your postal address by law, and there isn't one yet.
-  <a href="{{ url_for('admin.legal_pages') }}">Add it →</a></p>
+<p class="flash flash-warning">A newsletter has to carry your postal address by law, and there isn&rsquo;t one yet.
+  <a href="{{ url_for('admin.legal_pages') }}">Add it &rarr;</a></p>
 {% endif %}
 
-<div class="cms-issue-editor">
-<form method="post" class="card cms-issue-fields"
-      data-preview-url="{{ url_for('admin.newsletter_issue_preview', newsletter_id=item.id) }}">
-  <label for="subject" title="What people see in their inbox before they open it">Subject</label>
-  <input type="text" id="subject" name="subject" maxlength="200" value="{{ item.subject }}"
-         placeholder="What this one is about"
-         title="What people see in their inbox before they open it. Say the thing, don't tease it.">
-  <p class="hint">The line people decide on. Say what is inside rather than hinting at it.</p>
+{#  One form. The subject is a plain field because it is not part of the
+    email; everything else is written into the email itself, and the
+    hidden inputs below are kept in step by newsletter-editor.js so the
+    route that saves it never has to know any of this happened. #}
+<form method="post" class="cms-issue-form">
+  <div class="card">
+    <label for="subject" title="What people see in their inbox before they open it">Subject</label>
+    <input type="text" id="subject" name="subject" maxlength="200" value="{{ item.subject }}"
+           placeholder="What this one is about"
+           title="What people see in their inbox before they open it. Say the thing, don't tease it.">
+    <p class="hint">The line people decide on. Say what is inside rather than hinting at it.</p>
+  </div>
 
-  {#  One control per slot the layout declares, built from
-      services/email_layouts.py -- so a new layout needs a template and a
-      dictionary entry, and this screen builds itself. #}
+  {#  The ground behind the card is the site's own, the way it will be in
+      the inbox -- so the thing being written into looks like the thing
+      that arrives, down to the colour behind it. #}
+  <div class="cms-issue-canvas-ground" style="background: {{ look.ground }};">
+    <div class="cms-issue-canvas" style="font-family: {{ look.body_font }};">
+      {{ canvas | safe }}
+      <div class="cms-issue-canvas-foot">
+        <hr>
+        <p>{{ sender_line }}<br>You are getting this because you asked us to. <u>Unsubscribe</u>.</p>
+        <p class="cms-issue-canvas-note">This part is added for you and cannot be edited &mdash; a
+          newsletter has to carry both by law.</p>
+      </div>
+    </div>
+  </div>
+
+  {#  What the email cannot hold: where a button goes, where a picture
+      lives. Gathered under the canvas rather than floating over it. #}
+  <div class="card cms-issue-asides"></div>
+
   {% for field in fields %}
-  <label for="{{ field.key }}" title="{{ field.hint or field.label }}">
-    {{ field.label }}{% if field.required %} <span class="hint">(needed)</span>{% endif %}
-  </label>
-  {% if field.kind == 'paragraphs' %}
-  <textarea id="{{ field.key }}" name="{{ field.key }}" rows="8"
-            title="{{ field.hint or field.label }}">{{ values.get(field.key, '') }}</textarea>
-  {% elif field.kind == 'image' %}
-  <input type="url" id="{{ field.key }}" name="{{ field.key }}" value="{{ values.get(field.key, '') }}"
-         placeholder="https://…/picture.jpg"
-         title="{{ field.hint or field.label }}">
-  {% elif field.kind == 'url' %}
-  <input type="url" id="{{ field.key }}" name="{{ field.key }}" value="{{ values.get(field.key, '') }}"
-         placeholder="https://" title="{{ field.hint or field.label }}">
-  {% else %}
-  <input type="text" id="{{ field.key }}" name="{{ field.key }}" maxlength="200"
-         value="{{ values.get(field.key, '') }}" title="{{ field.hint or field.label }}">
-  {% endif %}
-  {% if field.hint %}<p class="hint">{{ field.hint }}</p>{% endif %}
+  <input type="hidden" name="{{ field.key }}" value="{{ values.get(field.key, '') }}"
+         data-slot-store="{{ field.key }}">
   {% endfor %}
 
   <div class="cms-post-save-bar">
-    <button type="submit" class="btn btn-primary" title="Keep these words. Nothing is sent.">Save</button>
+    <button type="submit" class="btn btn-primary" title="Keep this. Nothing is sent.">Save</button>
     <a class="btn" href="{{ url_for('admin.newsletter_issue_preview', newsletter_id=item.id) }}" target="_blank"
-       title="Open the preview on its own, at full size">Open preview separately</a>
+       title="Open it exactly as it will be sent, in its own tab">See it as it will be sent</a>
   </div>
 </form>
-
-{#  The email beside the words, updating as they are typed. It renders the
-    FORM rather than what was last saved and stores nothing, so the right
-    hand side is what would go out if you sent it now. #}
-<div class="cms-issue-preview">
-  <div class="cms-issue-preview-bar">
-    <span>What they will get</span>
-    <span class="cms-issue-preview-state" data-idle="Up to date"></span>
-  </div>
-  <iframe class="cms-issue-preview-frame" title="Preview of this newsletter"></iframe>
-</div>
-</div>
 
 <div class="card">
   <h2>Send it</h2>
@@ -98,5 +90,5 @@
   </form>
 </div>
 <script src="{{ static_url('js/admin/modal.js') }}"></script>
-<script src="{{ static_url('js/admin/newsletter-preview.js') }}"></script>
+<script src="{{ static_url('js/admin/newsletter-editor.js') }}"></script>
 {% endblock %}

@@ -10,15 +10,15 @@
     <table role="presentation" align="left" width="250" cellpadding="0" cellspacing="0" border="0"
            style="width:250px;max-width:100%;">
       <tr><td style="padding:0 10px 18px 0;">
-        {{ heading(v.left_heading, look, 19) }}
-        {{ body(v.left_body, look, 15) }}
+        {{ heading(v.left_heading, look, 19, slot='left_heading', edit=edit) }}
+        {{ body(v.left_body, look, 15, slot='left_body', edit=edit) }}
       </td></tr>
     </table>
     <table role="presentation" align="left" width="250" cellpadding="0" cellspacing="0" border="0"
            style="width:250px;max-width:100%;">
       <tr><td style="padding:0 0 18px 10px;">
-        {{ heading(v.right_heading, look, 19) }}
-        {{ body(v.right_body, look, 15) }}
+        {{ heading(v.right_heading, look, 19, slot='right_heading', edit=edit) }}
+        {{ body(v.right_body, look, 15, slot='right_body', edit=edit) }}
       </td></tr>
     </table>
   </td></tr>
