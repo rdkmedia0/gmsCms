@@ -48,7 +48,8 @@
       </div>
       <form id="chat-form" class="inline-form" data-chat-url="{{ url_for('admin.assistant_chat') }}" data-apply-url="{{ url_for('admin.assistant_apply') }}">
         <button type="button" id="chat-image-btn" class="btn btn-small" title="Attach an image (e.g. a screenshot to guide the AI)">🖼️</button>
-        <input type="file" id="chat-image-input" accept="image/*" hidden>
+        <input type="file" id="chat-image-input" accept="image/*" hidden
+               title="Choose a picture to send with your message.">
         <input type="text" id="chat-input" placeholder="Ask a question..." autocomplete="off" required title="Ask for a change in your own words, e.g. &quot;make the heading warmer&quot;.">
         <button type="submit" class="btn btn-primary btn-small" title="Send this to the assistant. It suggests a change and shows it to you before anything lands on the page.">Send</button>
       </form>

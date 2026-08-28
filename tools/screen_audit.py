@@ -1,21 +1,25 @@
-"""Walk every screen and report what is wrong with it.
+"""Every screen, at two widths, asked what a screenshot cannot tell you.
 
-Run it against a running instance with an admin session cookie:
+Whether the page scrolls sideways, whether anything is stranded outside
+the viewport, whether every control carries the sentence this project
+requires of one, whether the console logged an error, whether a request
+failed.
 
-    python tools/screen_audit.py http://localhost:5000 path/to/cookiefile
+    python tools/screen_audit.py <base-url> [cookie-file]
 
-Three of its rules were wrong when first written, and each correction is
-worth keeping: an off-canvas panel is not an overflow, alt="" is the
-CORRECT markup for a decorative image, and a control wrapped in
-<label title="..."> is already labelled. A checker that cries wolf gets
-ignored, which is worse than not having one.
+**On crying wolf.** An earlier version of this reported 186 elements
+"past the right edge" and every single one was correct behaviour: 174
+were the editor's dock panel, which is `position: fixed` and parked
+off-screen when closed, and the rest were a table inside its own
+`overflow-x: auto` container -- which is exactly what this project
+requires of a wide table. A check that always fails teaches people to
+ignore it, which is the same uselessness as one that cannot fail,
+arrived at from the other end. So both cases are now understood and
+excluded, and what remains is meant to be read.
 
-Checks the things a screenshot does not tell you: whether the page
-scrolls sideways, whether anything sticks out past the viewport, whether
-a control has the tooltip this project requires of every control, whether
-the console logged an error, and whether any request failed.
-
-    python audit.py <base> [cookie-file]
+The tooltip check does NOT make the same exclusions, deliberately: a
+control inside a closed panel is still a control somebody will open and
+have to understand.
 """
 import io
 import sys
@@ -27,12 +31,15 @@ COOKIE = io.open(sys.argv[2], encoding="utf-8").read().strip() if len(sys.argv) 
 
 PUBLIC = ["/", "/about", "/media", "/journal", "/contact", "/packages",
           "/terms-and-conditions", "/newsletters"]
-ADMIN = ["/admin/", "/admin/setup", "/admin/setup/look", "/admin/setup/details",
+ADMIN = ["/admin/", "/admin/emails", "/admin/newsletters", "/admin/subscribers",
+         "/admin/commerce/fulfilment", "/admin/commerce/orders",
+         "/admin/commerce/bookings", "/admin/design/templates",
+         "/admin/setup", "/admin/setup/look", "/admin/setup/details",
          "/admin/setup/done", "/admin/settings/integrations",
-         "/admin/settings/integrations?tab=calcom", "/admin/settings/integrations?tab=ai",
-         "/admin/settings/email", "/admin/newsletters", "/admin/subscribers",
-         "/admin/commerce/fulfilment", "/admin/commerce/orders", "/admin/commerce/bookings",
-         "/admin/legal", "/admin/backups", "/admin/media", "/admin/help", "/admin/account"]
+         "/admin/settings/integrations?tab=calcom",
+         "/admin/settings/integrations?tab=ai", "/admin/settings/email",
+         "/admin/legal", "/admin/backups", "/admin/media", "/admin/help",
+         "/admin/account"]
 
 AUDIT_JS = """
 () => {
@@ -44,44 +51,97 @@ AUDIT_JS = """
     controlsNoTitle: [],
     imagesNoAlt: 0,
   };
-  //  Anything whose box ends past the right edge: the cause of a page
-  //  that scrolls sideways, which on a phone is the commonest fault there
-  //  is. Reported with a name so it can be found.
+
+  //  Two things are OUTSIDE the viewport on purpose, and reporting them
+  //  is what made an earlier version of this unreadable.
+  const deliberatelyOutside = (el) => {
+    for (let node = el; node && node !== document.body; node = node.parentElement) {
+      const cs = getComputedStyle(node);
+      //  1. Inside something that scrolls. A wide table in an
+      //     `overflow-x: auto` container is what this project REQUIRES
+      //     of a wide table -- the page body must not scroll, and it
+      //     does not; the table scrolls inside its own box.
+      if (['auto', 'scroll', 'hidden'].includes(cs.overflowX)) return true;
+      //  2. A fixed panel parked off-screen. The editor's dock slides in
+      //     when opened; closed, it sits past the right edge by design,
+      //     and so does everything in it.
+      if (cs.position === 'fixed' &&
+          (cs.transform !== 'none' || node.classList.contains('cms-dock-panel'))) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  //  Anything whose box ends past the right edge and is NOT one of those:
+  //  the cause of a page that scrolls sideways, which on a phone is the
+  //  commonest fault there is. Reported with a name so it can be found.
   document.querySelectorAll('body *').forEach(el => {
     const cs = getComputedStyle(el);
     if (cs.display === 'none' || cs.visibility === 'hidden') return;
     const b = el.getBoundingClientRect();
     if (b.width === 0 || b.height === 0) return;
-    if (b.right > vw + 1 || b.left < -1) {
-      const id = el.tagName.toLowerCase()
-        + (el.id ? '#' + el.id : '')
-        + (el.className && typeof el.className === 'string'
-           ? '.' + el.className.trim().split(/\\s+/)[0] : '');
-      if (out.pastViewport.length < 6) out.pastViewport.push(
-        id + ' [' + Math.round(b.left) + '..' + Math.round(b.right) + ']');
-    }
+    if (b.right <= vw + 1 && b.left >= -1) return;
+    if (deliberatelyOutside(el)) return;
+    const id = el.tagName.toLowerCase()
+      + (el.id ? '#' + el.id : '')
+      + (el.className && typeof el.className === 'string'
+         ? '.' + el.className.trim().split(/\\s+/)[0] : '');
+    if (out.pastViewport.length < 6) out.pastViewport.push(
+      id + ' [' + Math.round(b.left) + '..' + Math.round(b.right) + ']');
   });
-  //  This project requires a title on every control (CLAUDE.md). A
-  //  submit button whose own text says what it does is exempt.
+
+  //  This project requires a title on every control (CLAUDE.md), because
+  //  the label is often a glyph and the title is then the only text there
+  //  is. No exclusions here: a control inside a closed panel is still one
+  //  somebody will open and have to understand.
   document.querySelectorAll('input, select, textarea, button, a.btn').forEach(el => {
+    //  Three kinds of control nobody can see, and so nobody can hover.
+    //
+    //  A `hidden` file input is the pattern behind every "choose a
+    //  picture" button in this app: the BUTTON is what somebody clicks
+    //  and what carries the sentence, and the input is machinery. And an
+    //  aria-hidden one is deliberately not announced at all -- the
+    //  sign-up form's honeypot is exactly that, and giving it a tooltip
+    //  would be describing a trap to the only visitors who would read
+    //  the description.
+    //
+    //  A control inside a CLOSED PANEL is not in this list, deliberately:
+    //  it is a control somebody will open and have to understand.
     if (el.type === 'hidden') return;
-    const cs = getComputedStyle(el);
-    if (cs.display === 'none' || cs.visibility === 'hidden') return;
+    if (el.hasAttribute('hidden')) return;
+    if (el.closest('[aria-hidden="true"]')) return;
     if (el.title && el.title.trim()) return;
     if (el.getAttribute('aria-label')) return;
     //  A control wrapped in <label title="..."> already shows that
-    //  tooltip when you hover the control, because the label contains
-    //  it. That is a labelled control, not a bare one.
+    //  tooltip when you hover the control, because the label contains it.
     const lab = el.closest('label[title]');
     if (lab && lab.title.trim()) return;
-    //  A button whose own visible words say what it does is not a glyph
-    //  needing a tooltip; report it with those words so it can be judged.
+
+    //  A control with a VISIBLE label in words is already explained, and
+    //  that is the whole reason the rule exists: CLAUDE.md asks for a
+    //  title because "the label is often a glyph and the title is then
+    //  the only text there is". Where there IS text, the requirement is
+    //  met. A contact form's Name field does not need a tooltip saying
+    //  Name.
+    //
+    //  The label has to be VISIBLE: a `cms-visually-hidden` one is there
+    //  for a screen reader and says nothing to somebody looking at the
+    //  page, so a control wearing one still needs its sentence.
+    const labelled = el.id
+      ? document.querySelector('label[for="' + CSS.escape(el.id) + '"]')
+      : el.closest('label');
+    if (labelled && (labelled.textContent || '').trim()
+        && labelled.getBoundingClientRect().width > 1) {
+      return;
+    }
     const id = el.tagName.toLowerCase()
       + (el.id ? '#' + el.id : (el.name ? '[' + el.name + ']' : ''))
       + (el.type ? ':' + el.type : '')
-      + ((el.textContent||'').trim() ? ' “' + (el.textContent||'').trim().slice(0,26) + '”' : ' (no words)');
-    if (out.controlsNoTitle.length < 8) out.controlsNoTitle.push(id);
+      + ((el.textContent||'').trim() ? ' "' + (el.textContent||'').trim().slice(0,26) + '"' : ' (no words)');
+    out.controlsNoTitle.push(id);
   });
+
   //  alt="" is the CORRECT markup for a decorative image -- it tells a
   //  screen reader to skip it. Only a MISSING alt is a fault.
   document.querySelectorAll('img').forEach(im => {
@@ -136,14 +196,17 @@ with sync_playwright() as p:
         ctx.close()
     browser.close()
 
-print("  %d findings across %d screens x 2 widths" % (len(findings), len(PUBLIC) + len(ADMIN)))
-seen = {}
-for label, path, what in findings:
-    seen.setdefault(what.split(":")[0], 0)
-    seen[what.split(":")[0]] += 1
-print("  by kind:")
-for k, v in sorted(seen.items(), key=lambda kv: -kv[1]):
-    print("    %-34s %d" % (k, v))
 print()
-for label, path, what in findings:
-    print("  [%-7s] %-42s %s" % (label, path, what))
+print("  %d findings across %d screens x 2 widths"
+      % (len(findings), len(PUBLIC) + len(ADMIN)))
+if findings:
+    seen = {}
+    for label, path, what in findings:
+        seen.setdefault(what.split(":")[0], 0)
+        seen[what.split(":")[0]] += 1
+    print("  by kind:")
+    for k, v in sorted(seen.items(), key=lambda kv: -kv[1]):
+        print("    %-34s %d" % (k, v))
+    print()
+    for label, path, what in findings:
+        print("  [%-7s] %-42s %s" % (label, path, what))

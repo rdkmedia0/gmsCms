@@ -3,7 +3,8 @@
 <div id="cms-modal-backdrop" class="cms-modal-backdrop" hidden>
   <div class="cms-modal">
     <p id="cms-modal-message"></p>
-    <input type="text" id="cms-modal-input" hidden>
+    <input type="text" id="cms-modal-input" hidden
+           title="Type your answer to the question above.">
     <label id="cms-modal-count-label" class="cms-modal-count-label" hidden>How many to generate?
       <select id="cms-modal-count" title="How many to add.">
         <option value="1">1</option>
@@ -20,7 +21,10 @@
       {# A third answer, for the questions that genuinely have one — see
          modal.js's altLabel. Hidden unless the caller asks for it, so
          every existing confirm still reads as yes-or-no. #}
-      <button type="button" id="cms-modal-alt" hidden></button>
+      {#  Its words are set per-dialog by cmsModal, so its tooltip has to
+          be general: what it IS, not what this one instance does. #}
+      <button type="button" id="cms-modal-alt" hidden
+              title="The other way of going ahead, described on this button."></button>
       <button type="button" id="cms-modal-confirm" class="cms-danger" title="Go ahead with the action described above.">Confirm</button>
     </div>
   </div>
