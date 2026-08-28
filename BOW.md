@@ -1753,7 +1753,11 @@ Proved rather than assumed: wiped `source_template` on a live bakery site,
 ran the backfill, and all four pages recovered their attribution. Under
 the old path it returned without looking at anything.
 
-## 2026-08-25 - A setup wizard (specified, not built)
+## 2026-08-25 - A setup wizard (specified; BUILT since)
+
+**Built** -- `app/routes/admin/wizard.py`, six steps, and the "New here?"
+banner that offers it. The specification below is kept because it is the
+reasoning, not the record.
 
 The one flow this app does not have: somebody who has just installed it,
 looking at a bakery's demo content, with no idea that the palette, the
@@ -3014,7 +3018,11 @@ thought they had.
 
 Small, real, and deliberately not done:
 
-- **One renderer per tool.** Still two — the section chain and
+- **One renderer per tool.** ~~28 of 29.~~ **CLOSED as a task**: the
+  measurement is now 30 tools, 0 differences (`tools/parity_check.py`),
+  and CLAUDE.md records that this has no observable payoff left. The
+  structural note below stands -- there are still two renderers -- but
+  nothing is owed. Still two — the section chain and
   `render_cell` — so a change to how a tool edits has to be made twice.
   Text, Image and Media Player are one macro each, the Embed's code
   editor is one pair of macros, the Basket is recognised in a cell at
@@ -5848,6 +5856,58 @@ including me -- does not have to reconstruct it from thirty entries
 above. Everything below is either specified and unbuilt, or a question
 waiting on the owner. Nothing here is a fix somebody forgot.
 
+### What is actually open
+
+Six things, and two of them are tasks. Everything else in this
+summary is a record of something built -- the sections below keep their
+reasoning, which is the point of them, but none of it is waiting.
+
+**Decisions, waiting on the owner. Not started on purpose.**
+
+  * **A visitor-facing AI assistant.** Has to start from refusal rather
+    than retrieval: the interesting question is what it says when it does
+    not know, not what it says when it does. Written out above.
+  * **The WhatsApp Business API.** A `wa.me` link is built. This is the
+    other thing entirely -- whether this product holds customer
+    conversations at all, which is a product decision with a running cost
+    and a support burden, not an afternoon.
+  * **Asking a buyer for their email as well as their link**, to protect
+    a purchases page further. Designed, and refused so far because it
+    puts friction on somebody who has just paid. Still the right refusal
+    unless somebody is actually losing files.
+
+**Named, scoped, not started.**
+
+  * **Recurring fulfilment.** Found by re-reading rather than by
+    remembering, which is why it earns its own line: it was recorded in
+    an older entry and never carried into a summary. Checkout works for a
+    subscription, but fulfilment has no concept of recurring delivery --
+    only `checkout.session.completed` and the refund events are handled,
+    so a monthly price granting 10 sessions grants them ONCE, at the
+    first payment, and never again. A real feature, not a tweak: it needs
+    `invoice.paid` handled, credits topped up on each renewal rather than
+    granted once, and answers for what happens when a payment fails or a
+    subscription is cancelled mid-period. Anybody selling a membership on
+    this today is under-delivering silently.
+  * **The compose ribbon is dense.** Four groups fit at 1280px and wrap
+    to two rows on a narrow laptop. Legible, so it can wait for somebody
+    to have used it in anger; the likely answer is that the block-style
+    group collapses behind one button until a block is selected.
+
+**One thing to run rather than build.**
+
+  * `tools/media_check.py` reports duplicated pictures by BYTES now, and
+    tells a correct one (two templates each owning their copy) from waste
+    (two copies in one place). A fresh install is clean. **Run it against
+    the LIVE install** to find the four that were recorded there -- that
+    is a thing to do, not a thing to write.
+
+Also parked, deliberately, in CLAUDE.md's own "Deferred follow-ups"
+rather than here: standalone colour palettes, a saved-section pattern
+library, and unifying the AI Theme Generator with Template Packages.
+Those are architecture set aside, not work owed.
+
+
 ### Answered and built since this was written
 
 **The transactional emails are dressed.** Answered by the owner:
@@ -5868,27 +5928,25 @@ canvas it is written in.
 `tools/schedule_check.py`. The claim is the lock, because two workers
 wake up together.
 
-### Loose ends from that work, worth an hour each
+### Loose ends from that work
 
-**Nothing lists what is scheduled.** `scheduling.recent()` was written
-for exactly this and nothing calls it: a schedule is only visible from
-inside the newsletter it belongs to, so "what is going out this week"
-cannot be answered without opening each one. The Newsletters screen is
-where it belongs, beside what has already gone.
+**Nothing lists what is scheduled.** ~~Open.~~ **BUILT** -- a table on
+the Newsletters screen: what is waiting, what is going out right now
+(and so can no longer be recalled), what went, and what did not go and
+why.
 
-**Only newsletters can be scheduled.** A blog post is the obvious next
-caller -- `newsletter_schedule.kind` already names what a job is for, and
-the send path already handles posts. What is missing is
-`_sections_for_schedule` knowing about them, and a control on the post
-editor.
+**Only newsletters can be scheduled.** ~~Open.~~ **BUILT** -- a post
+goes on the same clock, from the row it is already sent from, through
+one booking routine so the two sets of refusals cannot drift apart.
+Scheduling a draft does not publish it; going out does.
 
-**The compose ribbon is dense.** Four groups fit at 1280px and wrap to
+**The compose ribbon is dense.** STILL OPEN. Four groups fit at 1280px and wrap to
 two rows on a narrow laptop. Legible, but worth a second look once
 somebody has used it in anger -- the likely answer is that the block
 style group collapses behind one button until a block is selected.
 
 
-### Specified, agreed, not built
+### Specified, agreed -- and now built (2026-08-27)
 
 **The fork, and the template lifecycle.** ~~Specified, not built.~~
 **BUILT** (2026-08-27) -- `services/lifecycle.py`,
@@ -5973,7 +6031,7 @@ old, and anything on sale that disagrees with the base is named on the
 screen. `shipping_for` also had a hardcoded `"chf"` fallback, so a shop
 charging in euros quoted postage in francs. `tools/currency_check.py`.
 
-### Gaps found by using it, worth building
+### Gaps found by using it -- built (2026-08-27)
 
 **A template's shape, and a claim I got wrong.** I recorded that a
 template cannot carry its own shape. It can, and always could: all
@@ -6016,7 +6074,7 @@ plain length. `tools/shape_check.py` measures all eight shapes and
 carries a self-test that reproduces both old faults, because a check that
 cannot fail passes everything.
 
-### Small, cheap, not done
+### The small ones, and where each landed
 
   * **Duplicated pictures**: `tools/media_check.py` reports them by BYTES
     now, and tells the two cases apart -- two TEMPLATES holding the same
@@ -6038,10 +6096,8 @@ cannot fail passes everything.
   * **Protecting a purchases page further** -- asking for the buyer's
     email as well as the link. Designed, refused so far because it puts
     friction on somebody who has just paid.
-  * **A responsive preview** in edit mode: desktop/tablet/phone from a
-    dropdown in the header, asked for and recorded above.
 
-### Still open from before today
+### Carried from before today -- two closed, two not
 
 **The CAPTCHA is closed, and not the way this note expected.**
 "Arithmetic stops nothing that matters" is true, and `captcha.py` already
