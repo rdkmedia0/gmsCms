@@ -29,7 +29,7 @@ from ...services.sections import (
     _set_accordion_panel_image, apply_accordion_form,
     build_video_gallery, video_gallery_form_clips, set_video_gallery_clip_src,
     apply_faq_form, apply_buy_button_form, apply_shop_form, apply_search_form,
-    faq_document_errors, check_faq_document,
+    check_faq_document,
 )
 from ...services import blocks
 from . import wants_json, _redirect_next, _undo_snapshot, SHAPE_PRESETS, SHADOW_PRESETS, slugify

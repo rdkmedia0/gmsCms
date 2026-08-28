@@ -88,7 +88,6 @@ def newsletters():
         composed=newsletter.list_composed(db),
         composed_sends={row["id"]: newsletter.last_send(db, "newsletter", row["id"])
                         for row in newsletter.list_composed(db)},
-        layout_choices=email_layouts.choices(),
         layout_names={key: email_layouts.LAYOUTS[key]["name"] for key in email_layouts.LAYOUTS},
         sends={p["id"]: newsletter.last_send(db, "page", p["id"]) for p in pages},
         #  Every post, newest first, grouped by the blog it belongs to --

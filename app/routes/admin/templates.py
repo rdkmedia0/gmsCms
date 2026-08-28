@@ -13,7 +13,7 @@ from ...services.menu import refresh_site_menus
 from ...services import lifecycle, packages
 from ...services.palette import _match_palette_roles, color_scheme_choices
 from . import (
-    COLOR_PRESETS, FONT_PAIRINGS, SHAPE_PRESETS, SHADOW_PRESETS, SHADE_SPREADS,
+    FONT_PAIRINGS, SHAPE_PRESETS, SHADOW_PRESETS, SHADE_SPREADS,
     GOOGLE_FONT_CHOICES, wants_json, _redirect_next,
     NAV_LAYOUTS, _set_setting, slugify, _google_fonts_stylesheet_url,
     _apply_pack_content, SIDEBAR_LAYOUT_PRESETS, _apply_sidebar_layout,

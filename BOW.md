@@ -5838,6 +5838,16 @@ would be refused rather than sent.
 
 ## The picker could not tell two shapes apart (2026-08-28)
 
+**Superseded within the hour: the picker was REMOVED** -- see "The shape
+is chosen in the editor" below. `render(..., specimen=True)`, `sample()`
+and the picker's CSS are all gone, so do not go looking for them. The
+entry is kept because the lesson at the end of it is about checks and
+outlived the feature, and because the sequence itself is worth reading:
+the owner had already said the picker was not wanted, and I spent an
+hour making its specimens distinguishable instead of taking it out.
+Polish on something that should not have existed is worse than no polish
+-- it makes the thing look considered.
+
 Found by looking at a screenshot during a verification pass, not by any
 check -- and it had been true since the layouts were built.
 
