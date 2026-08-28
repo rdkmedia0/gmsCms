@@ -929,6 +929,44 @@ def stripe_webhook():
             db.commit()
             _send_order_email(db, order_id)
         handled = f"order {order_id}" + ("" if created else " (already recorded)")
+    elif event_type in ("invoice.paid", "invoice.payment_succeeded"):
+        #  A subscription renewal. Fulfilment had no concept of one until
+        #  now, so a monthly price granting 10 sessions granted them once,
+        #  at the first payment, and never again -- silently, with the
+        #  customer simply running out in month two.
+        reason = obj.get("billing_reason") or ""
+        if reason == commerce.FIRST_PAYMENT:
+            #  The first payment arrives TWICE: once as this invoice and
+            #  once as the checkout session that has already granted it.
+            #  Granting again would hand somebody double what they paid
+            #  for, and nothing would ever show it.
+            handled = "first payment, already granted at checkout"
+        elif reason in commerce.RENEWAL_REASONS:
+            order_id, created = commerce.record_renewal(
+                db, obj, credit_expiry_at=_credit_expiry_at(db))
+            if created:
+                db.commit()
+                #  Same message as a first order, and rightly: what
+                #  changed for them is that they have their sessions or
+                #  their download again, and the link back is the same
+                #  link.
+                _send_order_email(db, order_id)
+            handled = f"renewal {order_id}" + ("" if created else " (already recorded)")
+        else:
+            #  A one-off invoice the owner raised by hand. Not a
+            #  subscription, so nothing here knows what it should
+            #  deliver; recorded as seen rather than acted on.
+            handled = f"invoice ignored (billing_reason {reason or 'unset'})"
+    elif event_type == "invoice.payment_failed":
+        #  Nothing was granted, so there is nothing to revoke. But a card
+        #  that has expired is otherwise completely silent -- the customer
+        #  keeps expecting what they are paying for and the owner has no
+        #  way to know -- so it goes on the Orders screen, where somebody
+        #  would look.
+        order_id, created = commerce.record_failed_renewal(db, obj)
+        if created:
+            db.commit()
+        handled = f"failed renewal {order_id}"
     elif event_type in ("charge.refunded", "checkout.session.async_payment_failed"):
         ref = obj.get("payment_intent") or obj.get("id")
         order = commerce.order_by_ref(db, ref) if ref else None

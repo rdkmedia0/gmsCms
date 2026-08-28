@@ -844,6 +844,13 @@ def settings_integrations():
         site_base=site.public_base(db),
         site_is_public=site.is_public_host(site.public_base(db, request.host_url)),
         stripe_webhooks=(integrations.stripe_webhooks(db)[0] if integrations.is_configured(db, "stripe") else []),
+        #  What this site acts on that Stripe is not sending it. An
+        #  endpoint keeps the events it was created with, so a feature
+        #  needing a new one works on new installs and does nothing on
+        #  every existing one unless somebody is told.
+        webhook_missing=(integrations.webhook_missing_events(
+            db, site.absolute(db, url_for("public.stripe_webhook"), request.host_url))[0]
+            if integrations.is_configured(db, "stripe") else []),
         storage_problem=bootstrap.storage_problems(db),
         key_source=crypto.key_source(),
     )

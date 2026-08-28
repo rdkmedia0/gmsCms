@@ -905,6 +905,14 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
   border-right: 1px solid #e8eaee;
 }
 .cms-toolbar-group:last-child { border-right: 0; padding-right: 0; }
+/*  Forces the next group onto a new line. See the comment in
+    newsletter_issue_edit.html: the four groups never fitted on one row
+    at any width, so they wrapped one-per-row -- four rows, 157px of
+    chrome above a canvas. Two deliberate rows of two instead. */
+.cms-toolbar-break { flex-basis: 100%; height: 0; margin: 0; }
+/*  The group before a break has nothing after it on that row, so its
+    seam would be a rule pointing at empty space. */
+.cms-toolbar-group:has(+ .cms-toolbar-break) { border-right: 0; }
 .cms-toolbar-label {
   font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
   color: #6b7480; margin-right: 2px;
@@ -927,6 +935,14 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
   width: auto; min-width: 0; max-width: 190px;
   padding: 5px 8px; font-size: 13px; border-width: 1px;
 }
+/*  Narrower than the template one, because these two share their row
+    with the writing tools. Worth 13px, measured -- which is to say the
+    selects were NOT what made that row too wide, and this is a tidying
+    rather than the fix. What actually costs the width is the group's
+    nine controls; see the note in newsletter_issue_edit.html for where
+    that leaves it. A select still shows enough of "Georgia" or
+    "Centred" to be read. */
+.cms-block-tools select { max-width: 132px; }
 .cms-issue-toolbar button { padding: 5px 8px; font-size: 13px; }
 .cms-issue-toolbar .cms-color-label { display: inline-flex; align-items: center; gap: 3px; }
 .cms-issue-toolbar input[type=color] { width: 30px; height: 26px; padding: 0; border-width: 1px; }

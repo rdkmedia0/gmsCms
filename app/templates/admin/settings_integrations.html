@@ -97,6 +97,23 @@
   {% set live_hooks = stripe_webhooks | selectattr('url', 'equalto', webhook_url) | list %}
   {% if live_hooks %}
   <p class="integration-result ok">Stripe is already sending events to <code>{{ webhook_url }}</code>.</p>
+  {#  An endpoint keeps the event list it was created with, forever.
+      Stripe has no reason to update it and this app must not silently
+      change somebody's Stripe account -- so a site that has been selling
+      since before an event was added is told, rather than left to
+      discover that subscriptions stopped delivering. #}
+  {% if webhook_missing %}
+  <p class="flash flash-warning">Stripe is <strong>not</strong> sending
+    {{ webhook_missing | join(', ') }} to this address, and this site acts on
+    {{ 'them' if webhook_missing | length > 1 else 'it' }}.
+    {% if 'invoice.paid' in webhook_missing %}
+    Until that is fixed, a subscription pays every month and delivers only on the first
+    payment &mdash; nobody is told, and the customer simply runs out.
+    {% endif %}
+    Open this endpoint in Stripe and add
+    {{ 'them' if webhook_missing | length > 1 else 'it' }} to its events, or delete it there
+    and create it again below.</p>
+  {% endif %}
   {% elif stripe_webhooks %}
   <p class="hint">This Stripe account sends events elsewhere ({{ stripe_webhooks | map(attribute='url') | join(', ') }}) but not yet to this address.</p>
   {% endif %}

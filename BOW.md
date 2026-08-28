@@ -5858,7 +5858,7 @@ waiting on the owner. Nothing here is a fix somebody forgot.
 
 ### What is actually open
 
-Six things, and two of them are tasks. Everything else in this
+Four things, and none of them is a task. Everything else in this
 summary is a record of something built -- the sections below keep their
 reasoning, which is the point of them, but none of it is waiting.
 
@@ -5876,20 +5876,30 @@ reasoning, which is the point of them, but none of it is waiting.
     puts friction on somebody who has just paid. Still the right refusal
     unless somebody is actually losing files.
 
-**Named, scoped, not started.**
+**Named, scoped, not started.** Nothing. Both entries that stood here
+are built; they are kept below with what building them turned up.
 
-  * **Recurring fulfilment.** Found by re-reading rather than by
-    remembering, which is why it earns its own line: it was recorded in
-    an older entry and never carried into a summary. Checkout works for a
-    subscription, but fulfilment has no concept of recurring delivery --
-    only `checkout.session.completed` and the refund events are handled,
-    so a monthly price granting 10 sessions grants them ONCE, at the
-    first payment, and never again. A real feature, not a tweak: it needs
-    `invoice.paid` handled, credits topped up on each renewal rather than
-    granted once, and answers for what happens when a payment fails or a
-    subscription is cancelled mid-period. Anybody selling a membership on
-    this today is under-delivering silently.
-  * **The compose ribbon is dense.** Four groups fit at 1280px and wrap
+  * **Recurring fulfilment.** ~~Open.~~ **BUILT** (2026-08-28) --
+    `invoice.paid` handled, `tools/subscription_check.py`. Three things
+    it turned out to be about, only one of which this note had seen: the
+    renewal itself; the FIRST payment, which arrives twice (as a checkout
+    session AND as an invoice with `billing_reason: subscription_create`)
+    and would have handed every new subscriber double what they paid for;
+    and `WEBHOOK_EVENTS`, because a handler for an event nobody
+    subscribed to never runs -- and an endpoint created before an event
+    was added keeps its old list forever, so the Integrations screen now
+    names anything Stripe is not sending it. A cancelled subscription
+    needs nothing: the period was paid for, so the credits stand.
+  * **The compose ribbon is dense.** ~~Open.~~ **IMPROVED, and measured
+    rather than estimated** (2026-08-28). It was worse than this note
+    said: four rows at EVERY width, not just on a narrow laptop, because
+    the bar is 852px inside the admin's content column rather than the
+    1440 the window suggests. Three deliberate rows now -- the two "what
+    you are making" groups together, then the writing tools, then the
+    selected block's style. Getting to two means moving that group's
+    move/remove buttons onto the selected block in the canvas, which is
+    arguably where they belong but is a change to how the editor is
+    USED, not a layout tweak. Left for somebody to ask for.
     to two rows on a narrow laptop. Legible, so it can wait for somebody
     to have used it in anger; the likely answer is that the block-style
     group collapses behind one button until a block is selected.

@@ -220,6 +220,108 @@ def record_checkout(db, session, line_items, credit_expiry_at=None):
     return order_id, True
 
 
+#  Why an invoice was raised. Stripe's own words, and the distinction
+#  this whole feature turns on: `subscription_create` is the FIRST
+#  payment, which `checkout.session.completed` has already granted, and
+#  granting it again would hand somebody twice what they paid for.
+FIRST_PAYMENT = "subscription_create"
+RENEWAL_REASONS = ("subscription_cycle", "subscription_update")
+
+
+def invoice_line_items(invoice):
+    """An invoice's lines, as the shape grant_for_line_item expects.
+
+    An invoice carries its lines with it -- unlike a checkout session,
+    which has to be asked for them separately -- so there is no second
+    call to make here and nothing to lose when one fails.
+
+    Two shapes are read because Stripe has moved the price: older
+    invoices put it at `line.price.id`, newer ones at
+    `line.pricing.price_details.price`. A line whose price cannot be
+    found is kept with a blank id rather than dropped, so the ORDER still
+    records what was charged even when nothing can be granted for it.
+    """
+    out = []
+    for line in ((invoice.get("lines") or {}).get("data") or []):
+        price = ((line.get("price") or {}).get("id")
+                 or (((line.get("pricing") or {}).get("price_details") or {})
+                     .get("price"))
+                 or "")
+        out.append({
+            "price": {"id": price},
+            "price_id": price,
+            "quantity": line.get("quantity") or 1,
+            "description": line.get("description") or "",
+        })
+    return out
+
+
+def record_renewal(db, invoice, credit_expiry_at=None):
+    """A subscription payment after the first one. (order_id, created).
+
+    Recorded as an ORDER, because that is what it is: money changed hands
+    and something is owed. It grants through exactly the same path a
+    checkout does, so a rule the owner wrote once keeps applying every
+    month without them doing anything -- which is the whole point.
+
+    `created` is False when this invoice was already recorded, so a
+    replayed webhook is harmless even if the event-id check upstream were
+    somehow bypassed. That second guard matters more here than anywhere
+    else in this file: a duplicated renewal is free credits.
+    """
+    provider_ref = invoice.get("id")
+    if not provider_ref:
+        raise WebhookError("Invoice had no id.")
+    existing = db.execute(
+        "SELECT id FROM orders WHERE provider_ref = ?", (provider_ref,)).fetchone()
+    if existing:
+        return existing["id"], False
+
+    customer_id = upsert_customer(
+        db, invoice.get("customer_email"), invoice.get("customer_name"))
+    line_items = invoice_line_items(invoice)
+    cur = db.execute(
+        "INSERT INTO orders (provider, provider_ref, customer_id, amount_total, currency, "
+        "status, line_items) VALUES ('stripe', ?, ?, ?, ?, ?, ?)",
+        (provider_ref, customer_id,
+         invoice.get("amount_paid"),
+         (invoice.get("currency") or "").lower() or None,
+         "paid", json.dumps(line_items)))
+    order_id = cur.lastrowid
+    if customer_id:
+        for item in line_items:
+            grant_for_line_item(db, customer_id, order_id, item["price_id"],
+                                item["quantity"], expires_at=credit_expiry_at)
+    return order_id, True
+
+
+def record_failed_renewal(db, invoice):
+    """A renewal that did not go through.
+
+    Nothing was granted, so there is nothing to revoke -- but a card that
+    expired is otherwise completely silent: the customer keeps expecting
+    their sessions and the owner has no idea. Written as an order with a
+    failed status so it appears on the Orders screen beside the others,
+    which is where somebody would look.
+    """
+    provider_ref = invoice.get("id")
+    if not provider_ref:
+        return None, False
+    existing = db.execute(
+        "SELECT id FROM orders WHERE provider_ref = ?", (provider_ref,)).fetchone()
+    if existing:
+        return existing["id"], False
+    customer_id = upsert_customer(
+        db, invoice.get("customer_email"), invoice.get("customer_name"))
+    cur = db.execute(
+        "INSERT INTO orders (provider, provider_ref, customer_id, amount_total, currency, "
+        "status, line_items) VALUES ('stripe', ?, ?, ?, ?, 'failed', ?)",
+        (provider_ref, customer_id, invoice.get("amount_due"),
+         (invoice.get("currency") or "").lower() or None,
+         json.dumps(invoice_line_items(invoice))))
+    return cur.lastrowid, True
+
+
 def revoke_unused_for_order(db, order_id):
     """A refunded package must not stay bookable. Only the UNUSED portion
     is revoked — sessions already taken happened, and pretending otherwise

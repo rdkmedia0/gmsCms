@@ -524,7 +524,41 @@ WEBHOOK_EVENTS = (
     "checkout.session.completed",
     "charge.refunded",
     "checkout.session.async_payment_failed",
+    #  A subscription renewing. Without these two, a monthly price
+    #  granting 10 sessions grants them once at the first payment and
+    #  never again -- and the handler for them would never run, because
+    #  Stripe only sends what it has been asked for. An endpoint created
+    #  before these were added does not have them: see
+    #  webhook_missing_events, which is why a site that has been selling
+    #  memberships for a month is told rather than left to find out.
+    "invoice.paid",
+    "invoice.payment_failed",
 )
+
+
+def webhook_missing_events(db, url):
+    """(missing, error) -- events this site acts on that Stripe is not
+    sending to it.
+
+    An endpoint registered before a new event was added keeps its
+    original list forever: Stripe has no reason to update it and this app
+    cannot silently change somebody's Stripe account. So the honest thing
+    is to look, and say. Otherwise a feature that depends on a new event
+    is a feature that works on new installs and quietly does nothing on
+    every existing one -- which is the worst kind of release.
+    """
+    endpoints, error = stripe_webhooks(db)
+    if error:
+        return [], error
+    for endpoint in endpoints:
+        if endpoint.get("url") != url:
+            continue
+        have = set(endpoint.get("enabled_events") or [])
+        #  Stripe writes "*" when an endpoint takes everything.
+        if "*" in have:
+            return [], None
+        return [e for e in WEBHOOK_EVENTS if e not in have], None
+    return [], None
 
 
 def stripe_webhooks(db):

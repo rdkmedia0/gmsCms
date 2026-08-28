@@ -859,6 +859,23 @@ Each of these follows the structure above — thin routes, logic in
   Products are created and repriced from this app; a Stripe price is
   immutable, so "change the price" means new price + retire old + move
   the fulfilment rule.
+  **A subscription keeps delivering.** Fulfilment had no concept of
+  recurring delivery: only `checkout.session.completed` and the refund
+  events were handled, so a monthly price granting 10 sessions granted
+  them ONCE, at the first payment, and never again -- silently, with the
+  customer running out in month two. `invoice.paid` is handled now, and
+  **the first payment is skipped**, because Stripe sends BOTH a checkout
+  session and an invoice with `billing_reason: subscription_create` for
+  the same money and granting both hands every new subscriber double.
+  `commerce.FIRST_PAYMENT` / `RENEWAL_REASONS` name that distinction so
+  it cannot be got wrong by accident. A failed renewal grants nothing so
+  there is nothing to revoke, but it is recorded as a failed order,
+  because an expired card is otherwise completely silent. **Adding a
+  handler is only half of it**: `WEBHOOK_EVENTS` decides what Stripe is
+  ASKED to send, and an endpoint keeps the list it was created with
+  forever -- so `webhook_missing_events` compares the two and the
+  Integrations screen names anything missing, or a new event works on
+  new installs and does nothing on every existing one.
   **One shop is one currency** (`integrations.base_currency`): one
   setting, the default every new product is created with. It was a
   per-product dropdown with CHF first in the list, which is exactly how
@@ -1238,6 +1255,11 @@ part that constrains the CODE.
   wrote in survives a template change),
   `abuse_check.py` (that both public forms that send email are bounded,
   and that the limiter is actually called),
+  `subscription_check.py` (that a renewal delivers every month, that the
+  first payment delivers once and not twice, and that a failed one is
+  visible -- driven through the real webhook route, because "the file
+  contains invoice.paid" passes just as happily when the branch is
+  wrong),
   `schedule_check.py` (that a send put on the clock goes exactly once
   even when two workers claim it together, and refuses for the same
   reasons a live send refuses), and

@@ -49,6 +49,28 @@
       {% endfor %}
     </div>
 
+    {#  A deliberate break, not a wrap.
+
+        Measured rather than estimated, and the estimate was wrong in a
+        way worth recording: the bar is 852px, not the 1440 the window
+        suggests, because it sits in the admin's content column. At that
+        width all four groups wrapped one-per-row -- four rows, 157px of
+        chrome above the canvas.
+
+        This puts the two "what you are MAKING" groups together on the
+        first row, which they fit (264 + 432 = 696). The second row is
+        the writing tools and the selected block's style, and those do
+        NOT fit together (314 + 614 = 928), so the block group takes a
+        third row of its own. Three deliberate rows rather than four
+        accidental ones.
+
+        Getting to two would mean moving this block's ↑ ↓ ✕ onto the
+        selected block in the canvas -- which is arguably where they
+        belong, acting on the thing where it is -- but that is a change
+        to how the editor is used, not a layout tweak, so it is left for
+        somebody to ask for. #}
+    <span class="cms-toolbar-break" aria-hidden="true"></span>
+
     {#  3. Writing. The shared toolbar, minus the group that acts on a
         whole block rather than on selected words -- those are next
         door, because "make this word red" and "make this block red" are
