@@ -32,6 +32,21 @@
                 title="{{ blurb }}">{{ name }}</option>
         {% endfor %}
       </select>
+      {#  An arrangement somebody likes is one they will want again. It
+          keeps what is ON SCREEN, not what was last saved, and asks for
+          a name -- a name they chose is one they will recognise in this
+          dropdown six weeks later.
+
+          Remove sits beside it and wakes only on a saved one: a shipped
+          layout is in the code and would be back on the next boot, so
+          offering to delete one would be a button that lies. #}
+      <button type="button" class="icon-btn" data-save-layout
+              data-save-layout-url="{{ url_for('admin.newsletter_layout_save') }}"
+              title="Save this arrangement as a template, so you can start from it again.">&#128190;</button>
+      <button type="button" class="icon-btn" data-delete-layout
+              data-delete-layout-url="{{ url_for('admin.newsletter_layout_delete') }}"
+              title="Remove the selected template. Only ones you saved yourself can be removed."
+              disabled>&#10005;</button>
     </div>
 
     {#  2. What can go in it. Every one of these is optional -- a
@@ -120,36 +135,18 @@
           Two ways to do one thing, one of them invisible, is worse than
           one way that is on the thing itself. #}
     </div>
-  </div>
+      {#  Where a button or a picture points. A property of the selected
+          block, like its alignment and its colour -- so it stands with
+          them rather than in a card of its own under the message, which
+          is what it was: a label, a full-width input and a hint, for one
+          field. It wakes only for a block that HAS a link. #}
+      <span class="cms-toolbar-link" data-block-aside hidden>
+        <label class="cms-toolbar-label" for="block-url" data-aside-label>Link</label>
+        <input type="url" id="block-url" class="cms-toolbar-input" data-block-field="url"
+               placeholder="https://"
+               title="The web address this opens. Leave it blank and the block is left out of the send.">
+      </span>
 
-  {#  ---- what the buttons do ----
-      Send and Schedule carry their own `formaction`, so all three read
-      the one "who gets it" control below. Preview opens in its own tab
-      and POSTs what is ON SCREEN, so it previews the draft in front of
-      you rather than the last thing saved. #}
-  <div class="cms-compose-actions">
-    <button type="submit" class="btn btn-primary" data-send
-            formaction="{{ url_for('admin.newsletter_issue_send', newsletter_id=item.id) }}"
-            title="Send this now, to the people chosen below. It cannot be unsent.">Send</button>
-
-    <span class="cms-compose-schedule">
-      <button type="submit" class="btn" data-schedule
-              formaction="{{ url_for('admin.newsletter_issue_schedule', newsletter_id=item.id) }}"
-              title="Send it automatically at the time beside this. You do not have to be here.">Schedule</button>
-      <input type="datetime-local" name="send_at" data-send-at
-             data-scheduled-utc="{{ scheduled.send_at if scheduled else '' }}"
-             title="When to send it. This is your own clock — the time you see here is the time it goes.">
-      {#  The browser's own offset, so what the owner typed is read in the
-          clock they typed it on. Filled by newsletter-editor.js. #}
-      <input type="hidden" name="tz_offset" data-tz-offset value="0">
-    </span>
-
-    <span class="cms-compose-spacer"></span>
-
-    <button type="submit" class="btn" title="Keep this. Nothing is sent.">Save</button>
-    <button type="submit" class="btn" formtarget="_blank"
-            formaction="{{ url_for('admin.newsletter_issue_preview', newsletter_id=item.id) }}"
-            title="Open it in its own tab, exactly as it will arrive — including what you have just changed.">Preview</button>
   </div>
 
   {#  ---- the header: who it is for, and what it says on the tin ---- #}
@@ -212,14 +209,43 @@
     </div>
   </div>
 
-  {#  The one thing that cannot be typed INTO the email: where a button
-      or a picture points. It appears under the canvas when a block that
-      has one is selected, and is not in the message at all. #}
-  <div class="card cms-issue-asides" data-block-aside hidden>
-    <label for="block-url" data-aside-label>Where this goes</label>
-    <input type="url" id="block-url" data-block-field="url" placeholder="https://"
-           title="The web address this opens. Leave it blank and the block is left out of the send.">
-    <p class="hint" data-aside-hint></p>
+  {#  ---- what the buttons do ----
+      Send and Schedule carry their own `formaction`, so all three read
+      the one "who gets it" control below. Preview opens in its own tab
+      and POSTs what is ON SCREEN, so it previews the draft in front of
+      you rather than the last thing saved. #}
+  <div class="cms-compose-actions">
+    <button type="submit" class="btn btn-primary" data-send
+            formaction="{{ url_for('admin.newsletter_issue_send', newsletter_id=item.id) }}"
+            title="Send this now, to the people chosen below. It cannot be unsent.">Send</button>
+
+    <span class="cms-compose-schedule">
+      <button type="submit" class="btn" data-schedule
+              formaction="{{ url_for('admin.newsletter_issue_schedule', newsletter_id=item.id) }}"
+              title="Send it automatically at the time beside this. You do not have to be here.">Schedule</button>
+      <input type="datetime-local" name="send_at" data-send-at
+             data-scheduled-utc="{{ scheduled.send_at if scheduled else '' }}"
+             title="When to send it. This is your own clock — the time you see here is the time it goes.">
+      {#  The browser's own offset, so what the owner typed is read in the
+          clock they typed it on. Filled by newsletter-editor.js. #}
+      <input type="hidden" name="tz_offset" data-tz-offset value="0">
+    </span>
+
+    <span class="cms-compose-spacer"></span>
+
+    <button type="submit" class="btn" title="Keep this. Nothing is sent.">Save</button>
+    <button type="submit" class="btn" formtarget="_blank"
+            formaction="{{ url_for('admin.newsletter_issue_preview', newsletter_id=item.id) }}"
+            title="Open it in its own tab, exactly as it will arrive &mdash; including what you have just changed.">Preview</button>
+
+    {#  With the other things you can do to this newsletter, rather than
+        alone in a card under everything. Held apart from them because it
+        is the one that cannot be undone. #}
+    <span class="cms-compose-danger">
+      <button type="submit" class="btn" data-delete-issue
+              formaction="{{ url_for('admin.newsletter_issue_delete', newsletter_id=item.id) }}"
+              title="Delete this newsletter. What was already sent stays on the record.">Delete</button>
+    </span>
   </div>
 
   {#  ONE field, because the canvas IS the form: the editor reads the
@@ -256,13 +282,7 @@
 </div>
 {% endif %}
 
-<div class="card">
-  <form method="post" action="{{ url_for('admin.newsletter_issue_delete', newsletter_id=item.id) }}"
-        class="cms-delete-form" data-confirm="Delete this newsletter? What was already sent stays on the record.">
-    <button type="submit" class="btn btn-small"
-            title="Delete this newsletter. Anything already sent stays recorded.">Delete</button>
-  </form>
-</div>
+
 <script src="{{ static_url('js/admin/modal.js') }}"></script>
 <script src="{{ static_url('js/admin/local-time.js') }}"></script>
 <script src="{{ static_url('js/wysiwyg-commands.js') }}"></script>

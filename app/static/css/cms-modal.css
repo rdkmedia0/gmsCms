@@ -85,3 +85,30 @@
 .cms-modal-count-label select {
   margin-left: 8px; padding: 6px 10px; font-size: 15px; border: 2px solid #e2e4e9; border-radius: var(--cms-ui-radius-control);
 }
+
+/*  ---- The Media Library picker ----------------------------------
+    Here rather than in inline-editor.css, because the dialog is opened
+    from admin screens as well as from the live page, and only this file
+    travels with the markup (cms_modal.html links it itself). It lived
+    in inline-editor.css, which admin pages do not load, so the picker
+    opened unstyled there: a 332px dialog with 79 tiles at their natural
+    1200x2000, one under another. */
+.cms-image-picker { max-width: 640px; }
+/*  The pictures scroll, not the dialog, so Cancel stays where it was put.
+    A library of 144 images is a normal size once a site has been through
+    a few templates — see _pickable_images. */
+.cms-image-picker-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-bottom: 16px;
+  max-height: 60vh; max-height: 60dvh; overflow-y: auto; overscroll-behavior: contain;
+}
+/*  Smaller tiles on a phone: four across at 140px each is wider than the
+    screen, which is what made the grid feel stuck as well as clipped. */
+@media (max-width: 560px) {
+  .cms-image-picker-grid { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+}
+.cms-image-picker-grid button {
+  padding: 0; border: 3px solid transparent; border-radius: var(--cms-ui-radius-control); overflow: hidden; cursor: pointer;
+  background: none; aspect-ratio: 1; line-height: 0;
+}
+.cms-image-picker-grid button:hover { border-color: #4f7cff; }
+.cms-image-picker-grid img { width: 100%; height: 100%; object-fit: cover; }

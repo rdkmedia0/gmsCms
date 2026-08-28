@@ -101,19 +101,24 @@ with sync_playwright() as p:
     print()
     print("Laid out the way a mail composer is")
     print("-" * 68)
-    #  Tools, then the actions, then who it is for, then the message. The
-    #  order is the whole point: it is a shape people already know.
+    #  Tools, who it is for, the message, then what to do with it.
+    #
+    #  This used to put the actions THIRD, above the message. Send is a
+    #  button you press last, and it sat above everything you do first --
+    #  live, over a message that was still empty. Everything before the
+    #  canvas is what the message needs; everything after it is what
+    #  happens to the message. Which is also the order of an envelope.
     order = page.evaluate("""
       () => {
-        const want = ['.cms-issue-toolbar', '.cms-compose-actions',
-                      '.cms-compose-header', '.cms-issue-canvas-ground'];
+        const want = ['.cms-issue-toolbar', '.cms-compose-header',
+                      '.cms-issue-canvas-ground', '.cms-compose-actions'];
         const tops = want.map(sel => {
           const el = document.querySelector(sel);
           return el ? el.getBoundingClientRect().top : -1;
         });
         return tops;
       }""")
-    check("tools, actions, recipients, then the message",
+    check("tools, recipients, the message, then what to do with it",
           all(t > 0 for t in order) and order == sorted(order), str(order))
     check("who it goes to is a field in the header, not a card at the bottom",
           page.evaluate("() => !!document.querySelector('.cms-compose-header #audience')"))
@@ -305,6 +310,212 @@ with sync_playwright() as p:
                document.getElementById('cms-layout-starts').textContent);
              return starts.announcement.map(b => b.type).join(',');
            }""") == ",".join(laid))
+
+    print()
+    print("The tools look like tools")
+    print("-" * 68)
+    #  Four things an owner reported as "messy", each measured rather
+    #  than eyeballed, because every one of them is a number.
+
+    #  1. Where a button points was a CARD under the message holding one
+    #     field. It is a property of the selected block, exactly as its
+    #     alignment is, so it belongs with those in the ribbon.
+    page.click("[data-add-block='button']")
+    settle(page)
+    page.click("[data-block][data-block-type='button']")
+    page.wait_for_timeout(200)
+    where = page.evaluate(
+        """() => { const f = document.getElementById('block-url');
+             if (!f) return 'missing';
+             const bar = document.querySelector('.cms-issue-toolbar');
+             const canvas = document.querySelector('.cms-issue-canvas-ground');
+             const r = f.getBoundingClientRect();
+             return { inToolbar: !!bar && bar.contains(f),
+                      aboveCanvas: r.top < canvas.getBoundingClientRect().top,
+                      width: Math.round(r.width),
+                      card: !!f.closest('.card') }; }""")
+    check("a block's link is in the ribbon with its other controls",
+          where != "missing" and where["inToolbar"], str(where))
+    check("...not a card under the message",
+          where != "missing" and not where["card"] and where["aboveCanvas"], str(where))
+    check("...and is a control's width, not a form's",
+          where != "missing" and where["width"] <= 260, str(where))
+
+    #  2. To and Subject were full-width boxes 40px tall: 120px of chrome
+    #     to hold an address and one line, reading as the biggest thing
+    #     on a screen whose subject is the message below them.
+    fields = page.evaluate(
+        """() => ['#audience', '#subject'].map(sel => {
+             const r = document.querySelector(sel).getBoundingClientRect();
+             return { w: Math.round(r.width), h: Math.round(r.height) };
+           })""")
+    check("To and Subject are capped, not stretched to the window",
+          all(f["w"] <= 470 for f in fields), str(fields))
+    check("...and are one row each, not a form field each",
+          all(f["h"] <= 34 for f in fields), str(fields))
+    header = page.evaluate(
+        """() => Math.round(document.querySelector(
+             '.cms-compose-header').getBoundingClientRect().height)""")
+    check("...so the two of them together are one strip", header <= 100, str(header))
+
+    #  3. Schedule and its time are one control, drawn as one. They were
+    #     a button and a 240px date box with a gap between them and no
+    #     visible relationship.
+    sched = page.evaluate(
+        """() => { const wrap = document.querySelector('.cms-compose-schedule');
+             const input = wrap.querySelector('input[type=datetime-local]');
+             const btn = wrap.querySelector('button');
+             const w = wrap.getBoundingClientRect();
+             const i = input.getBoundingClientRect();
+             const b = btn.getBoundingClientRect();
+             return { joined: Math.round(i.left - b.right),
+                      bordered: getComputedStyle(wrap).borderStyle !== 'none',
+                      width: Math.round(w.width) }; }""")
+    check("Schedule and its time read as one control",
+          sched["bordered"] and abs(sched["joined"]) <= 2, str(sched))
+
+    #  4. Everything that happens TO the newsletter is in one row under
+    #     it, Delete included -- it used to sit alone in a card under
+    #     everything else.
+    acts = page.evaluate(
+        """() => { const bar = document.querySelector('.cms-compose-actions');
+             const canvas = document.querySelector('.cms-issue-canvas-ground');
+             return { below: bar.getBoundingClientRect().top
+                              > canvas.getBoundingClientRect().top,
+                      has: ['[data-send]', '[data-schedule]', '[data-delete-issue]']
+                             .every(sel => !!bar.querySelector(sel)),
+                      strayCards: document.querySelectorAll(
+                        '.card form[action*="/delete"]').length }; }""")
+    check("send, schedule, save, preview and delete are under the message",
+          acts["below"] and acts["has"], str(acts))
+    check("...and delete is not in a card of its own",
+          acts["strayCards"] == 0, str(acts))
+
+    print()
+    print("The picture picker is a picker, on an admin screen too")
+    print("-" * 68)
+    #  Its styles lived in inline-editor.css, which admin pages do not
+    #  load -- so here it opened unstyled: measured, a 332px dialog
+    #  holding 79 tiles at their natural 1200x2000, one under another,
+    #  64,805px of grid. They travel with cms_modal.html now.
+    page.click("[data-add-block='image']")
+    settle(page)
+    slot = page.query_selector("[data-pick-image]")
+    if slot:
+        slot.click()
+        page.wait_for_timeout(1200)
+        grid = page.evaluate(
+            """() => { const g = document.getElementById('cms-image-picker-grid');
+                 if (!g) return 'missing';
+                 const s = getComputedStyle(g), box = g.getBoundingClientRect();
+                 const first = g.children[0];
+                 const f = first ? first.getBoundingClientRect() : {width: 0, height: 0};
+                 const img = first && first.querySelector('img');
+                 return { display: s.display,
+                          overflowY: s.overflowY,
+                          gridHeight: Math.round(box.height),
+                          tile: Math.round(f.width) + 'x' + Math.round(f.height),
+                          tileW: Math.round(f.width),
+                          fit: img ? getComputedStyle(img).objectFit : '-',
+                          count: g.children.length }; }""")
+        check("it is a grid", grid != "missing" and grid["display"] == "grid", str(grid))
+        check("...whose tiles are thumbnails, not full-size pictures",
+              grid != "missing" and grid["tileW"] <= 260, str(grid))
+        check("...cropped to fit rather than squashed",
+              grid != "missing" and grid["fit"] == "cover", str(grid))
+        check("...and the pictures scroll inside the dialog",
+              grid != "missing" and grid["overflowY"] == "auto"
+              and grid["gridHeight"] < 1000, str(grid))
+        check("Cancel is still reachable without scrolling the page",
+              page.evaluate(
+                  """() => { const c = document.getElementById('cms-image-picker-cancel');
+                       const r = c.getBoundingClientRect();
+                       return r.top >= 0 && r.bottom <= window.innerHeight; }"""))
+        page.click("#cms-image-picker-cancel")
+        page.wait_for_timeout(200)
+
+    print()
+    print("An arrangement you like can be kept")
+    print("-" * 68)
+    #  A layout is a starting arrangement, not a kind -- so saving one is
+    #  storing its blocks under a name, and it joins the same dropdown.
+    #  By NAME, never by count. An earlier run of this checker that died
+    #  midway leaves its arrangement behind, and saving the same name
+    #  replaces it rather than adding a second -- so "one more option
+    #  than before" is false on the second run even though everything
+    #  worked. Presence and absence are what is actually being claimed.
+    def options():
+        return page.evaluate(
+            """() => Array.from(document.querySelectorAll('#layout-select option'))
+                 .map(o => o.value + '|' + o.text)""")
+    page.evaluate("""() => {
+      window.__savedName = 'Checker arrangement';
+      window.cmsModal = async (opts) => (opts.showInput
+        ? { confirmed: true, value: window.__savedName }
+        : { confirmed: true });
+    }""")
+    page.click("[data-save-layout]")
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(600)
+    after = options()
+    mine = [o for o in after if o.startswith("saved:")
+            and "Checker arrangement" in o]
+    check("it appears in the Template list", bool(mine), str(after))
+    check("...under the name that was given, so it can be recognised",
+          any(o.endswith("|Checker arrangement") for o in mine), str(mine))
+    check("...and the built-in ones are still there",
+          all(any(o.startswith(k + "|") for o in after)
+              for k in ("letter", "story", "two-up", "announcement")), str(after))
+
+    #  ...and can be taken away again, which is the half that keeps
+    #  getting left out.
+    #
+    #  Driven by setting the value and firing `change` rather than by
+    #  select_option: choosing a layout lays the blocks out again, and
+    #  waiting out that reload three times in a row makes this check
+    #  about timing rather than about the button.
+    key = mine[0].split("|")[0]
+    check("Remove wakes up for one of your own", page.evaluate(
+        """(k) => { const s = document.querySelector('#layout-select');
+             s.value = k;
+             s.dispatchEvent(new Event('change'));
+             return !document.querySelector('[data-delete-layout]').disabled; }""",
+        key))
+    check("...and stays asleep on a built-in one", page.evaluate(
+        """() => { const s = document.querySelector('#layout-select');
+             s.value = 'letter';
+             s.dispatchEvent(new Event('change'));
+             return document.querySelector('[data-delete-layout]').disabled; }"""))
+
+    #  The route itself, posted the way the button posts it.
+    removed = page.evaluate(
+        """async (k) => { const url = document.querySelector(
+               '[data-delete-layout]').dataset.deleteLayoutUrl;
+             const body = new FormData();
+             body.append('key', k);
+             const res = await fetch(url, { method: 'POST',
+               headers: { 'X-Inline-Edit': '1' }, body });
+             return (await res.json()).ok; }""", key)
+    check("removing it is one post", removed is True, str(removed))
+    page.reload(wait_until="networkidle")
+    page.wait_for_timeout(500)
+    left = options()
+    check("...and it is gone from the Template list",
+          not any("Checker arrangement" in o for o in left), str(left))
+    check("...without taking the built-in ones with it",
+          all(any(o.startswith(k + "|") for o in left)
+              for k in ("letter", "story", "two-up", "announcement")), str(left))
+    #  A shipped one is in the code and would be back on the next boot,
+    #  so the route refuses rather than pretending.
+    refused = page.evaluate(
+        """async () => { const url = document.querySelector(
+               '[data-delete-layout]').dataset.deleteLayoutUrl;
+             const body = new FormData();
+             body.append('key', 'letter');
+             const res = await fetch(url, { method: 'POST',
+               headers: { 'X-Inline-Edit': '1' }, body });
+             return (await res.json()).ok; }""")
+    check("a built-in one cannot be removed", refused is False, str(refused))
 
     check("no console errors", not errors, "; ".join(errors[:2]))
     b.close()

@@ -6785,3 +6785,76 @@ while writing the replacement. **Ask for the thing, not for its box.**
 The check now clicks what a person would click and asks how wide the
 `basket_align` select is; with the handler removed it reads
 `clicking it opens the basket's own controls  FAILED  0x0`.
+
+## Four things that read as mess, each of them a number (2026-08-28)
+
+"Improve the overall aesthetics because it feels messy" is not a
+measurable request, but every part of it turned out to be.
+
+**The picture picker opened unstyled.** Reported as "images huge and
+cut". Measured on the newsletter editor: a 332px dialog containing a
+`display: block` grid of 79 tiles at their natural **1216x2009 each**,
+64,805px tall, with Cancel somewhere below the horizon. The styles were
+correct and complete -- they were in `inline-editor.css`, which loads
+only on the live page. The comment immediately above them says the
+MODAL's styles were kept out of that file "since the modal is shared
+with plain admin pages that don't load inline-editor.css at all", and
+the picker's were left there anyway. Extracting `image-picker.js` moved
+the behaviour and not the appearance, which is the same drift the
+extraction existed to end. They live in `cms-modal.css` now, which
+`cms_modal.html` links itself, so they travel with the markup.
+
+**Where a button points was a card under the message.** A label, a
+full-width input and a paragraph of hint, for one field. A link is a
+property of the selected block exactly as its alignment and its colour
+are, and those are in the ribbon -- so it stands with them. The hint
+became the field's own tooltip: a sentence of running text in a row of
+controls is a large part of what made that row read as a section.
+
+**To and Subject were the biggest thing on the screen.** Full-width
+boxes with 74px labels, on a screen whose subject is the message
+underneath them. Capped at 460px and shortened: 92px for the pair now.
+
+**Send was above everything.** The order was tools / actions / To+Subject
+/ message, so the button you press LAST sat above everything you do
+first, live, over a message that was still empty. It is tools / To and
+Subject / the message / what to do with it. Everything before the canvas
+is what the message needs; everything after it is what happens to the
+message -- the order of an envelope. Schedule and its time are drawn as
+one control rather than a button beside a floating 240px date box, and
+Delete joined that row instead of sitting alone in a card under
+everything.
+
+### An arrangement you like can be kept
+
+`email_layouts` gains a table. A layout was already "a starting
+arrangement, not a kind" -- the shipped ones are a dictionary -- so a
+saved one is the same thing with its blocks written down instead of
+typed out, and it joins the same dropdown. What is saved is what is on
+the CANVAS, not what was last saved: somebody who has just arranged
+something and likes it should not have to save the newsletter first.
+
+It asks for a name, because a name somebody chose is one they will
+recognise in that dropdown six weeks later. Saving the same name again
+replaces it -- two entries with one name and no way to tell them apart
+is worse than either.
+
+And it can be removed. That is the half that keeps getting left out --
+twice this week already -- so it went in with the same change rather
+than after the next report. Remove wakes only on one of your own: a
+shipped layout is in the code and would be back on the next boot, so a
+live button there would be a button that lies. The route refuses it too,
+not just the button.
+
+### Two checker mistakes worth keeping
+
+The removal check first counted options: "one more than before". An
+earlier run that died midway had left its arrangement behind, and saving
+the same name REPLACES rather than adds -- so the count was right and
+the check failed, on a run where everything worked. It asserts presence
+and absence by name now. **Count is almost never the claim.**
+
+And the layout-change check drove `select_option`, which lays the blocks
+out again and reloads -- three reloads deep, the check was about timing
+rather than about the button. It sets the value and fires `change` for
+what the button does, and posts to the route for what the route does.

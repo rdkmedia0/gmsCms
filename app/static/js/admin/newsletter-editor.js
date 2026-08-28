@@ -410,25 +410,30 @@
     setControl("color", style.color || "#333c47");
     setControl("bg", style.bg || "#f2f4f7");
     //  Where a button or a picture points cannot be typed INTO the
-    //  email, so it sits under the canvas -- and only for the blocks
-    //  that have one.
+    //  email. It stands with the block's other properties in the ribbon
+    //  -- alignment, font, colour, and this -- rather than in a card of
+    //  its own under the message, which is what it was: a label, a
+    //  full-width input and a paragraph of hint, for one field. It wakes
+    //  only for the blocks that have one.
+    //
+    //  The hint it used to carry moved onto the field's own tooltip.
+    //  Every control here explains itself that way, and a sentence of
+    //  running text in a row of controls was the thing that made this
+    //  read as a section rather than as part of the toolbar.
     if (aside) {
       var wants = block.type === "button" || block.type === "image";
       aside.hidden = !wants;
       if (wants) {
         var field = aside.querySelector("[data-block-field='url']");
         var label = aside.querySelector("[data-aside-label]");
-        var hint = aside.querySelector("[data-aside-hint]");
-        if (field) field.value = block.url || "";
-        if (label) {
-          label.textContent = block.type === "button"
-            ? "Where this button goes" : "Where this picture links to";
+        if (field) {
+          field.value = block.url || "";
+          field.title = block.type === "button"
+            ? "Where this button goes. A button with no address is left out of the send, because a button that goes nowhere is worse than none."
+            : "Where this picture links to. Optional — leave it blank and the picture is not a link.";
+          field.placeholder = block.type === "button" ? "https://" : "https:// (optional)";
         }
-        if (hint) {
-          hint.textContent = block.type === "button"
-            ? "A button with no address is left out of the send, because a button that goes nowhere is worse than none."
-            : "Optional. Leave it blank and the picture is not a link.";
-        }
+        if (label) label.textContent = block.type === "button" ? "Goes to" : "Links to";
       }
     }
   }
@@ -611,6 +616,124 @@
         reload();
       });
     }
+  }
+
+  //  Delete asks first, and says what survives it. It is a submit on
+  //  the one form like every other action here -- a nested <form> would
+  //  be invalid, and a GET link that deletes is worse than either.
+  var deleteIssueBtn = form.querySelector("[data-delete-issue]");
+  if (deleteIssueBtn) {
+    deleteIssueBtn.addEventListener("click", async function (e) {
+      if (deleteIssueBtn.dataset.confirmed === "1") return;
+      e.preventDefault();
+      var answer = window.cmsModal
+        ? await window.cmsModal({
+            message: "Delete this newsletter? What was already sent stays on the record.",
+            confirmLabel: "Delete it",
+          })
+        : window.confirm("Delete this newsletter?");
+      if (!answer || answer.confirmed === false) return;
+      deleteIssueBtn.dataset.confirmed = "1";
+      deleteIssueBtn.click();
+    });
+  }
+
+  //  ---- keeping an arrangement you like -------------------------------
+  //
+  //  A layout is a starting arrangement, not a kind -- the shipped ones
+  //  are a dictionary and a saved one is the same thing written down. So
+  //  saving is: name it, post the blocks, and it is in the same dropdown.
+  //
+  //  What is posted is what is on the CANVAS, not what was last saved.
+  //  Somebody who has just arranged something and likes it should not
+  //  have to save the newsletter before they can keep its shape.
+  var layoutSelect = form.querySelector("#layout-select");
+  var subjectField = form.querySelector("#subject");
+  var saveLayoutBtn = form.querySelector("[data-save-layout]");
+  var deleteLayoutBtn = form.querySelector("[data-delete-layout]");
+
+  //  Remove wakes only on one of your own. A shipped layout is in the
+  //  code and would be back on the next boot, so a live button there
+  //  would be a button that lies.
+  function refreshLayoutButtons() {
+    if (!deleteLayoutBtn || !layoutSelect) return;
+    var mine = (layoutSelect.value || "").indexOf("saved:") === 0;
+    deleteLayoutBtn.disabled = !mine;
+    deleteLayoutBtn.title = mine
+      ? "Remove “" + layoutSelect.options[layoutSelect.selectedIndex].text
+        + "” from the Template list. Newsletters already laid out from it are untouched."
+      : "Only templates you saved yourself can be removed. This one is built in.";
+  }
+  if (layoutSelect) layoutSelect.addEventListener("change", refreshLayoutButtons);
+  refreshLayoutButtons();
+
+  if (saveLayoutBtn) {
+    saveLayoutBtn.addEventListener("click", async function () {
+      collect();
+      if (!blocks.length) {
+        if (window.cmsModal) {
+          await window.cmsModal({
+            message: "There is nothing laid out to save yet.",
+            confirmLabel: "OK", danger: false, showConfirm: true,
+          });
+        }
+        return;
+      }
+      var answer = window.cmsModal
+        ? await window.cmsModal({
+            message: "Save this arrangement as a template you can start from again. "
+              + "What should it be called?",
+            showInput: true,
+            defaultValue: (subjectField && subjectField.value.trim())
+              || "My arrangement",
+            confirmLabel: "Save it",
+            danger: false,
+          })
+        : window.prompt("Name for this template");
+      var name = answer && answer.value !== undefined ? answer.value : answer;
+      if (!name || !String(name).trim()) return;
+      var body = new FormData();
+      body.append("name", String(name).trim());
+      body.append("blocks_json", JSON.stringify(blocks));
+      var res = await fetch(saveLayoutBtn.dataset.saveLayoutUrl, {
+        method: "POST", headers: { "X-Inline-Edit": "1" }, body,
+      });
+      var data = await res.json().catch(function () { return {}; });
+      if (!res.ok || data.error) {
+        if (window.cmsModal) {
+          await window.cmsModal({
+            message: data.error || "That could not be saved.",
+            confirmLabel: "OK", danger: false,
+          });
+        }
+        return;
+      }
+      //  Reloaded rather than added to the dropdown here. The list comes
+      //  from the server, and a second place building the same list is
+      //  how the two come to disagree.
+      window.location.reload();
+    });
+  }
+
+  if (deleteLayoutBtn) {
+    deleteLayoutBtn.addEventListener("click", async function () {
+      if (deleteLayoutBtn.disabled || !layoutSelect) return;
+      var label = layoutSelect.options[layoutSelect.selectedIndex].text;
+      var answer = window.cmsModal
+        ? await window.cmsModal({
+            message: "Remove “" + label + "” from the Template list? "
+              + "Newsletters already laid out from it are not affected.",
+            confirmLabel: "Remove it",
+          })
+        : window.confirm("Remove " + label + "?");
+      if (!answer || answer.confirmed === false) return;
+      var body = new FormData();
+      body.append("key", layoutSelect.value);
+      await fetch(deleteLayoutBtn.dataset.deleteLayoutUrl, {
+        method: "POST", headers: { "X-Inline-Edit": "1" }, body,
+      });
+      window.location.reload();
+    });
   }
 
   //  An empty picture frame asks the Media Library for one -- the same

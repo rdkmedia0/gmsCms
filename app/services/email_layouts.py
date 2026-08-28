@@ -33,6 +33,7 @@ the one thing every client renders. `@font-face` does not: Gmail strips
 it, so a font choice here is a real installed family and never a
 webfont, however good the site's own looks.
 """
+import json
 import re
 from html import escape
 
@@ -273,20 +274,99 @@ LAYOUTS = {
 }
 
 
-def choices():
+#  A saved layout's key is prefixed so it can never collide with a
+#  shipped one, and so any code reading a key can tell them apart without
+#  a database lookup.
+SAVED_PREFIX = "saved:"
+
+
+def _slugify(name):
+    out = "".join(c.lower() if c.isalnum() else "-" for c in (name or "").strip())
+    while "--" in out:
+        out = out.replace("--", "-")
+    return out.strip("-")[:60] or "layout"
+
+
+def saved(db):
+    """Every arrangement this install has kept, newest first."""
+    if db is None:
+        return []
+    try:
+        rows = db.execute(
+            "SELECT slug, name, blocks FROM email_layouts ORDER BY id DESC").fetchall()
+    except Exception:  # noqa: BLE001 - a missing table must not break the editor
+        return []
+    return list(rows)
+
+
+def choices(db=None):
     """(key, name, blurb) for the dropdown, in a fixed order so the list
-    does not shuffle between visits."""
-    return [(key, LAYOUTS[key]["name"], LAYOUTS[key]["blurb"])
-            for key in ("letter", "story", "two-up", "announcement")]
+    does not shuffle between visits.
+
+    The shipped arrangements first, then anything this install has saved.
+    Saved ones come last because the shipped set is what somebody
+    starting out is choosing between, and it does not grow.
+    """
+    out = [(key, LAYOUTS[key]["name"], LAYOUTS[key]["blurb"])
+           for key in ("letter", "story", "two-up", "announcement")]
+    for row in saved(db):
+        out.append((SAVED_PREFIX + row["slug"], row["name"],
+                    "One of yours, saved from a newsletter you had already laid out."))
+    return out
 
 
-def starting_blocks(key):
+def save_layout(db, name, blocks):
+    """(key, error). Keeps one arrangement under a name somebody chose.
+
+    A name they chose is one they will recognise in a dropdown six weeks
+    later, which is why this asks rather than generating "Layout 3".
+    Saving the same name again replaces it -- the alternative is two
+    entries with one name, and no way to tell which is which.
+    """
+    name = (name or "").strip()
+    if not name:
+        return None, "Give it a name so you can find it again."
+    blocks = normalise(blocks)
+    if not blocks:
+        return None, "There is nothing laid out to save."
+    slug = _slugify(name)
+    db.execute(
+        "INSERT INTO email_layouts (slug, name, blocks) VALUES (?, ?, ?) "
+        "ON CONFLICT(slug) DO UPDATE SET name = excluded.name, blocks = excluded.blocks",
+        (slug, name, json.dumps(blocks)))
+    return SAVED_PREFIX + slug, None
+
+
+def delete_layout(db, key):
+    """Removes one saved arrangement. A shipped one is not deletable --
+    it is in the code, and would come back on the next boot."""
+    if not str(key or "").startswith(SAVED_PREFIX):
+        return False
+    slug = str(key)[len(SAVED_PREFIX):]
+    return db.execute("DELETE FROM email_layouts WHERE slug = ?", (slug,)).rowcount > 0
+
+
+def starting_blocks(key, db=None):
     """A fresh copy of one layout's arrangement.
 
     A copy, because these are module-level dictionaries: handing the real
     ones out would let the first newsletter somebody wrote edit the
-    template for every newsletter written after it.
+    template for every newsletter written after it. A saved layout is
+    read from its row and needs no such care, but goes through the same
+    normalise so both kinds arrive in one shape.
     """
+    if str(key or "").startswith(SAVED_PREFIX) and db is not None:
+        slug = str(key)[len(SAVED_PREFIX):]
+        try:
+            row = db.execute("SELECT blocks FROM email_layouts WHERE slug = ?",
+                             (slug,)).fetchone()
+        except Exception:  # noqa: BLE001
+            row = None
+        if row:
+            try:
+                return normalise(json.loads(row["blocks"]))
+            except (ValueError, TypeError):
+                return []
     layout = LAYOUTS.get(key) or LAYOUTS["letter"]
     return normalise([dict(b, style=dict(b.get("style") or {}))
                       for b in layout["blocks"]])

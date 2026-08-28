@@ -6,9 +6,10 @@ happens in the normal editor, on the page itself. This is only the two
 things a page cannot do for itself: turn into an email, and remember that
 it went out.
 """
-from flask import request, flash, redirect, url_for, render_template, current_app
+from flask import (request, flash, redirect, url_for, render_template,
+                   current_app, jsonify)
 
-from . import bp, get_email_settings, get_site_settings
+from . import bp, get_email_settings, get_site_settings, wants_json
 from ..auth import login_required
 from ...db import get_db
 from ... import mailer
@@ -218,7 +219,7 @@ def newsletter_issue_new():
     #  A new newsletter opens with its layout's arrangement already in
     #  it, because an empty canvas does not show what a template IS --
     #  which is the whole reason for choosing one.
-    newsletter.save_blocks(db, new_id, "", email_layouts.starting_blocks(layout))
+    newsletter.save_blocks(db, new_id, "", email_layouts.starting_blocks(layout, db))
     db.commit()
     return redirect(url_for("admin.newsletter_issue_edit", newsletter_id=new_id))
 
@@ -254,13 +255,13 @@ def newsletter_issue_edit(newsletter_id):
         block_styles=email_layouts.block_styles(look),
         look=look,
         layout=email_layouts.LAYOUTS[row["layout"]],
-        layout_choices=email_layouts.choices(),
+        layout_choices=email_layouts.choices(db),
         #  What each template would lay out, so changing the dropdown can
         #  show the new arrangement without a round trip to ask what it
         #  is. Data, not logic: the arrangements are still decided in one
         #  place, here.
-        layout_starts={key: email_layouts.starting_blocks(key)
-                       for key, _n, _b in email_layouts.choices()},
+        layout_starts={key: email_layouts.starting_blocks(key, db)
+                       for key, _n, _b in email_layouts.choices(db)},
         blocks=newsletter.composed_blocks(row),
         block_types=email_layouts.BLOCK_TYPES,
         block_order=email_layouts.BLOCK_ORDER,
@@ -527,6 +528,56 @@ def newsletter_issue_send(newsletter_id):
         return redirect(back)
     return _send_it(db, "newsletter", newsletter_id, _composed_sections(db, row),
                     row["subject"], None, back)
+
+
+@bp.route("/newsletters/layouts/save", methods=["POST"])
+@login_required
+def newsletter_layout_save():
+    """Keep the arrangement in front of you, under a name, for next time.
+
+    The blocks come from the canvas rather than from what was last saved,
+    so this keeps what is ON SCREEN -- somebody who has just arranged
+    something and likes it should not have to save the newsletter first
+    to be able to save its shape.
+    """
+    db = get_db()
+    try:
+        blocks = json.loads(request.form.get("blocks_json") or "[]")
+    except (ValueError, TypeError):
+        blocks = []
+    key, error = email_layouts.save_layout(db, request.form.get("name"), blocks)
+    if error:
+        if wants_json():
+            return jsonify({"error": error}), 400
+        flash(error, "error")
+    else:
+        db.commit()
+        if wants_json():
+            return jsonify({"ok": True, "key": key})
+        flash("Saved. It is in the Template list now.", "success")
+    return redirect(request.form.get("next") or url_for("admin.newsletters"))
+
+
+@bp.route("/newsletters/layouts/delete", methods=["POST"])
+@login_required
+def newsletter_layout_delete():
+    """Remove one of your own arrangements.
+
+    Only your own: a shipped layout lives in the code and would be back
+    on the next boot, so offering to delete one would be a button that
+    lies. Nothing else refers to a layout once a newsletter has been laid
+    out from it -- the blocks were copied, not linked -- so removing one
+    cannot affect anything already written.
+    """
+    db = get_db()
+    gone = email_layouts.delete_layout(db, request.form.get("key"))
+    db.commit()
+    if wants_json():
+        return jsonify({"ok": bool(gone)})
+    flash("Removed from the Template list." if gone
+          else "That one is built in, so it cannot be removed.",
+          "success" if gone else "error")
+    return redirect(request.form.get("next") or url_for("admin.newsletters"))
 
 
 @bp.route("/newsletters/issue/<int:newsletter_id>/delete", methods=["POST"])

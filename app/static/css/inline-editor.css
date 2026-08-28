@@ -921,25 +921,15 @@ a.cms-add-section-btn:hover { color: #2563eb; text-decoration: none; }
    modal is shared with plain admin pages that don't load inline-editor.css
    at all. */
 
-.cms-image-picker { max-width: 640px; }
-/*  The pictures scroll, not the dialog, so Cancel stays where it was put.
-    A library of 144 images is a normal size once a site has been through
-    a few templates — see _pickable_images. */
-.cms-image-picker-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-bottom: 16px;
-  max-height: 60vh; max-height: 60dvh; overflow-y: auto; overscroll-behavior: contain;
-}
-/*  Smaller tiles on a phone: four across at 140px each is wider than the
-    screen, which is what made the grid feel stuck as well as clipped. */
-@media (max-width: 560px) {
-  .cms-image-picker-grid { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
-}
-.cms-image-picker-grid button {
-  padding: 0; border: 3px solid transparent; border-radius: var(--cms-ui-radius-control); overflow: hidden; cursor: pointer;
-  background: none; aspect-ratio: 1; line-height: 0;
-}
-.cms-image-picker-grid button:hover { border-color: #4f7cff; }
-.cms-image-picker-grid img { width: 100%; height: 100%; object-fit: cover; }
+/*  The Media Library picker's own styles moved to cms-modal.css.
+    They were here, and this file is loaded only on the live page -- so
+    on an ADMIN screen the picker had no styles at all: measured, a
+    332px-wide dialog holding 79 tiles at 1216x2009 each, 64,805px of
+    grid. The comment directly above says the modal's styles were kept
+    out of this file because plain admin pages do not load it. The
+    picker's were left behind anyway, which is the drift extracting the
+    module was meant to end. They travel with cms_modal.html now, which
+    is what both shells include. */
 
 /*  The newsletter bar: subject, what to send, preview, send -- standing
     on the page it will post.

@@ -545,6 +545,23 @@ def _migrate(db):
     _add_column(db, "orders", "invoice_pdf", "TEXT")
     _add_column(db, "orders", "invoice_url", "TEXT")
 
+    #  A newsletter arrangement somebody wants again.
+    #
+    #  A layout is "a starting arrangement, not a kind" -- the shipped
+    #  ones are a dictionary in email_layouts, and a saved one is the
+    #  same thing with the blocks written down instead of typed out. So
+    #  it takes a table rather than a new concept: name it, keep its
+    #  blocks, offer it in the same dropdown.
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS email_layouts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            slug TEXT NOT NULL UNIQUE,
+            name TEXT NOT NULL,
+            blocks TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
     #  One row per thing a buyer may do: download a file, or book a
     #  session. `granted` versus `used` is what a download limit and a
     #  session balance both reduce to, which is why they share a table.
