@@ -461,6 +461,11 @@ def commerce_fulfilment():
         product_error=product_error,
         currencies=integrations.CURRENCIES,
         base_currency=integrations.base_currency(db),
+        #  Whether a picture can be MADE, and if not, why -- said in the
+        #  owner's terms rather than left as a button that does nothing.
+        image_gen_ready=ai_image.is_configured(db),
+        image_gen_reason=(None if ai_image.is_configured(db)
+                          else ai_image.unavailable_reason(db)),
         #  Read from Stripe, not from anything stored here: a price lives
         #  there and could have been changed there.
         currencies_in_use=integrations.currencies_in_use(db)[0],
@@ -487,6 +492,61 @@ def _money_to_cents(value):
         return max(0, int(round(float(value) * 100)))
     except ValueError:
         return 0
+
+
+#  A product photograph is square-ish on Stripe's payment page and in
+#  this site's own shop grid, so that is what is asked for.
+PRODUCT_IMAGE_SIZE = (800, 800)
+
+
+def _generated_product_image_url(prompt):
+    """(url, error_or_None). A picture made from a description.
+
+    The same path an uploaded one takes from here on -- same folder, same
+    `generated_images` record, same rule about what Stripe is handed --
+    so there is exactly one answer to "where do product pictures live".
+    """
+    prompt = (prompt or "").strip()
+    if not prompt:
+        return None, "Describe the picture you want."
+    db = get_db()
+    if not ai_image.is_configured(db):
+        return None, ai_image.unavailable_reason(db)
+    try:
+        image_bytes = ai_image.generate_image(
+            db,
+            prompt + " — a clean product photograph on a plain, uncluttered "
+                     "background, well lit, no text, no words, no watermark",
+            width=PRODUCT_IMAGE_SIZE[0], height=PRODUCT_IMAGE_SIZE[1],
+        )
+    except ai_image.ImageGenError as e:
+        return None, str(e)
+    unique_name = f"{uuid.uuid4().hex}.png"
+    os.makedirs(current_app.config["UPLOAD_FOLDER"], exist_ok=True)
+    with open(os.path.join(current_app.config["UPLOAD_FOLDER"], unique_name), "wb") as f:
+        f.write(image_bytes)
+    url = f"/static/uploads/{unique_name}"
+    db.execute("INSERT INTO generated_images (url, prompt) VALUES (?, ?)", (url, prompt))
+    #  Same rule as an upload: Stripe fetches from whatever URL it is
+    #  handed, so one that does not resolve from outside this network is
+    #  a broken picture on the payment page.
+    base = site.public_base(db)
+    return ((base + url) if base and site.is_public_host(base) else url), None
+
+
+def _picture_for_product():
+    """(url, error). Whichever way the owner chose to provide one.
+
+    Upload wins when both are given -- a file somebody actually attached
+    is a deliberate act, and a prompt left in the box from last time is
+    not. Neither is required; a product without a picture is fine.
+    """
+    file = request.files.get("image")
+    if file and file.filename:
+        return _product_image_url()
+    if (request.form.get("image_prompt") or "").strip():
+        return _generated_product_image_url(request.form.get("image_prompt"))
+    return None, None
 
 
 def _product_image_url():
@@ -581,7 +641,7 @@ def commerce_product_add():
     """Creates a product in Stripe from this site, so the owner never has
     to open the Stripe dashboard to put something on sale."""
     db = get_db()
-    image_url, image_error = _product_image_url()
+    image_url, image_error = _picture_for_product()
     if image_error:
         flash(image_error, "error")
         return redirect(url_for("admin.commerce_fulfilment"))
@@ -635,7 +695,8 @@ def commerce_product_save(product_id):
     "the price is now 15.00".
     """
     db = get_db()
-    image_url, image_error = _product_image_url()
+    #  Replacing a picture takes the same two routes as adding one.
+    image_url, image_error = _picture_for_product()
     if image_error:
         flash(image_error, "error")
         return redirect(url_for("admin.commerce_fulfilment"))

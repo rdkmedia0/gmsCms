@@ -526,6 +526,26 @@ def list_models(provider, url, api_key):
     raise ProviderError("Unknown provider.")
 
 
+def _nothing_came_back(db):
+    """What to say when the model said nothing at all.
+
+    Names the likely cause rather than apologising, because the owner can
+    act on the cause. A small self-hosted model asked something it cannot
+    map to a tool very often returns an empty completion instead of
+    saying it does not know -- so the advice is different depending on
+    what is running, and saying "try again" to somebody on a 3B model is
+    useless.
+    """
+    settings = get_ai_settings(db)
+    if settings.get("provider") == "ollama":
+        return ("I didn't have an answer for that one. Smaller self-hosted models often "
+                "go quiet rather than say they are unsure — try asking again in "
+                "plainer words, or one step at a time. A larger model handles "
+                "instructions like this more reliably.")
+    return ("I didn't have an answer for that one — try asking again with a bit "
+            "more detail.")
+
+
 def _execute_read_tool(db, name, args):
     if name == "list_pages":
         pages = db.execute("SELECT id, title, slug, is_home FROM pages ORDER BY nav_order").fetchall()
@@ -601,7 +621,19 @@ def run_turn(db, message_history, image=None):
         tool_calls = result["tool_calls"]
 
         if not tool_calls:
-            return {"reply": result.get("content") or ""}
+            said = (result.get("content") or "").strip()
+            #  A model that returns nothing at all -- no words and no tool
+            #  call -- used to be relayed as an empty reply, so the panel
+            #  showed nothing whatsoever: you asked, and the screen did
+            #  not change. Read as "the assistant is ignoring me", which
+            #  is the worst available reading and not what happened.
+            #
+            #  It is much commoner on a small self-hosted model than on a
+            #  hosted one: asked something it cannot map to a tool, it
+            #  often produces an empty completion rather than saying so.
+            #  The app cannot make it answer, but it can stop pretending
+            #  the silence was an answer.
+            return {"reply": said or _nothing_came_back(db)}
 
         messages.append({"role": "assistant", "content": result.get("content"), "tool_calls": tool_calls})
         halted_proposal = None
@@ -623,7 +655,12 @@ def run_turn(db, message_history, image=None):
                               "content": json.dumps(tool_result)})
 
         if halted_proposal:
-            return {"reply": result.get("content"), "proposal": halted_proposal}
+            #  A proposal with no words beside it is a change offered
+            #  with no account of itself. Rare, and the same silence as
+            #  above: better a plain sentence than a bare Apply button.
+            return {"reply": (result.get("content") or "").strip()
+                    or "Here is what I would change. Have a look before applying it.",
+                    "proposal": halted_proposal}
 
     return {"reply": "I wasn't able to finish looking into that — try asking again with more detail."}
 

@@ -332,6 +332,37 @@ part of the repo/Docker image, so a package's `google_fonts_url` (always
 one of the local paths above) resolves correctly regardless of which
 install exports or imports it.
 
+## What the AI cannot do, said before somebody meets it
+
+Two limits belong to the PROVIDER, not to this app -- and an owner who
+is not told cannot tell those apart. "The Generate button does nothing"
+reads as a bug every time.
+
+- **Ollama has no image-generation API at all**, whatever model is
+  loaded. So `ai_image.IMAGE_GEN_PROVIDERS` excludes it, the Generate
+  controls are not offered while it is the provider, and
+  `ai_image.unavailable_reason()` says WHY in the owner's terms with the
+  way round it (put Open WebUI in front of it: that passes image
+  requests to a backend that can, and still uses Ollama for chat). Never
+  "not configured" -- that is true of a missing key and of a provider
+  that structurally cannot, and those need different actions.
+- **A small self-hosted model asked something it cannot map to a tool
+  very often returns NOTHING** -- no words and no tool call. That used
+  to be relayed as an empty reply, so the panel showed nothing at all:
+  you asked, and the screen did not change, which reads as the assistant
+  ignoring you. `assistant._nothing_came_back()` answers in words, and
+  says something DIFFERENT depending on the provider, because "try a
+  larger model" is useless advice to somebody on Gemini.
+
+The rule behind both: **an absence is not an explanation.** A control
+that is missing, or a reply that is empty, has to come with the reason,
+and the reason has to name something the owner can act on.
+`tools/ai_limits_check.py`, and it isolates itself from `OPEN_WEBUI_*` /
+`OLLAMA_*` / `GEMINI_*` in the environment -- `get_ai_settings` falls
+back to those for installs configured before these screens existed, so a
+machine that has them set would otherwise have the checker testing the
+deployment rather than the code.
+
 ## AI prompts live in template files, not Python strings
 
 A prompt sent to an AI provider (a system prompt, an instruction block) is
@@ -1255,6 +1286,9 @@ part that constrains the CODE.
   wrote in survives a template change),
   `abuse_check.py` (that both public forms that send email are bounded,
   and that the limiter is actually called),
+  `ai_limits_check.py` (that a provider which cannot make pictures says
+  so with the way round it, and that a model returning nothing is
+  answered in words),
   `subscription_check.py` (that a renewal delivers every month, that the
   first payment delivers once and not twice, and that a failed one is
   visible -- driven through the real webhook route, because "the file

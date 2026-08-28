@@ -59,7 +59,24 @@
         <button type="button" class="btn btn-small cms-load-models-btn" data-provider="ollama" data-url-input="ollama_url" data-targets="ollama_model">🔄 Load Models</button>
       </div>
       <p class="hint">Models tagged <strong>(vision)</strong> can take image input (Ollama reports this itself, via its model capabilities — not every model that can will be tagged, only the ones Ollama confirms).</p>
-      <p class="hint">This chooses the chat/vision model only — the ✨ Generate image buttons (Image/Banner/Card) never use Ollama, even as the chat provider (it has no image-generation API of its own). If your Ollama setup is itself backed by ComfyUI or similar for image generation, that capability is only reachable through this app via Open WebUI's own image-generation API — set Open WebUI as the provider instead if you want the Generate buttons to use it.</p>
+      {#  Two limits worth knowing BEFORE choosing this, rather than
+          meeting them as things that seem broken. Both are Ollama being
+          what it is, not this app failing -- but an owner who is not
+          told cannot tell those apart, and "the Generate button does
+          nothing" reads as a bug every time. #}
+      <p class="hint"><strong>Ollama cannot make pictures.</strong> It has no
+        image-generation API at all, whatever model is loaded, so the &#10024; Generate
+        buttons (Image, Banner, Card, a product photograph) are not offered while it is
+        the provider. If your setup is backed by ComfyUI or similar, that is reachable
+        through <strong>Open WebUI</strong>: put it in front of Ollama and choose it here
+        instead &mdash; it passes image requests on to the backend and still uses your
+        Ollama for chat.</p>
+      <p class="hint"><strong>A small model follows instructions less reliably.</strong>
+        Asked to do something it cannot map to one of the assistant&rsquo;s tools, a
+        self-hosted model will often return nothing at all rather than say it is unsure.
+        This site says so when that happens now, instead of showing you an empty answer
+        &mdash; but the cure is a larger model, or asking one step at a time in plainer
+        words.</p>
     </fieldset>
 
     <fieldset class="ai-provider-fields" data-provider="gemini">

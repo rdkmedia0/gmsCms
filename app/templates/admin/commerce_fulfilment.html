@@ -105,7 +105,21 @@
 
     <label for="new_image">Picture</label>
     <input type="file" id="new_image" name="image" accept="image/*"
-           title="Shown on your shop page. Optional.">
+           title="Shown on your shop page and on the payment page. Optional.">
+    {#  Offered only when an image provider is actually configured. A
+        Generate button that cannot generate is a control that lies --
+        and the commonest case is somebody running Ollama, which answers
+        chat perfectly well and has no image API at all. #}
+    {% if image_gen_ready %}
+    <label for="new_image_prompt">&hellip;or describe one and let the AI make it</label>
+    <input type="text" id="new_image_prompt" name="image_prompt" maxlength="300"
+           placeholder="a hand-thrown stoneware mug, matte grey"
+           title="Describe the picture you want. Leave it blank if you are uploading one — an uploaded file always wins.">
+    <p class="hint">Say what the thing IS, plainly. It is made as a clean product shot on a
+      plain background, so you do not need to ask for that.</p>
+    {% elif image_gen_reason %}
+    <p class="hint">{{ image_gen_reason }}</p>
+    {% endif %}
     {% if not public_url %}
     <p class="hint">Your picture will show on this site. Stripe's own payment page can only show it once this site has a public web address &mdash; set one under Email settings and it will be sent along from then on.</p>
     {% endif %}
@@ -168,6 +182,13 @@
       </select>
     </div>
     <p class="hint">Changing the price makes a new one and retires the old &mdash; Stripe never lets a price that has been used change, so that an old receipt still says what it said. Anyone already subscribed keeps the price they signed up at.</p>
+
+    {% if image_gen_ready %}
+    <label for="prompt_{{ loop.index }}">&hellip;or describe a new one</label>
+    <input type="text" id="prompt_{{ loop.index }}" name="image_prompt" maxlength="300"
+           placeholder="a hand-thrown stoneware mug, matte grey"
+           title="Describe a replacement picture. Leave it blank to keep the one it has — and if you also choose a file, the file wins.">
+    {% endif %}
 
     <label for="img_{{ loop.index }}">Replace the picture</label>
     <input type="file" id="img_{{ loop.index }}" name="image" accept="image/*" title="Leave empty to keep the current one">

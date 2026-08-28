@@ -30,6 +30,39 @@ _ASPECT_RATIOS = [
 IMAGE_GEN_PROVIDERS = ("openwebui", "gemini")
 
 
+def unavailable_reason(db):
+    """Why this site cannot make a picture, in words for the owner.
+
+    Never just "not configured". The commonest case by far is somebody
+    running Ollama, which answers chat perfectly well and has NO
+    image-generation API at all -- so the assistant works, the Generate
+    button does not, and nothing on the screen connects the two. Told
+    plainly, with what to do about it.
+    """
+    settings = assistant.get_ai_settings(db)
+    provider = settings["provider"]
+    if not provider:
+        return ("No AI is set up yet, so there is nothing to make a picture with. "
+                "Set one up under Settings → AI.")
+    if provider == "ollama":
+        return ("Ollama can answer questions but cannot make pictures — it has no "
+                "image API at all, whatever model is loaded. To generate pictures, put "
+                "Open WebUI in front of it and point this site at that instead: Open "
+                "WebUI passes image requests on to a backend that can (ComfyUI, "
+                "AUTOMATIC1111), and still uses your Ollama for chat.")
+    if provider == "gemini" and not settings["gemini_api_key"]:
+        return "Gemini is chosen but has no API key yet."
+    if provider == "openwebui" and not (settings["openwebui_url"]
+                                        and settings["openwebui_api_key"]):
+        return "Open WebUI is chosen but its address or key is missing."
+    if provider not in IMAGE_GEN_PROVIDERS:
+        return "%s cannot make pictures." % provider
+    #  Everything above says why NOT. Reaching here means the provider is
+    #  configured and can, so the honest answer is that nothing is wrong
+    #  -- a caller asking anyway should not be handed a vague fault.
+    return ""
+
+
 def is_configured(db):
     settings = assistant.get_ai_settings(db)
     if settings["provider"] == "gemini":
