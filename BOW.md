@@ -6677,3 +6677,76 @@ copy. Container-side paths go inside `sh -c '...'`. And a directory
 named `templates;C` had been sitting in `app/data/` for days, empty,
 copied into every image build: the same mangling, leaving debris instead
 of silence.
+
+## The pill under the menu (2026-08-28)
+
+The owner's second report of the same fault, and the second report was
+right both times.
+
+A basket set to float is lifted out of the page and pinned to a corner.
+The section it came from then holds nothing, and an empty section that
+still paints is a placeholder sitting in somebody's header. Fixed once,
+in the wrong scope; reported again.
+
+    .cms-editing .cms-section:has(.cms-basket-align-float-top) > .block-html
+
+That rule is correct and it is why the placeholder went away **while
+editing** -- which is where I was standing when I found it. A visitor got
+none of it. Measured on the live page, a visitor's header still carried:
+
+    .cms-section   display=contents   0x0
+    .block-html    display=block      30x18   bg=#fcfbf7
+                                              border=1px  radius=999px
+
+Two separate mistakes, stacked.
+
+**The box inside the box.** `display: contents` was put on the section
+and the section alone. `.block-html` is a different element and kept
+being a box -- it pads `8px 14px` around a link that is `position:
+fixed` and therefore contributes no size at all, so the padding is the
+whole thing. A 30x18 pill wearing the site's card background, its border
+and its 999px radius. Exactly what the screenshot showed.
+
+**The scope.** The rule I needed already existed, four rules down, under
+`.cms-editing`. I had written it. Scoping a fix to the surface the bug
+was reported on is not a fix, and the visitor is most of the people who
+will ever load the page. It is unconditional now and the editing-only
+copy is gone -- two rules saying the same thing is the drift this project
+keeps warning about, and here one of them was silently narrower.
+
+Worth naming the trap under both, because it has now been hit three
+times on this one element: **`display: none` on a box that contains a
+`position: fixed` child hides the child too.** Fixed positioning escapes
+the flow, not the display tree. Written as `none`, the placeholder goes
+and so does the basket -- the fix removes the feature. `contents` removes
+the box and keeps the child.
+
+### A C1 control character, and a sweep that could not see it
+
+While reading that rule I found the admin's own explanatory text was
+`"This basket floats \x814 look for it in the corner"`. That is U+0081
+followed by `4` -- an em dash that has been through a cp1252 round-trip.
+It shipped, invisibly, into a message shown to the person editing.
+
+`email_layout_check.py` has swept `app/` for control characters since one
+cost a day. It tested `ord(c) < 32`, which is C0 only. U+0081 is in the
+C1 range, 127-159 -- which is precisely the range a mangled encoding
+produces, so the sweep was blind to the most likely way one arrives. It
+covers both now and names the file and the codepoint.
+
+### A net under it, and proof the net works
+
+`tools/basket_check.py`. It puts a real basket on a real header, sets it
+floating, measures in a browser, and takes it away again. Only a browser
+can see this: the markup is identical either way and the server is
+perfectly happy in both.
+
+Both guards were checked by breaking them on purpose. Restoring the
+editing-only rule: `it leaves no box behind it at all FAILED  block
+30x18` -- the pill, by name. Writing `display: none` instead of
+`contents`: `the basket is still on screen FAILED`, in both views.
+
+One check was cut for failing to fail. "Nothing of it paints under the
+menu" stayed green under both faults, because "no box has any size"
+already forbids anything overlapping anything. A check that cannot go
+red is worse than no check, since it reads as cover.

@@ -2499,6 +2499,25 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
     the child. */
 .cms-section:has(.cms-basket-align-float-top),
 .cms-section:has(.cms-basket-align-float-bottom) { display: contents; }
+/*  ...and the block box INSIDE it, which is a separate box and survived
+    the section being taken out of the flow. Measured on a live page: a
+    30x18 pill with the site's card background, a 1px border and a 999px
+    radius, sitting under the menu with nothing in it -- because
+    `.block-html:has(.cms-basket-link)` pads 8px 14px around a link that
+    is `position: fixed` and therefore contributes no size.
+
+    This exact rule already existed four rules down, written for
+    `.cms-editing` alone. The bug is the shape of that mistake: the
+    placeholder was found while editing, fixed where it was found, and
+    the visitor -- who is most of the people who will ever see this page
+    -- kept the empty pill. A basket that floats floats for everybody,
+    so the rule is unconditional and the editing-only copy is gone.
+
+    `contents` and not `none`, for the third time on this element: the
+    fixed link is INSIDE this box, and a fixed child of a display:none
+    parent is not rendered at all. */
+.block-html:has(.cms-basket-align-float-top),
+.block-html:has(.cms-basket-align-float-bottom) { display: contents; }
 /*  While editing, its CONTROLS have to stay reachable -- but only its
     controls.
         This said "the frame it lives in has to stay reachable, you
@@ -2522,24 +2541,12 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
 .cms-editing .cms-section:has(.cms-basket-align-float-bottom) .cms-resize-handle {
   display: none;
 }
-/*  ...and the leftover box around the link, which draws nothing and took
-    18px. `display: contents`, NOT `display: none` -- this box CONTAINS
-    the fixed link, and a fixed child of a display:none parent is not
-    rendered either. Written as `none` first, which made the floating
-    basket vanish while editing: the identical mistake this file already
-    carries a note about four rules above, made again by the same hand
-    on the same element. Contents removes the box and keeps the child,
-    which is the whole distinction. */
-.cms-editing .cms-section:has(.cms-basket-align-float-top) > .block-html,
-.cms-editing .cms-section:has(.cms-basket-align-float-bottom) > .block-html {
-  display: contents;
-}
 /*  Said, because a bare row of controls in the middle of a page with
     nothing visibly attached to them is the same puzzle as the empty box
     was. Chrome, so it wears the editor's own clothes. */
 .cms-editing .cms-section:has(.cms-basket-align-float-top) .cms-tool-panel::before,
 .cms-editing .cms-section:has(.cms-basket-align-float-bottom) .cms-tool-panel::before {
-  content: "This basket floats 4 look for it in the corner of the screen, not here.";
+  content: "This basket floats — look for it in the corner of the screen, not here.";
   font-family: var(--cms-ui-font); font-size: 12px; color: #6b7480;
   margin-right: 10px; white-space: nowrap;
 }

@@ -338,8 +338,16 @@ for _root, _dirs, _files in _os.walk(_os.path.join(_here, "app")):
             _s = open(_p, encoding="utf-8").read()
         except Exception:
             continue
-        if any(ord(c) < 32 and c not in WHITESPACE for c in _s):
-            _bad.append(_os.path.relpath(_p, _here))
+        #  C0 (below 32) AND C1 (127-159). The first sweep only looked
+        #  below 32 and missed a real one: an em dash in site-base.css
+        #  had become U+0081 + "4", almost certainly a cp1252 round-trip,
+        #  and it shipped into a message shown to the admin. A C1 control
+        #  is every bit as invisible as a C0 one and rather more likely,
+        #  because it is what a mangled encoding actually produces.
+        _hit = next((c for c in _s
+                     if (ord(c) < 32 or 127 <= ord(c) <= 159) and c not in WHITESPACE), None)
+        if _hit is not None:
+            _bad.append("%s (U+%04X)" % (_os.path.relpath(_p, _here), ord(_hit)))
         #  In CODE only: a template may legitimately want one between two
         #  words that must not be split across a line.
         if _f.endswith((".py", ".css", ".js")) and NBSP in _s:

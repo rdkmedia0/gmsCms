@@ -249,6 +249,30 @@ reading, and both cases where a WRONG declaration produces silence:
   a section's own override. `tools/shape_check.py` measures all eight
   shapes in a real browser, and proves the old values really did fail.
 
+Two more, about a box that has been emptied rather than styled. Both
+were found on the same element, the floating basket, and both were made
+twice:
+
+  * **`display: none` on a box that CONTAINS a `position: fixed` child
+    hides the child too.** Fixed positioning escapes the flow, not the
+    display tree. So emptying a section that a floating thing came from
+    takes the floating thing with it, and what was meant to remove a
+    placeholder removes the feature. `display: contents` removes the box
+    and keeps the child, which is the whole distinction.
+  * **Emptying the section is not emptying the block inside it.** They
+    are two boxes. `.cms-section` going to `contents` left
+    `.block-html` -- which pads 8px 14px around a link that now
+    contributes no size -- as a 30x18 pill wearing the site's card
+    background, border and 999px radius, under the menu, containing
+    nothing.
+
+    And the rule that fixed the second one was written under
+    `.cms-editing`, because that is where it was noticed. **A fix scoped
+    to the surface it was found on is not a fix**: the visitor is most
+    of the people who will ever see the page, and they kept the pill for
+    a week. Ask which surfaces render the thing, not which one the
+    report came from.
+
 A related trap, found the same day: **you cannot select on a CSS
 variable's value.** `[data-corner-style]` is empty unless an ADMIN has
 overridden the shape -- a template that simply IS curved sets
