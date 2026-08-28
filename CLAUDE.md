@@ -955,6 +955,19 @@ Each of these follows the structure above — thin routes, logic in
   structure, every style inline. What the wrapper owns does not move and
   must not become editable: the ground, the light card, the sender line
   and the unsubscribe link.
+- **The shape is chosen IN the editor, and nowhere else.** There was a
+  picker on the Newsletters screen -- four specimens to choose between
+  before writing a word -- and it is gone. The Template dropdown already
+  makes that choice and makes it better: at full size, with the blocks
+  in front of you, changing as you choose. A choice offered twice is one
+  somebody makes twice, and the earlier time is the one made with less
+  information. What that dropdown must get right: it asks before
+  replacing work, and **asks only when there IS work** -- "does any
+  block contain words" is the obvious test and it is wrong, because a
+  template lays out "A heading" and "What you want to say", so a new
+  newsletter answered yes and every change asked to replace nothing.
+  The question is whether the blocks still MATCH what that layout laid
+  out. `tools/newsletter_layout_check.py`.
 - **A newsletter LAYOUT is a starting arrangement, not a kind** -- the
   same shape `PAGE_LAYOUTS` takes for pages, and here for the same
   reason. Layouts were a fixed set of named slots, so a letter could

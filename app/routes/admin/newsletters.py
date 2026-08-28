@@ -89,10 +89,6 @@ def newsletters():
         composed_sends={row["id"]: newsletter.last_send(db, "newsletter", row["id"])
                         for row in newsletter.list_composed(db)},
         layout_choices=email_layouts.choices(),
-        #  Each shape shown filled in, not merely named: what a layout
-        #  looks like is the whole basis on which one is chosen.
-        layout_samples={key: email_layouts.sample(key, _look(db))
-                        for key, _n, _b in email_layouts.choices()},
         layout_names={key: email_layouts.LAYOUTS[key]["name"] for key in email_layouts.LAYOUTS},
         sends={p["id"]: newsletter.last_send(db, "page", p["id"]) for p in pages},
         #  Every post, newest first, grouped by the blog it belongs to --

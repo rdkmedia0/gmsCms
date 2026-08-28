@@ -838,40 +838,6 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
 /*  Choosing a shape for a newsletter. Cards rather than a dropdown: the
     difference between them is what they look like, and a name in a list
     does not show that. */
-.cms-layout-choices { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
-.cms-layout-choice {
-  display: flex; flex-direction: column; gap: 6px; text-align: left;
-  padding: 14px 16px; cursor: pointer;
-  border: 2px solid var(--border); border-radius: var(--cms-ui-radius-surface);
-  background: var(--card-bg); color: var(--cms-ui-text); font: inherit;
-}
-.cms-layout-choice:hover { border-color: var(--cms-ui-accent); }
-.cms-layout-choice strong { font-size: 1rem; }
-.cms-layout-choice span { font-size: .86rem; opacity: .8; line-height: 1.45; }
-
-/*  A template's own picture in the Media Library: shown, and marked as
-    not yours to delete. A lock rather than a missing button, so the
-    reason is visible instead of the control merely being absent. */
-.media-library-owned {
-  position: absolute; top: 4px; right: 4px;
-  width: 22px; height: 22px; display: grid; place-items: center;
-  font-size: 12px; border-radius: 999px;
-  background: rgba(255,255,255,.9); cursor: help;
-}
-
-/*  A layout shown rather than named. The specimen is the real email body
-    rendered at full width and scaled down, so what is on the card is
-    what will be sent -- not a drawing that can drift from it. */
-.cms-layout-preview {
-  display: block; height: 150px; overflow: hidden;
-  border: 1px solid var(--border); border-radius: var(--cms-ui-radius-control);
-  background: #fff; margin-bottom: 4px; pointer-events: none;
-}
-.cms-layout-preview-inner {
-  display: block; width: 600px; transform: scale(.36); transform-origin: 0 0;
-  padding: 14px 16px;
-}
-.cms-layout-choice:hover .cms-layout-preview { border-color: var(--cms-ui-accent); }
 
 /*  The newsletter canvas: the email, written into directly.
     ------------------------------------------------------------------

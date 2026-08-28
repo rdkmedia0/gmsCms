@@ -10,23 +10,25 @@
 {#  A newsletter of its own comes first, because it is the one built for
     the job. Sending a page or a post still works and is below. #}
 <h1>Newsletters</h1>
+{#  One button, not a shape picker.
+
+    There WAS a picker here: four specimens to choose between before
+    writing a word. It is gone, and the reason is that the choice does
+    not belong before the work -- the editor's own Template dropdown
+    already makes it, and makes it BETTER, because changing it there lays
+    the blocks out in front of you at full size instead of asking you to
+    pick from four thumbnails and hope.
+
+    A choice offered twice is a choice somebody has to make twice, and
+    the earlier of the two is the one made with less information. #}
 <div class="card">
   <h2>Write a newsletter</h2>
-  <p class="hint">Pick a shape and fill it in. These are built for email &mdash; they use tables and inline styling, which is what an inbox can actually draw, and they take your site&rsquo;s colours and fonts as closely as email allows.</p>
-  <form method="post" action="{{ url_for('admin.newsletter_issue_new') }}" class="cms-layout-choices">
-    {% for key, name, blurb in layout_choices %}
-    <button type="submit" name="layout" value="{{ key }}" class="cms-layout-choice"
-            title="Start a newsletter using the &quot;{{ name }}&quot; shape">
-      {#  The layout itself, filled in and shrunk -- not a drawing of it.
-          A picker that only names things asks somebody to imagine the
-          answer. #}
-      <span class="cms-layout-preview" aria-hidden="true">
-        <span class="cms-layout-preview-inner">{{ layout_samples[key] | safe }}</span>
-      </span>
-      <strong>{{ name }}</strong>
-      <span>{{ blurb }}</span>
-    </button>
-    {% endfor %}
+  <p class="hint">Built for email &mdash; tables and inline styling, which is what an inbox
+    can actually draw, in your site&rsquo;s own colours and fonts as closely as email allows.
+    Pick the shape from the Template dropdown once it opens; it lays out as you choose.</p>
+  <form method="post" action="{{ url_for('admin.newsletter_issue_new') }}">
+    <button type="submit" class="btn btn-primary"
+            title="Start a new newsletter and open it. You choose its shape from the Template dropdown inside, and it lays out as you choose.">Write a newsletter</button>
   </form>
 </div>
 

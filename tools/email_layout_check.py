@@ -34,6 +34,7 @@ def _source(rel):
 ISSUE_EDIT = _source("app/templates/admin/newsletter_issue_edit.html")
 EDITOR_JS = _source("app/static/js/admin/newsletter-editor.js")
 BLOCKS_TPL = _source("app/templates/emails/blocks.html")
+NEWSLETTERS_SCREEN = _source("app/templates/admin/newsletters.html")
 
 
 def check(what, ok, detail=""):
@@ -124,30 +125,31 @@ with app.test_request_context("/"):
     check("a single newline stays a line break", "<br>" in typed, typed[:90])
 
     print()
-    print("The picker shows the SHAPES apart")
+    print("Choosing a shape happens in the editor, not before it")
     print("-" * 68)
-    #  Found by looking at a screenshot, not by any check: a picture slot
-    #  with no picture and a button with no address are both correctly
-    #  left OUT of a real email, so "One story with a picture" rendered
-    #  as a heading and a paragraph -- pixel-identical to "A letter". Two
-    #  different shapes, indistinguishable, on the screen whose entire
-    #  job is telling them apart.
-    shapes = {}
-    for key, name, _blurb in email_layouts.choices():
-        spec = email_layouts.sample(key, look)
-        shapes[key] = (spec.count("<tr"), spec.count("<a "), spec.count("height=\"90\""))
-    check("every layout's specimen is a different shape",
-          len(set(shapes.values())) == len(shapes), str(shapes))
-    check("the one with a picture shows a picture slot",
-          shapes["story"][2] >= 1, str(shapes["story"]))
-    check("...and its button", shapes["story"][1] >= 1, str(shapes["story"]))
-    check("the letter shows neither, because it has neither",
-          shapes["letter"][1] == 0 and shapes["letter"][2] == 0, str(shapes["letter"]))
+    #  There WAS a picker on the Newsletters screen: four specimens to
+    #  choose between before writing a word. It is gone. The editor's
+    #  Template dropdown already makes that choice and makes it better,
+    #  at full size with the blocks in front of you -- and a choice
+    #  offered twice is one somebody makes twice, the earlier time with
+    #  less information.
+    #
+    #  Checked because the dead-code rule applies to code written today:
+    #  `sample()` and the `specimen` render mode existed only for that
+    #  picker, and this repository carried a removed importer's leavings
+    #  for months.
+    check("the picker is gone from the Newsletters screen",
+          "cms-layout-choice" not in NEWSLETTERS_SCREEN)
+    check("...and so is the code that fed it",
+          not hasattr(email_layouts, "sample"))
+    check("...and the render mode written for it",
+          "specimen" not in open(
+              "/app/app/templates/emails/blocks.html", encoding="utf-8").read())
+    check("one button starts a newsletter instead",
+          "Write a newsletter</button>" in NEWSLETTERS_SCREEN)
+    check("the shape is chosen in the editor",
+          "layout-select" in ISSUE_EDIT and "layoutStarts" in EDITOR_JS)
 
-    #  ...and none of that reaches an inbox.
-    sent = email_layouts.render(email_layouts.starting_blocks("story"), look)
-    check("a SENT story has no placeholder plate", 'height="90"' not in sent)
-    check("...and no button, because it has no address yet", "<a " not in sent, sent[:80])
 
     print()
     print("The vocabulary a body may use, and only that")

@@ -431,12 +431,37 @@
     var layout = toolbar.querySelector("#layout-select");
     if (layout) {
       var chosen = layout.value;
+
+      //  Has anybody actually written in this, or is it still exactly
+      //  what the template laid out?
+      //
+      //  Asking "does any block contain words" is the obvious test and
+      //  it is wrong: a template lays out "A heading" and "What you want
+      //  to say", so a brand-new newsletter answered YES and changing
+      //  the shape asked to replace work that did not exist. Every
+      //  time. Which made the dropdown -- now the ONLY way to choose a
+      //  shape -- feel like it was guarding something, on a newsletter
+      //  with nothing in it.
+      //
+      //  The real question is whether it still MATCHES what it was laid
+      //  out as. Compared field by field against this layout's own
+      //  starting blocks, so the placeholder words a template ships
+      //  count as untouched and one typed character counts as written.
+      function hasBeenWrittenIn() {
+        var was = layoutStarts[chosen] || [];
+        if (blocks.length !== was.length) return true;
+        return blocks.some(function (b, i) {
+          var start = was[i] || {};
+          if (b.type !== start.type) return true;
+          return ["text", "label", "src", "url"].some(function (field) {
+            return (b[field] || "").trim() !== (start[field] || "").trim();
+          });
+        });
+      }
       layout.addEventListener("change", function () {
         var next = layout.value;
         var starts = layoutStarts[next] || [];
-        var written = blocks.some(function (b) {
-          return (b.text || "").trim() || (b.label || "").trim() || (b.src || "").trim();
-        });
+        var written = hasBeenWrittenIn();
         var go = function (ok) {
           if (!ok) { layout.value = chosen; return; }
           chosen = next;
