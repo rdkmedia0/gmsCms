@@ -97,6 +97,21 @@
       <span class="hint">&middot; {{ layout_names.get(row.layout, row.layout) }}
         {%- if composed_sends[row.id] %} &middot; sent {{ composed_sends[row.id].sent_at[:10] }}
           to {{ composed_sends[row.id].recipients }}{% else %} &middot; not sent{% endif %}</span>
+      {#  Deleting was only inside the newsletter, so tidying a list of
+          drafts meant opening each one, deleting, coming back, and
+          finding your place again. It is on the row now, where the
+          thing you want rid of is.
+
+          What was already SENT stays on the record either way -- that
+          is a different table, and deliberately has no foreign key, so
+          "you emailed forty people" outlives the draft it came from. #}
+      <form method="post" class="cms-delete-form is-inline"
+            action="{{ url_for('admin.newsletter_issue_delete', newsletter_id=row.id) }}"
+            data-confirm="Delete &quot;{{ row.subject or 'Untitled' }}&quot;?{% if composed_sends[row.id] %} It has already been sent to {{ composed_sends[row.id].recipients }} {{ 'person' if composed_sends[row.id].recipients == 1 else 'people' }} — that stays on the record.{% endif %}">
+        <button type="submit" class="icon-btn icon-btn-danger"
+                data-confirm-danger="1"
+                title="Delete this newsletter. Anything already sent stays on the record.">&times;</button>
+      </form>
     </li>
     {% endfor %}
   </ul>

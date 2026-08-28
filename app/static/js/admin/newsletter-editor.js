@@ -311,7 +311,81 @@
       cell.classList.toggle("cms-block-selected",
         selected !== null && parseInt(cell.dataset.block, 10) === selected);
     });
+    showBlockHandle();
     showTools();
+  }
+
+  //  Move and remove, ON the block, once it is selected.
+  //
+  //  They were only in the ribbon: a bare "×" at the far end of a fourth
+  //  group, dimmed until something is selected. Adding is a labelled
+  //  button that is always there; removing was invisible until you knew
+  //  to wake it up by clicking a block first -- which is why it was
+  //  reported as "I can add items but not remove them". It was there and
+  //  it worked. Nobody could find it, which is the same thing.
+  //
+  //  On the block is where they belong anyway: you act on the thing
+  //  where the thing is, which is how a section's own toolbar already
+  //  works everywhere else in this editor.
+  var handle = null;
+
+  function blockHandle() {
+    if (handle) return handle;
+    handle = document.createElement("div");
+    handle.className = "cms-block-handle";
+    handle.innerHTML =
+      '<button type="button" data-handle="-1" title="Move this block up one place.">↑</button>'
+      + '<button type="button" data-handle="1" title="Move this block down one place.">↓</button>'
+      + '<button type="button" data-handle="x" class="cms-block-handle-remove"'
+      + ' title="Remove this block from the newsletter. Nothing else moves.">×</button>';
+    handle.addEventListener("click", function (e) {
+      var btn = e.target.closest("[data-handle]");
+      if (!btn || selected === null) return;
+      e.preventDefault();
+      collect();
+      if (btn.dataset.handle === "x") {
+        blocks.splice(selected, 1);
+        reload("");
+        return;
+      }
+      var to = selected + parseInt(btn.dataset.handle, 10);
+      if (to < 0 || to >= blocks.length) return;
+      blocks.splice(to, 0, blocks.splice(selected, 1)[0]);
+      reload(to);
+    });
+    return handle;
+  }
+
+  function showBlockHandle() {
+    var h = blockHandle();
+    if (selected === null) {
+      if (h.parentNode) h.parentNode.removeChild(h);
+      return;
+    }
+    var cell = canvas.querySelector("[data-block='" + selected + "']");
+    if (!cell) return;
+    //  Parented to the CANVAS and positioned over the cell -- never put
+    //  inside it. Two reasons, and the second was found by watching the
+    //  events rather than reasoning about them:
+    //
+    //  Nothing that is not the email may live in that table, or the
+    //  canvas stops being the thing that gets sent.
+    //
+    //  And appending into the cell moved the DOM mid-gesture. The real
+    //  sequence was `mousedown:H2, focusin:H2, mouseup:P, click:TBODY`:
+    //  focusin selected the block, the handle went in, the block
+    //  shifted under the pointer, mouseup landed on a different element
+    //  and the click resolved to the shared ancestor -- which carries no
+    //  data-block, so it deselected. The handle was destroying the
+    //  selection that created it, and NOTHING could be selected by
+    //  clicking at all.
+    if (h.parentNode !== canvas) canvas.appendChild(h);
+    var box = cell.getBoundingClientRect();
+    var frame = canvas.getBoundingClientRect();
+    h.style.top = (box.top - frame.top - 12) + "px";
+    h.style.left = (box.right - frame.left - 78) + "px";
+    h.querySelector("[data-handle='-1']").disabled = selected === 0;
+    h.querySelector("[data-handle='1']").disabled = selected === blocks.length - 1;
   }
 
   function showTools() {
@@ -375,7 +449,24 @@
     if (control) control.value = value;
   }
 
-  canvas.addEventListener("click", function (e) {
+  //  mousedown, not click.
+  //
+  //  A `click` fires on the common ancestor of where the button went
+  //  DOWN and where it came UP, and those differ here: pressing on a
+  //  block focuses its contenteditable, the browser scrolls that into
+  //  view, and by mouseup the pointer is over something else. Watched
+  //  rather than reasoned about, the sequence was `mousedown:H2,
+  //  focusin:H2, mouseup:P, click:TBODY` -- and TBODY carries no
+  //  data-block, so the click DESELECTED whatever the focus had just
+  //  selected. Nothing could be selected by clicking at all, which is
+  //  why the block controls were reported as missing: they are only
+  //  offered for a selected block, and there was never one.
+  //
+  //  mousedown lands on what was actually pressed, before any of that.
+  canvas.addEventListener("mousedown", function (e) {
+    //  The handle lives in the canvas but is not part of the email;
+    //  pressing it must not clear the selection it acts on.
+    if (e.target.closest(".cms-block-handle")) return;
     var cell = cellOf(e.target);
     select(cell ? parseInt(cell.dataset.block, 10) : -1);
   });
@@ -508,28 +599,6 @@
         reload();
       });
     });
-
-    blockTools.querySelectorAll("[data-block-move]").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        if (selected === null) return;
-        collect();
-        var to = selected + parseInt(btn.dataset.blockMove, 10);
-        if (to < 0 || to >= blocks.length) return;
-        var moving = blocks.splice(selected, 1)[0];
-        blocks.splice(to, 0, moving);
-        reload(to);
-      });
-    });
-
-    var remove = blockTools.querySelector("[data-block-remove]");
-    if (remove) {
-      remove.addEventListener("click", function () {
-        if (selected === null) return;
-        collect();
-        blocks.splice(selected, 1);
-        reload("");
-      });
-    }
   }
 
   if (aside) {

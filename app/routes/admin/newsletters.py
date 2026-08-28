@@ -145,13 +145,34 @@ def site_emails_screen():
         "subscribed": ("You confirmed your subscription to Your site." + chr(10) * 2
                        + "Unsubscribe: " + site_emails.SAMPLE["link"]),
     }
+    #  The message as it will ARRIVE, not a description of it. Same look
+    #  the newsletter editor uses -- the site's own ground and card, the
+    #  body styled the way email_layouts styles a newsletter's words --
+    #  because these are the same kind of thing and reading them side by
+    #  side should not mean learning two screens.
+    look = _look(db)
+    line, _has = newsletter.sender_line(
+        legal.settings_for(db),
+        (get_site_settings(db) or {}).get("site_title") or "Your site")
     return render_template(
         "admin/site_emails.html",
         messages=site_emails.MESSAGES,
         order=site_emails.ORDER,
         wording={key: site_emails.wording(db, key) for key in site_emails.ORDER},
-        previews={key: site_emails.preview(db, key, bodies[key])
-                  for key in site_emails.ORDER},
+        #  The fixed middle, rendered as the email renders it. Greyed on
+        #  the screen and not editable: every line of it is either a fact
+        #  about what happened or something the reader needs in order to
+        #  act.
+        bodies={key: email_layouts.rich(
+            site_emails.fill(bodies[key], site_emails.SAMPLE), look)
+            for key in site_emails.ORDER},
+        #  What the owner's own words will look like once filled in --
+        #  the same paragraph style, so the canvas reads as one message
+        #  rather than as three different kinds of text.
+        block_styles=email_layouts.block_styles(look),
+        look=look,
+        sender_line=line,
+        sample=site_emails.SAMPLE,
         email_ready=mailer.is_configured(get_email_settings(db)),
     )
 
@@ -526,9 +547,17 @@ def newsletter_issue_send(newsletter_id):
 @login_required
 def newsletter_issue_delete(newsletter_id):
     db = get_db()
+    #  Take it off the clock first. A scheduled job pointing at a deleted
+    #  newsletter is not dangerous -- the poller finds nothing to send and
+    #  says so -- but it leaves a row on the "going out on its own" table
+    #  promising something that cannot arrive, which is worse than either
+    #  sending or not.
+    taken_off = scheduling.cancel(db, "newsletter", newsletter_id)
     newsletter.delete_composed(db, newsletter_id)
     db.commit()
-    flash("Newsletter deleted. What was already sent is still recorded.", "success")
+    flash("Newsletter deleted. What was already sent is still recorded."
+          + (" It was on the clock, and is no longer." if taken_off else ""),
+          "success")
     return redirect(url_for("admin.newsletters"))
 
 

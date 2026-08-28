@@ -5,7 +5,7 @@ whose pictures changed format left the old ones behind on every install
 that had run the earlier version. They are referenced by nothing and they
 make the image picker show every picture twice.
 
-    python tools/stale_media_check.py
+    docker compose exec -T web python tools/stale_media_check.py
 """
 import os
 import shutil
@@ -35,10 +35,26 @@ sources = os.path.join(_here, "app", "data", "templates")
 work = tempfile.mkdtemp(prefix="stale-")
 try:
     #  Build one zip from an authored template, the way the image does.
-    slug = sorted(os.listdir(sources))[0]
+    #
+    #  The authored folders only exist where a template is WRITTEN: the
+    #  packager stage turns them into zips and deletes them, so they are
+    #  gone from the runtime image this runs in. A shipped zip is the same
+    #  bytes that folder built, so unpacking one gives the same starting
+    #  point -- and it means this checker runs in the same place as the
+    #  other fifteen rather than only on a machine with the sources.
+    base = os.path.join(work, "src")
+    if os.path.isdir(sources) and os.listdir(sources):
+        slug = sorted(os.listdir(sources))[0]
+        shutil.copytree(os.path.join(sources, slug), base)
+    else:
+        slug = sorted(f for f in os.listdir(zips) if f.endswith(".zip"))[0][:-4]
+        with zipfile.ZipFile(os.path.join(zips, slug + ".zip")) as zf:
+            zf.extractall(base)
+    check("there is a template to work from",
+          os.path.isdir(os.path.join(base, "media")), slug)
+
     zip_path = os.path.join(work, slug + ".zip")
     with zipfile.ZipFile(zip_path, "w") as zf:
-        base = os.path.join(sources, slug)
         for root, _dirs, files in os.walk(base):
             for f in files:
                 full = os.path.join(root, f)

@@ -6583,3 +6583,97 @@ It touches nothing about anybody's subscription or consent. Those live on
 `subscribers` and answer a different question: whether you were allowed
 to write to somebody is not the same as whether you did.
 
+
+## Adding was easy, taking away was not (2026-08-28)
+
+Three faults from one message, and the first two are the same fault seen
+from two sides: **everything in this app could be added and not removed.**
+
+### A block could be added and not removed
+
+The newsletter toolbar could put a button, a picture, a divider into a
+newsletter. Nothing could take one out. The toolbar was the wrong place
+to fix that -- a Remove button up there has to say what it will remove,
+and the answer is a sentence ("the block you last clicked"), which means
+reading before acting.
+
+So the control is **on the block**: choose one and a small handle appears
+over it carrying up, down and a red ×. What you are about to remove is
+the thing you are pointing at.
+
+Building it found something worse, and it had been there the whole time:
+**nothing could be selected by clicking at all.** Selection only ever
+happened via focus, so it looked like it worked in the cases anyone
+tried. Watching the real event sequence:
+
+    mousedown:H2   focusin:H2   mouseup:P   click:TBODY
+
+A `click` fires on the **common ancestor of where the button went down
+and where it came up**. Press inside a heading, release a pixel lower in
+the paragraph beneath, and the click resolves to the `TBODY` they share
+-- which carries no `data-block`, so the handler deselected whatever
+focus had just selected. Selection is on `mousedown` now, which is the
+event that knows where you actually pointed.
+
+The handle made it worse before it made it better. Appending it *into*
+the cell moved the DOM mid-gesture: the block shifted under the pointer
+between press and release, so mouseup landed somewhere else and the
+click resolved even further up the tree. The handle was destroying the
+selection that created it. It is parented to the canvas and positioned
+over the cell -- which is also the rule that was already there for a
+different reason, since nothing that is not the email may live in that
+table.
+
+### A newsletter could be written and not thrown away
+
+Nine of them accumulated on this install, all called "Untitled", all
+mine. Each row in "Yours" has a delete now. The interesting half is what
+it takes with it: a **scheduled send** pointing at a deleted newsletter
+is not dangerous -- the poller finds nothing and says so -- but it leaves
+a row on the "going out on its own" table promising something that
+cannot arrive, which is worse than either sending or not. What it does
+NOT take is the record that forty people were emailed. That record
+carries no foreign key precisely so it can outlive its subject.
+
+### Message wording described the message instead of being it
+
+Two textareas and a collapsed preview, which asked somebody to hold three
+things at once: what they were typing, where it would land, and what it
+would look like there. These are the same kind of thing as a newsletter
+and should not need a second screen learned.
+
+It is the message now -- on the site's own ground, in the card it
+arrives in, the owner's greeting and sign-off written into directly and
+the code's own words greyed and inert between them. The grey is not
+decoration: it is the difference between what you may change and what
+you may not, said in the one way that needs no label.
+
+And then said in words anyway, under each message. Grey carries it for
+somebody who notices grey; a person who does not should not have to
+hover over the text to find out which half is theirs.
+
+The rule underneath is unchanged and is the reason the middle is inert:
+the facts are not a field. What was bought, the link back in, what
+somebody agreed to, the sender line. An owner writes around those.
+
+### A checker that runs nowhere
+
+`stale_media_check.py` read `app/data/templates/` -- the authored
+folders, which the packager stage turns into zips and **deletes**. So it
+could not run in the runtime image, and the host has no Flask. Its own
+docstring said `python tools/stale_media_check.py`, which was true on no
+machine. It unpacks a shipped zip when the sources are absent: the same
+bytes that folder built, so the same starting point.
+
+`newsletter_check.py` had a hand-maintained total (`67 checks`) that
+would have quietly become a lie the moment anyone added one. It counts.
+
+Two smaller things worth writing down, both about the shell rather than
+the app. `docker compose exec -T web rm -rf /app/tools` does nothing on
+Windows: Git Bash rewrites the bare `/app/tools` argument into a Windows
+path, so the delete misses and the next `docker cp` **nests** into
+`/app/tools/tools` -- and the checkers keep running, against the old
+copy. Container-side paths go inside `sh -c '...'`. And a directory
+named `templates;C` had been sitting in `app/data/` for days, empty,
+copied into every image build: the same mangling, leaving debris instead
+of silence.

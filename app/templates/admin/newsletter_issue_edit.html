@@ -112,10 +112,13 @@
       <button type="button" class="cms-color-reset" data-block-style-clear="bg"
               title="Remove the colour behind this block.">&#10226;A</button>
 
-      <button type="button" data-block-move="-1" title="Move this block up one place.">&#8593;</button>
-      <button type="button" data-block-move="1" title="Move this block down one place.">&#8595;</button>
-      <button type="button" class="cms-block-remove" data-block-remove
-              title="Remove this block from the newsletter. Nothing else moves.">&times;</button>
+      {#  Move and remove are not here. They live ON the selected block
+          now (see cms-block-handle), because a bare "×" at the end of a
+          group that is dimmed until you select something is a control
+          nobody finds -- it was reported as "I can add items but not
+          remove them", and it was there and working the whole time.
+          Two ways to do one thing, one of them invisible, is worse than
+          one way that is on the thing itself. #}
     </div>
   </div>
 

@@ -157,6 +157,29 @@ with app.test_request_context("/"):
           "site_emails" in open("/app/app/templates/partials/email_tabs.html",
                                 encoding="utf-8").read())
 
+    #  The screen shows the MESSAGE, not a description of it. It was two
+    #  textareas and a collapsed preview, which asked somebody to hold
+    #  three things at once: what they were typing, where it would land,
+    #  and what it would look like there.
+    screen = open("/app/app/templates/admin/site_emails.html",
+                  encoding="utf-8").read()
+    check("each message is shown in the card it arrives in",
+          "cms-issue-canvas" in screen)
+    check("...the owner's parts written into directly",
+          'contenteditable="true"' in screen and "data-wording" in screen)
+    check("...and the code's parts greyed and inert",
+          "cms-wording-fixed" in screen)
+    css = open("/app/app/static/css/admin.css", encoding="utf-8").read()
+    check("greyed really means it cannot be clicked",
+          ".cms-wording-fixed { opacity" in css and "pointer-events: none" in css)
+    #  Grey carries it for somebody who notices grey. A person who does
+    #  not should not have to hover to find out which half is theirs.
+    check("...and it is said in words, not only in grey",
+          "cms-wording-note" in screen
+          and "The greyed lines are written for you" in screen)
+    check("the sender line is shown so nobody writes it twice",
+          "cms-issue-canvas-foot" in screen)
+
 shutil.rmtree(DATA_DIR, ignore_errors=True)
 print()
 print("%d checks, %d failed" % (passed + len(failures), len(failures)))

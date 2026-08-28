@@ -30,7 +30,7 @@ os.environ["DATA_DIR"] = DATA_DIR
 from app import create_app                                    # noqa: E402
 from app.db import get_db                                     # noqa: E402
 from app import mailer                                        # noqa: E402
-from app.services import newsletter, subscribers              # noqa: E402
+from app.services import newsletter, scheduling, subscribers  # noqa: E402
 
 SENT = []
 mailer.is_configured = lambda settings: True
@@ -40,8 +40,12 @@ mailer.send_html = lambda settings, to, subject, html, text, from_name=None, hea
 failures = []
 
 
+run = []
+
+
 def check(name, ok, detail=""):
     print("%-58s %s%s" % (name, "ok" if ok else "FAILED", "  " + detail if detail and not ok else ""))
+    run.append(name)
     if not ok:
         failures.append(name)
 
@@ -372,9 +376,37 @@ recoloured = client.get("/admin/newsletters/%d/preview?parts=all" % page_id).get
 check("an owner's own colour override wins",
       "color:#0f5132" in recoloured and "#8a1b3d" not in recoloured)
 
+#  A newsletter can be thrown away, and what it leaves behind matters
+#  more than the deletion. Two things outlive it deliberately -- the
+#  record that forty people were emailed, which is the whole point of
+#  keeping it -- and one thing must NOT: a scheduled send still pointing
+#  at it, which would sit on the "going out on its own" table promising
+#  something that can never arrive.
+with app.app_context():
+    db = get_db()
+    doomed = newsletter.create_composed(db, "letter", "Going away")
+    scheduling.schedule(db, "newsletter", doomed, "Going away", "all",
+                        scheduling.to_utc("2099-01-01T09:00", 0))
+    db.commit()
+    check("a newsletter can be put on the clock",
+          scheduling.pending_for(db, "newsletter", doomed) is not None)
+
+    with client.session_transaction() as sess:
+        sess["admin_id"] = 1
+    res = client.post("/admin/newsletters/issue/%d/delete" % doomed,
+                      headers={"Origin": "http://localhost",
+                               "Referer": "http://localhost/admin/newsletters"})
+    check("deleting it from the list is one POST", res.status_code in (302, 303),
+          str(res.status_code))
+
+    db = get_db()
+    check("...and it is gone", newsletter.get_composed(db, doomed) is None)
+    check("...and taken off the clock with it",
+          scheduling.pending_for(db, "newsletter", doomed) is None)
+
 shutil.rmtree(DATA_DIR, ignore_errors=True)
 print()
-print("%d checks, %d failed" % (67, len(failures)))
+print("%d checks, %d failed" % (len(run), len(failures)))
 if failures:
     print("failed:", ", ".join(failures))
 sys.exit(1 if failures else 0)

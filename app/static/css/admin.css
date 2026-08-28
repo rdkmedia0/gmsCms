@@ -298,6 +298,14 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--c
     they are the two ends of the dialog -- one adds something, one
     abandons it -- and putting them side by side is how a mis-click
     happens on the one that cannot be undone by clicking again. */
+/*  A row in "Yours": its words, then what it is, then the one action
+    that acts on THAT row. The delete form is inline so the row stays a
+    row -- a form is a block by default and would put the × on a line of
+    its own under every entry. */
+.cms-account-list > li { display: flex; align-items: center; gap: 8px; }
+.cms-account-list > li > .cms-delete-form { margin-left: auto; }
+.cms-account-list > li > .cms-delete-form.is-inline { display: inline-flex; }
+
 .cms-image-picker-upload { margin-right: auto; }
 .cms-modal-actions { display: flex; gap: 8px; align-items: center; }
 
@@ -305,6 +313,33 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--c
   border-left: 3px solid #d7dde5; padding: 8px 0 8px 12px; margin: 10px 0;
 }
 .site-email-placeholders { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+
+/*  Message wording, as the message.
+    ------------------------------------------------------------------
+    Greyed is not decoration here: it is the difference between what an
+    owner may change and what they may not, said in the one way that
+    needs no label. The middle is what actually happened and what the
+    reader needs in order to act; the footer is required by law. Neither
+    is a field, and neither should look like one. */
+.cms-wording-fixed { opacity: .55; pointer-events: none; user-select: none; }
+.cms-wording-fixed * { pointer-events: none; }
+
+/*  ...and what IS theirs invites the caret: a faint dashed edge that
+    only appears on hover or while writing, so the card still reads as
+    the email at rest. */
+.cms-wording-mine {
+  outline: 1px dashed transparent; outline-offset: 3px;
+  border-radius: var(--cms-ui-radius-control);
+  transition: outline-color .12s ease; min-height: 1.4em;
+}
+.cms-wording-mine:hover { outline-color: #c9d2dd; }
+.cms-wording-mine:focus { outline: 1px dashed var(--cms-ui-accent, #2563eb); }
+/*  An empty one has to say what belongs in it -- a slot you cannot see
+    is a slot you cannot fill. A CSS :empty rule cannot be trusted, since
+    a browser leaves a stray <br> behind. */
+.cms-wording-mine.cms-wording-blank::before {
+  content: attr(data-placeholder); color: #9aa3ae; font-style: italic;
+}
 .site-email-placeholders button { font-family: ui-monospace, "Consolas", monospace; }
 .site-email-preview { margin-top: 10px; }
 .site-email-preview pre {
@@ -990,6 +1025,30 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
   transition: outline-color .12s ease;
 }
 .cms-issue-canvas [data-block]:hover { outline-color: #c9d2dd; }
+/*  A selected block's own controls, sitting on it.
+    They were only in the ribbon, dimmed until something was selected,
+    which is why removing a block was reported as impossible: it was
+    there and it worked, and nobody could find it. On the block is where
+    they belong anyway -- you act on the thing where the thing is.
+    Absolutely positioned so nothing that is not the email is added to
+    the email's own table flow. */
+.cms-block-handle {
+  position: absolute; z-index: 4;
+  display: flex; gap: 2px;
+  background: #fff; border: 1px solid #d7dde5;
+  border-radius: var(--cms-ui-radius-control);
+  box-shadow: 0 1px 4px rgba(0,0,0,.12); padding: 2px;
+}
+.cms-block-handle button {
+  width: 24px; height: 22px; padding: 0; line-height: 1;
+  border: none; background: none; cursor: pointer;
+  font-family: var(--cms-ui-font); font-size: 13px; color: #55606d;
+  border-radius: var(--cms-ui-radius-control);
+}
+.cms-block-handle button:hover:not(:disabled) { background: #eef1f5; }
+.cms-block-handle button:disabled { opacity: .3; cursor: default; }
+.cms-block-handle-remove { color: #b42318; font-weight: 700; }
+
 .cms-issue-canvas [data-block].cms-block-selected {
   outline: 2px solid var(--cms-ui-accent, #2563eb);
   outline-offset: 2px;
@@ -1016,6 +1075,9 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
 .cms-issue-asides[hidden] { display: none; }
 
 .cms-issue-canvas {
+  /*  The block handle is positioned against this, so it has to be the
+      containing block -- see showBlockHandle. */
+  position: relative;
   width: 600px; max-width: 100%; margin: 0 auto; background: #fff;
   border-radius: 10px; padding: 32px; box-shadow: 0 2px 14px rgba(0,0,0,.08);
 }

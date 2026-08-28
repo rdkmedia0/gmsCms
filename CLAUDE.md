@@ -1126,7 +1126,15 @@ Each of these follows the structure above — thin routes, logic in
   would make the site lie about its own mechanism -- so an owner writes
   AROUND those, never over them. A placeholder this app cannot fill is
   left visible as `{{whatever}}` rather than becoming a blank, because a
-  visible mistake gets fixed and a gap does not. Adding a fifth message
+  visible mistake gets fixed and a gap does not. **The screen IS the
+  message** (`admin/site_emails.html` + `admin/wording-editor.js`), in
+  the newsletter editor's own canvas: the owner's two parts written into
+  directly, the code's parts greyed and inert between them, and the
+  reason said in words underneath as well as in grey -- grey carries it
+  for somebody who notices grey. It was two textareas and a collapsed
+  preview, which asked somebody to hold what they were typing, where it
+  would land and what it would look like there all at once.
+  Adding a fifth message
   means adding it to `MESSAGES` and wrapping it where it is sent;
   `site_emails_check.py` fails if a sender forgets.
 - **Legal pages**: `services/legal.py` + `templates/legal/*.j2`, written

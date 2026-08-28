@@ -178,11 +178,20 @@ with sync_playwright() as p:
           page.query_selector("[data-pick-image]") is not None)
 
     #  ...and taken away again, which is the other half of "optional".
+    #  The control is on the BLOCK, not in the toolbar: what you are
+    #  about to remove is the thing you are pointing at, and there is
+    #  nothing to read to find out which one it will take.
     page.click("[data-block][data-block-type='image']")
-    page.wait_for_timeout(100)
-    page.click("[data-block-remove]")
+    page.wait_for_timeout(150)
+    check("choosing a block puts its own controls on it",
+          page.query_selector(".cms-block-handle") is not None)
+    check("...including one to take it away",
+          page.query_selector(".cms-block-handle-remove") is not None)
+    page.click(".cms-block-handle-remove")
     settle(page)
     check("and removed again", "image" not in kinds(page), str(kinds(page)))
+    check("...leaving everything else where it was",
+          kinds(page) == ["heading", "text", "button"], str(kinds(page)))
 
     print()
     print("A block can be moved and styled, and the email carries it")
@@ -224,7 +233,7 @@ with sync_playwright() as p:
     #  Moving it. The words have to come with it, not stay behind.
     page.click("[data-block][data-block-type='heading']")
     page.wait_for_timeout(100)
-    page.click("[data-block-move='1']")
+    page.click(".cms-block-handle [data-handle='1']")
     settle(page)
     moved = kinds(page)
     check("a block can be moved", moved[0] == "text" and moved[1] == "heading", str(moved))
