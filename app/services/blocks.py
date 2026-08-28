@@ -241,6 +241,10 @@ def build_newsletter(values):
         f'<form class="cms-newsletter-form" method="post" action="/subscribe">'
         f'<label class="cms-visually-hidden" for="cms-sub-email">Email address</label>'
         f'<input type="email" id="cms-sub-email" name="email" required '
+        #  Its <label> is visually hidden -- there for a screen reader
+        #  and saying nothing to somebody looking at the page -- so this
+        #  is the only text a sighted visitor has.
+        f'title="Your email address. We send one message with a link in it; nothing else until you follow it." '
         f'placeholder="{esc(values.get("placeholder") or "you@example.com")}" '
         f'data-attr-field="placeholder">'
         #  cms-action-btn, not cms-buy-btn. Signing up to a newsletter is
@@ -255,7 +259,8 @@ def build_newsletter(values):
         #  you clicked it. The panel's own hint promises that everything on
         #  the page can be clicked and typed into, and this was the one
         #  place that was not true.
-        f'<button type="submit" class="cms-action-btn">'
+        f'<button type="submit" class="cms-action-btn" '
+        f'title="Sign up. We send one email with a link — you are not on the list until you follow it.">'
         f'<span data-field="cta">{esc(values.get("cta") or "Sign up")}</span></button>'
         f'<input type="hidden" name="consent_text" value="{esc(values.get("consent") or "Yes, email me occasional updates. Unsubscribe any time.")}">'
         #  The same trap the contact form sets, and deliberately the same

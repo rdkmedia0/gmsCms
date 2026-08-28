@@ -15,7 +15,7 @@
     <label for="confirm_password">Confirm New Password</label>
     <input type="password" id="confirm_password" name="confirm_password" required minlength="6" title="The same new password again, to catch a typing slip.">
 
-    <button type="submit" class="btn btn-primary">Update Password</button>
+    <button type="submit" class="btn btn-primary" title="Change your password. You stay signed in on this device.">Update Password</button>
   </form>
 </div>
 
@@ -62,7 +62,7 @@
             <form method="post" action="{{ url_for('admin.admin_delete', user_id=u.id) }}"
                   data-confirm="You are about to remove the administrator &quot;{{ u.username }}&quot;. They will no longer be able to sign in."
                   data-confirm-danger="1">
-              <button type="submit" class="btn btn-small btn-danger">Remove</button>
+              <button type="submit" class="btn btn-small btn-danger" title="Remove this administrator. They lose access immediately.">Remove</button>
             </form>
           </td>
         </tr>
@@ -113,7 +113,7 @@
 
     <p class="hint">Authorized redirect URI to add in Google Cloud Console: <code>{{ url_for('auth.google_callback', _external=True) }}</code></p>
 
-    <button type="submit" class="btn btn-primary">Save Google Settings</button>
+    <button type="submit" class="btn btn-primary" title="Save these Google sign-in settings.">Save Google Settings</button>
   </form>
 </div>
 {% endblock %}

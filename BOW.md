@@ -5858,8 +5858,8 @@ waiting on the owner. Nothing here is a fix somebody forgot.
 
 ### What is actually open
 
-Five things. One is a measured, mechanical task; three are
-decisions; one is a thing to run. Everything else in this
+Four things, and none of them is a task: three are decisions
+waiting on the owner, and one is a thing to run. Everything else in this
 summary is a record of something built -- the sections below keep their
 reasoning, which is the point of them, but none of it is waiting.
 
@@ -5902,24 +5902,25 @@ are built; they are kept below with what building them turned up.
     arguably where they belong but is a change to how the editor is
     USED, not a layout tweak. Left for somebody to ask for.
 
-**Named, measured, not done.**
+**Named, measured, DONE** (2026-08-28).
 
-  * **256 controls with no tooltip**, counted by `tools/screen_audit.py`
-    (2026-08-28) and mostly in the editor's own tool panels: unlabelled
-    checkboxes, the Embed tool's code editors and its Save HTML, the
-    colours panel's buttons, the Menu tool's + Link and + Divider. This
-    project requires a `title` on every admin control because the label
-    is so often a glyph and the title is then the only text there is.
-    Unglamorous and entirely mechanical; the audit names each one and the
-    screen it is on.
+  * **256 controls with no tooltip** — now none. Mostly the editor's own
+    tool panels: the Menu tool's page checkboxes and its two link
+    builders, the Embed tool's code editor and Save HTML, the colours
+    panel, and a dozen Save buttons that all said "Save" and none of
+    which said WHAT they saved. Each now names its own consequence,
+    because "Save" is the label and the consequence is the half a label
+    cannot carry.
 
-    Worth knowing before starting: the same audit reported 186 elements
-    "past the right edge" and every one was correct behaviour, so it was
-    taught three exclusions first -- a `hidden` file input is machinery
-    behind a button that carries the sentence, an aria-hidden control is
+    Two things made it tractable, and both were fixes to the audit rather
+    than to the app. It reported "input:checkbox (no words)" 72 times,
+    which is true and unactionable — it names none of them; every
+    finding now carries its nearest classed ancestor, which is what a
+    person greps for. And it had to be taught three exclusions first, or
+    the real ones were buried: a `hidden` file input is machinery behind
+    a button that carries the sentence, an aria-hidden control is
     deliberately not announced, and a control with a VISIBLE text label
-    is already explained. What it reports now is meant to be acted on.
-
+    is already explained — which is the whole reason the rule exists.
 
 **One thing to run rather than build.**
 

@@ -145,10 +145,23 @@ AUDIT_JS = """
         && labelled.getBoundingClientRect().width > 1) {
       return;
     }
+    //  Enough to FIND it. "input:checkbox (no words)" is a true report
+    //  and an unactionable one -- there are dozens, and it names none of
+    //  them. The nearest classed ancestor is what a person greps for.
+    let where = '';
+    for (let node = el.parentElement; node && node !== document.body;
+         node = node.parentElement) {
+      if (node.className && typeof node.className === 'string'
+          && node.className.trim()) {
+        where = ' in .' + node.className.trim().split(/\\s+/)[0];
+        break;
+      }
+    }
     const id = el.tagName.toLowerCase()
       + (el.id ? '#' + el.id : (el.name ? '[' + el.name + ']' : ''))
       + (el.type ? ':' + el.type : '')
-      + ((el.textContent||'').trim() ? ' "' + (el.textContent||'').trim().slice(0,26) + '"' : ' (no words)');
+      + ((el.textContent||'').trim() ? ' "' + (el.textContent||'').trim().slice(0,26) + '"' : '')
+      + where;
     out.controlsNoTitle.push(id);
   });
 

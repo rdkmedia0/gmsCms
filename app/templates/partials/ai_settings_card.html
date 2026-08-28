@@ -33,7 +33,7 @@
         <select id="openwebui_model" name="openwebui_model" class="cms-model-select" title="Which model answers the assistant. Load Models fills this from your server.">
           {% if ai_settings.openwebui_model %}<option value="{{ ai_settings.openwebui_model }}" selected>{{ ai_settings.openwebui_model }}</option>{% endif %}
         </select>
-        <button type="button" class="btn btn-small cms-load-models-btn" data-provider="openwebui" data-url-input="openwebui_url" data-key-input="openwebui_api_key" data-targets="openwebui_model">🔄 Load Models</button>
+        <button type="button" class="btn btn-small cms-load-models-btn" data-provider="openwebui" data-url-input="openwebui_url" data-key-input="openwebui_api_key" data-targets="openwebui_model" title="Ask this provider what models it has, and fill the list from the answer — it uses the address and key above, even before you save.">🔄 Load Models</button>
       </div>
       <p class="hint">Open WebUI doesn't report per-model capabilities the way Ollama does, so models aren't tagged here — check the model itself supports image input if you're attaching screenshots in the chat.</p>
 
@@ -56,7 +56,7 @@
         <select id="ollama_model" name="ollama_model" class="cms-model-select" title="Which model answers the assistant. Load Models fills this from your server.">
           {% if ai_settings.ollama_model %}<option value="{{ ai_settings.ollama_model }}" selected>{{ ai_settings.ollama_model }}</option>{% endif %}
         </select>
-        <button type="button" class="btn btn-small cms-load-models-btn" data-provider="ollama" data-url-input="ollama_url" data-targets="ollama_model">🔄 Load Models</button>
+        <button type="button" class="btn btn-small cms-load-models-btn" data-provider="ollama" data-url-input="ollama_url" data-targets="ollama_model" title="Ask this provider what models it has, and fill the list from the answer — it uses the address and key above, even before you save.">🔄 Load Models</button>
       </div>
       <p class="hint">Models tagged <strong>(vision)</strong> can take image input (Ollama reports this itself, via its model capabilities — not every model that can will be tagged, only the ones Ollama confirms).</p>
       {#  Two limits worth knowing BEFORE choosing this, rather than
@@ -85,10 +85,11 @@
       <input type="password" id="gemini_api_key" name="gemini_api_key" autocomplete="new-password" placeholder="{{ 'Leave blank to keep the saved key' if ai_settings.gemini_api_key_set else 'AIza...' }}" title="From Google AI Studio. Stored encrypted and never shown back to you.">
       <label for="gemini_model">Chat Model</label>
       <div class="inline-form">
-        <select id="gemini_model" name="gemini_model" class="cms-model-select">
+        <select id="gemini_model" name="gemini_model" class="cms-model-select"
+                title="Which Gemini model answers the assistant. Load Models fills this from Google.">
           {% if ai_settings.gemini_model %}<option value="{{ ai_settings.gemini_model }}" selected>{{ ai_settings.gemini_model }}</option>{% endif %}
         </select>
-        <button type="button" class="btn btn-small cms-load-models-btn" data-provider="gemini" data-key-input="gemini_api_key" data-targets="gemini_model,gemini_image_model">🔄 Load Models</button>
+        <button type="button" class="btn btn-small cms-load-models-btn" data-provider="gemini" data-key-input="gemini_api_key" data-targets="gemini_model,gemini_image_model" title="Ask this provider what models it has, and fill the list from the answer — it uses the address and key above, even before you save.">🔄 Load Models</button>
       </div>
       <label for="gemini_image_model">Image Generation Model <span class="hint">(used by the ✨ Generate buttons on Image/Banner/Card)</span></label>
       <select id="gemini_image_model" name="gemini_image_model" class="cms-model-select cms-model-select-image" title="Which Gemini model makes pictures. Leave blank to use the default.">
@@ -97,8 +98,8 @@
       <p class="hint">Image generation needs a Gemini account with <strong>billing enabled</strong> — the free tier covers chat but not image output, and a free-tier key will fail with an error when you click Generate rather than up front here.</p>
     </fieldset>
 
-    <button type="submit" class="btn btn-primary">Save AI Settings</button>
-    <a href="{{ url_for('admin.dashboard') }}" class="btn">Back to Dashboard</a>
+    <button type="submit" class="btn btn-primary" title="Save these AI settings. Keys are encrypted before they are stored.">Save AI Settings</button>
+    <a href="{{ url_for('admin.dashboard') }}" class="btn" title="Leave this screen and go back to the Dashboard. Anything saved stays saved.">Back to Dashboard</a>
   </form>
 </div>
 

@@ -12,7 +12,7 @@
     <label style="margin:0;">Background color
       <input type="color" name="bg_color" value="{{ page.bg_color or '#ffffff' }}">
     </label>
-    <button type="submit" class="btn btn-small">Save</button>
+    <button type="submit" class="btn btn-small" title="Save these settings.">Save</button>
   </form>
   {% if page.bg_color %}
   <p class="muted" style="margin-top:16px;">Picture behind the whole page — sits under every section, so a page can be framed by one image rather than broken into bands.</p>
@@ -106,7 +106,7 @@
   <p class="hint">Search description — shown under this page's title in search results and link previews. Keep it to a sentence or two.</p>
   <form method="post" action="{{ url_for('admin.page_seo', page_id=page.id) }}">
     <textarea name="meta_description" rows="2" maxlength="300" placeholder="e.g. Small-batch coffee roasted daily in Asheville, NC — espresso, pour-over, and fresh pastries.">{{ page.meta_description or '' }}</textarea>
-    <button type="submit" class="btn btn-small btn-primary" style="margin-top:8px;">Save</button>
+    <button type="submit" class="btn btn-small btn-primary" style="margin-top:8px;" title="Save these settings.">Save</button>
   </form>
   <p class="hint">Page address: <code>{{ request.host_url.rstrip('/') }}/{{ page.slug }}</code>{% if page.is_home %} (this page is also served at <code>/</code>, since it's Home){% endif %}</p>
 </div>
@@ -121,5 +121,5 @@
 </div>
 {% endif %}
 
-<a href="{{ url_for('admin.dashboard') }}" class="btn">← Back to Dashboard</a>
+<a href="{{ url_for('admin.dashboard') }}" class="btn" title="Leave this screen and go back to the Dashboard. Anything saved stays saved.">← Back to Dashboard</a>
 {% endblock %}

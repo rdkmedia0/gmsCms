@@ -31,7 +31,7 @@
             <form method="post" action="{{ url_for('admin.blog_rename', blog_id=b.id) }}" class="tree-edit-body">
               <input type="text" name="name" value="{{ b.name }}" aria-label="Blog name"
                      title="What this blog is called. Its web address does not change — post links keep working.">
-              <button type="submit" class="btn btn-small">Save</button>
+              <button type="submit" class="btn btn-small" title="Save this blog's new name. Its web address does not change, so links to its posts keep working.">Save</button>
             </form>
           </details>
           <form method="post" action="{{ url_for('admin.blog_delete', blog_id=b.id) }}">

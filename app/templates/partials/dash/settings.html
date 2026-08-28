@@ -38,7 +38,7 @@
   <form method="post" action="{{ url_for('admin.settings_site') }}" class="inline-form">
     <input type="text" name="site_title" value="{{ site_settings.site_title }}" placeholder="My Site" maxlength="80" title="Your site/business name">
     <input type="text" name="site_tagline" value="{{ site_settings.site_tagline }}" placeholder="Tagline (optional)" maxlength="140" title="A short tagline, shown next to your site name in the browser tab title">
-    <button type="submit" class="btn btn-small btn-primary">Save</button>
+    <button type="submit" class="btn btn-small btn-primary" title="Save your site's name and tagline. They appear in the browser tab and wherever the site names itself.">Save</button>
   </form>
   <p class="muted" style="margin-top:16px;">Site address &mdash; where this site lives on the internet. Used for every link that has to work somewhere else: the address Stripe sends buyers back to, the link we email with someone's purchases, the pictures Stripe shows on its payment page, and the address Stripe calls back on when a payment succeeds.</p>
   <form method="post" action="{{ url_for('admin.settings_site_address') }}" class="inline-form">
@@ -85,7 +85,7 @@
       <summary class="favicon-text-btn" title="Generate a favicon with AI">✨ AI</summary>
       <form method="post" action="{{ url_for('admin.settings_favicon_generate') }}" class="inline-form">
         <input type="text" name="prompt" placeholder="e.g. a coffee bean" maxlength="200" title="Describe the icon you want">
-        <button type="submit" class="btn btn-small btn-primary">Generate</button>
+        <button type="submit" class="btn btn-small btn-primary" title="Make a favicon from the description above.">Generate</button>
       </form>
     </details>
   </div>
@@ -97,7 +97,7 @@
       <option value="custom" {{ 'selected' if layout_settings.default_section_width == 'custom' }}>Custom %</option>
     </select>
     <input type="number" name="default_section_width_pct" min="10" max="100" value="{{ layout_settings.default_section_width_pct }}" title="Width as a % of the full viewport (100% = same as Full width)" {{ 'hidden' if layout_settings.default_section_width != 'custom' }} id="default-width-pct-input">
-    <button type="submit" class="btn btn-small btn-primary">Save</button>
+    <button type="submit" class="btn btn-small btn-primary" title="Save the width new sections start at. Every section can still be changed on its own afterwards.">Save</button>
   </form>
   <p class="hint" style="margin-top:14px;">Managing who can sign in (admins, Google Sign-In)? That's on your <a href="{{ url_for('auth.account') }}">Account</a> page now, not here.</p>
 </section>

@@ -232,7 +232,7 @@
     <input type="text" id="label" name="label" value="{{ postage.label }}" maxlength="60"
            title="What the buyer sees on the delivery line, e.g. Standard post">
 
-    <button type="submit" class="btn btn-primary btn-small">Save</button>
+    <button type="submit" class="btn btn-primary btn-small" title="Save these postage settings. They apply to every order with something to post.">Save</button>
   </form>
 </div>
 
@@ -249,7 +249,7 @@
       <option value="12" {{ 'selected' if credit_expiry_months == '12' }}>12 months after purchase</option>
       <option value="24" {{ 'selected' if credit_expiry_months == '24' }}>24 months after purchase</option>
     </select>
-    <button type="submit" class="btn btn-small">Save</button>
+    <button type="submit" class="btn btn-small" title="Save how long a session credit lasts. Credits already sold keep the term they were sold with.">Save</button>
   </form>
   <p class="hint">Applies to sessions bought from now on. Sessions someone has already paid for keep whatever term they were sold under.</p>
 </div>
@@ -344,7 +344,7 @@
       <p class="hint">Counts down as they sell. Stripe doesn't track stock at all, so this is the only record of it.</p>
     </div>
 
-    <button type="submit" class="btn btn-primary btn-small">Save</button>
+    <button type="submit" class="btn btn-primary btn-small" title="Save what this product delivers when somebody buys it.">Save</button>
   </form>
 </div>
 {% endfor %}

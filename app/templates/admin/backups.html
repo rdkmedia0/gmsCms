@@ -36,7 +36,7 @@
       <input type="checkbox" name="include_media" value="1" {{ 'checked' if settings.include_media }} title="Include uploaded pictures and files. Bigger, and the only way to restore them."> Include pictures and download files
     </label>
 
-    <button type="submit" class="btn btn-primary btn-small">Save</button>
+    <button type="submit" class="btn btn-primary btn-small" title="Save what a backup should include. It does not make one — use Back up now.">Save</button>
   </form>
   <p class="hint">
     {% if settings.last_run %}Last automatic backup: {{ settings.last_run.replace('T', ' ')[:16] }}.{% else %}No automatic backup has run yet.{% endif %}

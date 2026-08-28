@@ -82,8 +82,8 @@
               placeholder="3 Lindenweg&#10;8001 Zurich"
               title="A real address somebody could write to. Required on any email sent to a list.">{{ sender.address }}</textarea>
 
-    <button type="submit" class="btn btn-primary">Save Email Settings</button>
-    <a href="{{ url_for('admin.dashboard') }}" class="btn">Back to Dashboard</a>
+    <button type="submit" class="btn btn-primary" title="Save how this site sends email. Test it below before relying on it.">Save Email Settings</button>
+    <a href="{{ url_for('admin.dashboard') }}" class="btn" title="Leave this screen and go back to the Dashboard. Anything saved stays saved.">Back to Dashboard</a>
   </form>
 </div>
 {% endblock %}

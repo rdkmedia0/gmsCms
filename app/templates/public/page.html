@@ -298,8 +298,10 @@
   {%- macro embed_code_editor(save_url, raw) -%}
     {% if editing %}
     <div class="cms-html-editor" hidden>
-      <textarea data-save-url="{{ save_url }}">{{ raw }}</textarea>
-      <button type="button" class="cms-save-html-btn">Save HTML</button>
+      <textarea data-save-url="{{ save_url }}"
+                title="The raw HTML this block renders. For a real third-party embed — a booking widget, a payment button. Everything else has a tool of its own.">{{ raw }}</textarea>
+      <button type="button" class="cms-save-html-btn"
+              title="Save this HTML and redraw the block.">Save HTML</button>
     </div>
     {% endif %}
   {%- endmacro %}
@@ -481,7 +483,8 @@
             <div class="cms-menu-pages-add">
               {% for p in nav_pages %}
               <label class="cms-menu-page-check">
-                <input type="checkbox" class="cms-menu-page-toggle" value="{{ p.id }}" data-title="{{ p.title }}" {{ 'checked' if p.id in page_item_ids }}>
+                <input type="checkbox" class="cms-menu-page-toggle" value="{{ p.id }}" data-title="{{ p.title }}" {{ 'checked' if p.id in page_item_ids }}
+                       title="Show {{ p.title }} in this menu. Unticking takes it out of the menu — the page itself stays.">
                 <span class="cms-menu-page-title">{{ p.title }}</span>
                 <button type="button" class="cms-menu-icon-pick" data-page-id="{{ p.id }}" data-target-label="{{ p.title }}" title="Choose icon" hidden><span class="cms-icon-pick-preview"></span></button>
                 <button type="button" class="cms-menu-page-rename" data-page-id="{{ p.id }}" data-rename-url="{{ url_for('admin.page_rename', page_id=p.id) }}" title="Rename this page">✎</button>
@@ -493,7 +496,8 @@
             </div>
             <div class="cms-menu-pages-divider-rule"></div>
             <div class="cms-menu-newpage-add">
-              <input type="text" class="cms-menu-newpage-title" placeholder="New page name">
+              <input type="text" class="cms-menu-newpage-title" placeholder="New page name"
+                     title="What to call a new page. It is created and added to this menu.">
               <select class="cms-menu-newpage-type" title="Page type">
                 <option value="standard">Blank page</option>
                 <option value="blog">Blog</option>
@@ -502,12 +506,16 @@
               <button type="button" class="cms-menu-newpage-btn" data-create-url="{{ url_for('admin.page_new') }}" title="Create a new page and add it to this menu">+ Page</button>
             </div>
             <div class="cms-menu-custom-add">
-              <input type="text" class="cms-menu-custom-label" placeholder="Label">
-              <input type="text" class="cms-menu-custom-url" placeholder="URL or #anchor">
+              <input type="text" class="cms-menu-custom-label" placeholder="Label"
+                     title="The words this menu item shows.">
+              <input type="text" class="cms-menu-custom-url" placeholder="URL or #anchor"
+                     title="Where it goes — another website, or #something to jump to a place on this page.">
               <button type="button" class="cms-menu-icon-pick cms-menu-custom-icon-pick" data-target-label="this link" title="Choose icon"><span class="cms-icon-pick-preview"></span></button>
-              <button type="button" class="cms-menu-custom-add-btn">+ Link</button>
+              <button type="button" class="cms-menu-custom-add-btn"
+                      title="Add the link above to this menu.">+ Link</button>
             </div>
-            <button type="button" class="cms-menu-divider-add-btn">+ Divider</button>
+            <button type="button" class="cms-menu-divider-add-btn"
+                    title="Add a line to this menu, to separate one group of items from the next.">+ Divider</button>
           </div>
           {{ icon_picker_grid() }}
         </div>
@@ -819,7 +827,8 @@
         <p class="cms-contact-error">That wasn't the right answer — please try again.</p>
         {% endif %}
 
-        <button type="submit" class="cms-contact-submit">Send Message</button>
+        <button type="submit" class="cms-contact-submit"
+                title="Send this message to the site owner.">Send Message</button>
       </form>
     </div>
   {% endmacro %}
