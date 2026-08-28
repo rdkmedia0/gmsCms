@@ -5836,6 +5836,37 @@ reason written down rather than mailing anyway. The poller was also
 watched firing on its own against the live container, arranged so the job
 would be refused rather than sent.
 
+## The picker could not tell two shapes apart (2026-08-28)
+
+Found by looking at a screenshot during a verification pass, not by any
+check -- and it had been true since the layouts were built.
+
+"A letter" and "One story with a picture" rendered IDENTICALLY in the
+picker: a heading and a paragraph, in both. The cause is two pieces of
+correct behaviour meeting. A picture slot with no picture in it is left
+out of a real email, and a button with no address is left out for the
+same reason -- "a button that goes nowhere is worse than none". A
+specimen has neither, so the story lost both, and what was left was a
+letter.
+
+The entry that built this said, of the picker: "A name and a sentence
+cannot show what a shape looks like -- which is the whole basis on which
+one is picked." It was right, and the picker was not doing it. Two of
+the four choices were the same picture.
+
+`render(..., specimen=True)` draws those empty slots as plain plates, so
+the ARRANGEMENT is visible. It reaches nothing else: with `edit` and
+`specimen` both false, not one extra attribute is emitted, and
+`email_layout_check.py` now asserts that all four specimens are
+different shapes AND that a sent story carries no placeholder.
+
+**Worth keeping as a lesson about checks.** Every existing check passed
+throughout: each layout rendered, carried tables, avoided classes,
+survived the wrapper. Nothing compared them to EACH OTHER, because
+nothing had thought to -- and the fault was only visible as a
+relationship between two outputs, not as a property of either. Some
+faults are only visible by looking.
+
 ## Where this stands, and what is left (2026-08-27, end of day)
 Everything the previous summary listed as "specified and unbuilt" is
 built. What is below is either a decision waiting on the owner, or work

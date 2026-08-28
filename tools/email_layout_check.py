@@ -124,6 +124,32 @@ with app.test_request_context("/"):
     check("a single newline stays a line break", "<br>" in typed, typed[:90])
 
     print()
+    print("The picker shows the SHAPES apart")
+    print("-" * 68)
+    #  Found by looking at a screenshot, not by any check: a picture slot
+    #  with no picture and a button with no address are both correctly
+    #  left OUT of a real email, so "One story with a picture" rendered
+    #  as a heading and a paragraph -- pixel-identical to "A letter". Two
+    #  different shapes, indistinguishable, on the screen whose entire
+    #  job is telling them apart.
+    shapes = {}
+    for key, name, _blurb in email_layouts.choices():
+        spec = email_layouts.sample(key, look)
+        shapes[key] = (spec.count("<tr"), spec.count("<a "), spec.count("height=\"90\""))
+    check("every layout's specimen is a different shape",
+          len(set(shapes.values())) == len(shapes), str(shapes))
+    check("the one with a picture shows a picture slot",
+          shapes["story"][2] >= 1, str(shapes["story"]))
+    check("...and its button", shapes["story"][1] >= 1, str(shapes["story"]))
+    check("the letter shows neither, because it has neither",
+          shapes["letter"][1] == 0 and shapes["letter"][2] == 0, str(shapes["letter"]))
+
+    #  ...and none of that reaches an inbox.
+    sent = email_layouts.render(email_layouts.starting_blocks("story"), look)
+    check("a SENT story has no placeholder plate", 'height="90"' not in sent)
+    check("...and no button, because it has no address yet", "<a " not in sent, sent[:80])
+
+    print()
     print("The vocabulary a body may use, and only that")
     print("-" * 68)
     #  Everything the toolbar can produce, written down as text. The

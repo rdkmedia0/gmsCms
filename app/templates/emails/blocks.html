@@ -60,6 +60,15 @@
              title="Choose a picture from your Media Library.">
           Click to add a picture
         </div>
+        {%- elif specimen %}
+        {#  A specimen has no picture to show, and leaving the slot out
+            made "One story with a picture" look exactly like "A letter"
+            in the picker. A plain plate says "a picture goes here",
+            which is what somebody choosing a shape needs to see. #}
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+               style="margin:0 0 14px;"><tr>
+          <td height="90" style="background:#e6e9ee;border-radius:6px;height:90px;">&nbsp;</td>
+        </tr></table>
         {%- endif %}
 
       {%- elif b.type == 'button' %}
@@ -70,7 +79,7 @@
             a button. Sent, it appears only once it has both its words
             and its address, because a button that goes nowhere is worse
             than no button. #}
-        {%- if (b.label and b.url) or edit %}
+        {%- if (b.label and b.url) or edit or specimen %}
         <table role="presentation" cellpadding="0" cellspacing="0" border="0"
                style="margin:6px 0 4px;width:auto;
                       {% if (b.style.align or 'left') == 'center' %}margin-left:auto;margin-right:auto;

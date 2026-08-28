@@ -490,7 +490,7 @@ def missing(blocks):
     return gaps
 
 
-def render(blocks, look, edit=False):
+def render(blocks, look, edit=False, specimen=False):
     """The email BODY for one newsletter. The wrapper adds the rest.
 
     `edit=True` returns the SAME email with its blocks opened up: each one
@@ -499,8 +499,18 @@ def render(blocks, look, edit=False):
     point -- the thing being written into is the thing being sent, rather
     than a column of boxes beside a picture of it.
 
-    What an inbox receives is untouched by this: with edit false, not one
-    extra attribute is emitted.
+    `specimen=True` is for the PICKER, and it exists because the picker
+    was broken in a way only a screenshot showed: a picture with no
+    picture in it and a button with no address are both correctly left
+    OUT of a real email, so "One story with a picture" rendered as a
+    heading and a paragraph -- identical to "A letter". Two different
+    shapes, indistinguishable, on the screen whose entire job is telling
+    them apart. A specimen draws those slots as plain grey plates, so the
+    ARRANGEMENT is visible, which is the whole basis on which one is
+    chosen.
+
+    What an inbox receives is untouched by either: with both false, not
+    one extra attribute is emitted.
     """
     prepared = []
     for block in normalise(blocks):
@@ -510,7 +520,8 @@ def render(blocks, look, edit=False):
         if block["type"] == "text":
             made["html"] = rich(block.get("text") or "", look, style=block["style"])
         prepared.append(made)
-    return render_template("emails/blocks.html", look=look, blocks=prepared, edit=edit)
+    return render_template("emails/blocks.html", look=look, blocks=prepared,
+                           edit=edit, specimen=specimen)
 
 
 def sample(key, look):
@@ -521,4 +532,4 @@ def sample(key, look):
     with real words, so the picker shows the thing itself rather than a
     description of it.
     """
-    return render(starting_blocks(key), look)
+    return render(starting_blocks(key), look, specimen=True)
