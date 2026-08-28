@@ -276,6 +276,33 @@ def commerce_booking_cancel(uid):
     return jsonify({"ok": True, "message": "Cancelled. The session went back to whoever paid for it."})
 
 
+@bp.route("/commerce/orders/<int:order_id>/invoice")
+@login_required
+def commerce_order_invoice(order_id):
+    """The seller's copy of the same tax document the buyer receives.
+
+    A redirect for the same reasons the buyer's is: the Orders screen
+    lists many orders, and asking Stripe about every invoice on every
+    load would be one request per row for links nobody clicks. And the
+    PDF link is null until Stripe finalises the invoice, which is
+    normally after the webhook that recorded the order.
+    """
+    db = get_db()
+    order = db.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
+    if not order:
+        flash("That order no longer exists.", "error")
+        return redirect(url_for("admin.commerce_orders"))
+    pdf, hosted = commerce.invoice_links(db, order, integrations)
+    db.commit()
+    if pdf or hosted:
+        return redirect(pdf or hosted)
+    #  Not "not found": the invoice exists and is not ready, and those
+    #  two need different actions from whoever is reading.
+    flash("Stripe hasn't finalised that invoice yet — it usually takes a minute. "
+          "Try again shortly.", "warning")
+    return redirect(url_for("admin.commerce_orders"))
+
+
 @bp.route("/commerce/orders", methods=["GET"])
 @login_required
 def commerce_orders():

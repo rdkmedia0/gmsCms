@@ -198,8 +198,8 @@ def record_checkout(db, session, line_items, credit_expiry_at=None):
     details = session.get("customer_details") or {}
     customer_id = upsert_customer(db, details.get("email"), details.get("name"))
     cur = db.execute(
-        "INSERT INTO orders (provider, provider_ref, customer_id, amount_total, currency, status, line_items) "
-        "VALUES ('stripe', ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO orders (provider, provider_ref, customer_id, amount_total, currency, status, "
+        "line_items, invoice_ref) VALUES ('stripe', ?, ?, ?, ?, ?, ?, ?)",
         (
             provider_ref,
             customer_id,
@@ -207,6 +207,11 @@ def record_checkout(db, session, line_items, credit_expiry_at=None):
             (session.get("currency") or "").lower() or None,
             "paid" if session.get("payment_status") == "paid" else (session.get("payment_status") or "pending"),
             json.dumps(line_items or []),
+            #  The session names the invoice Stripe raised for it. Kept
+            #  rather than the URL, because the URL is null until Stripe
+            #  finalises the invoice -- which is usually AFTER this
+            #  webhook arrives, so storing it here would store nothing.
+            session.get("invoice") or None,
         ),
     )
     order_id = cur.lastrowid
@@ -282,11 +287,18 @@ def record_renewal(db, invoice, credit_expiry_at=None):
     line_items = invoice_line_items(invoice)
     cur = db.execute(
         "INSERT INTO orders (provider, provider_ref, customer_id, amount_total, currency, "
-        "status, line_items) VALUES ('stripe', ?, ?, ?, ?, ?, ?)",
+        "status, line_items, invoice_ref, invoice_pdf, invoice_url) "
+        "VALUES ('stripe', ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (provider_ref, customer_id,
          invoice.get("amount_paid"),
          (invoice.get("currency") or "").lower() or None,
-         "paid", json.dumps(line_items)))
+         "paid", json.dumps(line_items),
+         #  A renewal IS an invoice, and a paid one is finalised -- so
+         #  unlike a checkout, both links are already in the event and
+         #  need no second call to Stripe.
+         invoice.get("id") or None,
+         invoice.get("invoice_pdf") or None,
+         invoice.get("hosted_invoice_url") or None))
     order_id = cur.lastrowid
     if customer_id:
         for item in line_items:
@@ -549,81 +561,200 @@ def orders_for(db, customer_id):
     ).fetchall()
 
 
-def order_email_body(db, order, token_url, site_name):
-    """Plain text on purpose: it renders everywhere, never trips a spam
-    filter on markup, and the one thing that matters is the link."""
-    lines = [
-        f"Thanks for your order from {site_name}.",
-        "",
-    ]
-    ents = entitlements_for(db, order["customer_id"])
-    credits = sum(e["granted"] - e["used"] for e in ents if e["kind"] == KIND_CREDIT)
-    downloads = [e for e in ents if e["kind"] == KIND_DOWNLOAD]
-    if credits:
-        lines.append(f"You have {credits} session{'s' if credits != 1 else ''} to book.")
-    if downloads:
-        left = sum(e["granted"] - e["used"] for e in downloads)
-        lines.append(
-            f"You have {len(downloads)} download{'s' if len(downloads) != 1 else ''} waiting"
-            f" ({left} download{'s' if left != 1 else ''} left)."
-        )
-        #  The date, not a duration: "30 days" needs the reader to know
-        #  when they bought it, and they are reading this weeks later.
-        last = min((e["expires_at"] for e in downloads if e["expires_at"]), default=None)
-        if last:
-            lines.append(f"Please save {'them' if len(downloads) != 1 else 'it'} before "
-                         f"{last[:10]} — we don't keep paid files up forever.")
-    if credits or downloads:
-        lines += ["", "Everything is here:", token_url, ""]
-        #  Said plainly, because the next line tells them to keep the
-        #  email: a link that quietly expires while they are keeping it is
-        #  the worst version of this.
-        lines.append(
-            f"The link keeps working for {ACCESS_TOKEN_DAYS} days after the last time "
-            "you use it, so opening it now and again is enough to keep it alive. "
-            "If it ever stops working, reply to this email and we'll send a new one."
-        )
-    else:
-        lines += ["", "We'll be in touch shortly.", ""]
-    lines.append("Keep this email — the link above is how you get back to it.")
-    return chr(10).join(lines)
+#  How a payment was taken, said in words a buyer recognises. `provider`
+#  is all an order records, so this says the truth it has rather than
+#  inventing a card brand nobody stored.
+PAYMENT_METHODS = {"stripe": "Card (Stripe)"}
 
 
-def sale_notice_body(db, order, site_name):
-    """What the OWNER needs to know about a sale, in the order they need
-    it: what to do, then who, then what, then how much.
+def payment_method(order):
+    return PAYMENT_METHODS.get((order["provider"] or "").lower(),
+                               (order["provider"] or "").title() or "Card")
 
-    There was no seller notification at all -- the only way to learn a
-    sale had happened was to open the Orders screen and notice a new row.
-    That is fine for a download, which delivers itself, and no good at all
-    for something sitting in a cupboard waiting to be posted.
+
+def order_items(order):
+    """[(quantity, description, amount_minor)] for THIS order.
+
+    Read from the order's own stored line items -- never from the
+    customer's other orders, which is the fault this replaced: the buyer's
+    email summed every entitlement they had ever been granted, so somebody
+    buying a second time was told their lifetime total and read it as what
+    they had just paid for.
     """
-    ents = entitlements_for(db, order["customer_id"]) if order["customer_id"] else []
-    mine = [e for e in ents if e["order_id"] == order["id"]]
-    to_post = sum(e["granted"] for e in mine if e["kind"] == "physical")
-    lines = []
-    if to_post:
-        lines += [f"ACTION: post {to_post} item{'s' if to_post != 1 else ''}."
-                  " The delivery address is on the payment in Stripe.", ""]
-    else:
-        lines += ["Nothing to post — this one delivers itself.", ""]
     try:
         items = json.loads(order["line_items"] or "[]")
     except (ValueError, TypeError):
         items = []
-    bought = [f"{i.get('description') or 'item'} x{i.get('quantity') or 1}" for i in items]
-    customer = db.execute("SELECT email, name FROM customers WHERE id = ?",
-                          (order["customer_id"],)).fetchone() if order["customer_id"] else None
-    amount = f"{(order['amount_total'] or 0) / 100:.2f} {(order['currency'] or '').upper()}"
-    lines += [
-        f"Sold: {', '.join(bought) if bought else 'see Stripe'}",
-        f"To:   {customer['email'] if customer else 'unknown'}"
-        + (f" ({customer['name']})" if customer and customer["name"] else ""),
-        f"For:  {amount}",
-        "",
-        f"This is an automatic note from {site_name}. The buyer has had their own email.",
-    ]
+    out = []
+    for i in items:
+        out.append((int(i.get("quantity") or 1),
+                    str(i.get("description") or "item"),
+                    i.get("amount_total") if i.get("amount_total") is not None
+                    else i.get("amount_subtotal")))
+    return out
+
+
+def money(minor, currency):
+    return "%.2f %s" % ((minor or 0) / 100, (currency or "").upper())
+
+
+def purchase_list(order):
+    """One line per thing bought. The list a buyer checks against."""
+    cur = order["currency"]
+    lines = []
+    for qty, name, amount in order_items(order):
+        price = ("  " + money(amount, cur)) if amount is not None else ""
+        lines.append("%d x %s%s" % (qty, name, price))
+    return chr(10).join(lines) if lines else "Your order"
+
+
+def invoice(db, order, legal_settings=None):
+    """The purchase list with everything that makes it an invoice.
+
+    A reference, a date, who is selling, what was bought, what it came to
+    and how it was paid. Plain text, because that is what survives every
+    mail client, and because the same words are the text half of the mail.
+
+    The seller's details come from the Legal pages screen, which is where
+    an owner has already entered them -- an invoice naming nobody is not
+    an invoice, and asking for the same address twice is how two of them
+    come to disagree.
+    """
+    ref = order["provider_ref"] or str(order["id"])
+    when = (order["created_at"] or "")[:10]
+    head = ["Order %s" % ref] + ([when] if when else [])
+
+    seller = []
+    if legal_settings:
+        for key in ("business", "address", "vat_number"):
+            value = (legal_settings.get(key) or "").strip()
+            if not value:
+                continue
+            if key == "vat_number":
+                value = "VAT " + value
+            seller += [line for line in value.splitlines() if line.strip()]
+
+    body = [purchase_list(order),
+            "",
+            "Total: " + money(order["amount_total"], order["currency"]),
+            "Payment method: " + payment_method(order)]
+
+    parts = [chr(10).join(head)]
+    if seller:
+        parts.append(chr(10).join(seller))
+    parts.append(chr(10).join(body))
+    return (chr(10) * 2).join(parts)
+
+
+def access_note(db, order):
+    """What THIS order entitles them to, and by when -- nothing else.
+
+    Scoped by `order_id`, which is the whole point. Empty when the order
+    grants nothing to come back for, so a template using it simply has one
+    fewer paragraph rather than an apologetic sentence about nothing.
+    """
+    if not order["customer_id"]:
+        return ""
+    mine = [e for e in entitlements_for(db, order["customer_id"])
+            if e["order_id"] == order["id"]]
+    credits = sum(e["granted"] - e["used"] for e in mine if e["kind"] == KIND_CREDIT)
+    downloads = [e for e in mine if e["kind"] == KIND_DOWNLOAD]
+    lines = []
+    if credits:
+        lines.append("This order includes %d session%s to book."
+                     % (credits, "s" if credits != 1 else ""))
+    if downloads:
+        left = sum(e["granted"] - e["used"] for e in downloads)
+        lines.append("This order includes %d download%s (%d left)."
+                     % (len(downloads), "s" if len(downloads) != 1 else "", left))
+        #  The date, not a duration: "30 days" needs the reader to know
+        #  when they bought it, and they are reading this weeks later.
+        last = min((e["expires_at"] for e in downloads if e["expires_at"]), default=None)
+        if last:
+            lines.append("Please save %s before %s."
+                         % ("them" if len(downloads) != 1 else "it", last[:10]))
     return chr(10).join(lines)
+
+
+def seller_action(db, order):
+    """The one thing the OWNER may have to do about a sale."""
+    if not order["customer_id"]:
+        return ""
+    mine = [e for e in entitlements_for(db, order["customer_id"])
+            if e["order_id"] == order["id"]]
+    to_post = sum(e["granted"] for e in mine if e["kind"] == "physical")
+    if to_post:
+        return ("Post %d item%s. The delivery address is on the payment in Stripe."
+                % (to_post, "s" if to_post != 1 else ""))
+    return "Nothing to post - this one delivers itself."
+
+
+def invoice_links(db, order, integrations=None):
+    """(pdf_url, hosted_url) for an order, asking Stripe once if it must.
+
+    Both parties need this and for the same reason: it is the tax
+    document. The buyer files it as a purchase, the seller as a sale, and
+    a numbered invoice that neither of them can reach is no better than
+    no invoice at all -- which is what this app had, having asked Stripe
+    to raise one and then never looked at the answer.
+
+    Why it is resolved rather than stored at the time: an invoice's
+    `invoice_pdf` and `hosted_invoice_url` are **null until Stripe
+    finalises it**, and finalisation usually happens after the
+    `checkout.session.completed` webhook has already been answered. So a
+    checkout stores the invoice's id and the links are fetched the first
+    time somebody wants them -- then cached, because they do not change.
+    A renewal needs none of this: a paid invoice is a finalised one, and
+    the event carries both links already.
+    """
+    pdf = order["invoice_pdf"] if "invoice_pdf" in order.keys() else None
+    hosted = order["invoice_url"] if "invoice_url" in order.keys() else None
+    if pdf or hosted:
+        return pdf, hosted
+    ref = order["invoice_ref"] if "invoice_ref" in order.keys() else None
+    if not ref or integrations is None:
+        return None, None
+    try:
+        found, error = integrations.stripe_call(
+            db, "/invoices/" + str(ref).replace("/", ""))
+    except Exception:  # noqa: BLE001 - an invoice link may never fail a page
+        return None, None
+    if error or not isinstance(found, dict):
+        return None, None
+    pdf = found.get("invoice_pdf") or None
+    hosted = found.get("hosted_invoice_url") or None
+    if pdf or hosted:
+        #  Cached only once there is something to cache. A null means
+        #  "not finalised yet, ask again", never "there is none".
+        db.execute("UPDATE orders SET invoice_pdf = ?, invoice_url = ? WHERE id = ?",
+                   (pdf, hosted, order["id"]))
+    return pdf, hosted
+
+
+def order_values(db, order, site_name, token_url="", legal_settings=None,
+                 buyer=None, integrations=None):
+    """Everything a message about this order can say, as placeholders.
+
+    The message itself is the owner's now, so this side stops rendering
+    sentences and starts supplying facts. Every one of them is about THIS
+    order.
+    """
+    items = order_items(order)
+    return {
+        "site": site_name,
+        "link": token_url,
+        "order": order["provider_ref"] or str(order["id"]),
+        "date": (order["created_at"] or "")[:10],
+        "product": ", ".join(name for _q, name, _a in items) or "your order",
+        "items": purchase_list(order),
+        "invoice": invoice(db, order, legal_settings),
+        "invoice_pdf": (invoice_links(db, order, integrations)[0] or ""),
+        "total": money(order["amount_total"], order["currency"]),
+        "method": payment_method(order),
+        "access": access_note(db, order),
+        "action": seller_action(db, order),
+        "buyer": (buyer or {}).get("email", "") if buyer else "",
+    }
 
 
 def spend_credit(db, entitlement_id, customer_id):

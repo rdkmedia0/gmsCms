@@ -4,27 +4,23 @@
 {% include "partials/email_tabs.html" %}
 <h1>Message wording</h1>
 <p class="hint">These four go out on their own &mdash; when somebody buys something, signs up,
-  or confirms. Each one below is the message itself, as it will arrive. Write into the parts
-  that are yours; the greyed part is written for you and cannot be changed.</p>
+  or confirms. Each one below is the message itself, and all of it is yours to write. Use the
+  chips to drop in things this site fills in for you, like the total or the invoice.</p>
 
 {% if not email_ready %}
 <p class="flash flash-warning">Email isn&rsquo;t set up, so none of these can be sent yet.
   <a href="{{ url_for('admin.settings_email') }}">Set it up &rarr;</a></p>
 {% endif %}
 
-{#  The same shape as the newsletter editor, deliberately.
+{#  The same canvas as the newsletter editor, deliberately: the site's own
+    ground, the card the message arrives in, the paragraph style
+    email_layouts gives a newsletter's words. These are the same kind of
+    thing and should not need two screens learning.
 
-    This was two textareas and a collapsed preview, which asked somebody
-    to hold three things in their head at once: what they were typing,
-    where it would land, and what it would look like when it did. These
-    are the same kind of thing as a newsletter and should not need two
-    screens learning.
-
-    So: the message, on the site's own ground, in the card it arrives in
-    -- with the owner's parts written into directly and the code's parts
-    greyed and inert. What is greyed is not styling for its own sake: it
-    is the difference between what you may change and what you may not,
-    said in the one way that needs no label. #}
+    What is greyed is no longer a fixed middle -- the body is the owner's
+    now -- but only what the code adds BELOW it: the sender line, and on a
+    list message the unsubscribe link. Shown rather than described, so
+    nobody writes their own and the reader gets two. #}
 {% for key in order %}
 {% set spec = messages[key] %}
 <div class="card">
@@ -40,7 +36,7 @@
         before they start typing. Clicking one puts it where the caret
         was: `{{ '{{ site }}' }}` with spaces does not substitute, and
         what arrives in an inbox is then the braces. #}
-    <p class="hint">Click to insert &mdash; filled in when the message is sent:</p>
+    <p class="hint">Click to drop one in &mdash; this site fills it in when the message is sent:</p>
     <p class="site-email-placeholders">
       {% for ph in spec.placeholders %}
       <button type="button" class="btn btn-small" data-insert="{{ '{{' ~ ph.name ~ '}}' }}"
@@ -49,51 +45,56 @@
       {% endfor %}
     </p>
 
-    <div class="cms-issue-canvas-ground" style="background: {{ look.ground }};">
-      <div class="cms-issue-canvas" style="font-family: {{ look.body_font }};">
+    <div class="cms-wording-panes">
+      <div class="cms-wording-pane">
+        <p class="cms-wording-pane-label">Write it here</p>
+        <div class="cms-issue-canvas-ground" style="background: {{ look.ground }};">
+          <div class="cms-issue-canvas" style="font-family: {{ look.body_font }};">
+            <div class="cms-wording-mine" data-wording="body" data-store="{{ key }}_body"
+                 contenteditable="true" style="{{ block_styles.p }}outline:none;"
+                 data-placeholder="Write the message. Leave it empty to send nothing at all."
+                 title="The whole message, in your words. Use the chips above for anything this site fills in."
+            >{{ wording[key] }}</div>
 
-        <div class="cms-wording-mine" data-wording="intro" data-store="{{ key }}_intro"
-             contenteditable="true" style="{{ block_styles.p }}outline:none;"
-             data-placeholder="Your greeting — click and write, or leave it empty"
-             title="Your own opening line. Click and write straight into it, or leave it blank for none."
-        >{{ wording[key][0] }}</div>
-
-        {#  Inert, and greyed so that is visible without a label. Every
-            line of it is either a fact about what happened or something
-            the reader needs in order to act, which is why it is not a
-            field. #}
-        <div class="cms-wording-fixed"
-             title="This part is written for you and cannot be changed — it is what actually happened, and what the reader needs in order to act.">
-          {% for part in bodies[key] %}{{ part | safe }}{% endfor %}
+            {#  Inert, and greyed so that is visible without a label.
+                Neither line is a choice: the sender line says who this
+                came from, and a message to a mailing list carries an
+                unsubscribe link by law. #}
+            <div class="cms-issue-canvas-foot cms-wording-fixed"
+                 title="Added for you and not editable &mdash; {{ appended[key] }}">
+              <hr>
+              <p>{{ sender_line }}{% if key in needs_unsubscribe %}<br>Unsubscribe: <u>a link
+                to leave the list</u>{% endif %}</p>
+            </div>
+          </div>
         </div>
+      </div>
 
-        <div class="cms-wording-mine" data-wording="outro" data-store="{{ key }}_outro"
-             contenteditable="true" style="{{ block_styles.p }}outline:none;"
-             data-placeholder="Your sign-off — click and write, or leave it empty"
-             title="Your own closing line. Click and write straight into it, or leave it blank for none."
-        >{{ wording[key][1] }}</div>
-
-        {#  The footer the code appends whatever anybody writes. Shown so
-            nobody writes their own sign-off twice, and greyed for the
-            same reason as the middle. #}
-        <div class="cms-issue-canvas-foot cms-wording-fixed"
-             title="Added for you. A message to a list has to carry both by law.">
-          <hr>
-          <p>{{ sender_line }}{% if key == 'subscribed' %}<br>You are getting this because you
-            asked us to. <u>Unsubscribe</u>.{% endif %}</p>
+      {#  The same words with the placeholders filled in. A sentence with
+          `{{ '{{total}}' }}` in the middle of it cannot be judged until
+          it says 42.00 CHF, and asking somebody to imagine that is what
+          the old collapsed preview did. #}
+      <div class="cms-wording-pane">
+        <p class="cms-wording-pane-label">How it will read</p>
+        <div class="cms-issue-canvas-ground" style="background: {{ look.ground }};">
+          <div class="cms-issue-canvas" style="font-family: {{ look.body_font }};">
+            <div class="cms-wording-preview" data-preview="{{ key }}">
+              {% for part in previews[key] %}{{ part | safe }}{% endfor %}
+            </div>
+            <div class="cms-issue-canvas-foot cms-wording-fixed">
+              <hr>
+              <p>{{ sender_line }}{% if key in needs_unsubscribe %}<br>Unsubscribe:
+                <u>https://your.site/u/abc123</u>{% endif %}</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
-    <input type="hidden" name="intro" id="{{ key }}_intro" value="{{ wording[key][0] }}">
-    <input type="hidden" name="outro" id="{{ key }}_outro" value="{{ wording[key][1] }}">
+    <input type="hidden" name="body" id="{{ key }}_body" value="{{ wording[key] }}">
 
-    {#  Said in words as well as shown in grey. The grey carries it for
-        somebody who notices grey; a person who does not should not have
-        to hover to find out which half is theirs. #}
-    <p class="hint cms-wording-note">The greyed lines are written for you and cannot be
-      changed &mdash; they are what actually happened, the links the reader needs, and
-      the sender line the law requires. Your words go above and below them.</p>
+    <p class="hint cms-wording-note">The greyed lines at the bottom are added for you and
+      cannot be changed &mdash; {{ appended[key] }}</p>
 
     <div class="cms-post-save-bar">
       <button type="submit" class="btn btn-primary"
@@ -115,5 +116,6 @@
     newsletters themselves &mdash; that is where you are when you think about them.</p>
 </div>
 
+<script type="application/json" id="cms-wording-sample">{{ sample | tojson }}</script>
 <script src="{{ static_url('js/admin/wording-editor.js') }}"></script>
 {% endblock %}

@@ -75,7 +75,15 @@ def _dressed(db, text_body, subject):
     look = newsletter.look_from(
         _role_color_ramps(template) if template else None,
         FONT_PAIRINGS.get((get_site_settings(db) or {}).get("font_pairing")))
-    return newsletter.to_transactional_html(text_body, site_title, line, look), text_body
+    #  The HTML half gets the sender line from the shell. The TEXT half
+    #  used to get it from the .txt template that rendered the body --
+    #  and the body is the owner's now, so nothing was adding it and the
+    #  plain-text copy of every message went out unsigned. Added here,
+    #  where both halves are built, so the two say the same thing.
+    signed = text_body
+    if line and line not in text_body:
+        signed = (text_body.rstrip() + chr(10) * 2 + line).strip()
+    return newsletter.to_transactional_html(text_body, site_title, line, look), signed
 
 
 def _send_order_email(db, order_id):
@@ -101,11 +109,15 @@ def _send_order_email(db, order_id):
         url = _public_url("public.my_account", token=token)
         site = (get_site_settings(db) or {}).get("site_title") or "our website"
         subject = f"Your order from {site}"
-        body = site_emails.wrap(
-            db, "order", commerce.order_email_body(db, order, url, site),
-            {"site": site, "link": url,
-             "total": "%.2f %s" % ((order["amount_total"] or 0) / 100,
-                                   (order["currency"] or "").upper())})
+        #  Everything either message can say about THIS order, worked out
+        #  once and shared: the buyer's copy and the seller's differ in
+        #  their words, never in their facts. Two sets built separately
+        #  is how one of them comes to quote a different total.
+        facts = commerce.order_values(
+            db, order, site, token_url=url,
+            legal_settings=legal.settings_for(db),
+            buyer={"email": customer["email"]}, integrations=integrations)
+        body = site_emails.wrap(db, "order", None, facts)
         html, text = _dressed(db, body, subject)
         mailer.send_html(settings, customer["email"], subject, html, text, from_name=site)
         #  And tell the owner. Separate message, separate address: the
@@ -125,11 +137,7 @@ def _send_order_email(db, order_id):
                 subject = ("Sale: %.2f %s — %s"
                            % ((order["amount_total"] or 0) / 100,
                               (order["currency"] or "").upper(), site))
-                body = site_emails.wrap(
-                    db, "sale", commerce.sale_notice_body(db, order, site),
-                    {"site": site, "buyer": customer["email"],
-                     "total": "%.2f %s" % ((order["amount_total"] or 0) / 100,
-                                           (order["currency"] or "").upper())})
+                body = site_emails.wrap(db, "sale", None, facts)
                 html, text = _dressed(db, body, subject)
                 mailer.send_html(settings, seller, subject, html, text, from_name=site)
         except Exception as e:  # noqa: BLE001
@@ -407,6 +415,38 @@ def my_account_cancel(token):
     return redirect(url_for("public.my_account", token=token, cancelled=1))
 
 
+@bp.route("/my/<token>/invoice/<int:order_id>")
+def my_account_invoice(token, order_id):
+    """The buyer's own copy of the tax document for one order.
+
+    A redirect rather than a link rendered into the page, for two
+    reasons. An account page listing ten orders would otherwise ask
+    Stripe about ten invoices every time it loads, most of which nobody
+    will click. And an invoice's PDF link is null until Stripe finalises
+    it -- which is usually after the webhook that recorded the order --
+    so a URL baked in at render time is the one case where it is
+    guaranteed to be missing.
+
+    The token is the credential, exactly as it is for a download, and the
+    order has to belong to the customer it opens.
+    """
+    db = get_db()
+    customer = commerce.customer_for_token(db, token)
+    if not customer:
+        return redirect(url_for("public.my_account", token=token))
+    order = db.execute("SELECT * FROM orders WHERE id = ? AND customer_id = ?",
+                       (order_id, customer["id"])).fetchone()
+    if not order:
+        return redirect(url_for("public.my_account", token=token))
+    pdf, hosted = commerce.invoice_links(db, order, integrations)
+    db.commit()
+    if pdf or hosted:
+        return redirect(pdf or hosted)
+    #  Said rather than 404'd. "Not found" would be a lie -- the invoice
+    #  exists, it is not ready, and those need different actions.
+    return redirect(url_for("public.my_account", token=token, invoice="pending"))
+
+
 @bp.route("/my/<token>/download/<int:entitlement_id>")
 def my_account_download(token, entitlement_id):
     """Streams a paid file, once the entitlement has been checked and spent.
@@ -607,10 +647,10 @@ def subscribe():
         #  Not a list message yet -- they have not confirmed -- so it
         #  carries no unsubscribe, which is also why it is dressed with
         #  the transactional shell rather than the newsletter's.
-        html, text = _dressed(db, site_emails.wrap(db, "confirm", render_template(
-            "emails/confirm_subscription.txt", site_title=site_title,
-            confirm_url=confirm_url, consent_text=consent_text, sender_line=line),
-            {"site": site_title, "link": confirm_url}), subject)
+        html, text = _dressed(db, site_emails.wrap(
+            db, "confirm", None,
+            {"site": site_title, "link": confirm_url,
+             "consent": consent_text}), subject)
         mailer.send_html(email_settings, request.form.get("email"), subject, html, text,
                          from_name=site_title)
     except Exception:  # noqa: BLE001 - a bad address must not 500 the page
@@ -671,10 +711,8 @@ def _send_welcome(db, row):
         #  This one IS a list message, so the unsubscribe link stays --
         #  it is already in the words, and the headers go with it. The
         #  shell only dresses what is written.
-        html, text = _dressed(db, site_emails.wrap(db, "subscribed", render_template(
-            "emails/subscribed.txt", site_title=site_title,
-            consent_text=row["consent_text"], unsubscribe_url=unsubscribe_url,
-            sender_line=sender_line),
+        html, text = _dressed(db, site_emails.wrap(
+            db, "subscribed", None,
             {"site": site_title, "link": unsubscribe_url}), subject)
         mailer.send_html(email_settings, row["email"], subject, html, text,
                          from_name=site_title,

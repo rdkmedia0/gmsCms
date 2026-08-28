@@ -127,48 +127,35 @@ def newsletters():
 @bp.route("/emails", endpoint="site_emails")
 @login_required
 def site_emails_screen():
-    """The wording of the four messages nobody presses Send on."""
+    """The wording of the four messages nobody presses Send on.
+
+    The message as it will ARRIVE, not a description of it -- the same
+    canvas the newsletter editor uses, because these are the same kind of
+    thing and reading them should not mean learning a second screen.
+
+    The whole body is the owner's now, so there is no greyed middle any
+    more: what is greyed is only what the code adds BELOW the message,
+    which is the sender line and, on a list message, the unsubscribe
+    link. Both are shown rather than merely described, so nobody writes
+    their own and the reader gets two.
+    """
     db = get_db()
-    #  A sample of what each message's own body looks like, so the
-    #  preview shows words in position rather than a shape.
-    bodies = {
-        "order": ("You have 3 sessions to book." + chr(10)
-                  + "You have 1 download waiting (2 downloads left)." + chr(10)
-                  + "Please save it before 2027-01-31 — we don't keep paid files up forever."
-                  + chr(10) * 2 + "Everything is here:" + chr(10)
-                  + site_emails.SAMPLE["link"]),
-        "sale": ("Somebody bought Coaching pack — 24.00 CHF." + chr(10)
-                 + "They have 3 sessions to book."),
-        "confirm": ("Somebody — we hope you — asked to receive email from Your site."
-                    + chr(10) * 2 + "To confirm, open this link:" + chr(10)
-                    + site_emails.SAMPLE["link"]),
-        "subscribed": ("You confirmed your subscription to Your site." + chr(10) * 2
-                       + "Unsubscribe: " + site_emails.SAMPLE["link"]),
-    }
-    #  The message as it will ARRIVE, not a description of it. Same look
-    #  the newsletter editor uses -- the site's own ground and card, the
-    #  body styled the way email_layouts styles a newsletter's words --
-    #  because these are the same kind of thing and reading them side by
-    #  side should not mean learning two screens.
     look = _look(db)
-    line, _has = newsletter.sender_line(
-        legal.settings_for(db),
-        (get_site_settings(db) or {}).get("site_title") or "Your site")
+    site_title = (get_site_settings(db) or {}).get("site_title") or "Your site"
+    line, _has = newsletter.sender_line(legal.settings_for(db), site_title)
     return render_template(
         "admin/site_emails.html",
         messages=site_emails.MESSAGES,
         order=site_emails.ORDER,
-        wording={key: site_emails.wording(db, key) for key in site_emails.ORDER},
-        #  The fixed middle, rendered as the email renders it. Greyed on
-        #  the screen and not editable: every line of it is either a fact
-        #  about what happened or something the reader needs in order to
-        #  act.
-        bodies={key: email_layouts.rich(
-            site_emails.fill(bodies[key], site_emails.SAMPLE), look)
-            for key in site_emails.ORDER},
-        #  What the owner's own words will look like once filled in --
-        #  the same paragraph style, so the canvas reads as one message
-        #  rather than as three different kinds of text.
+        appended=site_emails.APPENDED,
+        needs_unsubscribe=site_emails.NEEDS_UNSUBSCRIBE,
+        #  What the owner has, verbatim, to write into.
+        wording={key: site_emails.body(db, key) for key in site_emails.ORDER},
+        #  ...and the same words with the placeholders filled in, which
+        #  is the only way to see whether a sentence with `{{total}}` in
+        #  the middle of it actually reads.
+        previews={key: email_layouts.rich(site_emails.preview(db, key), look)
+                  for key in site_emails.ORDER},
         block_styles=email_layouts.block_styles(look),
         look=look,
         sender_line=line,
@@ -186,8 +173,7 @@ def site_email_save(message):
         db.commit()
         flash("Put back to the standard wording.", "success")
         return redirect(url_for("admin.site_emails"))
-    saved, error = site_emails.save(db, message, request.form.get("intro"),
-                                    request.form.get("outro"))
+    saved, error = site_emails.save(db, message, request.form.get("body"))
     if error:
         flash(error, "error")
     else:

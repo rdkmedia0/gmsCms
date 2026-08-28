@@ -32,6 +32,8 @@ from app.db import get_db                                     # noqa: E402
 from app import mailer                                        # noqa: E402
 from app.services import site_emails, subscribers             # noqa: E402
 
+NL = chr(10)
+
 SENT = []
 mailer.is_configured = lambda settings: True
 mailer.send_html = lambda settings, to, subject, html, text, from_name=None, headers=None: \
@@ -64,29 +66,63 @@ with app.test_request_context("/"):
           str(site_emails.ORDER))
     for key in site_emails.ORDER:
         spec = site_emails.MESSAGES[key]
-        check("%s: says when it goes and what it always says" % key,
-              bool(spec["name"] and spec["when"] and spec["fixed"]))
+        check("%s: says when it goes and ships real words" % key,
+              bool(spec["name"] and spec["when"] and spec["body_default"]))
+        #  A placeholder offered on a message that cannot fill it is a
+        #  promise this app does not keep -- it would arrive as braces.
+        check("%s: every placeholder it offers can be filled" % key,
+              all(p["name"] in site_emails.SAMPLE for p in spec["placeholders"]),
+              str([p["name"] for p in spec["placeholders"]
+                   if p["name"] not in site_emails.SAMPLE]))
         check("%s: every placeholder says what it means" % key,
               all(p["name"] and p["means"] for p in spec["placeholders"]))
 
     print()
-    print("What the owner writes reaches the message")
+    print("The whole message is the owner's")
     print("-" * 70)
-    site_emails.save(db, "order", "Hello from {{site}}!", "Any questions, just reply.")
+    site_emails.save(db, "order", "Hello from {{site}}. You paid {{total}}.")
     db.commit()
-    got = site_emails.wrap(db, "order", "THE FACTS",
-                           {"site": "Flour & Salt", "link": "https://x.test"})
-    check("the greeting arrives, filled in", got.startswith("Hello from Flour & Salt!"), got)
-    check("the facts are still in the middle", "THE FACTS" in got, got)
-    check("the sign-off arrives last", got.rstrip().endswith("just reply."), got)
-    check("nothing is run together",
-          got.count(chr(10) * 2) == 2, repr(got))
+    got = site_emails.wrap(db, "order", None,
+                           {"site": "Flour & Salt", "total": "24.00 CHF"})
+    check("their words are what is sent", got == "Hello from Flour & Salt. You paid 24.00 CHF.", got)
 
-    #  An empty half must cost nothing -- not a gap at the top.
-    site_emails.save(db, "order", "", "Bye.")
+    #  The whole point of opening this up: an owner can now correct a
+    #  sentence that used to be ours and used to be wrong.
+    site_emails.save(db, "order", "")
     db.commit()
-    empty = site_emails.wrap(db, "order", "THE FACTS", {})
-    check("an empty greeting leaves no gap", empty.startswith("THE FACTS"), repr(empty))
+    check("an owner who empties it sends nothing",
+          site_emails.wrap(db, "order", None, site_emails.SAMPLE) == "",
+          repr(site_emails.wrap(db, "order", None, site_emails.SAMPLE)))
+
+    print()
+    print("The default wording is a real message, not a skeleton")
+    print("-" * 70)
+    site_emails.reset(db, "order")
+    db.commit()
+    shipped = site_emails.wrap(db, "order", None, site_emails.SAMPLE)
+    check("it says what was bought", "Coaching pack" in shipped, shipped)
+    check("...what it cost", "42.00 CHF" in shipped, shipped)
+    check("...how it was paid for", "Card (Stripe)" in shipped, shipped)
+    check("...and the way back in", site_emails.SAMPLE["link"] in shipped, shipped)
+    #  The fault that opened this up: the old fixed body told a returning
+    #  buyer their LIFETIME entitlements in an email about one order.
+    check("it does not talk about other orders",
+          "sessions to book" not in shipped and "downloads left" not in shipped,
+          shipped)
+    check("no placeholder survives into a real message", "{{" not in shipped, shipped)
+
+    for key in ("sale", "confirm", "subscribed"):
+        site_emails.reset(db, key)
+    db.commit()
+    sale = site_emails.wrap(db, "sale", None, site_emails.SAMPLE)
+    check("the sale notice leads with what happened",
+          sale.startswith("A customer made an order from your website."), sale[:60])
+    check("...and names the buyer", site_emails.SAMPLE["buyer"] in sale, sale)
+    conf = site_emails.wrap(db, "confirm", None, site_emails.SAMPLE)
+    check("the confirmation asks them to opt in",
+          "opt in" in conf and site_emails.SAMPLE["link"] in conf, conf[:80])
+    check("...and says what to do if it was not them",
+          "delete and ignore" in conf, conf[:120])
 
     print()
     print("A placeholder this app cannot fill is visible, not blank")
@@ -97,31 +133,69 @@ with app.test_request_context("/"):
     check("the known one is filled", "Hello Flour" in odd, odd)
     check("the unknown one stays visible", "{{discount}}" in odd, odd)
 
+    #  An EMPTY value is a different case and takes its line with it: an
+    #  order with nothing to post must not send a message ending in
+    #  "Buyer: " with nothing after it.
+    gap = site_emails.fill("Before" + NL + "{{action}}" + NL + "After", {"action": ""})
+    check("an empty value takes its own line away", gap == "Before" + NL + "After", repr(gap))
+    stranded = site_emails.fill("Buyer: {{buyer}}", {"buyer": ""})
+    check("...but a label with it keeps its line", stranded == "Buyer:", repr(stranded))
+
     print()
-    print("The facts survive whatever the owner writes")
+    print("What the law adds cannot be written out")
     print("-" * 70)
-    #  There is no field that can remove them: the owner writes AROUND a
-    #  body the code renders. Proved by writing nonsense in both halves
-    #  and finding the body intact.
-    for key in site_emails.ORDER:
-        site_emails.save(db, key, "x", "y")
+    #  The one carve-out. Everything else is the owner's; this is not,
+    #  and no wording may remove it.
+    site_emails.save(db, "subscribed", "Thanks, that is all.")
     db.commit()
-    for key, must in (("order", "https://your.site"),
-                      ("confirm", "confirm"),
-                      ("subscribed", "Unsubscribe")):
-        body = {"order": "Everything is here:" + chr(10) + "https://your.site/a",
-                "confirm": "To confirm, open this link:",
-                "subscribed": "Unsubscribe: https://your.site/u"}[key]
-        out = site_emails.wrap(db, key, body, site_emails.SAMPLE)
-        check("%s: its own facts are untouched" % key, must.lower() in out.lower(), out)
+    out = site_emails.wrap(db, "subscribed", None, {"link": "https://your.site/u/abc"})
+    check("the unsubscribe link is added below any wording",
+          "https://your.site/u/abc" in out, out)
+    #  ...and only once, for an owner who put it in their own sentence.
+    site_emails.save(db, "subscribed", "Leave any time: {{link}}")
+    db.commit()
+    once = site_emails.wrap(db, "subscribed", None, {"link": "https://your.site/u/abc"})
+    check("...and not twice when they wrote it themselves",
+          once.count("https://your.site/u/abc") == 1, once)
+    #  A confirmation is not a list message: there is nothing to leave.
+    site_emails.save(db, "confirm", "Confirm here: {{link}}")
+    db.commit()
+    conf2 = site_emails.wrap(db, "confirm", None, {"link": "https://your.site/c/abc"})
+    check("a confirmation carries no unsubscribe",
+          "Unsubscribe" not in conf2, conf2)
+
+    print()
+    print("An owner's earlier words are adopted, never dropped")
+    print("-" * 70)
+    #  Installs configured before the body existed have an intro and an
+    #  outro. An upgrade that silently deletes what somebody wrote is the
+    #  worst kind of upgrade.
+    site_emails.reset(db, "sale")
+    for part, value in (("intro", "Morning!"), ("outro", "-- the shop")):
+        db.execute("INSERT INTO settings (key, value) VALUES (?, ?) "
+                   "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                   ("email_sale_" + part, value))
+    db.commit()
+    adopted = site_emails.body(db, "sale")
+    check("the old greeting is still there", adopted.startswith("Morning!"), adopted[:40])
+    check("...the sign-off too", adopted.rstrip().endswith("-- the shop"), adopted[-40:])
+    check("...wrapped around the shipped default",
+          "A customer made an order" in adopted, adopted[:120])
+    #  Saving once replaces the pair, and a reset must clear both or it
+    #  falls through to an intro somebody believed they had cleared.
+    site_emails.reset(db, "sale")
+    db.commit()
+    check("resetting clears the legacy pair too",
+          site_emails.body(db, "sale") == site_emails.MESSAGES["sale"]["body_default"],
+          site_emails.body(db, "sale")[:60])
 
     print()
     print("The preview shows what would really be sent")
     print("-" * 70)
-    site_emails.save(db, "subscribed", "Lovely to have you, {{site}}.", "")
+    site_emails.save(db, "subscribed", "Lovely to have you, {{site}}.")
     db.commit()
-    shown = site_emails.preview(db, "subscribed", "THE FACTS")
-    live = site_emails.wrap(db, "subscribed", "THE FACTS", site_emails.SAMPLE)
+    shown = site_emails.preview(db, "subscribed")
+    live = site_emails.wrap(db, "subscribed", None, site_emails.SAMPLE)
     check("the preview is the same words, filled the same way", shown == live, shown)
     check("...against believable data, not the placeholders repeated back",
           "{{" not in shown, shown)
@@ -129,19 +203,17 @@ with app.test_request_context("/"):
     print()
     print("It refuses what it cannot send, and can be put back")
     print("-" * 70)
-    ok_, error = site_emails.save(db, "not-a-message", "a", "b")
+    ok_, error = site_emails.save(db, "not-a-message", "a")
     check("a message this site does not send is refused", not ok_ and error, str(error))
     site_emails.reset(db, "order")
     db.commit()
-    back = site_emails.wording(db, "order")
     check("resetting restores the standard wording",
-          back[0] == site_emails.MESSAGES["order"]["intro_default"], str(back))
+          site_emails.body(db, "order") == site_emails.MESSAGES["order"]["body_default"])
     #  Deleting is a choice, and different from never having touched it.
-    site_emails.save(db, "order", "", "")
+    site_emails.save(db, "order", "")
     db.commit()
-    check("an owner who deletes the greeting gets no greeting",
-          site_emails.wording(db, "order")[0] == "",
-          str(site_emails.wording(db, "order")))
+    check("an owner who deletes it gets nothing, not the default",
+          site_emails.body(db, "order") == "", repr(site_emails.body(db, "order")))
 
     print()
     print("The live senders go through it")
@@ -176,7 +248,12 @@ with app.test_request_context("/"):
     #  not should not have to hover to find out which half is theirs.
     check("...and it is said in words, not only in grey",
           "cms-wording-note" in screen
-          and "The greyed lines are written for you" in screen)
+          and "cannot be changed" in screen)
+    #  Written on the left, read on the right. A sentence with a
+    #  placeholder in the middle of it cannot be judged until the
+    #  placeholder says 42.00 CHF.
+    check("the same words are shown filled in, beside them",
+          "cms-wording-panes" in screen and "data-preview" in screen)
     check("the sender line is shown so nobody writes it twice",
           "cms-issue-canvas-foot" in screen)
 

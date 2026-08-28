@@ -189,12 +189,26 @@
   {% if orders %}
   <section class="cms-account-block">
     <h2>Your orders</h2>
+    {#  Said, because the alternative is a link that appears to do
+        nothing. An invoice is a document that has to be finalised, and
+        for a minute or so after paying it is not. #}
+    {% if request.args.get('invoice') == 'pending' %}
+    <p class="cms-account-flash">That invoice is still being prepared &mdash; it usually
+      takes a minute. Try again shortly, or reply to your order email and we&rsquo;ll send it.</p>
+    {% endif %}
     <ul class="cms-account-list">
       {% for o in orders %}
       <li>
         {{ '%.2f'|format((o.amount_total or 0) / 100) }} {{ (o.currency or '').upper() }}
-        — {{ o.created_at[:10] }}
+        &mdash; {{ o.created_at[:10] }}
         {% if o.status != 'paid' %}<em>({{ o.status }})</em>{% endif %}
+        {#  Offered only when there is one to fetch. An order placed
+            before invoices were captured has nothing behind the link,
+            and a link that leads nowhere is worse than no link. #}
+        {% if o.invoice_ref %}
+        <a href="{{ url_for('public.my_account_invoice', token=token, order_id=o.id) }}"
+           title="Open the invoice for this order as a PDF. You may need it for your own records.">Invoice&nbsp;(PDF)</a>
+        {% endif %}
       </li>
       {% endfor %}
     </ul>

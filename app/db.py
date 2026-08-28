@@ -256,6 +256,7 @@ def _migrate(db):
                 raise
 
     _add_column(db, "templates", "sections_migrated", "INTEGER NOT NULL DEFAULT 0")
+
     for tpl in db.execute("SELECT * FROM templates WHERE sections_migrated = 0").fetchall():
         for zone, col in (("header", "header_sections"), ("footer", "footer_sections")):
             raw = tpl[col] if col in tpl.keys() else None
@@ -530,6 +531,20 @@ def _migrate(db):
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    #  Stripe raises a real, numbered invoice for every payment -- this
+    #  app has always asked for one (`invoice_creation[enabled]`) rather
+    #  than settling for a receipt, because a receipt is not a document
+    #  anybody can put through their books. It was never captured, so
+    #  neither the buyer nor the seller could reach it: the tax document
+    #  existed and was unreachable from either side.
+    #
+    #  `invoice_ref` is Stripe's id. `invoice_pdf` is cached only once
+    #  Stripe has finalised the invoice -- both URL fields are null on a
+    #  draft, so a null here means "ask again", never "there is none".
+    _add_column(db, "orders", "invoice_ref", "TEXT")
+    _add_column(db, "orders", "invoice_pdf", "TEXT")
+    _add_column(db, "orders", "invoice_url", "TEXT")
+
     #  One row per thing a buyer may do: download a file, or book a
     #  session. `granted` versus `used` is what a download limit and a
     #  session balance both reduce to, which is why they share a table.

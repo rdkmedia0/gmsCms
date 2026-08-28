@@ -83,6 +83,14 @@
     {% if order.email %}<strong>{{ order.email }}</strong>{% if order.name %} · {{ order.name }}{% endif %}
     {% else %}<em>no email recorded</em>{% endif %}
     · <code>{{ order.provider_ref[:28] }}…</code>
+    {#  Your copy of the same document the buyer gets. Both sides need it
+        and for the same reason: they file it as a purchase, you file it
+        as a sale. Shown only when Stripe raised one -- orders from
+        before this was captured have nothing behind the link. #}
+    {% if order.invoice_ref %}
+    · <a href="{{ url_for('admin.commerce_order_invoice', order_id=order.id) }}"
+         title="Open Stripe's invoice for this order as a PDF. The buyer has the same one.">Invoice (PDF)</a>
+    {% endif %}
   </p>
 
   {% set ents = entitlements.get(order.id) or [] %}

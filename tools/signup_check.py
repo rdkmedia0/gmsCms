@@ -34,7 +34,7 @@ os.environ["DATA_DIR"] = DATA_DIR
 from app import create_app                                    # noqa: E402
 from app.db import get_db                                     # noqa: E402
 from app import mailer                                        # noqa: E402
-from app.services import blocks, subscribers                  # noqa: E402
+from app.services import site_emails, blocks, subscribers                  # noqa: E402
 
 SENT = []
 
@@ -115,14 +115,30 @@ if invite:
         if "/subscribe/confirm/" in word:
             confirm_url = word
     check("the invitation carries a confirmation link", bool(confirm_url))
-    check("the invitation quotes what was agreed to",
-          "occasional updates" in invite[0]["body"])
+    #  The invitation USED to quote the consent wording back, because the
+    #  code wrote the body. The body is the owner's now and the shipped
+    #  default does not -- so what is checked here is the thing that
+    #  actually evidences consent, which is the RECORD, plus the fact
+    #  that an owner who wants it quoted has a placeholder for it.
+    check("the confirmation can quote what was agreed to",
+          any(p["name"] == "consent"
+              for p in site_emails.MESSAGES["confirm"]["placeholders"]))
+    check("...and it is filled when it is used",
+          "occasional updates" in site_emails.fill(
+              "{{consent}}", {"consent": "occasional updates"}))
 
 with app.app_context():
     db = get_db()
     row = db.execute("SELECT * FROM subscribers WHERE email = 'someone@example.com'").fetchone()
     check("the address is on the table but not confirmed", row is not None and not row["confirmed_at"])
     check("when the invitation was sent is recorded", bool(row and row["confirm_sent_at"]))
+    #  The wording as it stood at the moment they agreed to it. This is
+    #  the evidence -- "we had consent" is a claim you have to show a
+    #  year later -- and it is now the ONLY place that wording is kept,
+    #  since the shipped confirmation no longer quotes it back.
+    check("what they agreed to is recorded, in the words they saw",
+          bool(row) and "occasional updates" in (row["consent_text"] or ""),
+          repr(row["consent_text"]) if row else "no row")
     check("a send would skip them", not any(
         p["email"] == "someone@example.com" for p in subscribers.listing(db, confirmed_only=True)))
 
