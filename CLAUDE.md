@@ -1090,6 +1090,30 @@ Each of these follows the structure above — thin routes, logic in
   and colour act on a BLOCK here, and two controls that look alike but
   differ would be worse than either), and the selected block's own
   style.
+  **A layout somebody likes can be saved to the Template list**
+  (`email_layouts.save_layout`, an `email_layouts` table). A layout is a
+  starting arrangement and not a kind, so a saved one is the same thing
+  with its blocks written down instead of typed out, in the same
+  dropdown. It keeps what is on the CANVAS rather than what was last
+  saved, asks for a name (a name somebody chose is one they will
+  recognise six weeks later), and replaces rather than duplicates when
+  the same name is used again. It can be REMOVED, and only if it is one
+  of yours -- a shipped layout is in the code and would be back on the
+  next boot, so both the button and the route refuse.
+
+  **The screen is ordered like an envelope**: the ribbon, To and Subject,
+  the message, then what to do with it. It used to put the actions third,
+  which meant Send -- the button you press last -- sat above everything
+  you do first, live, over a message that was still empty. Everything
+  before the canvas is what the message needs; everything after it is
+  what happens to the message. Schedule and its time are drawn as ONE
+  control, and Delete is in that row rather than alone in a card below.
+
+  **A block's link is a block control**, in the ribbon beside its
+  alignment and colour -- not a card under the message holding one field.
+  Its explanation is the field's own tooltip: a sentence of running text
+  in a row of controls is most of what makes a toolbar read as a section.
+
   Three things travel together and must stay in step: `rich()`,
   `newsletter-editor.js`'s serialiser (its exact inverse), and
   `block_styles()`, which both the sent email and the editor read so a
@@ -1137,30 +1161,73 @@ Each of these follows the structure above — thin routes, logic in
   copy; restore pushes back through SQLite's backup API rather than
   swapping a file under a running app. The encryption key is excluded by
   default so a leaked archive cannot spend money.
-- **The messages that send themselves have the owner's voice**
-  (`services/site_emails.py`): an order landing, a sign-up, a
-  confirmation. Each has a greeting and a sign-off the owner writes,
-  wrapped around a body the CODE renders -- the same shape
-  `newsletter_intro`/`newsletter_outro` already had, applied to the other
-  four with one screen (Email -> Message wording). **The facts are not a
-  field**: the link back in, how many sessions or downloads are waiting
-  and by when, what somebody agreed to, the unsubscribe link and the
-  sender line. That is the sign-up form's rule again -- an owner
-  rewording "a confirmation email is coming" into "you're subscribed"
-  would make the site lie about its own mechanism -- so an owner writes
-  AROUND those, never over them. A placeholder this app cannot fill is
-  left visible as `{{whatever}}` rather than becoming a blank, because a
-  visible mistake gets fixed and a gap does not. **The screen IS the
-  message** (`admin/site_emails.html` + `admin/wording-editor.js`), in
-  the newsletter editor's own canvas: the owner's two parts written into
-  directly, the code's parts greyed and inert between them, and the
-  reason said in words underneath as well as in grey -- grey carries it
-  for somebody who notices grey. It was two textareas and a collapsed
-  preview, which asked somebody to hold what they were typing, where it
-  would land and what it would look like there all at once.
-  Adding a fifth message
-  means adding it to `MESSAGES` and wrapping it where it is sent;
-  `site_emails_check.py` fails if a sender forgets.
+- **The messages that send themselves are the owner's**
+  (`services/site_emails.py`): an order landing, a sale, a sign-up, a
+  confirmation. **The whole body is written by the owner**, and the facts
+  arrive as placeholders -- `{{items}}`, `{{invoice}}`, `{{total}}`,
+  `{{method}}`, `{{link}}`, `{{access}}` -- offered per message and
+  listed on one screen (Email -> Message wording).
+
+  This reverses an earlier rule, and the reason is worth keeping. It was
+  a greeting and a sign-off wrapped around a body the CODE rendered, on
+  the grounds that **the facts are not a field**: an owner writing over
+  them removes something the reader needs. That was half right, and the
+  wrong half cost more. The fixed middle told a returning buyer how many
+  sessions they had IN TOTAL, summed across every order they had ever
+  placed, in an email about the one they had just paid for -- and no
+  owner could correct it, because the sentence was ours. **A fixed body
+  that says the wrong thing is worse than an editable one that says
+  nothing**, because the first cannot be fixed by the person being
+  blamed for it. The facts did not become optional; they became
+  addressable.
+
+  **Two things are still not a field**, and neither is a matter of taste.
+  The unsubscribe link is appended below any wording on a list message --
+  in `wrap()`, not in the route that happens to know the URL, so a fifth
+  list message cannot ship without it, and only when it is not already
+  there. The sender line is added to BOTH halves of the mail. And a
+  placeholder this app cannot fill is left visible as `{{whatever}}`
+  rather than becoming a blank, because a visible mistake gets fixed and
+  a gap does not; an EMPTY one takes its whole line with it, so a message
+  never ends in "Buyer: " with nothing after it.
+
+  Everything a message can say about an order is worked out **once, per
+  order**, in `commerce.order_values` -- the buyer's copy and the
+  seller's differ in their words, never in their facts. Two sets built
+  separately is how one of them comes to quote a different total.
+
+  **The screen IS the message** (`admin/site_emails.html` +
+  `admin/wording-editor.js`), in the newsletter editor's own canvas:
+  written on the left, and the same words with the placeholders filled in
+  on the right, updating as they are typed. A sentence with `{{total}}`
+  in the middle of it cannot be judged until it says 42.00 CHF, and the
+  old collapsed preview asked somebody to imagine that. What the code
+  appends is greyed and inert below, and said in words as well -- grey
+  carries it only for somebody who notices grey.
+
+  An owner's earlier wording is adopted, never dropped: installs carrying
+  `email_<m>_intro`/`_outro` compose them around the shipped default, and
+  a reset clears the pair too. Adding a fifth message means adding it to
+  `MESSAGES` and wrapping it where it is sent; `site_emails_check.py`
+  fails if a sender forgets.
+- **The invoice belongs to both parties.** Stripe raises a real, numbered
+  invoice for every payment -- this app has always asked for one
+  (`invoice_creation[enabled]`, because a receipt is not a document
+  anybody can put through their books) and then never looked at the
+  answer, so the tax document existed and was unreachable from either
+  side. Orders keep `invoice_ref`; `commerce.invoice_links()` resolves
+  the PDF, and a redirect route serves it to the buyer (token-scoped,
+  like a download) and to the seller. Both need it and for the same
+  reason: one files a purchase, the other a sale.
+  **Resolved, never stored at the time**: `invoice_pdf` and
+  `hosted_invoice_url` are null until Stripe finalises the invoice, which
+  is normally AFTER the webhook that recorded the order -- so the one
+  moment a URL could be baked in is the moment it is guaranteed to be
+  missing. A null means "ask again", never "there is none". A renewal is
+  the exception and needs no second call: a paid invoice is a finalised
+  one, and the event carries both links.
+  A text `{{invoice}}` is always available and is the fallback for orders
+  placed before any of this was captured.
 - **Legal pages**: `services/legal.py` + `templates/legal/*.j2`, written
   from the owner's own details and what the site actually sells. They go
   on **one page called Terms & Conditions** (`/terms-and-conditions`) by default, each document a marked section
@@ -1321,6 +1388,9 @@ part that constrains the CODE.
   longer ships, and refuses to when it cannot read the archive),
   `currency_check.py` (that one shop is one currency and a basket cannot
   add two of them together),
+  `basket_check.py` (that a floating basket leaves no box behind it for a
+  VISITOR as well as while editing, and that it does not vanish instead
+  -- measured in a browser, because the markup is identical either way),
   `site_emails_check.py` (that an owner's words reach the four messages
   that send themselves, and that no field can delete a fact),
   `shape_check.py` (that every shape survives a video, a textarea and a
