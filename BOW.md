@@ -5899,24 +5899,56 @@ waiting on the owner. Nothing here is a fix somebody forgot.
 
 ### What is actually open
 
-Four things, and none of them is a task: three are decisions
-waiting on the owner, and one is a thing to run. Everything else in this
+**Nothing.** All four remaining items were decided by the owner on
+2026-08-28 and are recorded below with their reasoning -- including, in
+each case, what would reopen them, because a decision without its
+trigger is a decision somebody has to make again from scratch.
+
+Nothing is waiting. What follows is the record of four decisions
+and what would reopen each. Everything else in this
 summary is a record of something built -- the sections below keep their
 reasoning, which is the point of them, but none of it is waiting.
 
 **Decisions, waiting on the owner. Not started on purpose.**
 
-  * **A visitor-facing AI assistant.** Has to start from refusal rather
-    than retrieval: the interesting question is what it says when it does
-    not know, not what it says when it does. Written out above.
-  * **The WhatsApp Business API.** A `wa.me` link is built. This is the
-    other thing entirely -- whether this product holds customer
-    conversations at all, which is a product decision with a running cost
-    and a support burden, not an afternoon.
-  * **Asking a buyer for their email as well as their link**, to protect
-    a purchases page further. Designed, and refused so far because it
-    puts friction on somebody who has just paid. Still the right refusal
-    unless somebody is actually losing files.
+  * **A visitor-facing AI assistant.** ~~Open.~~ **DECIDED: not building
+    it** (2026-08-28, the owner). A contact form that works beats a
+    chatbot that guesses. The reasoning is worth keeping because it is
+    the reason to REVISIT rather than the reason to refuse: the hard part
+    was never answering, it was what the thing says when it does not
+    know. A retrieval assistant asked "can I get a refund after 30 days?"
+    about a policy the site does not carry will still produce something
+    plausible, in the owner's voice, to their customer -- which is a
+    commitment nobody made. Refusal-first ("I do not know, here is a
+    person") is the small, safe shape, and it is what to build IF this is
+    ever wanted. Against it either way: public attack surface needing the
+    rate limiting the contact form now has, and per-conversation API
+    cost on somebody else's traffic.
+  * **The WhatsApp Business API.** ~~Open.~~ **DECIDED: the link is
+    enough** (2026-08-28, the owner). A visitor taps and messages; the
+    replies arrive in the WhatsApp the owner already has. Nothing to
+    build, and the reasoning generalises past WhatsApp: the API is not a
+    bigger version of the link, it is an INBOX -- approved sender,
+    Meta-preapproved templates, an inbound webhook, a screen to read and
+    reply, and all the state that implies (who answered, what is
+    unanswered, what is resolved), plus per-conversation fees. It earns
+    its place only if customer conversations are to be MANAGED inside
+    this CMS, which is a decision about what this product is, not about
+    which messaging service it speaks.
+  * **Asking a buyer for their email as well as their link.** ~~Open.~~
+    **DECIDED: no** (2026-08-28, the owner). The link stays the
+    credential. Two reasons, and the second is the one that settles it:
+    it is friction on somebody who has JUST paid, at the first moment
+    after buying, which reads as distrust at the worst point in the
+    relationship -- and it stops very little, because whoever holds the
+    link almost certainly holds the inbox it arrived in. What it would
+    mostly filter out is the buyer themselves, on a device where they
+    cannot remember which address they used.
+
+    The case that WOULD justify it, if it ever arises: selling files
+    worth forwarding, where the link being shareable is the actual risk
+    rather than a theoretical one. The optional page password already
+    covers the case that needs more today.
 
 **Named, scoped, not started.** Nothing. Both entries that stood here
 are built; they are kept below with what building them turned up.
@@ -5963,13 +5995,25 @@ are built; they are kept below with what building them turned up.
     deliberately not announced, and a control with a VISIBLE text label
     is already explained — which is the whole reason the rule exists.
 
-**One thing to run rather than build.**
+**Nothing to run either.**
 
-  * `tools/media_check.py` reports duplicated pictures by BYTES now, and
-    tells a correct one (two templates each owning their copy) from waste
-    (two copies in one place). A fresh install is clean. **Run it against
-    the LIVE install** to find the four that were recorded there -- that
-    is a thing to do, not a thing to write.
+  * **The four duplicated pictures on the live install.** ~~Open.~~
+    **CLOSED** (2026-08-28, the owner): that install is to be destroyed
+    and reinstalled, so they go with it.
+
+    Worth recording WHY that is a real fix rather than a deferral: a
+    fresh install measures 0 wasted (`tools/media_check.py`), so those
+    four were an artefact of that install's own history -- format
+    changes, renames, a cleanup that trusted names instead of bytes --
+    and not something the code produces. Reinstalling therefore removes
+    the cause and not just the symptom.
+
+    The tool remains, and it now tells apart the two cases that look
+    identical to a name-based check: two TEMPLATES holding the same
+    picture is correct and must not be "fixed" (a template's pictures
+    belong to the template; a shared folder is what once made an
+    exported package arrive empty), while two copies in one place is
+    waste.
 
 Also parked, deliberately, in CLAUDE.md's own "Deferred follow-ups"
 rather than here: standalone colour palettes, a saved-section pattern
