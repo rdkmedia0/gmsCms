@@ -6750,3 +6750,38 @@ One check was cut for failing to fail. "Nothing of it paints under the
 menu" stayed green under both faults, because "no box has any size"
 already forbids anything overlapping anything. A check that cannot go
 red is worse than no check, since it reads as cover.
+
+### Clicked the tool, got no tools (2026-08-28)
+
+The pill was gone and the basket was then unmanageable, which is a worse
+fault than the one it replaced.
+
+"Click the tool's own content to open its controls" is the editor's rule
+and it is a good one -- while the content is where the tool is. A
+floating basket is not: it is pinned to a corner of the viewport, and
+what stands in its place in the header is a strip carrying its panel.
+Clicking that strip -- the only thing where the tool used to be -- did
+nothing whatsoever. The controls could be reached only by knowing to
+click a 75x38 icon in the far corner of the screen, and the panel then
+opened somewhere the click had not happened.
+
+A tool's NAME opens it now. Written that way rather than as a rule about
+floating baskets, because clicking a tool's own label to get its
+controls is what anybody would try on any tool and there was nothing
+else it could have meant. And a panel that opens outside the viewport
+scrolls itself into view, since controls somebody cannot see are not
+open in any sense that matters.
+
+The reason I did not catch this is the more useful half. `basket_check.py`
+asserted **its tool panel is reachable** -- `panel.getBoundingClientRect()
+.height > 0` -- and that was true: the panel is a label plus a controls
+box that is `display: none` until the tool is opened, so it stood 51px
+tall carrying nothing anybody could use. The check measured the container
+of the thing it cared about.
+
+That is the same mistake as the check I had cut an hour earlier for
+staying green under both faults, and I made it again in the same file
+while writing the replacement. **Ask for the thing, not for its box.**
+The check now clicks what a person would click and asks how wide the
+`basket_align` select is; with the handler removed it reads
+`clicking it opens the basket's own controls  FAILED  0x0`.

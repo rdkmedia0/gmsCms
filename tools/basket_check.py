@@ -166,11 +166,38 @@ try:
                  if (!n) return false;
                  const r = n.getBoundingClientRect();
                  return r.width > 20 && r.height > 20; }"""))
-        check("its tool panel is reachable", ed.evaluate(
-            """() => { const s = document.querySelector(
-                         '.cms-section:has(.cms-basket-align-float-top)');
-                 const p = s && s.querySelector('.cms-tool-panel');
-                 return !!p && p.getBoundingClientRect().height > 0; }"""))
+        #  "The panel has a height" was the old assertion here and it was
+        #  worthless: the panel is a label plus a controls box that is
+        #  `display: none` until the tool is opened, so it measured 51px
+        #  tall while carrying nothing anybody could use. The owner found
+        #  what it missed -- clicked the tool, got no tools. Ask for the
+        #  controls themselves, and ask after clicking the thing a person
+        #  would actually click.
+        strip = ed.query_selector(
+            ".cms-section:has(.cms-basket-align-float-top) .cms-tool-header-label")
+        check("the tool has a name to click in the flow", strip is not None)
+        if strip:
+            strip.click()
+            ed.wait_for_timeout(300)
+        size = ed.evaluate(
+            """() => { const c = document.querySelector('select[name="basket_align"]');
+                 if (!c) return '0x0';
+                 const r = c.getBoundingClientRect();
+                 return Math.round(r.width) + 'x' + Math.round(r.height); }""")
+        check("clicking it opens the basket's own controls",
+              size != "0x0", size)
+
+        #  And the other route, which is the one that worked: the tool's
+        #  content, wherever on the viewport it has been pinned to.
+        ed.reload(wait_until="networkidle")
+        ed.wait_for_timeout(400)
+        ed.click(".cms-basket-link")
+        ed.wait_for_timeout(300)
+        check("...and so does clicking the basket itself", ed.evaluate(
+            """() => { const c = document.querySelector('select[name="basket_align"]');
+                 return !!c && c.getBoundingClientRect().width > 0; }"""))
+        check("...without following the basket's own link",
+              ed.url.endswith("/?edit=1"), ed.url)
         panel = ed.evaluate(
             """() => { const s = document.querySelector(
                          '.cms-section:has(.cms-basket-align-float-top)');

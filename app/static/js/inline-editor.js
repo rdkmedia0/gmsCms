@@ -928,11 +928,49 @@
       if (link && link.hasAttribute("data-cms-edit-link")
           && section.classList.contains("cms-tool-panel-open")) return;
       if (link && content.contains(link)) e.preventDefault();
-      document.querySelectorAll(".cms-section.cms-tool-panel-open").forEach((s) => {
-        if (s !== section) s.classList.remove("cms-tool-panel-open");
-      });
-      section.classList.add("cms-tool-panel-open");
+      open_(section);
     });
+
+    // The tool's NAME opens it too.
+    //
+    // "Click the tool's own content" is the right rule while the content
+    // is where the tool is. A basket set to float is not: it is pinned to
+    // a corner of the viewport, and its section is a strip in the header
+    // saying so. Clicking that strip -- the only thing standing where the
+    // tool lives -- did nothing at all, so the controls could be reached
+    // only by knowing to click a 75x38 icon in the far corner.
+    //
+    // Written as "the tool's name", not "the floating basket's strip",
+    // because clicking a tool's own label to get its controls is what
+    // anybody would try on any tool, and there was nothing else it could
+    // have meant. The outside-click handler below already treats
+    // .cms-tool-panel as inside, so this cannot open and immediately
+    // close.
+    const header = panel.querySelector(":scope > .cms-tool-header");
+    if (header) {
+      header.addEventListener("click", (e) => {
+        // Not the controls themselves -- a select inside the header must
+        // keep its own click.
+        if (e.target.closest(".cms-tool-header-controls, form")) return;
+        open_(section);
+      });
+    }
+
+    function open_(target) {
+      document.querySelectorAll(".cms-section.cms-tool-panel-open").forEach((s) => {
+        if (s !== target) s.classList.remove("cms-tool-panel-open");
+      });
+      target.classList.add("cms-tool-panel-open");
+      // Opening controls somebody cannot see is the same as not opening
+      // them. For every tool in the flow the panel is already next to
+      // what was clicked; for a floating one the panel is wherever its
+      // section sits, which can be a screen away from the corner the
+      // click happened in.
+      const box = panel.getBoundingClientRect();
+      if (box.bottom < 0 || box.top > window.innerHeight) {
+        panel.scrollIntoView({ block: "center", behavior: "smooth" });
+      }
+    }
   });
   // Modals/popovers used by tool-panel controls (the image picker, the
   // confirm/prompt modal) render at the top of <body>, outside any
