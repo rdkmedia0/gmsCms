@@ -5858,7 +5858,8 @@ waiting on the owner. Nothing here is a fix somebody forgot.
 
 ### What is actually open
 
-Four things, and none of them is a task. Everything else in this
+Five things. One is a measured, mechanical task; three are
+decisions; one is a thing to run. Everything else in this
 summary is a record of something built -- the sections below keep their
 reasoning, which is the point of them, but none of it is waiting.
 
@@ -5900,9 +5901,25 @@ are built; they are kept below with what building them turned up.
     move/remove buttons onto the selected block in the canvas, which is
     arguably where they belong but is a change to how the editor is
     USED, not a layout tweak. Left for somebody to ask for.
-    to two rows on a narrow laptop. Legible, so it can wait for somebody
-    to have used it in anger; the likely answer is that the block-style
-    group collapses behind one button until a block is selected.
+
+**Named, measured, not done.**
+
+  * **256 controls with no tooltip**, counted by `tools/screen_audit.py`
+    (2026-08-28) and mostly in the editor's own tool panels: unlabelled
+    checkboxes, the Embed tool's code editors and its Save HTML, the
+    colours panel's buttons, the Menu tool's + Link and + Divider. This
+    project requires a `title` on every admin control because the label
+    is so often a glyph and the title is then the only text there is.
+    Unglamorous and entirely mechanical; the audit names each one and the
+    screen it is on.
+
+    Worth knowing before starting: the same audit reported 186 elements
+    "past the right edge" and every one was correct behaviour, so it was
+    taught three exclusions first -- a `hidden` file input is machinery
+    behind a button that carries the sentence, an aria-hidden control is
+    deliberately not announced, and a control with a VISIBLE text label
+    is already explained. What it reports now is meant to be acted on.
+
 
 **One thing to run rather than build.**
 

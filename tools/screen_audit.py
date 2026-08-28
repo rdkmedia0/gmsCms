@@ -70,6 +70,16 @@ AUDIT_JS = """
         return true;
       }
     }
+    //  3. An EMPTY sidebar. It is deliberately collapsed to a 28px strip
+    //     carrying only its "+" (see site-base.css: "Collapse to a thin
+    //     strip at the page's true left edge holding only the + hit
+    //     target"), and that 20px button is centred on the strip's own
+    //     dashed rule, 4px in -- so it necessarily spans -6..14. The
+    //     overflow is the container collapsing on purpose, not the
+    //     control being misplaced, and the page clips it so nothing
+    //     scrolls. Measured before being excluded, because the last two
+    //     things that looked like faults here were not.
+    if (el.closest('.site-sidebar-empty')) return true;
     return false;
   };
 
