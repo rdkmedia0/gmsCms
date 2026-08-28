@@ -2499,10 +2499,50 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
     the child. */
 .cms-section:has(.cms-basket-align-float-top),
 .cms-section:has(.cms-basket-align-float-bottom) { display: contents; }
-/*  While editing, the frame it lives in has to stay reachable -- you
-    cannot click a tool that is not there. */
+/*  While editing, its CONTROLS have to stay reachable -- but only its
+    controls.
+        This said "the frame it lives in has to stay reachable, you
+    cannot click a tool that is not there", and re-showed the whole
+    section. Measured, that is 95px of box: a resize handle, a collapsed
+    toolbar, the 25px tool panel that is the actual point, and an 18px
+    remnant of the marker. The reasoning was wrong twice over -- the
+    basket IS on screen while editing, floating in the corner where it
+    belongs, so the tool was never missing; and what got re-shown was an
+    unexplained empty band in the middle of the page, which is what an
+    owner reported as a placeholder still showing.
+        So: the strip stays, carrying the panel, and says what it is. */
 .cms-editing .cms-section:has(.cms-basket-align-float-top),
-.cms-editing .cms-section:has(.cms-basket-align-float-bottom) { display: block; }
+.cms-editing .cms-section:has(.cms-basket-align-float-bottom) {
+  display: block; min-height: 0; padding: 0; margin: 6px 0;
+}
+/*  A handle for dragging a height onto something that has no height. The
+    basket is `position: fixed`: its size is its own, and this box is not
+    it. */
+.cms-editing .cms-section:has(.cms-basket-align-float-top) .cms-resize-handle,
+.cms-editing .cms-section:has(.cms-basket-align-float-bottom) .cms-resize-handle {
+  display: none;
+}
+/*  ...and the leftover box around the link, which draws nothing and took
+    18px. `display: contents`, NOT `display: none` -- this box CONTAINS
+    the fixed link, and a fixed child of a display:none parent is not
+    rendered either. Written as `none` first, which made the floating
+    basket vanish while editing: the identical mistake this file already
+    carries a note about four rules above, made again by the same hand
+    on the same element. Contents removes the box and keeps the child,
+    which is the whole distinction. */
+.cms-editing .cms-section:has(.cms-basket-align-float-top) > .block-html,
+.cms-editing .cms-section:has(.cms-basket-align-float-bottom) > .block-html {
+  display: contents;
+}
+/*  Said, because a bare row of controls in the middle of a page with
+    nothing visibly attached to them is the same puzzle as the empty box
+    was. Chrome, so it wears the editor's own clothes. */
+.cms-editing .cms-section:has(.cms-basket-align-float-top) .cms-tool-panel::before,
+.cms-editing .cms-section:has(.cms-basket-align-float-bottom) .cms-tool-panel::before {
+  content: "This basket floats 4 look for it in the corner of the screen, not here.";
+  font-family: var(--cms-ui-font); font-size: 12px; color: #6b7480;
+  margin-right: 10px; white-space: nowrap;
+}
 /*  A logged-in admin has a bar at the top of the page; a basket pinned
     under it would sit on top of the bar. */
 body.cms-logged-in .cms-basket-link.cms-basket-align-float-top { top: 60px; }

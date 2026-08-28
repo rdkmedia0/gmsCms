@@ -2308,6 +2308,10 @@
   <div id="cms-insert-icon-picker">{{ icon_picker_grid(include_none=false) }}</div>
 
   <script src="{{ static_url('js/admin/live-refresh.js') }}"></script>
+  {#  Before wysiwyg-commands: its Image button asks the picker for a
+      picture, and a page that has not loaded the picker falls back to a
+      bare file dialog. #}
+  <script src="{{ static_url('js/admin/image-picker.js') }}"></script>
   <script src="{{ static_url('js/wysiwyg-commands.js') }}"></script>
   <script src="{{ static_url('js/inline-editor.js') }}"></script>
   <script src="{{ static_url('js/admin/preview-width.js') }}"></script>

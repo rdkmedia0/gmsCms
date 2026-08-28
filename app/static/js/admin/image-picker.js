@@ -23,7 +23,7 @@
 (function () {
   "use strict";
 
-  var backdrop, grid, cancel;
+  var backdrop, grid, cancel, upload, fileInput;
 
   function say(message) {
     if (window.cmsModal) window.cmsModal({ message: message, confirmLabel: "OK", danger: false });
@@ -36,6 +36,7 @@
     if (backdrop) {
       grid = document.getElementById("cms-image-picker-grid");
       cancel = document.getElementById("cms-image-picker-cancel");
+      addUpload(cancel && cancel.parentElement);
       return;
     }
     backdrop = document.createElement("div");
@@ -45,7 +46,8 @@
     var box = document.createElement("div");
     box.className = "cms-modal cms-image-picker";
     var note = document.createElement("p");
-    note.textContent = "Choose a picture. Everything in your Media Library is here.";
+    note.textContent = "Choose a picture from your Media Library, "
+      + "or upload a new one.";
     grid = document.createElement("div");
     grid.id = "cms-image-picker-grid";
     grid.className = "cms-image-picker-grid";
@@ -57,11 +59,33 @@
     cancel.textContent = "Cancel";
     cancel.title = "Close this without choosing a picture.";
     actions.appendChild(cancel);
+    addUpload(actions);
     box.appendChild(note);
     box.appendChild(grid);
     box.appendChild(actions);
     backdrop.appendChild(box);
     document.body.appendChild(backdrop);
+  }
+
+  //  Added to whichever dialog exists -- the one this module builds, or
+  //  the copy public/page.html has carried since before this was
+  //  extracted. Adding it in only one of those is how the two drift, and
+  //  that drift is why this module exists at all.
+  function addUpload(actions) {
+    if (!actions || actions.querySelector(".cms-image-picker-upload")) return;
+    upload = document.createElement("button");
+    upload.type = "button";
+    upload.className = "cms-image-picker-upload";
+    upload.textContent = "Upload a picture";
+    upload.title = "Add a picture from this device. It joins your Media Library, "
+      + "so you can use it again.";
+    fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = "image/*";
+    fileInput.hidden = true;
+    upload.addEventListener("click", function () { fileInput.click(); });
+    actions.insertBefore(upload, actions.firstChild);
+    actions.appendChild(fileInput);
   }
 
   function from(images) {
@@ -83,7 +107,17 @@
       });
       backdrop.hidden = false;
 
+      async function onUpload() {
+        var file = fileInput.files && fileInput.files[0];
+        fileInput.value = "";
+        if (!file) return;
+        var url = await upload_(file);
+        if (url) done(url);
+      }
+      if (fileInput) fileInput.addEventListener("change", onUpload);
+
       function done(url) {
+        if (fileInput) fileInput.removeEventListener("change", onUpload);
         backdrop.hidden = true;
         cancel.removeEventListener("click", onCancel);
         backdrop.removeEventListener("click", onBackdrop);
@@ -110,14 +144,15 @@
       say("Couldn't load the Media Library — check your connection.");
       return null;
     }
-    if (!images.length) {
-      say("The Media Library is empty — upload a picture first.");
-      return null;
-    }
+    //  An empty library used to be refused with "upload a picture
+    //  first", which was true when this dialog could only choose. It can
+    //  upload now, so an empty library is exactly when it is most useful
+    //  -- being turned away and told to go and do the thing the dialog
+    //  does is the worst version of this.
     return from(images);
   }
 
-  async function upload(file) {
+  async function upload_(file) {
     if (!file) return null;
     var body = new FormData();
     body.append("image", file);
@@ -134,5 +169,5 @@
     return null;
   }
 
-  window.cmsImagePicker = { open: open, from: from, upload: upload };
+  window.cmsImagePicker = { open: open, from: from, upload: upload_ };
 })();

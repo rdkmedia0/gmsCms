@@ -84,7 +84,32 @@
         var sel = window.getSelection();
         if (sel.rangeCount) savedRange = sel.getRangeAt(0).cloneRange();
       });
-      btn.addEventListener("click", function () { input.click(); });
+      btn.addEventListener("click", async function () {
+        //  The Media Library first, with Upload inside it -- not a file
+        //  dialog. This button went straight to `input.click()`, so the
+        //  only way to put a picture in a post or a page was to find the
+        //  file again on disk: no way to reuse one already uploaded, and
+        //  no sight of what the site already has. The picker offers both
+        //  routes and finishes the same way whichever is used.
+        if (window.cmsImagePicker) {
+          var chosen = await window.cmsImagePicker.open();
+          if (!chosen) return;
+          if (onImage) {
+            onImage(chosen);
+          } else {
+            if (savedRange) {
+              var sel = window.getSelection();
+              sel.removeAllRanges();
+              sel.addRange(savedRange);
+            }
+            document.execCommand("insertImage", false, chosen);
+          }
+          afterCommand(findBody(btn));
+          return;
+        }
+        //  No picker loaded on this page: the file dialog still works.
+        input.click();
+      });
       input.addEventListener("change", function () {
         var file = input.files[0];
         if (!file) return;

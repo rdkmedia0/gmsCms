@@ -294,6 +294,13 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--c
     Deliberately not a field: it is either a fact about what happened or
     something the reader needs in order to act. Shown so a greeting can
     be written knowing what it is a greeting TO. */
+/*  Upload sits on the LEFT of the picker's actions, away from Cancel:
+    they are the two ends of the dialog -- one adds something, one
+    abandons it -- and putting them side by side is how a mis-click
+    happens on the one that cannot be undone by clicking again. */
+.cms-image-picker-upload { margin-right: auto; }
+.cms-modal-actions { display: flex; gap: 8px; align-items: center; }
+
 .site-email-fixed {
   border-left: 3px solid #d7dde5; padding: 8px 0 8px 12px; margin: 10px 0;
 }
