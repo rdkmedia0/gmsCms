@@ -652,6 +652,18 @@ with app.app_context():
     js = io.open("/app/app/static/js/admin/theme-generator.js", encoding="utf-8").read()
     check("a picture's colours are read in the browser",
           "getImageData" in js and 'name = "ref_colour"' in js)
+    #  Measured against real screenshots: a SMOOTH downscale averages
+    #  neighbouring pixels and invents colours that are in no part of the
+    #  picture -- it turned Hacker News orange into three tints of peach
+    #  and gov.uk into three near-identical blues.
+    check("...without inventing colours that are not in it",
+          "imageSmoothingEnabled = false" in js)
+    #  A brand colour is a decision; a photograph's average is not. And
+    #  three shades of one colour is a palette with no secondary and no
+    #  accent.
+    check("...weighted by how decided a colour is", "sat * sat" in js)
+    check("...and the three are actually different from each other",
+          "< 90" in js and "near" in js)
     check("...and the picture itself is never uploaded",
           "FormData" not in js and "fetch(" not in js)
     check("...and the screen says a picture gives colours only",

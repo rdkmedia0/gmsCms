@@ -73,12 +73,19 @@
       var img = new Image();
       img.onload = function () {
         //  Downscaled first: a phone photograph is millions of pixels
-        //  and the answer is the same from a hundred.
-        var side = 64;
+        //  and the answer is the same from a few thousand.
+        //
+        //  NEAREST, not smooth. A smoothing downscale averages
+        //  neighbouring pixels and invents colours that are in no part
+        //  of the picture -- measured against real screenshots it turned
+        //  Hacker News orange into three tints of peach and gov.uk into
+        //  three blues. Nearest keeps colours that are actually there.
+        var side = 160;
         var canvas = document.createElement("canvas");
         canvas.width = side;
         canvas.height = side;
         var ctx = canvas.getContext("2d");
+        ctx.imageSmoothingEnabled = false;
         ctx.drawImage(img, 0, 0, side, side);
         var data;
         try {
@@ -92,19 +99,37 @@
         for (var i = 0; i < data.length; i += 4) {
           if (data[i + 3] < 128) continue;
           var r = data[i], g = data[i + 1], b = data[i + 2];
-          //  Paper and ink are in every photograph, so they say nothing
-          //  about this one -- the same rule the page reader follows.
           var max = Math.max(r, g, b), min = Math.min(r, g, b);
-          if (max - min < 24 || max < 34 || min > 226) continue;
-          //  Rounded, so two pixels a shade apart are one colour.
+          var sat = max ? (max - min) / max : 0;
+          //  Paper, ink and flat greys are in every picture, so they say
+          //  nothing about this one.
+          if (sat < 0.25 || max < 40 || min > 235) continue;
           var key = [r, g, b].map(function (v) {
-            return Math.round(v / 24) * 24;
+            return Math.round(v / 8) * 8;
           }).join(",");
-          buckets[key] = (buckets[key] || 0) + 1;
+          //  Weighted by how DECIDED the colour is, not merely how much
+          //  of it there is: a big pale wash should not beat a small
+          //  strong mark, and a brand colour is a decision while a
+          //  photograph's average is not.
+          buckets[key] = (buckets[key] || 0) + sat * sat;
         }
-        var top = Object.keys(buckets).sort(function (a, b) {
+        //  Three colours that are actually different from each other.
+        //  Without this, a gradient gives three shades of one colour and
+        //  the palette has no secondary and no accent.
+        var ranked = Object.keys(buckets).sort(function (a, b) {
           return buckets[b] - buckets[a];
-        }).slice(0, 3);
+        });
+        var top = [];
+        ranked.forEach(function (key) {
+          if (top.length === 3) return;
+          var here = key.split(",").map(Number);
+          var near = top.some(function (other) {
+            var them = other.split(",").map(Number);
+            return Math.abs(here[0] - them[0]) + Math.abs(here[1] - them[1])
+                 + Math.abs(here[2] - them[2]) < 90;
+          });
+          if (!near) top.push(key);
+        });
         into.parentNode.querySelectorAll("[data-sampled]").forEach(function (old) {
           old.remove();
         });
