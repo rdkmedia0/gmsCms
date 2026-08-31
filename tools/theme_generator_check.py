@@ -229,6 +229,24 @@ with app.app_context():
     check("a hero with no picture is a colour, not a placeholder",
           "cms-banner-plain" in plain and _tg.PLACEHOLDER_IMAGE not in plain,
           plain[:90])
+    #  A fabricated attributed quote goes onto somebody's live site as a
+    #  review of a business that does not exist. The generator carries
+    #  no identity and must not invent one.
+    from app.services import blocks as _b                             # noqa: E402
+    quote_sections = [sec for sec in data["sections"]
+                      if _b.parse_block(sec[2] or "")[0] == "testimonial"]
+    if quote_sections:
+        _key, values = _b.parse_block(quote_sections[0][2])
+        check("a specimen quote is attributed to nobody",
+              not (values.get("name") or "").strip()
+              and not (values.get("role") or "").strip(), str(values)[:120])
+    #  And the page ends somewhere: a site with no name, no contact and
+    #  no link under the fold is not a finished page.
+    #  A Columns of cards is stored as JSON, so the footer is looked for
+    #  by its words rather than by its wrapper.
+    check("the page ends with a footer band",
+          any("Where to find me" in (sec[2] or "") for sec in data["sections"][-2:]),
+          " / ".join(sec[0] for sec in data["sections"][-2:]))
     check("a front page is not all prose",
           any(block_tools.parse_block(s[2] or "")[0] for s in data["sections"]),
           ", ".join(kinds))
@@ -641,6 +659,42 @@ with app.app_context():
     check("...and nothing is invented to fill the gap",
           tg._salvage('{"primary": "#1d6b58", "shape":') == {"primary": "#1d6b58"})
     check("...while junk is still junk", tg._salvage("not json at all") is None)
+    #  And an answer that PARSED is not an answer that said anything: a
+    #  reply of {} raises nothing, so every fallback was taken quietly
+    #  and the template came out reading "Your headline", "Feature 1",
+    #  "Describe this feature" -- finished-looking and mute.
+    check("an empty answer does not count as words",
+          not tg._said_something({}) and not tg._said_something({"x": "y"})
+          and not tg._said_something({"hero_headline": "   "}))
+    check("...and a real one does",
+          tg._said_something({"hero_headline": "We open at seven"}))
+    #  A model that returns nothing once very often answers properly a
+    #  second later, and a six-request run should not be lost to that.
+    #  Once, though: a model with nothing to say twice is telling you
+    #  something, and a loop would spend an owner's evening.
+    tries = {"n": 0}
+
+    def _mute_then_answering(db_, messages, tools_, **kw):
+        tries["n"] += 1
+        return {"content": "" if tries["n"] == 1 else REPLIES["content"]}
+
+    real_provider = assistant._call_provider
+    assistant._call_provider = _mute_then_answering
+    try:
+        with app.app_context():
+            got = tg._ai_json(db, "anything")
+        check("a mute reply is asked once more", tries["n"] == 2 and bool(got),
+              str(tries["n"]))
+        tries["n"] = 0
+        assistant._call_provider = lambda *a, **k: {"content": ""}
+        try:
+            with app.app_context():
+                tg._ai_json(db, "anything")
+            check("...and twice is the end of it", False, "it kept going")
+        except tg.ThemeGenError:
+            check("...and twice is the end of it", True)
+    finally:
+        assistant._call_provider = real_provider
     #  Which key gets lost is decided by the order they are asked for.
     #  The page shapes have a fallback the code can work out; the
     #  typeface and the composition do not, so they go first.

@@ -83,8 +83,6 @@ _SCHEMAS = {
         '"stats": [{"value": "a number or short figure", "label": "what it counts"}, '
         '{"value": "...", "label": "..."}, {"value": "...", "label": "..."}], '
         '"quote": "one sentence a real customer might say", '
-        '"quote_name": "a plausible first name and initial", '
-        '"quote_role": "what they do, or where they are", '
         '"cta_headline": "...", "cta_subtext": "...", "cta_button": "two or three words"}'
     ),
     "about": (
@@ -677,11 +675,30 @@ def _ai_json(db, prompt):
     error, so the fence is stripped rather than refused.
     """
     from .. import assistant
-    try:
-        result = assistant._call_provider(
-            db, [{"role": "user", "content": prompt}], [], want_json=True)
-    except assistant.ProviderError as e:
-        raise ThemeGenError("The AI provider did not answer: %s" % e)
+    #  ONE retry, and only here.
+    #
+    #  A self-hosted model asked for structured content returns nothing
+    #  at all often enough that a six-request run would routinely end
+    #  with a template full of "Your headline" and "Feature 1" -- and
+    #  the same model, asked again a second later, answers properly.
+    #  This app's rule against automatic retries is about SENDS, where a
+    #  retry can mail forty people twice; asking a question again costs
+    #  one request and nothing else.
+    #
+    #  Once. A model that has nothing to say twice is telling you
+    #  something, and a loop here would spend an owner's evening.
+    result, last = None, None
+    for attempt in (1, 2):
+        try:
+            result = assistant._call_provider(
+                db, [{"role": "user", "content": prompt}], [], want_json=True)
+        except assistant.ProviderError as e:
+            last = ThemeGenError("The AI provider did not answer: %s" % e)
+            result = None
+        if result and (result.get("content") or "").strip():
+            break
+    if result is None:
+        raise last or ThemeGenError("The AI provider did not answer.")
     content = (result.get("content") or "").strip()
     content = re.sub(r"^```(?:json)?", "", content).strip()
     content = re.sub(r"```$", "", content).strip()
@@ -889,6 +906,19 @@ def _picture_prompt(brief, direction):
             % (subject or "a small independent business", direction))
 
 
+#  A copy answer has to carry at least this much to count as one: the
+#  headline that goes at the top, or the body of the page. Anything less
+#  is a reply, not an answer.
+_MEANT_SOMETHING = ("hero_headline", "intro_body", "story_body", "body_text")
+
+
+def _said_something(copy):
+    """Whether a parsed copy answer actually contains words."""
+    if not isinstance(copy, dict):
+        return False
+    return any(str(copy.get(key) or "").strip() for key in _MEANT_SOMETHING)
+
+
 def _note_unwritten(kit, layout_key, why):
     """Remember that a page came back unwritten, to say so afterwards.
 
@@ -922,6 +952,18 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
                 "write about.")
         try:
             copy = _ai_json(db, _prompt(kit, _SCHEMAS[layout_key]))
+            #  An answer that PARSED is not an answer that said anything.
+            #
+            #  A reply of {} -- or one salvaged down to a key nobody
+            #  asked about -- raises nothing, so every `val()` quietly
+            #  took its fallback and the page came out reading "Your
+            #  headline", "Feature 1", "Describe this feature". A
+            #  template that looks finished and says nothing is worse
+            #  than one that refuses: the owner has to read it to find
+            #  out, and the run cost six requests either way.
+            if not _said_something(copy):
+                raise ThemeGenError(
+                    "The AI answered, but with nothing usable in it.")
         except ThemeGenError as e:
             #  One page's words are not the run.
             #
@@ -974,9 +1016,13 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
             buttons=((val("cta_button", "Get in touch"), "/contact"),
                      ("Read more", "#more")), ground=_ink_of(kit)),
             {"layout_width": "full", "corner_style": "sharp"}))
+        #  Full page width, with the WORDS stopping at the reading
+        #  measure. A section set to 62% of the window is centred, which
+        #  put its left edge 272px in -- a fourth axis on a page that
+        #  already had three. The measure belongs to the text.
         chunks.append(_piece(_text_chunk(val("intro_heading", "Welcome"),
                                          val("intro_body", "Write an introduction here.")),
-                             {"layout_width": "custom", "layout_width_pct": 62}))
+                             {"layout_width": "auto"}))
         stats = _rows(copy.get("stats") if fill else None, ("value", "label"), 3,
                       [{"value": "10", "label": "Years"},
                        {"value": "200", "label": "Happy customers"},
@@ -1018,10 +1064,20 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
         chunks.append(_piece(_cards_chunk(features[:6]),
                              {"layout_width": "auto",
                               "shadow_style": kit.get("shadow") or "subtle"}))
+        #  A quote, and NO name unless the model supplied one -- and
+        #  never a role.
+        #
+        #  It shipped "A customer" and, worse, whatever the model
+        #  invented: "Owner, Kessler & Co" went onto a template that
+        #  goes onto somebody's live site as a fabricated review of a
+        #  business that does not exist. This app's rule is that the
+        #  generator carries no identity and must not invent one; a
+        #  made-up attributed quote is the sharpest form of breaking it.
+        #  An unattributed quote reads as a specimen, which is what it
+        #  is, and the owner fills in a real name.
         chunks.append(_block_piece("testimonial", {
-            "quote": val("quote", "They were a pleasure to work with."),
-            "name": val("quote_name", "A customer"),
-            "role": val("quote_role", ""),
+            "quote": val("quote", "Something a customer said about you."),
+            "name": "", "role": "", "photo": "",
             "style": "large",
         }, {"layout_width": "auto", "bg_color": tint}))
         #  And it closes on the brand colour, not on a second photograph.
@@ -1038,6 +1094,21 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
             "link": "/contact",
             "tone": "solid",
         }, {"layout_width": "full"}))
+        #  And it ENDS.
+        #
+        #  The page stopped after the closing call and left 144px of
+        #  empty ground below it -- 306px on a phone. A site with no
+        #  name, no way to contact it and no legal link under the fold
+        #  is not a finished page, and a visitor reads the emptiness as
+        #  something failing to load.
+        #  On the tint, not the ink: a section paints a background but
+        #  cannot set a text colour, so a dark footer band would carry
+        #  the page's dark ink on it and read as an empty black band.
+        #  The tint changes the ground, which is what a footer needs, and
+        #  the words stay readable without anything having to know what
+        #  colour they are.
+        chunks.append(_piece(_footer_chunk(kit, val("eyebrow", "")),
+                             {"layout_width": "full", "bg_color": tint}))
     elif layout_key == "about":
         chunks.append(_piece(_hero_chunk(val("hero_headline", "Our story"),
                                          val("hero_subtext", "A short supporting line."),
@@ -1045,7 +1116,7 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
                              {"layout_width": "full", "corner_style": "sharp"}))
         chunks.append(_piece(_text_chunk(val("story_heading", "About us"),
                                          val("story_body", "Tell your story here.")),
-                             {"layout_width": "custom", "layout_width_pct": 62}))
+                             {"layout_width": "auto"}))
         chunks.append(_block_piece("cta", {
             "heading": val("cta_headline", "Let's talk"),
             "body": val("cta_subtext", "Reach out anytime."),
@@ -1060,8 +1131,31 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
                              {"layout_width": "full", "corner_style": "sharp"}))
         chunks.append(_piece(_text_chunk(val("body_heading", "Welcome"),
                                          val("body_text", "Write something here.")),
-                             {"layout_width": "custom", "layout_width_pct": 62}))
+                             {"layout_width": "auto"}))
     return chunks
+
+
+def _footer_chunk(kit, eyebrow=""):
+    """The band that ends the page: who this is, and how to reach them.
+
+    Three columns of a real Columns tool, so every line of it is
+    editable in place afterwards. It carries no invented identity -- the
+    site's own name is written in by `_apply_pack_identity` on install
+    if the site has none, and the contact lines are visibly blank
+    prompts rather than a plausible-looking address nobody can use.
+    """
+    columns = (
+        ("Get in touch", "Add your email address and telephone number here."),
+        ("Where to find me", "Add your address, or the area you work in."),
+        ("Follow", "Add links to wherever people already follow you."),
+    )
+    #  Plain cells, not cards. A footer is not three objects sitting on
+    #  a surface; it is the surface. Boxed cells on a coloured band read
+    #  as three panels that failed to load their contents.
+    cells = "".join(
+        '<div><h3>%s</h3><p>%s</p></div>' % (escape(title), escape(body))
+        for title, body in columns)
+    return '<div class="cms-columns">%s</div>' % cells
 
 
 def _piece(html, style=None):
@@ -1080,7 +1174,13 @@ def _block_piece(key, values, style=None):
     """
     from . import blocks
     made = dict(blocks.BLOCKS[key].get("defaults") or {})
-    made.update({k: v for k, v in values.items() if v not in (None, "")})
+    #  A blank is a DECISION; only "not supplied" defers to the default.
+    #
+    #  Filtering empty strings out here meant the testimonial's own
+    #  default attribution -- a full invented name and company -- came
+    #  through every deliberate attempt to leave it blank, and shipped a
+    #  fabricated review to whoever installed the template.
+    made.update({k: v for k, v in values.items() if v is not None})
     #  Type "html", which is how this app stores every declared block.
     #
     #  Not a raw embed, and not a guess: a block section IS an html

@@ -50,6 +50,18 @@
   --site-hero-min: 280px;      /* how tall a banner stands */
   --site-band-pad: 40px;       /* the air above and below a band */
   --site-band-pad-tight: var(--site-band-pad, 40px);  /* for a dense band */
+  --site-band-pad-mobile: var(--site-band-pad-tight, 40px);
+  /*  A block INSIDE a section, on top of the band's own padding.
+      Zero by default and zero in every preset: the band already gives
+      a block its air, and adding a second helping made a testimonial
+      440px tall to hold one sentence. Kept as a token because a future
+      block that brings no padding of its own will want it. */
+  --site-block-pad: 0;
+  --site-card-pad: 24px;
+  --site-card-align: inherit;
+  --site-card-bg: var(--site-ground, #fff);
+  --site-hero-place: center;   /* where the hero's words sit vertically */
+  --site-hero-pad: 0;
   --site-heading-track: 0;     /* letter-spacing on headings */
   --site-heading-case: none;   /* headings in their own case, or shouted */
   --site-lead: 1.6;            /* how far apart the lines of text sit */
@@ -2669,18 +2681,57 @@ body.cms-logged-in .cms-basket-link.cms-basket-align-float-top { top: 60px; }
    menu — a 350px empty header on a site whose composition happened to be
    a generous one. A zone is furniture; the bands are the page. */
 .site-content .cms-section > .block {
+  /*  EVERY section, whether or not it carries a background.
+      -------------------------------------------------------
+      This was written to skip full-bleed sections, on the grounds that
+      a full-bleed banner brings its own height. The consequence,
+      measured across one page: gaps of 141, 152, 124, 246 and 9px. The
+      9px was a tinted band meeting a coloured band -- neither paying
+      any padding, so they read as one two-tone block -- and the 124px
+      was a stats band with no air of its own at all, reading as a
+      divider strip.
+
+      A band's padding is what makes it a band: it is inside the
+      section, so it takes the section's colour, which a margin never
+      could. Two plain bands meeting therefore leave 2x the padding, and
+      that is correct -- it is the same distance either way.
+
+      `.block`'s own bottom margin is dropped here because it was doing
+      this job before there was padding, and both together stacked 340px
+      of nothing between bands. */
   padding-block: var(--site-band-pad, 0);
-  /*  ...and nothing else. `.block` carries a bottom margin of its own,
-      which is what separated bands before there was band padding --
-      leaving both in place stacked 112 + 112 + 112 between two bands
-      and left the page reading as a series of islands with 340px of
-      nothing between them. The padding is inside the band, so it also
-      colours correctly; the margin never could. */
   margin-bottom: 0;
 }
-/* ...except a full-bleed banner, which brings its own height and would
-   otherwise sit in a box of padding the colour of the band behind it. */
-.site-content .cms-section[data-layout-width="full"] > .block { padding-block: 0; }
+/*  A banner is the exception, and the only one: it brings its own
+    height and its picture must reach the edges of its band. */
+.site-content .cms-section > .block-banner { padding-block: 0; }
+
+/*  A block sitting INSIDE a section has its own, smaller air. The band's
+    128px belongs outside the coloured box; using it inside as well made
+    a testimonial 442px tall to hold 90px of words. */
+.cms-block { padding-block: var(--site-block-pad, 0); }
+
+/*  A full-bleed band has no corner to curve away from: it runs to the
+    edge of the window, so a radius there shows a sliver of the ground
+    behind it at each end. */
+.site-content .cms-section[data-layout-width="full"] > .block > * {
+  border-radius: 0;
+}
+/*  ...and its CONTENTS still sit on the page's axis. The band reaches
+    the edges; the words in it line up with every other band, which is
+    the whole point of having an axis. Without this a full-bleed footer
+    ran its three columns from window edge to window edge while the
+    cards above them stopped at 1180. */
+.site-content .cms-section[data-layout-width="full"] > .block {
+  padding-inline: max(24px, calc((100% - var(--site-content-max, 1000px)) / 2));
+}
+/*  A banner is the exception here too: its PICTURE is the band, so it
+    reaches the window edges and does its own gutter inside itself. With
+    the inset applied it came out as a photograph floating in a white
+    frame -- a full-bleed hero that was not full bleed. */
+.site-content .cms-section[data-layout-width="full"] > .block-banner {
+  padding-inline: 0;
+}
 
 
 /* ---------- The premium half: layers, leading, cards, buttons ----------
@@ -2700,7 +2751,9 @@ body.cms-logged-in .cms-basket-link.cms-basket-align-float-top { top: 60px; }
       computed from the page's own measure, so the headline, the intro
       and the cards all begin at one edge. */
   justify-content: var(--site-hero-justify, center);
+  align-items: var(--site-hero-place, center);
   padding-inline: max(24px, calc((100% - var(--site-content-max, 1000px)) / 2));
+  padding-block: var(--site-hero-pad, 0);
 }
 .cms-banner::after {
   content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
@@ -2713,6 +2766,22 @@ body.cms-logged-in .cms-basket-link.cms-basket-align-float-top { top: 60px; }
 /*  A banner with no picture has nothing to dim. */
 .cms-banner.cms-banner-plain::after { display: none; }
 
+/*  THE SIZES, not only the leading.
+    -------------------------------
+    The tokens existed and reached exactly one element -- the hero's
+    headline -- so a preset with a 5rem h1 still rendered every heading
+    below the fold at the stylesheet's own 32px. Measured: h1 80px
+    against an h2 of 26px, with nothing in between, which is why
+    everything under the hero read as flat whatever preset was chosen. */
+.cms-wysiwyg-body h1, .block-header h1 { font-size: var(--site-h1-size, 42px); }
+.cms-wysiwyg-body h2, .block-header h2, .cms-block h2 { font-size: var(--site-h2-size, 32px); }
+.cms-wysiwyg-body h3, .cms-block h3, .cms-card h3 { font-size: var(--site-h3-size, 24px); }
+.cms-wysiwyg-body h1, .cms-wysiwyg-body h2, .cms-wysiwyg-body h3,
+.cms-block h2, .cms-block h3, .cms-card h3 {
+  font-weight: var(--site-heading-weight, 700);
+  letter-spacing: var(--site-heading-track, 0);
+}
+
 /*  Leading per level, and the display sizes that need it. */
 .cms-wysiwyg-body h1, .cms-banner-overlay h1, .block-header h1 { line-height: var(--site-h1-line, 1.15); }
 .cms-wysiwyg-body h2, .cms-banner-overlay h2, .block-header h2 { line-height: var(--site-h2-line, 1.2); }
@@ -2722,10 +2791,17 @@ body.cms-logged-in .cms-basket-link.cms-basket-align-float-top { top: 60px; }
   font-size: var(--site-h1-size, 42px); font-weight: var(--site-heading-weight, 700);
   max-width: var(--site-hero-text, 22ch);
   margin-inline: var(--site-hero-margin, auto);
+  /*  Measured at 16px and 7px: headline, standfirst and buttons read as
+      one lump. A hero is three things, and they have to look like
+      three. */
+  margin-block: 0 28px;
 }
 /*  A left-aligned hero's headline hugs the left edge; a centred one is
     centred. One token decides both, so they cannot disagree. */
-.cms-banner-overlay p { max-width: min(52ch, 100%); margin-inline: var(--site-hero-margin, auto); }
+.cms-banner-overlay p {
+  max-width: min(52ch, 100%); margin-inline: var(--site-hero-margin, auto);
+  margin-block: 0 36px;
+}
 .cms-banner-overlay p { font-size: var(--site-lead-size, 19px); line-height: 1.5; opacity: .94; }
 
 /*  The small line above a heading. */
@@ -2761,9 +2837,13 @@ body.cms-logged-in .cms-basket-link.cms-basket-align-float-top { top: 60px; }
   text-transform: var(--site-btn-case, none);
 }
 /*  The second button in a pair: the same shape, none of the weight. */
+/*  The border is INSIDE the box on both, or the two buttons in a pair
+    come out 47px and 49px tall -- 2px, which is exactly enough to read
+    as a misprint. */
+.cms-btn { border: 1px solid transparent; }
 .cms-btn-ghost {
   background: transparent; color: inherit;
-  box-shadow: inset 0 0 0 1px currentColor;
+  border-color: currentColor; box-shadow: none;
 }
 .cms-btn-ghost:hover { background: rgba(255, 255, 255, .12); color: inherit; }
 .cms-btn + .cms-btn { margin-inline-start: 12px; }
@@ -2777,9 +2857,52 @@ body.cms-logged-in .cms-basket-link.cms-basket-align-float-top { top: 60px; }
 
 .cms-hero-actions .cms-btn + .cms-btn { margin-inline-start: 0; }
 .cms-banner-overlay .cms-btn-ghost { color: #fff; }
+.cms-banner-overlay .cms-btn:not(.cms-btn-ghost) {
+  background: #fff; color: var(--site-ink, #1b1b1b);
+}
+.cms-banner-overlay .cms-btn:not(.cms-btn-ghost):hover {
+  background: rgba(255, 255, 255, .88); color: var(--site-ink, #1b1b1b);
+}
 
 
 /*  Hero alignment, said once. `text-align` cannot move a flex row, so
     the button row reads its own token -- set by the same preset, beside
     the text alignment, so the two cannot disagree. */
 :root { --site-hero-justify: center; }
+
+
+/*  A column of reading text is narrow, and it begins where every other
+    band begins.
+
+    The intro was a section set to 62% of the window, which centres --
+    putting its left edge at (1440 - 893) / 2 = 272px, a fourth axis on
+    a page that already had three. The measure belongs to the TEXT, not
+    to the section: the section stays the page's own width and the words
+    stop at --site-measure. */
+.site-content .block-text > .cms-wysiwyg-body { max-width: var(--site-measure, 66ch); }
+
+/*  What a card is made of. Left-aligned, on the page's own ground with
+    one hairline -- the grey fill was the only grey object on the page
+    and read as the default it was. */
+.cms-card {
+  background: var(--site-card-bg, var(--site-ground, #fff));
+  border: 1px solid var(--site-line, #e2e2e2);
+  padding: var(--site-card-pad, 28px);
+  text-align: var(--site-card-align, inherit);
+}
+.cms-card h3 { margin-top: 0; }
+
+/*  Mobile. Every number here was measured on a 390px render: a stats
+    row with three items in two columns leaves one alone beside a 182px
+    hole; a 129px gap between 167px cards reads as three unrelated
+    fragments; and a 9px gutter is edge-to-edge. */
+@media (max-width: 640px) {
+  .cms-stat-row { grid-template-columns: 1fr; }
+  .cms-columns { gap: 24px; }
+  .site-content { padding-inline: 20px; }
+  .cms-banner { padding-inline: 20px; }
+  .cms-hero-actions .cms-btn { flex: 1 1 auto; text-align: center; }
+  .site-content .cms-section > .block {
+    padding-block: var(--site-band-pad-mobile, var(--site-band-pad-tight, 64px));
+  }
+}
