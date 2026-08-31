@@ -1530,3 +1530,9 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
     -- how it sounds, how it looks, what it costs. */
 .cms-form-heading { font-size: 15px; margin: 22px 0 2px; padding-top: 14px;
                     border-top: 1px solid #eef0f3; }
+/*  A colour read off a reference page, shown rather than named: nobody
+    recognises #1d6b58, and everybody recognises the green. */
+.cms-swatch { display: inline-block; width: 22px; height: 22px; border-radius: 4px;
+              border: 1px solid rgba(0,0,0,.15); vertical-align: middle; margin-right: 4px; }
+.cms-plan-pages { margin: 0 0 4px; padding-left: 18px; }
+.cms-plan-pages li { margin: 0 0 2px; }

@@ -28,15 +28,36 @@
   <dl class="cms-plan">
     <dt>Called</dt><dd>{{ plan.name }}</dd>
     <dt>Layout</dt><dd>{{ plan.layout }}</dd>
-    <dt>Page</dt>
-    <dd>{{ plan.pages[0].title }} — {{ plan.sections }} sections:
-      {{ plan.pages[0].sections | join(', ') | lower }}</dd>
+    <dt>Pages</dt>
+    <dd>
+      {#  Every page, not just the first: a run that makes three and
+          shows one is a plan that hides two thirds of itself. #}
+      <ul class="cms-plan-pages">
+        {% for page in plan.pages %}
+        <li><strong>{{ page.title }}</strong> — {{ page.sections | join(', ') | lower }}</li>
+        {% endfor %}
+      </ul>
+      <span class="hint">{{ plan.sections }} sections in total.</span>
+    </dd>
     <dt>Words</dt>
-    <dd>{% if plan.writes %}Written by the AI, in {{ plan.language }}, {{ plan.tone | lower }}.
-      {% else %}Left blank for you to fill in — the AI is not asked anything.{% endif %}</dd>
+    <dd>
+      {%- if plan.keeps_words %}Kept exactly as they read now — the AI is not asked anything.
+      {%- elif plan.writes %}Written by the AI, in {{ plan.language }}, {{ plan.tone | lower }}.
+      {%- else %}Left blank for you to fill in — the AI is not asked anything.{% endif %}</dd>
     <dt>Pictures</dt>
     <dd>{% if plan.pictures %}{{ plan.pictures }} generated; anything else uses a placeholder you can
       replace from your Media Library.{% else %}None — placeholders you can replace.{% endif %}</dd>
+    {% if signals %}
+    <dt>Feel taken from</dt>
+    <dd>{{ signals.source }}<br>
+      <span class="hint">{{ signals.note }}</span><br>
+      {% for colour in signals.colours %}<span class="cms-swatch" style="background: {{ colour }}"
+        title="{{ colour }}"></span>{% endfor %}
+      {% if signals.fonts %}<span class="hint">Typefaces seen: {{ signals.fonts | join(', ') }}.</span>{% endif %}
+      <span class="hint">Corners: {{ signals.shape or 'not clear' }}. Depth: {{ signals.shadow }}.</span><br>
+      <span class="hint">Change any of these below before you make it — what was read is a guess.</span>
+    </dd>
+    {% endif %}
     <dt>It will cost</dt>
     <dd>{{ plan.calls }} request{{ 's' if plan.calls != 1 }} to your AI provider.
       {% if not plan.calls %}Nothing at all.{% endif %}</dd>
@@ -68,6 +89,27 @@
     <textarea name="brief" id="tg-brief" rows="4"
               title="What this site is for and who it is for. Everything written is based on this."
               placeholder="e.g. A family-owned bakery in Portland specialising in sourdough and celebration cakes, open Tue–Sat, focused on local ingredients and made-to-order service.">{{ form.brief if form else '' }}</textarea>
+  </div>
+
+  {#  Three modes, because there are three intentions -- and the middle
+      one is what most people with a site already want. #}
+  <div class="form-row">
+    <label for="tg-mode">Words</label>
+    <select id="tg-mode" name="mode" title="Whether to keep the words your site already has, say them differently, or write new ones from the description.">
+      {% for value, label in modes %}
+      <option value="{{ value }}" {{ 'selected' if (form and form.mode == value) or (not form and value == 'scratch') }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <p class="hint">Keeping your words needs no AI at all, and is the quickest way to try a new look.</p>
+  </div>
+
+  <div class="form-row">
+    <label for="tg-pages">Pages</label>
+    <textarea name="pages" id="tg-pages" rows="3"
+              title="The pages to make, one per line or separated by commas. The first is the front page; the rest get a layout chosen from their name, and the plan shows you which before anything runs."
+              placeholder="Home&#10;About&#10;Contact">{{ form.pages if form else '' }}</textarea>
+    <p class="hint">One per line. Only used when writing new pages — keeping or rewriting your words uses
+      the pages you already have.</p>
   </div>
 
   <div class="form-row">
@@ -138,6 +180,19 @@
       a generated look is one the owner can go on editing. The generator
       picks values; it never writes CSS. #}
   <h2 class="cms-form-heading">How it should look</h2>
+
+  {#  A page whose look you like. STYLE only -- and said so, because
+      somebody handing over a competitor's address is entitled to know
+      exactly what was taken from it. #}
+  <div class="form-row">
+    <label for="tg-reference">Copy the feel from</label>
+    <input type="url" id="tg-reference" name="reference_url"
+           value="{{ form.reference_url if form else '' }}"
+           placeholder="https://a-site-you-like.example"
+           title="A page whose look you like. Its colours, typefaces, corners and depth are read as starting values — never its words, its pictures or its layout.">
+    <p class="hint">Colours, typefaces, corners and depth only. None of that page's words, pictures or
+      layout are read or kept — and everything read is shown to you, and editable, before anything is made.</p>
+  </div>
 
   <div class="form-row">
     <label for="tg-colors">Colours</label>

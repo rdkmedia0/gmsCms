@@ -1,0 +1,31 @@
+{#  Saying the same thing in a different voice.
+
+    The one rule this prompt exists to enforce: a rewrite must not lose a
+    fact. A telephone number or an opening time dropped here is a mistake
+    the owner has to find, and may never. So it asks for the same number
+    of lines back, and the caller keeps the original if it gets anything
+    else -- see theme_generator._rewrite_lines().  #}
+Rewrite the lines below so they say the same things in a different voice.
+
+They come from the page "{{ page }}" of a website.
+
+Write in {{ kit.language }}.
+Voice: {{ kit.tone_label|lower }}, {{ 'speaking as "we"' if kit.voice == 'we' else 'speaking as "I"' }}.
+Reading level: {{ kit.reading_label|lower }}.
+
+The lines, in order:
+{% for line in lines %}{{ loop.index }}. {{ line }}
+{% endfor %}
+
+Rules, and the first one is not negotiable:
+
+1. Keep every fact exactly as it is — every number, price, opening time,
+   telephone number, address, name and date. Change the words around them,
+   never the facts themselves. If you are unsure whether something is a fact,
+   it is: leave it alone.
+2. Return exactly {{ count }} lines, in the same order. A heading stays a
+   heading-length line; a paragraph stays a paragraph.
+3. Do not add anything that was not there, and do not merge two lines into one.
+
+Respond with ONLY a JSON object matching exactly this shape — no markdown fences, no commentary:
+{{ schema }}

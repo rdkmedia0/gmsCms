@@ -122,7 +122,7 @@ IMAGE_BUDGETS = (
 
 def brand_kit(brief="", tone="warm", voice="we", reading="normal",
               language="English", palette=None, fonts="", shape="", shadow="",
-              image_budget="1"):
+              image_budget="1", ref_colours=None):
     """One kit, resolved once, read by every prompt and every picture.
 
     Returns plain data -- no db, no request -- so a checker, a script and
@@ -144,7 +144,11 @@ def brand_kit(brief="", tone="warm", voice="we", reading="normal",
         #  installed in many. A closed list would be a list of the
         #  languages somebody thought of.
         "language": (language or "English").strip() or "English",
-        "palette": palette or None,
+        #  Colours read off a reference page become a palette like any
+        #  other -- three roles, the same three every template has -- and
+        #  only when nothing was chosen by hand. What somebody picked
+        #  themselves always wins over what was guessed from a URL.
+        "palette": palette or _palette_from(ref_colours),
         "fonts": fonts if fonts in FONT_PAIRINGS else "",
         "shape": shape if shape in SHAPE_PRESETS else "",
         "shadow": shadow if shadow in SHADOW_PRESETS else "",
@@ -154,6 +158,17 @@ def brand_kit(brief="", tone="warm", voice="we", reading="normal",
         #  stock: five photographs by five photographers.
         "image_direction": _image_direction(brief, tone),
     }
+
+
+def _palette_from(colours):
+    """Three colours read off a page, as a palette this app can use."""
+    if not colours:
+        return None
+    roles = ("primary", "secondary", "accent")
+    out = []
+    for role, colour in zip(roles, list(colours)[:3]):
+        out.append({"slug": role, "name": role.title(), "color": colour})
+    return out or None
 
 
 def _image_direction(brief, tone):
@@ -168,6 +183,127 @@ def _image_direction(brief, tone):
             "no text, no logos, no watermarks" % feel)
 
 
+# ------------------------------------------------- what to write with
+#
+#  Three modes, because there are three intentions, and the middle one is
+#  what most people with a site already want.
+
+MODES = (
+    ("reskin", "Keep my words — change only the look"),
+    ("rewrite", "Rewrite what I have, in the voice above"),
+    ("scratch", "Write something new from the description"),
+)
+
+
+def _visible_text(html):
+    """The words in a chunk of section markup, in order.
+
+    Tags out, entities back, whitespace squeezed. Used to show a model
+    what a page currently says without showing it markup it might try to
+    imitate.
+    """
+    from html import unescape
+    text = re.sub(r"<[^>]+>", chr(10), html or "")
+    return [line.strip() for line in unescape(text).split(chr(10)) if line.strip()]
+
+
+def site_pages(db, page_ids=None):
+    """This site's own pages, as package page data.
+
+    The same shape `build_package` writes and the same shape a shipped
+    template's pages/*.json already has -- so "keep my words, change the
+    look" is not a special path through the generator, it is the ordinary
+    one with the words already written.
+    """
+    rows = db.execute(
+        "SELECT * FROM pages WHERE is_public = 1 ORDER BY nav_order, title").fetchall()
+    out = []
+    for page in rows:
+        if page_ids and page["id"] not in page_ids:
+            continue
+        sections = db.execute(
+            "SELECT * FROM sections WHERE page_id = ? ORDER BY position",
+            (page["id"],)).fetchall()
+        if not sections:
+            continue
+        out.append({
+            "title": page["title"],
+            "slug_suffix": "",
+            "meta_description": page["meta_description"] or "",
+            "sections": [[s["type"], s["title"] or "", s["content"] or "", ""]
+                         for s in sections],
+        })
+    return out
+
+
+def rewrite_pages(db, kit, pages):
+    """The same pages, said in the voice the kit asks for.
+
+    Conservative on purpose, and the reason is the one thing a rewrite
+    must not do: lose a fact. A telephone number or an opening time
+    dropped in a rewrite is a mistake the owner has to find, and may
+    never. So the model is shown the LINES of a section and asked for the
+    same number of lines back; anything else -- a different count, an
+    empty answer, a refusal -- keeps the original, silently and
+    deliberately.
+
+    Only the sections made of writing are offered. A Blog tool, a form,
+    a booking widget are markers resolved against live data, and their
+    markup is not prose to be improved.
+    """
+    written = []
+    for page in pages:
+        sections = []
+        for kind, title, content, width in page["sections"]:
+            if kind not in ("text", "banner", "card"):
+                sections.append([kind, title, content, width])
+                continue
+            lines = _visible_text(content)
+            if not lines:
+                sections.append([kind, title, content, width])
+                continue
+            new = _rewrite_lines(db, kit, lines, page["title"])
+            sections.append([kind, title,
+                             _replace_lines(content, lines, new) if new else content,
+                             width])
+        written.append(dict(page, sections=sections))
+    return written
+
+
+def _rewrite_lines(db, kit, lines, page_title):
+    """The same lines, rewritten. None if anything is off."""
+    schema = '{"lines": [%s]}' % ", ".join('"..."' for _ in lines)
+    prompt = _prompt_file("prompts/theme_generator_rewrite.j2",
+                          kit=kit, page=page_title,
+                          lines=lines, schema=schema, count=len(lines))
+    try:
+        answer = _ai_json(db, prompt)
+    except ThemeGenError:
+        return None
+    new = answer.get("lines")
+    if not isinstance(new, list) or len(new) != len(lines):
+        #  A different number of lines is a rewrite that dropped or
+        #  invented something. Kept as it was.
+        return None
+    if any(not isinstance(line, str) or not line.strip() for line in new):
+        return None
+    return new
+
+
+def _replace_lines(html, old_lines, new_lines):
+    """Put the rewritten words back where the old ones were.
+
+    Text nodes only: the markup is untouched, so a Banner stays a Banner
+    and a Card keeps its shape. Replaced one occurrence at a time and in
+    order, because the same word can appear twice on a page.
+    """
+    from html import escape as _esc
+    out = html
+    for old, new in zip(old_lines, new_lines):
+        out = out.replace(">" + old + "<", ">" + _esc(new) + "<", 1)
+    return out
+
+
 # ---------------------------------------------------------- the plan
 #
 #  What a run WILL do, worked out before it does any of it. A generator
@@ -175,51 +311,91 @@ def _image_direction(brief, tone):
 #  says so afterwards, gets used once.
 
 
-def plan(kit, layout_key, name, page_title="Home", use_ai_images=True,
-         fill_scope="all"):
+SECTION_NAMES = {
+    "landing": ["a banner across the top", "a short introduction",
+                "three cards side by side", "a closing banner"],
+    "about": ["a banner across the top", "the story, as running text",
+              "a closing banner"],
+    "simple": ["a banner across the top", "one block of writing"],
+}
+
+
+def plan(db, kit, name, mode="scratch", pages_wanted=None, layout_key=None,
+         page_title="Home", use_ai_images=True, fill_scope="all"):
     """(what it will make, what it will cost) without asking anybody.
 
     Takes the same answers the run takes, including whether pictures are
     wanted at all -- a plan that promises a photograph the run will not
     make is worse than no plan, and that is exactly what it did before
-    the checker caught it: it read the budget and ignored whether the
-    provider could make one.
+    the checker caught it.
     """
-    if layout_key not in LAYOUTS:
+    if mode in ("reskin", "rewrite"):
+        existing = site_pages(db)
+        pages = [{"title": p["title"],
+                  "sections": ["%d sections, as they are now" % len(p["sections"])]}
+                 for p in existing]
+        #  A rewrite asks once per text-bearing section, not once per
+        #  page. Counted, because it is what the run costs and the
+        #  difference between the two modes is the whole bill.
+        asks = sum(1 for p in existing for sec in p["sections"]
+                   if sec[0] in ("text", "banner", "card") and _visible_text(sec[2]))
+        return {
+            "name": name or "Generated look",
+            "layout": ("Your pages, exactly as they read now"
+                       if mode == "reskin" else "Your pages, said differently"),
+            "pages": pages,
+            "sections": sum(len(p["sections"]) for p in existing),
+            "pictures": 0,
+            "placeholders": 0,
+            "calls": 0 if mode == "reskin" else asks,
+            "writes": mode == "rewrite",
+            "keeps_words": mode == "reskin",
+            "language": kit["language"],
+            "tone": kit["tone_label"],
+        }
+
+    wanted = pages_wanted or ([page_title] if page_title else ["Home"])
+    if layout_key and len(wanted) == 1:
+        keys = [layout_key]
+    else:
+        keys = [layout_for(title, i) for i, title in enumerate(wanted)]
+    if any(k not in LAYOUTS for k in keys):
         raise ThemeGenError("Unknown layout.")
-    sections = {
-        "landing": ["a banner across the top",
-                    "a short introduction",
-                    "three cards side by side",
-                    "a closing banner"],
-        "about": ["a banner across the top",
-                  "the story, as running text",
-                  "a closing banner"],
-        "simple": ["a banner across the top", "one block of writing"],
-    }[layout_key]
+
     writes = bool(kit["brief"]) and fill_scope != "none"
-    #  One picture: the banner at the top. The rest of a layout's banners
-    #  take the placeholder, which is a picture the owner replaces from
-    #  their own Media Library.
     pictures = 1 if (use_ai_images and kit["image_budget"] > 0) else 0
-    banners = len([s for s in sections if "banner" in s])
+    pages = [{"title": title, "sections": SECTION_NAMES[key]}
+             for title, key in zip(wanted, keys)]
+    banners = sum(len([x for x in p["sections"] if "banner" in x]) for p in pages)
     return {
         "name": name or "Generated look",
-        "layout": LAYOUTS[layout_key]["label"],
-        "pages": [{"title": page_title or "Home", "sections": sections}],
-        "sections": len(sections),
+        "layout": ", ".join(LAYOUTS[k]["label"] for k in keys),
+        "pages": pages,
+        "sections": sum(len(p["sections"]) for p in pages),
         "pictures": pictures,
         "placeholders": max(0, banners - pictures),
-        #  One call for the words, one per picture. Named rather than
-        #  hidden, because it is what the run costs.
-        "calls": (1 if writes else 0) + pictures,
+        #  One call per page for the words, one per picture.
+        "calls": (len(pages) if writes else 0) + pictures,
         "writes": writes,
+        "keeps_words": False,
         "language": kit["language"],
         "tone": kit["tone_label"],
     }
 
 
+
 # ------------------------------------------------- asking the provider
+
+
+def _prompt_file(name, **values):
+    """One prompt file, rendered.
+
+    Through the Jinja environment rather than `render_template`, which
+    runs the app's context processors -- and one reads the session. A
+    service must be callable without a request: from a script, from a
+    checker, from the scheduler.
+    """
+    return current_app.jinja_env.get_template(name).render(**values)
 
 
 def _prompt(kit, schema):
@@ -233,8 +409,7 @@ def _prompt(kit, schema):
     it showed up here as "Working outside of request context" the first
     time this was tested outside a browser.
     """
-    template = current_app.jinja_env.get_template("prompts/theme_generator_brief.j2")
-    return template.render(kit=kit, schema=schema)
+    return _prompt_file("prompts/theme_generator_brief.j2", kit=kit, schema=schema)
 
 
 def _ai_json(db, prompt):
@@ -329,7 +504,8 @@ def _cards_chunk(cards):
 
 
 
-def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images):
+def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
+                  want_image=True):
     """The HTML chunks for one layout. `fill_scope` "none" asks nobody.
 
     Takes the brand KIT rather than a bare brief: the tone, the language
@@ -358,7 +534,7 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images):
     hero = _maybe_generate_image(
         db, "A wide background photograph for the top of a website about: %s. %s"
         % (brief or layout_key, kit["image_direction"]),
-        use_ai_images and kit["image_budget"] > 0)
+        use_ai_images and want_image and kit["image_budget"] > 0)
 
     chunks = []
     if layout_key == "landing":
@@ -485,8 +661,40 @@ def build_package(db, name, pages, palette=None, google_fonts_url=None,
     return pkg_dir, slug
 
 
-def generate(db, static_folder, name, layout_key, kit, fill_scope,
-             use_ai_images, page_title=None):
+def layout_for(title, index):
+    """Which starting arrangement a page called this should get.
+
+    By the name, because the names people give pages mean something: an
+    About page wants the story layout and a Contact page wants the small
+    one. Guessed rather than asked, and shown in the plan before it runs
+    -- a guess somebody can see and change is worth ten they cannot.
+    """
+    words = (title or "").strip().lower()
+    if index == 0:
+        return "landing"
+    if any(w in words for w in ("about", "story", "who we are", "team", "us")):
+        return "about"
+    return "simple"
+
+
+def page_list(raw):
+    """The pages somebody asked for, from one field.
+
+    One per line, or separated by commas -- because both are what people
+    type, and refusing one of them teaches a format rather than reading
+    an answer.
+    """
+    parts = []
+    for line in (raw or "").replace(",", chr(10)).split(chr(10)):
+        name = " ".join(line.split())
+        if name and name.lower() not in {p.lower() for p in parts}:
+            parts.append(name)
+    return parts[:12]
+
+
+def generate(db, static_folder, name, kit, fill_scope, use_ai_images,
+             mode="scratch", pages_wanted=None, layout_key=None,
+             page_title=None):
     """Generate a look, install it as a template, and say which one.
 
     Installed, NOT activated. That is the whole difference from what this
@@ -494,19 +702,43 @@ def generate(db, static_folder, name, layout_key, kit, fill_scope,
     export, rather than editing a live page in a way that has to be
     undone by hand.
 
-    The look the kit asks for travels WITH the package -- its palette,
-    its fonts, its shape and shadow -- rather than being written over
-    whatever happens to be active. Generating something you have not seen
-    yet must not change the site you are looking at.
+    Three modes, because there are three intentions:
+
+      * `reskin` keeps every word the site already has and changes only
+        the look. No AI at all, and by far the most useful mode for a
+        site that already works.
+      * `rewrite` says the same things in the voice the kit asks for,
+        keeping every fact -- see rewrite_pages() for how carefully.
+      * `scratch` writes new pages from the description.
     """
     from . import packages
     name = (name or "").strip() or "Generated look"
-    chunks = layout_chunks(db, layout_key, kit, fill_scope, use_ai_images)
-    pages = [{
-        "title": (page_title or "Home").strip() or "Home",
-        "slug_suffix": "",
-        "sections": sections_for(chunks),
-    }]
+
+    if mode in ("reskin", "rewrite"):
+        pages = site_pages(db)
+        if not pages:
+            raise ThemeGenError(
+                "This site has no pages with anything on them yet, so there is "
+                "nothing to keep. Write something first, or choose “Write "
+                "something new”.")
+        if mode == "rewrite":
+            pages = rewrite_pages(db, kit, pages)
+    else:
+        wanted = pages_wanted or ([page_title] if page_title else ["Home"])
+        pages = []
+        for i, title in enumerate(wanted):
+            key = layout_key if (layout_key and len(wanted) == 1) else layout_for(title, i)
+            chunks = layout_chunks(db, key, kit, fill_scope, use_ai_images,
+                                   #  One picture for the run, at the top
+                                   #  of the first page. Every later page
+                                   #  takes the placeholder: five hero
+                                   #  photographs is five waits and five
+                                   #  charges for a look nobody has
+                                   #  approved yet.
+                                   want_image=(i == 0))
+            pages.append({"title": title, "slug_suffix": "",
+                          "sections": sections_for(chunks)})
+
     pkg_dir, slug = build_package(
         db, name, pages,
         palette=kit.get("palette"),

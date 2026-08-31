@@ -7,6 +7,7 @@ from ...db import get_db
 from ...services import blog as blog_service
 from ... import assistant, ai_image
 from ...services import theme_generator as theme_generator_mod
+from ...services import style_extract
 from ...services.design import FONT_PAIRINGS, SHAPE_PRESETS, SHADOW_PRESETS
 from ...services.palette import _match_palette_roles, color_scheme_choices
 from ...services.sections import _insert_layout_chunks
@@ -225,6 +226,20 @@ def theme_generator():
     """
     db = get_db()
     if request.method == "POST":
+        #  A page somebody likes the look of. STYLE only -- colours,
+        #  typefaces, corners, depth. Never its words, its pictures or
+        #  its markup: see services/style_extract.py, which cannot
+        #  return prose at all.
+        signals, ref_note = None, None
+        reference = (request.form.get("reference_url") or "").strip()
+        if reference:
+            try:
+                signals = style_extract.signals(reference)
+            except style_extract.RefusedError as e:
+                ref_note = str(e)
+            except Exception:                                 # noqa: BLE001
+                ref_note = "That page could not be read — check the address."
+
         kit = theme_generator_mod.brand_kit(
             brief=(request.form.get("brief") or "").strip(),
             tone=request.form.get("tone", "warm"),
@@ -236,16 +251,32 @@ def theme_generator():
             shape=request.form.get("shape", ""),
             shadow=request.form.get("shadow", ""),
             image_budget=request.form.get("image_budget", "1"),
+            #  What was read from the reference is a STARTING value: a
+            #  colour picked by hand always wins over one guessed from a
+            #  URL, and every one of them is shown before anything runs.
+            ref_colours=(signals or {}).get("colours"),
         )
+        if signals:
+            kit["shape"] = kit["shape"] or signals["shape"]
+            kit["shadow"] = kit["shadow"] or signals["shadow"]
+        if ref_note:
+            flash(ref_note, "warning")
         name = (request.form.get("name") or "").strip()
         layout_key = request.form.get("layout", "landing")
         page_title = (request.form.get("page_title") or "Home").strip()
+        mode = request.form.get("mode", "scratch")
+        if mode not in dict(theme_generator_mod.MODES):
+            mode = "scratch"
+        wanted = theme_generator_mod.page_list(request.form.get("pages", ""))
+        if not wanted:
+            wanted = [page_title or "Home"]
 
         #  Looking is free. Everything below this line costs something.
         if request.form.get("preview"):
             try:
                 shown = theme_generator_mod.plan(
-                    kit, layout_key, name, page_title,
+                    db, kit, name, mode=mode, pages_wanted=wanted,
+                    layout_key=layout_key, page_title=page_title,
                     use_ai_images=request.form.get("use_ai_images") == "1",
                     fill_scope=request.form.get("fill_scope", "all"))
             except theme_generator_mod.ThemeGenError as e:
@@ -253,14 +284,16 @@ def theme_generator():
                 return redirect(url_for("admin.theme_generator"))
             return render_template("admin/theme_generator.html",
                                    plan=shown, form=request.form,
+                                   signals=signals, kit=kit,
                                    **_theme_generator_context(db))
 
         try:
             slug = theme_generator_mod.generate(
-                db, current_app.static_folder, name=name, layout_key=layout_key,
-                kit=kit, fill_scope=request.form.get("fill_scope", "all"),
+                db, current_app.static_folder, name=name, kit=kit,
+                fill_scope=request.form.get("fill_scope", "all"),
                 use_ai_images=request.form.get("use_ai_images") == "1",
-                page_title=page_title)
+                mode=mode, pages_wanted=wanted,
+                layout_key=layout_key, page_title=page_title)
         except theme_generator_mod.ThemeGenError as e:
             flash(str(e), "error")
             return redirect(url_for("admin.theme_generator"))
@@ -294,6 +327,7 @@ def _theme_generator_context(db):
     first visit and coming back with a plan -- cannot drift."""
     return dict(
         layouts=theme_generator_mod.LAYOUTS,
+        modes=theme_generator_mod.MODES,
         color_presets=color_scheme_choices(db),
         tones=theme_generator_mod.TONES,
         voices=theme_generator_mod.VOICES,

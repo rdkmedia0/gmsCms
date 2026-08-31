@@ -90,7 +90,7 @@ with app.app_context():
         "SELECT value FROM settings WHERE key = 'site_title'").fetchone()
 
     slug = tg.generate(db, static_folder, name="A Checker Look",
-                       layout_key="landing", kit=tg.brand_kit(brief=""), fill_scope="none",
+                       layout_key="landing", page_title="Home", kit=tg.brand_kit(brief=""), fill_scope="none",
                        use_ai_images=False)
     db.commit()
 
@@ -164,7 +164,7 @@ with app.app_context():
     print("Two runs are two templates")
     print("-" * 70)
     second = tg.generate(db, static_folder, name="A Checker Look",
-                         layout_key="simple", kit=tg.brand_kit(brief=""), fill_scope="none",
+                         layout_key="simple", page_title="Home", kit=tg.brand_kit(brief=""), fill_scope="none",
                          use_ai_images=False)
     db.commit()
     check("the same name twice does not collide", second != slug,
@@ -178,7 +178,7 @@ with app.app_context():
     print("-" * 70)
     REPLIES["content"] = json.dumps(ANSWER)
     written = tg.generate(db, static_folder, name="Bakery Look",
-                          layout_key="landing", kit=tg.brand_kit(brief="a corner bakery"), fill_scope="all", use_ai_images=False)
+                          layout_key="landing", page_title="Home", kit=tg.brand_kit(brief="a corner bakery"), fill_scope="all", use_ai_images=False)
     db.commit()
     wdir = os.path.join(static_folder, "themes", written, "pages")
     wdata = json.load(io.open(
@@ -190,7 +190,7 @@ with app.app_context():
     #  Words are words. A stray "<" in a headline is a headline.
     REPLIES["content"] = json.dumps(dict(ANSWER, hero_headline="Bread & <b>butter</b>"))
     escaped = tg.generate(db, static_folder, name="Escaped Look",
-                          layout_key="simple", kit=tg.brand_kit(brief="x"), fill_scope="all",
+                          layout_key="simple", page_title="Home", kit=tg.brand_kit(brief="x"), fill_scope="all",
                           use_ai_images=False)
     db.commit()
     edir = os.path.join(static_folder, "themes", escaped, "pages")
@@ -297,7 +297,7 @@ with app.app_context():
     real = assistant._call_provider
     assistant._call_provider = lambda db, m, t: (asked.__setitem__("n", asked["n"] + 1),
                                                  {"content": REPLIES["content"]})[1]
-    shown = tg.plan(kit, "landing", "A plan", "Home")
+    shown = tg.plan(db, kit, "A plan", pages_wanted=["Home"], layout_key="landing")
     assistant._call_provider = real
     check("the plan asks the provider nothing", asked["n"] == 0, str(asked["n"]))
     check("...and says how many sections", shown["sections"] == 4, str(shown))
@@ -305,17 +305,152 @@ with app.app_context():
     check("...and what it will cost", shown["calls"] >= 1, str(shown))
     check("...in the language it will write",
           shown["language"] == "German", str(shown["language"]))
-    blank = tg.plan(tg.brand_kit(brief="", image_budget="0"), "simple",
-                    "Nothing", "Home", use_ai_images=False)
+    blank = tg.plan(db, tg.brand_kit(brief="", image_budget="0"), "Nothing",
+                    pages_wanted=["Home"], layout_key="simple", use_ai_images=False)
     check("a run that asks nobody says so", blank["calls"] == 0 and not blank["writes"],
           str(blank))
     #  The flaw this check found: the plan promised a picture without
     #  knowing whether the run could make one. It reads the same answers
     #  the run does now.
-    no_pics = tg.plan(kit, "landing", "No pictures", "Home", use_ai_images=False)
+    no_pics = tg.plan(db, kit, "No pictures", pages_wanted=["Home"],
+                      layout_key="landing", use_ai_images=False)
     check("...and a plan promises no picture the run will not make",
           no_pics["pictures"] == 0 and no_pics["placeholders"] >= 1, str(no_pics))
     check("...counting only the words as its cost", no_pics["calls"] == 1, str(no_pics))
+
+    print()
+    print("A site, not a page")
+    print("-" * 70)
+    check("pages are read one per line",
+          tg.page_list("Home" + chr(10) + "About" + chr(10) + "Contact")
+          == ["Home", "About", "Contact"])
+    check("...or separated by commas",
+          tg.page_list("Home, About, Contact") == ["Home", "About", "Contact"])
+    check("...and the same one twice is once",
+          tg.page_list("Home" + chr(10) + "home" + chr(10) + "About") == ["Home", "About"])
+    #  Guessed from the name, and SHOWN in the plan before it runs -- a
+    #  guess somebody can see and change is worth ten they cannot.
+    check("the first page is the front page", tg.layout_for("Anything", 0) == "landing")
+    check("an About page gets the story layout", tg.layout_for("About us", 1) == "about")
+    check("...and anything else the small one", tg.layout_for("Contact", 2) == "simple")
+
+    REPLIES["content"] = json.dumps(ANSWER)
+    three = tg.generate(db, static_folder, name="Three Pager",
+                        kit=tg.brand_kit(brief="a corner bakery"),
+                        fill_scope="all", use_ai_images=False,
+                        pages_wanted=["Home", "About", "Contact"])
+    db.commit()
+    made = sorted(os.listdir(os.path.join(static_folder, "themes", three, "pages")))
+    check("three pages asked for, three pages made", len(made) == 3, ", ".join(made))
+    check("...in the order they were asked for",
+          made[0].startswith("00-home") and made[1].startswith("01-about"),
+          ", ".join(made))
+
+    print()
+    print("Keeping the words, and saying them differently")
+    print("-" * 70)
+    page_id = db.execute(
+        "INSERT INTO pages (title, slug, is_public) VALUES ('Opening', 'opening', 1)"
+    ).lastrowid
+    db.execute("INSERT INTO sections (page_id, type, title, content, position) "
+               "VALUES (?, 'text', '', ?, 0)",
+               (page_id, "<h2>We open at seven</h2><p>Every day except Sunday. "
+                         "Call 044 123 45 67.</p>"))
+    db.commit()
+
+    kept = tg.generate(db, static_folder, name="Same Words", mode="reskin",
+                       kit=tg.brand_kit(brief=""), fill_scope="none",
+                       use_ai_images=False)
+    db.commit()
+    kdir = os.path.join(static_folder, "themes", kept, "pages")
+    kbody = " ".join(
+        sec[2] or "" for f in os.listdir(kdir)
+        for sec in json.load(io.open(os.path.join(kdir, f), encoding="utf-8"))["sections"])
+    check("a re-skin keeps every word",
+          "We open at seven" in kbody and "044 123 45 67" in kbody, kbody[:100])
+
+    #  A rewrite that loses a fact is the failure this mode must not
+    #  have. The stub returns the right NUMBER of lines and keeps the
+    #  number, which is what the prompt demands.
+    REPLIES["content"] = json.dumps({"lines": [
+        "Doors open at seven", "Every day but Sunday. Ring 044 123 45 67."]})
+    said = tg.generate(db, static_folder, name="Said Differently", mode="rewrite",
+                       kit=tg.brand_kit(brief="", tone="plain"),
+                       fill_scope="all", use_ai_images=False)
+    db.commit()
+    rdir = os.path.join(static_folder, "themes", said, "pages")
+    rbody = " ".join(
+        sec[2] or "" for f in os.listdir(rdir)
+        for sec in json.load(io.open(os.path.join(rdir, f), encoding="utf-8"))["sections"])
+    check("a rewrite changes the words", "Doors open at seven" in rbody, rbody[:120])
+    check("...and keeps the telephone number", "044 123 45 67" in rbody, rbody[:160])
+    check("...and the markup around them", "<h2>" in rbody and "<p>" in rbody)
+
+    #  The important half: an answer of the wrong shape keeps the
+    #  original, silently and deliberately.
+    REPLIES["content"] = json.dumps({"lines": ["Only one line came back"]})
+    dropped = tg.generate(db, static_folder, name="Dropped", mode="rewrite",
+                          kit=tg.brand_kit(brief=""), fill_scope="all",
+                          use_ai_images=False)
+    db.commit()
+    ddir = os.path.join(static_folder, "themes", dropped, "pages")
+    #  The page this is about, not the whole site: a one-line section
+    #  elsewhere legitimately took the stub's one-line answer, and an
+    #  assertion over every page reads that as the failure it is testing
+    #  for. The two-line section is the one that had to be left alone.
+    opening = [f for f in os.listdir(ddir) if "opening" in f]
+    dbody = " ".join(
+        sec[2] or "" for f in opening
+        for sec in json.load(io.open(os.path.join(ddir, f), encoding="utf-8"))["sections"])
+    check("a rewrite of the wrong shape keeps the original",
+          "We open at seven" in dbody and "044 123 45 67" in dbody
+          and "Only one line" not in dbody, dbody[:140])
+
+    print()
+    print("A reference gives style, and only style")
+    print("-" * 70)
+    from app.services import style_extract as sx                  # noqa: E402
+    for bad, why in (("file:///etc/passwd", "not http"),
+                     ("http://127.0.0.1/", "loopback"),
+                     ("http://10.0.0.1/", "private"),
+                     ("nonsense", "not a url")):
+        try:
+            sx.fetch(bad)
+            check("refused: %s" % why, False, "it was fetched")
+        except sx.RefusedError:
+            check("refused: %s" % why, True)
+        except Exception as e:                                    # noqa: BLE001
+            check("refused: %s" % why, False, type(e).__name__)
+
+    css = ('<style>body{font-family:"Spectral",Georgia,serif;color:#16201c}'
+           '.b{background:#1d6b58;border-radius:18px;'
+           'box-shadow:0 4px 28px rgba(0,0,0,.2)}'
+           '.c{background:#d94f2b;border-radius:20px}</style>'
+           '<h1>Their headline</h1><p>Their words, which must not travel.</p>')
+    check("it reads the colours",
+          sx._interesting(sx._colours(css))[:2] == ["#1d6b58", "#d94f2b"],
+          str(sx._interesting(sx._colours(css))))
+    check("...the typefaces", sx._fonts(css) == ["Spectral"], str(sx._fonts(css)))
+    check("...the corners", sx._shape(css) == "rounded", sx._shape(css))
+    check("...and the depth", sx._shadow(css) == "floating", sx._shadow(css))
+
+    #  The boundary, asserted rather than intended: there is nothing in
+    #  what this returns that could carry somebody's words.
+    read = {"colours": sx._interesting(sx._colours(css)), "fonts": sx._fonts(css),
+            "shape": sx._shape(css), "shadow": sx._shadow(css)}
+    flat = json.dumps(read)
+    check("their words are not in what it read",
+          "Their headline" not in flat and "must not travel" not in flat, flat[:120])
+    check("...and neither is their markup", "<" not in flat and "class=" not in flat)
+
+    from_ref = tg.brand_kit(ref_colours=["#1d6b58", "#d94f2b"])
+    check("read colours become a palette",
+          bool(from_ref["palette"]) and from_ref["palette"][0]["color"] == "#1d6b58",
+          str(from_ref["palette"]))
+    chosen = tg.brand_kit(palette=[{"slug": "primary", "name": "P", "color": "#000080"}],
+                          ref_colours=["#1d6b58"])
+    check("...but a colour picked by hand wins",
+          chosen["palette"][0]["color"] == "#000080", str(chosen["palette"]))
 
 print()
 print("  %d ok, %d failed" % (passed, len(failures)))
