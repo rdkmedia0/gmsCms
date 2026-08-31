@@ -1,4 +1,5 @@
 import json
+import re
 from flask import request, flash, redirect, url_for, render_template, current_app
 
 from . import bp
@@ -64,7 +65,6 @@ def _screen_context(db):
                     ).fetchall())
                for b in blog_service.list_blogs(db)],
         templates=templates,
-        color_presets=color_scheme_choices(db),
         layout_settings=get_layout_settings(db),
         site_settings=get_site_settings(db),
         #  Which template is in use, so a page's own row can say whether
@@ -257,17 +257,43 @@ def theme_generator():
     """
     db = get_db()
     if request.method == "POST":
-        #  A page somebody likes the look of. STYLE only -- see
-        #  services/style_extract.py, which cannot return prose at all.
-        signals, ref_note = None, None
-        reference = (request.form.get("reference_url") or "").strip()
-        if reference:
+        #  Pages and pictures somebody likes the look of. STYLE only --
+        #  see services/style_extract.py, which cannot return prose at
+        #  all.
+        #
+        #  A page is READ here, by this app, with no AI involved: the
+        #  colours, the typefaces, the corners and the depth come out of
+        #  its CSS. A picture is different -- there is nothing to parse,
+        #  and reading a photograph needs a model that can see, which not
+        #  every provider has. So a picture's colours are sampled in the
+        #  BROWSER and arrive as plain hex values. That works whatever
+        #  the provider can do, and the picture never leaves the machine
+        #  it was chosen on.
+        signals, ref_notes = None, []
+        seen_colours = []
+        for reference in request.form.getlist("reference_url"):
+            reference = (reference or "").strip()
+            if not reference:
+                continue
             try:
-                signals = style_extract.signals(reference)
+                got = style_extract.signals(reference)
             except style_extract.RefusedError as e:
-                ref_note = str(e)
+                ref_notes.append("%s \u2014 %s" % (reference, e))
+                continue
             except Exception:                                 # noqa: BLE001
-                ref_note = "That page could not be read \u2014 check the address."
+                ref_notes.append("%s could not be read \u2014 check the address."
+                                 % reference)
+                continue
+            seen_colours.extend(got["colours"])
+            #  The first page that answered sets the shape and the type;
+            #  the rest add their colours. Merging two sites' typefaces
+            #  would be choosing neither.
+            signals = signals or got
+        #  Colours sampled from pictures, in the browser.
+        seen_colours.extend([c for c in request.form.getlist("ref_colour")
+                             if re.match(r"^#[0-9a-fA-F]{6}$", c or "")])
+        for note in ref_notes[:3]:
+            flash(note, "warning")
 
         kit = theme_generator_mod.brand_kit(
             brief=(request.form.get("brief") or "").strip(),
@@ -277,17 +303,16 @@ def theme_generator():
             language=request.form.get("language", "English"),
             colour_note=(request.form.get("colour_note") or "").strip(),
             banner_per_page=request.form.get("banner_per_page") == "1",
+            palette=_chosen_palette(request.form),
             fonts=request.form.get("fonts", ""),
             shape=request.form.get("shape", ""),
             shadow=request.form.get("shadow", ""),
             image_budget=request.form.get("image_budget", "1"),
-            ref_colours=(signals or {}).get("colours"),
+            ref_colours=seen_colours or None,
         )
         if signals:
             kit["shape"] = kit["shape"] or signals["shape"]
             kit["shadow"] = kit["shadow"] or signals["shadow"]
-        if ref_note:
-            flash(ref_note, "warning")
 
         name = (request.form.get("name") or "").strip()
         mode = request.form.get("mode", "scratch")
@@ -359,18 +384,23 @@ def _carried_look(form):
     }
 
 
-def _preset_palette(preset):
-    """A colour preset as a palette the package can carry.
+def _chosen_palette(form):
+    """Three colours somebody picked, or nothing.
 
-    It used to be written over whatever look was active, which changed
-    the live site as a side effect of generating something nobody had
-    looked at yet.
+    It was a dropdown of colour SCHEMES -- every installed template's
+    palette, offered here. Which is a strange thing to want: if you
+    wanted that template's colours you would use that template. What a
+    person actually wants is either to describe the colours in words, or
+    to set them exactly, so those are the two things offered.
     """
-    if not preset or preset not in COLOR_PRESETS:
+    if form.get("set_colours") != "1":
         return None
-    chosen = COLOR_PRESETS[preset]
-    return [{"slug": role, "name": role.title(), "color": value}
-            for role, value in chosen.items() if value]
+    picked = []
+    for role in ("primary", "secondary", "accent"):
+        value = (form.get("colour_" + role) or "").strip()
+        if re.match(r"^#[0-9a-fA-F]{6}$", value):
+            picked.append({"slug": role, "name": role.title(), "color": value.lower()})
+    return picked or None
 
 
 def _theme_generator_context(db):
@@ -382,7 +412,9 @@ def _theme_generator_context(db):
         #  Which rows each answer needs, decided here and read by the
         #  form, so the two cannot disagree about what applies.
         mode_needs=theme_generator_mod.MODE_NEEDS,
-        color_presets=color_scheme_choices(db),
+        #  No colour-scheme list any more: it offered every installed
+        #  template's palette, which is a strange thing to want -- if you
+        #  wanted that template's colours you would use that template.
         tones=theme_generator_mod.TONES,
         voices=theme_generator_mod.VOICES,
         readings=theme_generator_mod.READING,

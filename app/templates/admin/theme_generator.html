@@ -214,14 +214,36 @@
     <p class="hint">In your own words, or leave it and the description decides.</p>
   </div>
 
+  {#  Pages and pictures somebody likes the look of. Several of them,
+      because "what do you like" is rarely answered with exactly one.
+
+      A LINK is read by this app, here, with no AI involved: the colours,
+      the typefaces, the corners and the depth come out of its CSS. A
+      PICTURE has nothing to parse, and reading a photograph needs a
+      model that can see -- which not every provider has. So a picture's
+      colours are sampled in the browser and arrive as plain hex values.
+      That works whatever the provider can do, and the picture never
+      leaves the machine it was chosen on. Both facts are said on screen,
+      because "why did my picture only give colours" is otherwise a
+      mystery. #}
   <div class="form-row">
-    <label for="tg-reference">A site you like</label>
-    <input type="url" id="tg-reference" name="reference_url"
-           value="{{ form.reference_url if form else '' }}"
-           placeholder="https://a-site-you-like.example"
-           title="A page whose look you like. Its colours, typefaces, corners and depth are read as starting values — never its words, its pictures or its layout.">
-    <p class="hint">Colours, typefaces, corners and depth only. None of that page's words, pictures or
-      layout are read or kept, and everything read is shown to you before anything is made.</p>
+    <label>Sites or pictures you like</label>
+    <div data-references>
+      <div class="cms-reference" data-reference>
+        <input type="url" name="reference_url" placeholder="https://a-site-you-like.example"
+               title="A page whose look you like. Its colours, typefaces, corners and depth are read here — never its words, its pictures or its layout.">
+        <span class="hint">or</span>
+        <input type="file" accept="image/*" data-reference-image
+               title="A picture whose colours you like. It is read in this browser and never uploaded — only the colours are sent.">
+        <span class="cms-reference-read" data-reference-read hidden></span>
+      </div>
+    </div>
+    <button type="button" class="btn btn-small" data-add-reference
+            title="Add another site or picture.">+ Add another</button>
+    <p class="hint">A link gives colours, typefaces, corners and depth — read from the page itself,
+      with no AI involved. A picture gives <strong>colours only</strong>, sampled in this browser:
+      it is never uploaded, and reading what is IN a photograph needs a provider that can see.
+      None of a page's words, pictures or layout are ever read or kept.</p>
   </div>
 
   {#  The specific controls, for somebody who already knows what they
@@ -230,14 +252,34 @@
   <details class="cms-fine-print">
     <summary title="Pick exact colours, fonts, corners and depth yourself, instead of having them worked out.">Choose these myself</summary>
 
-    <div class="form-row">
-      <label for="tg-colors">Colours</label>
-      <select id="tg-colors" name="color_preset" title="An exact colour scheme, instead of one worked out from your description. It travels with the template — your current site's colours are not touched.">
-        <option value="">Work them out from my description</option>
-        {% for key, scheme in color_presets.items() %}
-        <option value="{{ key }}" {{ 'selected' if form and form.color_preset == key }}>{{ scheme.name or key|title }}</option>
+    {#  It was a dropdown of colour SCHEMES -- every installed template's
+        palette, offered here. Which is a strange thing to want: if you
+        wanted that template's colours you would use that template. What
+        a person actually wants is to describe them in words (above) or
+        to set them exactly, so those are the two things offered. #}
+    <div class="form-row cms-compose-keep">
+      <label for="tg-set-colours" class="cms-check"
+             title="Set the three colours yourself, instead of having them worked out from your description.">
+        <input type="checkbox" id="tg-set-colours" name="set_colours" value="1"
+               data-set-colours {{ 'checked' if form and form.set_colours }}>
+        Set the colours myself
+      </label>
+    </div>
+
+    <div class="form-row" data-colour-pickers {{ 'hidden' if not (form and form.set_colours) }}>
+      <label>Colours</label>
+      <span class="cms-colour-picks">
+        {% for role, what in [('primary', 'The main colour: buttons, links, headings.'),
+                              ('secondary', 'A colour that sits with the main one.'),
+                              ('accent', 'A contrasting colour, used sparingly.')] %}
+        <label class="cms-colour-pick" title="{{ what }}">
+          <input type="color" name="colour_{{ role }}"
+                 value="{{ form['colour_' ~ role] if form and form['colour_' ~ role] else '#1d6b58' }}"
+                 title="{{ what }}">
+          {{ role|title }}
+        </label>
         {% endfor %}
-      </select>
+      </span>
     </div>
 
     <div class="form-row">

@@ -588,6 +588,44 @@ with app.app_context():
           per_page["calls"] > one["calls"],
           "%d vs %d" % (per_page["calls"], one["calls"]))
 
+    print()
+    print("Colours are described or picked, never borrowed from a template")
+    print("-" * 70)
+    #  It was a dropdown of every installed template's palette, which is
+    #  a strange thing to want: if you wanted that template's colours you
+    #  would use that template.
+    check("no colour-scheme list on the screen",
+          'name="color_preset"' not in screen)
+    #  The three inputs are written by a loop over the roles, so the
+    #  markup says `name="colour_{{ role }}"`. Asserted on what the
+    #  template says, not on what one rendering of it happens to spell.
+    check("...colours can be set exactly instead",
+          'name="colour_{{ role }}"' in screen and 'name="set_colours"' in screen)
+    check("...and described in words", 'name="colour_note"' in screen)
+
+    print()
+    print("Several things you like, a link or a picture")
+    print("-" * 70)
+    check("more than one can be given",
+          "data-add-reference" in screen and "data-references" in screen)
+    check("...each is a link OR a picture",
+          'name="reference_url"' in screen and "data-reference-image" in screen)
+    #  A picture has nothing to parse, and reading what is IN a photograph
+    #  needs a provider that can see -- which not every one can. So its
+    #  colours are sampled in the BROWSER and only hex values are sent.
+    js = io.open("/app/app/static/js/admin/theme-generator.js", encoding="utf-8").read()
+    check("a picture's colours are read in the browser",
+          "getImageData" in js and 'name = "ref_colour"' in js)
+    check("...and the picture itself is never uploaded",
+          "FormData" not in js and "fetch(" not in js)
+    check("...and the screen says a picture gives colours only",
+          "colours only" in screen.lower())
+    route = io.open("/app/app/routes/admin/dashboard.py", encoding="utf-8").read()
+    check("the server takes several references",
+          'getlist("reference_url")' in route and 'getlist("ref_colour")' in route)
+    check("...and checks a sampled colour is a colour",
+          "[0-9a-fA-F]{6}" in route)
+
 print()
 print("  %d ok, %d failed" % (passed, len(failures)))
 for name in failures:
