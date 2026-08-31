@@ -67,73 +67,13 @@
   }
 
   //  ---- reading a text block back as the written vocabulary ----
-
-  function inline(node) {
-    if (node.nodeType === 3) {
-      return (node.nodeValue || "").replace(/\u00a0/g, " ");
-    }
-    if (node.nodeType !== 1) return "";
-    var inner = "";
-    Array.prototype.forEach.call(node.childNodes, function (kid) {
-      inner += inline(kid);
-    });
-    var tag = node.tagName.toLowerCase();
-    if (tag === "br") return "\n";
-    //  Only a SPAN, never a block: a heading carries font-weight:700 as
-    //  part of the email's own style, and reading that as emphasis wraps
-    //  every heading in ** -- which it did.
-    var styled = tag === "span" || tag === "font";
-    var weight = styled && node.style ? node.style.fontWeight : "";
-    var bold = tag === "strong" || tag === "b"
-      || weight === "bold" || parseInt(weight, 10) >= 600;
-    var italic = tag === "em" || tag === "i"
-      || (styled && node.style && node.style.fontStyle === "italic");
-    if (bold || italic) {
-      if (!inner.trim()) return inner;
-      if (bold) inner = "**" + inner + "**";
-      if (italic) inner = "*" + inner + "*";
-      return inner;
-    }
-    if (tag === "a") {
-      var href = node.getAttribute("href") || "";
-      return href ? "[" + inner + "](" + href + ")" : inner;
-    }
-    return inner;
-  }
-
-  function textFromBlocks(el) {
-    //  One entry per BLOCK, joined by a blank line -- because a blank
-    //  line is what rich() reads as the end of a block. Inside a
-    //  paragraph a <br> stays a single newline, which rich() reads back
-    //  as a break rather than a new paragraph.
-    var out = [];
-    Array.prototype.forEach.call(el.children, function (block) {
-      var tag = block.tagName.toLowerCase();
-      if (tag === "ul" || tag === "ol") {
-        var items = [];
-        Array.prototype.forEach.call(block.querySelectorAll("li"), function (li) {
-          var t = inline(li).replace(/\n+/g, " ").trim();
-          if (t) items.push("- " + t);
-        });
-        if (items.length) out.push(items.join("\n"));
-        return;
-      }
-      var mark = (tag === "h2" || tag === "h1") ? "## "
-        : ((tag === "h3" || tag === "h4") ? "### " : "");
-      var body = inline(block).split("\n").map(function (line) {
-        return line.trim();
-      }).filter(Boolean).join("\n");
-      if (!body) return;
-      //  A heading is one line by definition; a break pasted into one
-      //  would otherwise become a second, unmarked heading.
-      out.push(mark ? mark + body.replace(/\n+/g, " ") : body);
-    });
-    if (!out.length) {
-      return inline(el).split("\n").map(function (l) { return l.trim(); })
-        .filter(Boolean).join("\n");
-    }
-    return out.join("\n\n");
-  }
+  //
+  //  admin/rich-serialiser.js: the exact inverse of email_layouts.rich().
+  //  Shared with the system-messages canvas, which is the same idea --
+  //  the thing being written into is the thing that gets sent -- and a
+  //  second copy is where the two would come to disagree about what a
+  //  heading is.
+  var textFromBlocks = window.cmsRichText.fromHtml;
 
   //  ---- keeping a text block looking like the email ----
 

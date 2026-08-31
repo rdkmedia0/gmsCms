@@ -38,6 +38,11 @@ def _source(rel):
 ISSUE_EDIT = (_source("app/templates/partials/newsletter_editor.html")
               + _source("app/templates/admin/newsletter_issue_edit.html"))
 EDITOR_JS = _source("app/static/js/admin/newsletter-editor.js")
+#  The serialiser is shared with the system-messages canvas now: both
+#  are "the thing being written into is the thing that gets sent", and
+#  a second copy is where the two would come to disagree.
+SERIALISER_JS = _source("app/static/js/admin/rich-serialiser.js")
+WORDING_JS = _source("app/static/js/admin/wording-editor.js")
 BLOCKS_TPL = _source("app/templates/emails/blocks.html")
 NEWSLETTERS_SCREEN = _source("app/templates/admin/newsletters.html")
 
@@ -225,9 +230,50 @@ with app.test_request_context("/"):
     check("a block the toolbar makes is styled like the sent one",
           "function restyle" in EDITOR_JS and "restyle(el)" in EDITOR_JS)
     check("the serialiser reads headings back",
-          '"## "' in EDITOR_JS and '"### "' in EDITOR_JS)
+          '"## "' in SERIALISER_JS and '"### "' in SERIALISER_JS)
     check("the serialiser reads emphasis and links back",
-          '"**"' in EDITOR_JS.replace(chr(39), chr(34)) or '**" + inner' in EDITOR_JS)
+          '"**"' in SERIALISER_JS.replace(chr(39), chr(34))
+          or '**" + inner' in SERIALISER_JS)
+    #  One serialiser, two canvases. Both of them are the same idea --
+    #  what is written into is what is sent -- and the inverse of rich()
+    #  existing twice is the place they would come to disagree about
+    #  what a heading is.
+    check("...and it is the one BOTH canvases use",
+          "window.cmsRichText" in EDITOR_JS and "window.cmsRichText" in WORDING_JS)
+    check("...so neither keeps a copy of its own",
+          "function textFromBlocks" not in EDITOR_JS
+          and "function inline" not in WORDING_JS)
+
+    print()
+    print("A picture sits where the alignment says")
+    print("-" * 68)
+    #  It was `margin:0 auto` -- centred and nothing else. The cell
+    #  around it did carry `text-align:left`, which a display:block image
+    #  does not listen to, so the control was set, stored, shown in the
+    #  panel as "Left" and ignored. Every half-width picture was centred
+    #  whatever anybody chose, and nothing on screen said why.
+    where = {}
+    for how in ("left", "center", "right"):
+        html = email_layouts.render(
+            [{"type": "image", "src": "/p.png", "alt": "", "url": "", "scale": 50,
+              "style": {"align": how}}], look)
+        bit = html[html.index("<img"):]
+        bit = bit[:bit.index(">")]
+        where[how] = bit[bit.index("margin:"):].split(";")[0]
+    check("left is against the left edge", where["left"] == "margin:0 auto 0 0",
+          where["left"])
+    check("centred is centred", where["center"] == "margin:0 auto", where["center"])
+    check("right is against the right edge", where["right"] == "margin:0 0 0 auto",
+          where["right"])
+    #  A picture with nothing said follows the same default every other
+    #  block does. One convention per control: the same control on two
+    #  blocks has to mean the same thing.
+    plain = email_layouts.render(
+        [{"type": "image", "src": "/p.png", "alt": "", "url": "", "scale": 50,
+          "style": {}}], look)
+    check("...and saying nothing is the same as saying left",
+          "margin:0 auto 0 0" in plain, plain[plain.index("<img"):][:200])
+
 
     print()
     print("The screen can build itself, and refuse for a reason")

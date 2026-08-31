@@ -58,7 +58,19 @@
                alt="{{ b.alt }}"
                style="display:block;width:{{ b.scale or 100 }}%;
                       max-width:{{ (536 * (b.scale or 100) / 100) | round | int }}px;
-                      height:auto;border:0;border-radius:6px;margin:0 auto;">
+                      height:auto;border:0;border-radius:6px;
+                      {#  Where the picture sits is what the Alignment
+                          control says, the same control the words and
+                          the button read. It was `margin:0 auto`, which
+                          is centred and nothing else -- the cell around
+                          it did carry `text-align:left`, and a
+                          display:block image does not listen to that, so
+                          the control was set, stored, shown in the panel
+                          and ignored. Half-width pictures were centred
+                          whatever anybody chose. #}
+                      {%- if (b.style.align or 'left') == 'center' %}margin:0 auto;
+                      {%- elif b.style.align == 'right' %}margin:0 0 0 auto;
+                      {%- else %}margin:0 auto 0 0;{% endif %}">
           {%- if b.url %}</a>{% endif %}
         {%- elif edit %}
         <div class="cms-block-empty" data-pick-image

@@ -280,8 +280,20 @@ def site_emails_screen():
         order=site_emails.ORDER,
         appended=site_emails.APPENDED,
         needs_unsubscribe=site_emails.NEEDS_UNSUBSCRIBE,
-        #  What the owner has, verbatim, to write into.
+        #  What the owner has, verbatim -- the stored form, which is
+        #  what a save writes back and what the server renders from.
         wording={key: site_emails.body(db, key) for key in site_emails.ORDER},
+        #  ...and the same words RENDERED, which is what is written into.
+        #  The canvas was the stored text in a div, so `## Thank you for
+        #  your order` was shown with its markers still in it and every
+        #  blank line collapsed -- the whole message arrived on screen as
+        #  one run-on paragraph that looked nothing like what is sent.
+        #  The thing being written into is the thing that gets sent, the
+        #  same rule the newsletter canvas follows. The placeholders stay
+        #  visible because they are not filled here; Preview is what
+        #  fills them.
+        written={key: email_layouts.rich(site_emails.body(db, key), look)
+                 for key in site_emails.ORDER},
         #  ...and the same words with the placeholders filled in, which
         #  is the only way to see whether a sentence with `{{total}}` in
         #  the middle of it actually reads.

@@ -56,7 +56,7 @@
           is not a preview. #}
       <a class="icon-btn" data-live-preview target="_blank" rel="noopener"
          href="{{ url_for('admin.site_email_preview', message=order[0]) }}"
-         title="Open this message in its own tab, exactly as it arrives in an inbox.">&#8599;</a>
+         title="Open this message in its own tab, exactly as it arrives in an inbox.">&#9993;</a>
       <span class="cms-toolbar-label cms-preview-source" data-preview-source
             title="{{ sample_note }}">{{ sample_note }}</span>
     </div>
@@ -96,11 +96,19 @@
 
     <div class="cms-issue-canvas-ground" style="background: {{ look.ground }};">
       <div class="cms-issue-canvas" style="font-family: {{ look.body_font }};">
+        {#  The message as it will be sent, written into in place. Not
+            the stored text: that has `##` and `**` in it and its blank
+            lines collapse, so the canvas showed one run-on paragraph
+            bearing no relation to what arrives.
+
+            Read back by admin/rich-serialiser.js, which is the exact
+            inverse of the `rich()` that rendered it -- the same pair the
+            newsletter canvas is built on. #}
         <div class="cms-wording-mine" data-wording="body" data-store="{{ key }}_body"
-             contenteditable="true" style="{{ block_styles.p }}outline:none;"
+             contenteditable="true" style="outline:none;"
              data-placeholder="Write the message. Leave it empty to send nothing at all."
-             title="The whole message, in your words. Use the chips above for anything this site fills in."
-        >{{ wording[key] }}</div>
+             title="The whole message, in your words, as it will look when it arrives. Use the chips above for anything this site fills in."
+        >{% for part in written[key] %}{{ part | safe }}{% endfor %}</div>
 
         {#  The same canvas, showing what will actually arrive. Hidden
             until Preview is pressed, so it costs nothing while writing. #}
@@ -138,5 +146,6 @@
 
 <script type="application/json" id="cms-wording-sample">{{ sample | tojson }}</script>
 <script src="{{ static_url('js/wysiwyg-commands.js') }}"></script>
+<script src="{{ static_url('js/admin/rich-serialiser.js') }}"></script>
 <script src="{{ static_url('js/admin/wording-editor.js') }}"></script>
 {% endblock %}

@@ -297,7 +297,63 @@ with app.test_request_context("/"):
     check("the sender line is shown so nobody writes it twice",
           "cms-issue-canvas-foot" in screen)
 
+    print()
+    print("What is written into looks like what is sent")
+    print("-" * 70)
+    #  The canvas held the STORED text in a div: `## Thank you for your
+    #  order` with its markers still in it, every blank line collapsed by
+    #  HTML, and the whole message on screen as one run-on paragraph
+    #  bearing no relation to what arrives. It holds the message rendered
+    #  now -- the same rule the newsletter canvas follows.
+    from app.services import email_layouts as el                      # noqa: E402
+    #  Whatever look the site has; what is being asked here is about the
+    #  SHAPE of what the canvas holds, not its colours.
+    written = el.rich(site_emails.body(db, "order"), {})
+    joined = "".join(written)
+    check("the canvas is rendered, not raw", "<h2" in joined, joined[:120])
+    check("...so no marker is left on screen",
+          "## " not in joined and "**" not in joined, joined[:160])
+    check("...and the paragraphs are separate blocks",
+          joined.count("<p") >= 3, str(joined.count("<p")))
+    #  The placeholders stay VISIBLE here: this is the writing view, and
+    #  Preview is what fills them. A canvas that filled them in would be
+    #  a canvas somebody edits the sample data in.
+    check("the placeholders are still there to be seen",
+          "{{total}}" in joined and "{{items}}" in joined)
+
+    screen = open("/app/app/templates/admin/site_emails.html", encoding="utf-8").read()
+    #  Asked of the CANVAS, not the file. The hidden store still holds
+    #  the stored text and must: that is what a save writes back, and
+    #  what the server renders the real message from.
+    canvas = screen[screen.index('data-wording="body"'):]
+    canvas = canvas[:canvas.index("</div>")]
+    check("the canvas renders that, not the stored text",
+          "written[key]" in canvas and "wording[key]" not in canvas, canvas[-90:])
+    check("...and the stored text is still what gets saved",
+          'name="body"' in screen and "{{ wording[key] }}" in screen)
+    check("...and loads the serialiser that reads it back",
+          "rich-serialiser.js" in screen)
+
+    #  The buttons are glyphs, and the same glyphs the rest of the admin
+    #  uses: an eye SHOWS, a pencil WRITES. The JS used to overwrite the
+    #  icon with the word "Preview", so a toolbar of icons had one text
+    #  button in the middle of it -- from JavaScript, invisibly.
+    wording_js = open("/app/app/static/js/admin/wording-editor.js",
+                      encoding="utf-8").read()
+    #  Asked of what is ASSIGNED to the button, not of the file -- the
+    #  comment above it names the word it used to write, which is the
+    #  sort of thing a substring check reads as the bug itself.
+    said = [l for l in wording_js.split(chr(10))
+            if "previewBtn.innerHTML" in l or "previewBtn.textContent" in l]
+    check("the preview control stays an icon",
+          len(said) == 1 and "innerHTML" in said[0]
+          and "&#128065;" in said[0] and "&#9998;" in said[0],
+          " / ".join(x.strip() for x in said))
+    check("...and still says what it does in words",
+          wording_js.count("previewBtn.title") >= 1)
+
 shutil.rmtree(DATA_DIR, ignore_errors=True)
 print()
+
 print("%d checks, %d failed" % (passed + len(failures), len(failures)))
 sys.exit(1 if failures else 0)
