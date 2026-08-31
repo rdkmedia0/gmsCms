@@ -40,8 +40,15 @@ app/
                        # card styling, starter-HTML builders, image-library
                        # listing — the biggest one, matches the biggest
                        # feature area
-    scheduling.py      # sending a newsletter later: the claim IS the
-                       # lock, because two workers wake up together
+    scheduling.py      # doing something later: the claim IS the lock,
+                       # because two workers wake up together. A schedule
+                       # is a TIME THIS SITE ACTS AT, not a property of
+                       # any one feature -- a newsletter sends on one, a
+                       # post publishes on one, a backup runs on one --
+                       # and they are made in exactly ONE place, the
+                       # Schedules screen (routes/admin/schedules.py).
+                       # They were defined on two screens and picked on
+                       # a third that could not make one.
     email_layouts.py   # what a NEWSLETTER is made of: the BLOCKS, and
                        # the arrangements of them each template starts
                        # from. An email is not a page —
