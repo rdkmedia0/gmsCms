@@ -141,6 +141,23 @@ def newsletters():
 #  The endpoint is named explicitly because the FUNCTION cannot be:
 #  `site_emails` is the service this module imports, and a view of that
 #  name would shadow it for everything below.
+def _post_resolver(db):
+    """Fills a Blog-posts block with the real latest posts.
+
+    Passed INTO email_layouts.render rather than reached for inside it:
+    that module renders an email and knows nothing about blogs, which is
+    what keeps it callable from a template, a checker and a scheduled
+    send alike.
+    """
+    def link_for(blog, post):
+        return site.absolute(db, url_for("public.blog_post", slug=blog["slug"],
+                                         post_slug=post["slug"]))
+
+    def resolve(blog_id, count):
+        return newsletter.post_rows_for(db, blog_service, blog_id, count, link_for)
+    return resolve
+
+
 def _wording_values(db):
     """What each placeholder is worth ON THIS INSTALL, for the preview.
 
@@ -290,7 +307,8 @@ def site_email_save(message):
 #  posts unchanged: a layout's body is one HTML section, which is what
 #  `sections` has always been.
 def _composed_sections(db, row):
-    body = email_layouts.render(newsletter.composed_blocks(row), _look(db))
+    body = email_layouts.render(newsletter.composed_blocks(row), _look(db),
+                                posts_for=_post_resolver(db))
     return [{"type": "html", "title": "", "content": body}]
 
 
@@ -349,7 +367,10 @@ def newsletter_issue_edit(newsletter_id):
         item=row,
         #  The email itself, with its slots opened up. This IS the editor:
         #  what is written into is what is sent.
-        canvas=email_layouts.render(newsletter.composed_blocks(row), look, edit=True),
+        canvas=email_layouts.render(newsletter.composed_blocks(row), look, edit=True,
+                                    posts_for=_post_resolver(db)),
+        blogs_for_blocks=[{"id": b["id"], "name": b["name"]}
+                          for b in blog_service.list_blogs(db)],
         #  What the sent email writes onto each block, so the editor can
         #  write the same thing onto a block the toolbar has just made.
         block_styles=email_layouts.block_styles(look),

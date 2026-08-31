@@ -443,8 +443,18 @@ with sync_playwright() as p:
     busy = ribbon()
     check("the ribbon is the same height whether or not a block is chosen",
           idle["h"] == busy["h"], "idle %s, selected %s" % (idle, busy))
-    check("...and no taller than three rows",
-          busy["rows"] <= 3, str(busy))
+    #  Four, not three. The bound moved once and the reason is recorded
+    #  rather than the number quietly raised: the selected-block group
+    #  carries eleven controls now -- name, alignment, font, two colours
+    #  with their resets, a link, a blog and a count -- and eleven
+    #  controls do not share a row with anything at 852px.
+    #
+    #  What the bound is FOR is that the next control is not free. When
+    #  this last failed it read five rows and 258px; the toolbar was
+    #  reset to toolbar size rather than form size (12px in a 150px box,
+    #  not 13px in a 190px one) and it came back to four and 200px.
+    check("...and no taller than four rows, densely set",
+          busy["rows"] <= 4 and busy["h"] <= 210, str(busy))
 
     print()
     print("The picture picker is a picker, on an admin screen too")
@@ -520,7 +530,7 @@ with sync_playwright() as p:
           any(o.endswith("|Checker arrangement") for o in mine), str(mine))
     check("...and the built-in ones are still there",
           all(any(o.startswith(k + "|") for o in after)
-              for k in ("letter", "story", "two-up", "announcement")), str(after))
+              for k in ("letter", "story", "two-up", "announcement", "from-the-blog")), str(after))
 
     #  ...and can be taken away again, which is the half that keeps
     #  getting left out.
@@ -559,7 +569,7 @@ with sync_playwright() as p:
           not any("Checker arrangement" in o for o in left), str(left))
     check("...without taking the built-in ones with it",
           all(any(o.startswith(k + "|") for o in left)
-              for k in ("letter", "story", "two-up", "announcement")), str(left))
+              for k in ("letter", "story", "two-up", "announcement", "from-the-blog")), str(left))
     #  A shipped one is in the code and would be back on the next boot,
     #  so the route refuses rather than pretending.
     refused = page.evaluate(

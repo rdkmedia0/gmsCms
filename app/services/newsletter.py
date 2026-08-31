@@ -711,6 +711,9 @@ def overview(db, scheduling, audiences):
                          else (job["send_at"] if job else "")),
             "waiting": bool(job),
             "editable": True,
+            "send_id": None,
+            "recipients": last["recipients"] if last else None,
+            "failed": last["failed"] if last else 0,
         })
 
     #  Anything that went to the list from somewhere else. Keyed by what
@@ -722,13 +725,19 @@ def overview(db, scheduling, audiences):
         rows.append({
             "kind": send["kind"],
             "id": send["target_id"],
-            "subject": send["subject"] or "(no subject)",
+            "subject": send["subject"] or send["title"] or "(no subject)",
             "created": None,
             "sent": send["sent_at"],
             "audience": labels.get(send["audience"], ""),
             "schedule": "",
             "waiting": False,
             "editable": False,
+            #  The send's own id, so the one table can carry what the
+            #  "What has gone out" card carried: removing a LINE from the
+            #  record, which is a deliberate act and not tidying.
+            "send_id": send["id"],
+            "recipients": send["recipients"],
+            "failed": send["failed"],
         })
 
     #  Newest activity first: what somebody is looking for is almost
@@ -756,3 +765,37 @@ def copy_composed(db, newsletter_id):
     save_blocks(db, new_id, ((row["subject"] or "Untitled") + " (copy)")[:200],
                 composed_blocks(row), layout=row["layout"])
     return new_id
+
+
+def post_rows_for(db, blog_service, blog_id, count, link_for, excerpt_words=28):
+    """The latest posts of one blog, flattened for an email.
+
+    Resolved HERE rather than inside email_layouts, which renders an
+    email and knows nothing about blogs -- that is what keeps it callable
+    from a template, a checker and a scheduled send alike.
+
+    Published only. A draft has no address to link to, so including one
+    would put a "Read it" link into somebody's inbox pointing at a 404 --
+    and unlike a page, an email cannot be corrected once it has gone.
+    """
+    try:
+        blog = blog_service.get_blog(db, int(blog_id))
+    except (TypeError, ValueError):
+        return []
+    if not blog:
+        return []
+    rows = []
+    for post in blog_service.posts_for(db, blog["id"], published_only=True,
+                                       limit=max(1, min(10, int(count or 3)))):
+        words = re.sub(r"<[^>]+>", " ", post["content"] or "")
+        words = re.sub(r"\s+", " ", words).strip().split(" ")
+        excerpt = " ".join(words[:excerpt_words])
+        if len(words) > excerpt_words and excerpt:
+            excerpt += "\u2026"
+        rows.append({
+            "title": post["title"] or "Untitled",
+            "date": (post["published_at"] or "")[:10],
+            "excerpt": excerpt,
+            "url": link_for(blog, post) if link_for else "",
+        })
+    return rows

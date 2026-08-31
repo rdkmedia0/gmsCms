@@ -208,8 +208,9 @@ with app.app_context():
     #  Layouts: the shipped ones are there and nobody else's are.
     from app.services import email_layouts                     # noqa: E402
     keys = [k for k, _n, _b in email_layouts.choices(db)]
-    check("the four shipped layouts are offered",
-          keys == ["letter", "story", "two-up", "announcement"], str(keys))
+    check("every shipped layout is offered",
+          keys == ["letter", "story", "two-up", "announcement", "from-the-blog"],
+          str(keys))
     check("...and no saved layout from anybody else's install",
           not email_layouts.saved(db))
 

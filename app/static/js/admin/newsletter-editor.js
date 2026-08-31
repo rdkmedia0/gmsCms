@@ -398,6 +398,12 @@
     });
     if (!block) {
       if (name) name.textContent = "No block";
+      if (postsControls) {
+        postsControls.classList.add("cms-tools-idle");
+        postsControls.querySelectorAll("[data-block-field]").forEach(function (f) {
+          f.disabled = true;
+        });
+      }
       if (aside) {
         aside.classList.add("cms-tools-idle");
         var noneField = aside.querySelector("[data-block-field='url']");
@@ -431,6 +437,19 @@
       //  the toolbar changing shape as it is used is the thing the other
       //  block controls are dimmed to prevent.
       aside.classList.toggle("cms-tools-idle", !wants);
+      //  The posts controls wake for a posts block, and only then.
+      if (postsControls) {
+        var isPosts = block.type === "posts";
+        postsControls.classList.toggle("cms-tools-idle", !isPosts);
+        postsControls.querySelectorAll("[data-block-field]").forEach(function (f) {
+          f.disabled = !isPosts;
+          if (isPosts) {
+            f.value = block[f.dataset.blockField] == null
+              ? (f.type === "number" ? 3 : "")
+              : block[f.dataset.blockField];
+          }
+        });
+      }
       var urlField = aside.querySelector("[data-block-field='url']");
       if (urlField) urlField.disabled = !wants;
       if (!wants) {
@@ -617,6 +636,26 @@
         collect();
         delete (blocks[selected].style || {})[btn.dataset.blockStyleClear];
         reload();
+      });
+    });
+  }
+
+  //  Which blog a Blog-posts block shows, and how many. Same shape as
+  //  the link field: a property of the selected block, dimmed rather
+  //  than hidden so the ribbon does not change height as it is used.
+  var postsControls = form.querySelector("[data-posts-controls]");
+  if (postsControls) {
+    postsControls.querySelectorAll("[data-block-field]").forEach(function (field) {
+      field.addEventListener("change", function () {
+        if (selected === null) return;
+        collect();
+        blocks[selected][field.dataset.blockField] =
+          field.type === "number" ? parseInt(field.value, 10) || 3 : field.value;
+        //  Reloaded through the SERVER, because the posts themselves are
+        //  resolved there -- choosing a blog has to fetch its posts, and
+        //  a second renderer in JavaScript would drift from the one that
+        //  renders what is sent.
+        reload(selected);
       });
     });
   }

@@ -141,6 +141,24 @@
                title="The web address this opens. Leave it blank and the block is left out of the send.">
       </span>
 
+      {#  Which blog, and how many of its latest posts. A property of
+          the selected block, like its link and its colour, so it stands
+          with them -- dimmed rather than hidden for the same reason as
+          the link field: the row must not change shape as it is used. #}
+      <span class="cms-toolbar-posts cms-tools-idle" data-posts-controls>
+        <label class="cms-toolbar-label" for="block-blog">Blog</label>
+        <select id="block-blog" class="cms-toolbar-select" data-block-field="blog_id" disabled
+                title="Which blog's latest posts to include. Only published posts are sent &mdash; a draft has no address to link to.">
+          <option value="">&mdash; choose &mdash;</option>
+          {% for b in blogs_for_blocks %}
+          <option value="{{ b.id }}">{{ b.name }}</option>
+          {% endfor %}
+        </select>
+        <input type="number" class="cms-toolbar-count" data-block-field="count"
+               min="1" max="10" value="3" disabled
+               title="How many of the latest posts to include, up to ten.">
+      </span>
+
       {#  Move and remove are not here. They live ON the selected block
           now (see cms-block-handle), because a bare "×" at the end of a
           group that is dimmed until you select something is a control

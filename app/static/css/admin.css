@@ -957,17 +957,27 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
   border: 0; padding: 0; margin: 0; background: none; box-shadow: none;
 }
 .cms-add-block {
-  display: inline-flex; align-items: center; gap: 4px;
-  font-size: 12px;
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 11px;
 }
 /*  Admin form controls are full-width by default, which is right in a
     form and wrong in a toolbar: two selects took a line each and the one
     bar became four rows. In here they are as wide as their words. */
+/*  Toolbar controls are set SMALLER than form controls, because a
+    toolbar is a row of things you point at and a form is a thing you
+    read. They were at form size -- 13px in a 190px box -- and every
+    control added since has cost a row: measured, the ribbon reached
+    five rows and 258px of chrome above the canvas.
+    
+    This is the general complaint about admin screens being set too
+    large, in the one place it can be measured against a target: the
+    ribbon has to fit three rows with every control it now carries. */
 .cms-issue-toolbar select,
 .cms-issue-toolbar input[type=url],
-.cms-issue-toolbar input[type=text] {
-  width: auto; min-width: 0; max-width: 190px;
-  padding: 5px 8px; font-size: 13px; border-width: 1px;
+.cms-issue-toolbar input[type=text],
+.cms-issue-toolbar input[type=number] {
+  width: auto; min-width: 0; max-width: 150px;
+  padding: 3px 6px; font-size: 12px; border-width: 1px;
 }
 /*  Narrower than the template one, because these two share their row
     with the writing tools. Worth 13px, measured -- which is to say the
@@ -976,10 +986,10 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
     nine controls; see the note in newsletter_issue_edit.html for where
     that leaves it. A select still shows enough of "Georgia" or
     "Centred" to be read. */
-.cms-block-tools select { max-width: 132px; }
-.cms-issue-toolbar button { padding: 5px 8px; font-size: 13px; }
+.cms-block-tools select { max-width: 108px; }
+.cms-issue-toolbar button { padding: 3px 7px; font-size: 12px; }
 .cms-issue-toolbar .cms-color-label { display: inline-flex; align-items: center; gap: 3px; }
-.cms-issue-toolbar input[type=color] { width: 30px; height: 26px; padding: 0; border-width: 1px; }
+.cms-issue-toolbar input[type=color] { width: 26px; height: 22px; padding: 0; border-width: 1px; }
 /*  Disabled until a block is selected: a control that acts on nothing is
     a control that looks broken. Dimmed rather than hidden, so the row
     does not change shape every time something is clicked. */
@@ -993,7 +1003,7 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
     because a block name is short and a long one is still identifiable
     from its first few characters plus its number. */
 .cms-selected-name {
-  flex: 0 0 auto; width: 76px;
+  flex: 0 0 auto; width: 64px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .cms-block-tools.cms-tools-idle { opacity: .5; }
@@ -1011,7 +1021,13 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
     forbids for the other block controls, so it takes the same answer. */
 .cms-toolbar-link { display: inline-flex; align-items: center; gap: 4px; }
 .cms-toolbar-link.cms-tools-idle { opacity: .5; }
-.cms-toolbar-input { max-width: 200px; }
+.cms-toolbar-input { max-width: 150px; }
+/*  Which blog a Blog-posts block shows, and how many. Dimmed rather than
+    hidden, for the same reason as the link field beside it: the ribbon
+    must not change height as it is used. */
+.cms-toolbar-posts { display: inline-flex; align-items: center; gap: 4px; }
+.cms-toolbar-posts.cms-tools-idle { opacity: .5; }
+.cms-toolbar-count { width: 48px; }
 
 /*  ---- the Newsletters list ----
     

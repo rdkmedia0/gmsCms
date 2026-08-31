@@ -74,11 +74,30 @@ BLOCK_TYPES = {
         "icon": "—",
         "hint": "A rule, to separate one part from the next.",
     },
+    #  A blog's latest posts, as newsletter content.
+    #
+    #  The Newsletters screen used to list every blog and its posts, so
+    #  each could be sent as an issue of its own. That is the wrong shape:
+    #  it made "the blog" a section of one screen instead of something an
+    #  owner can put IN a newsletter, and it meant a newsletter could be a
+    #  post or be written, never both. This project's own rule -- a
+    #  capability is a tool you drop in, not a fixed section -- applied to
+    #  the newsletter editor.
+    #
+    #  It survives an inbox because it is resolved to plain rows at SEND
+    #  time: a heading, a date, an excerpt and a link. Nothing about it is
+    #  live, which is right for an email -- what arrived is what was true
+    #  when it was sent.
+    "posts": {
+        "name": "Blog posts",
+        "icon": "📰",
+        "hint": "The latest posts from one of your blogs, with a link to each.",
+    },
 }
 
 #  The order the Insert menu offers them in -- most-used first, rather
 #  than however the dictionary happens to iterate.
-BLOCK_ORDER = ("heading", "text", "image", "button", "divider")
+BLOCK_ORDER = ("heading", "text", "image", "button", "posts", "divider")
 
 #  Real installed families only. A webfont cannot travel: Gmail strips
 #  @font-face, so a name here has to be something already on the machine
@@ -114,6 +133,11 @@ def blank(kind):
         made.update({"src": "", "alt": "", "url": ""})
     elif kind == "button":
         made.update({"label": "", "url": ""})
+    elif kind == "posts":
+        #  `blog_id` empty means "not chosen yet", which the canvas draws
+        #  as an empty slot rather than silently picking a blog for
+        #  somebody. `count` is how many of the latest to include.
+        made.update({"blog_id": "", "count": 3})
     return made
 
 
@@ -159,6 +183,16 @@ def normalise(blocks):
                 continue
             if raw.get(key) is not None:
                 made[key] = raw[key]
+        if kind == "posts":
+            try:
+                made["count"] = int(made.get("count") or 3)
+            except (TypeError, ValueError):
+                made["count"] = 3
+            #  One to ten. Nought is a block that draws nothing, and a
+            #  newsletter carrying forty posts is a newsletter nobody
+            #  scrolls to the end of.
+            made["count"] = max(1, min(10, made["count"]))
+            made["blog_id"] = str(made.get("blog_id") or "")
         if kind == "heading":
             try:
                 made["level"] = int(made.get("level") or 2)
@@ -299,6 +333,18 @@ def saved(db):
     return list(rows)
 
 
+LAYOUTS["from-the-blog"] = {
+    "name": "From the blog",
+    "blurb": "A line of your own, then your latest posts with a link to each. "
+             "The shape for a round-up.",
+    "blocks": [
+        _h("The latest from us"),
+        _t("Here is what we have written lately."),
+        {"type": "posts", "blog_id": "", "count": 3, "style": {}},
+    ],
+}
+
+
 def choices(db=None):
     """(key, name, blurb) for the dropdown, in a fixed order so the list
     does not shuffle between visits.
@@ -308,7 +354,8 @@ def choices(db=None):
     starting out is choosing between, and it does not grow.
     """
     out = [(key, LAYOUTS[key]["name"], LAYOUTS[key]["blurb"])
-           for key in ("letter", "story", "two-up", "announcement")]
+           for key in ("letter", "story", "two-up", "announcement",
+                       "from-the-blog")]
     for row in saved(db):
         out.append((SAVED_PREFIX + row["slug"], row["name"],
                     "One of yours, saved from a newsletter you had already laid out."))
@@ -442,6 +489,10 @@ def block_styles(look, size=16, style=None):
         "h3": "margin:0 0 8px;font-size:%dpx;line-height:1.35;font-weight:700;"
               "color:%s;font-family:%s;" % (size + 1, head_colour, heading_font),
         "a": "color:%s;text-decoration:underline;" % accent,
+        #  A date, a byline, anything standing under a heading rather
+        #  than beside it. Quieter and smaller, in the body face.
+        "small": "margin:0 0 8px;font-size:%dpx;line-height:1.5;color:#6b7480;"
+                 "font-family:%s;" % (max(11, size - 3), body_font),
     }
 
 
@@ -564,13 +615,21 @@ def missing(blocks):
                 gaps.append("%s has no words on it" % where)
         elif kind == "image" and not block.get("src"):
             gaps.append("%s has no picture in it" % where)
-    if not any((b["type"] in ("heading", "text") and (b.get("text") or "").strip())
-               for b in normalise(blocks)):
+        elif kind == "posts" and not block.get("blog_id"):
+            gaps.append("%s has no blog chosen" % where)
+    #  A newsletter made only of posts HAS words -- somebody wrote them,
+    #  in the posts. Asking for a sentence on top of them would be asking
+    #  for a covering note nobody wanted to write.
+    has_words = any((b["type"] in ("heading", "text") and (b.get("text") or "").strip())
+                    for b in normalise(blocks))
+    has_posts = any(b["type"] == "posts" and b.get("blog_id")
+                    for b in normalise(blocks))
+    if not has_words and not has_posts:
         gaps.insert(0, "There are no words in it yet")
     return gaps
 
 
-def render(blocks, look, edit=False):
+def render(blocks, look, edit=False, posts_for=None):
     """The email BODY for one newsletter. The wrapper adds the rest.
 
     `edit=True` returns the SAME email with its blocks opened up: each one
@@ -589,7 +648,16 @@ def render(blocks, look, edit=False):
         made["st"] = block_styles(look, style=block["style"])
         if block["type"] == "text":
             made["html"] = rich(block.get("text") or "", look, style=block["style"])
+        if block["type"] == "posts":
+            #  Resolved by the CALLER, not here. This module renders an
+            #  email and knows nothing about blogs or the database, which
+            #  is what keeps it callable from a template, a checker and a
+            #  scheduled send alike. A caller that passes no resolver gets
+            #  an empty block, which the canvas draws as an empty slot.
+            made["posts"] = list(posts_for(block["blog_id"], block["count"])) \
+                if (posts_for and block.get("blog_id")) else []
         prepared.append(made)
     return render_template("emails/blocks.html", look=look, blocks=prepared,
                            edit=edit)
+
 

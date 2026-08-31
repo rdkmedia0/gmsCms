@@ -90,6 +90,46 @@
         </table>
         {%- endif %}
 
+      {%- elif b.type == 'posts' %}
+        {#  A blog's latest posts, resolved to plain rows before they get
+            here. Nothing live: an email says what was true when it was
+            sent, and a feed that changed after the fact would make the
+            copy in somebody's inbox disagree with the copy in the record.
+
+            A table per post, not a list: an inbox draws tables. #}
+        {%- if b.posts %}
+        {%- for post in b.posts %}
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+               style="margin:0 0 18px;">
+          <tr><td style="{{ b.st.h3 }}padding:0 0 4px;">
+            {%- if post.url %}
+            <a href="{{ post.url }}" style="color:{{ b.style.color or '#1c2430' }};text-decoration:none;">{{ post.title }}</a>
+            {%- else %}{{ post.title }}{%- endif %}
+          </td></tr>
+          {%- if post.date %}
+          <tr><td style="{{ b.st.small }}padding:0 0 6px;">{{ post.date }}</td></tr>
+          {%- endif %}
+          {%- if post.excerpt %}
+          <tr><td style="{{ b.st.p }}padding:0 0 6px;">{{ post.excerpt }}</td></tr>
+          {%- endif %}
+          {%- if post.url %}
+          <tr><td style="{{ b.st.p }}padding:0;">
+            <a href="{{ post.url }}" style="color:{{ look.accent }};">Read it &rarr;</a>
+          </td></tr>
+          {%- endif %}
+        </table>
+        {%- endfor %}
+        {%- elif edit %}
+        {#  An empty slot has to be visible, or it is a slot nobody can
+            fill. Only while editing: an unfinished block must never be
+            a grey box in somebody's inbox. #}
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr><td data-pick-blog style="{{ b.st.p }}border:1px dashed #c9d2dd;
+                     border-radius:6px;padding:18px;text-align:center;color:#6b7480;">
+            Choose a blog in the toolbar above
+          </td></tr>
+        </table>
+        {%- endif %}
       {%- elif b.type == 'divider' %}
         {#  A rule as a bordered cell, not <hr>: several clients give <hr>
             a shadow or a colour of their own choosing. #}

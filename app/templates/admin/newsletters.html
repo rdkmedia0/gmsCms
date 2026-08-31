@@ -83,6 +83,18 @@
               <button type="submit" class="icon-btn"
                       title="Delete this newsletter. What was already sent stays on the record.">&times;</button>
             </form>
+            {% else %}
+            {#  A row that went out from a page or a post cannot be
+                edited as a newsletter -- but the RECORD of it can be
+                removed, which is what the "What has gone out" card was
+                for. A deliberate act: this line is how you would answer
+                "you emailed me" later, and nothing else keeps it. #}
+            <form method="post" action="{{ url_for('admin.newsletter_send_forget', send_id=r.send_id) }}"
+                  class="cms-delete-form"
+                  data-confirm="Remove this from the record of what you have sent? Nothing reaches the people it went to &mdash; but this line is how you would answer &quot;you emailed me&quot; later, and nothing else keeps it.">
+              <button type="submit" class="icon-btn"
+                      title="Remove this send from the record. The email has already gone; this only forgets that it did.">&times;</button>
+            </form>
             {% endif %}
           </td>
         </tr>
@@ -207,137 +219,25 @@
 {% endfor %}
 {% endif %}
 
-{#  Posts. A blog post is already everything an issue needs -- a title,
-    a date, a permanent address that survives the site being rearranged,
-    and an online copy for the "read it online" link -- so sending one is
-    the common path, and a newsletter PAGE is for the note that should
-    not join the blog. #}
-{% for entry in blogs %}
-{% if entry.posts %}
-<div class="card">
-  <div class="integration-head">
-    <h2>{{ entry.blog.name }}</h2>
-    <span class="hint">{{ entry.posts | length }} most recent {{ 'post' if entry.posts | length == 1 else 'posts' }}</span>
-  </div>
-  <div class="table-scroll">
-    <table class="simple-table">
-      <thead><tr><th>Post</th><th>Sent</th><th>To</th><th>Subject</th><th>Send later</th><th class="col-icons">Action</th></tr></thead>
-      <tbody>
-        {% for post in entry.posts %}
-        {% set last = post_sends.get(post.id) %}
-        <tr>
-          <td>
-            {{ post.title }}
-            {% if not post.published_at %}<br><span class="hint" title="Written but not published. Sending publishes it first, so the link in the email works.">draft</span>{% endif %}
-          </td>
-          <td class="hint">{% if last %}{{ last.sent_at[:10] }}{% if last.audience == 'customers' %} · customers{% endif %}{% else %}&mdash;{% endif %}</td>
-          <td>
-            <form method="post" id="send-post-{{ post.id }}"
-                  action="{{ url_for('admin.newsletter_send_post', post_id=post.id) }}"></form>
-            {#  One control, read by whichever of the two forms is used --
-                a second audience picker that had to agree with this one
-                is a bug waiting to be written. #}
-            <select name="audience" form="send-post-{{ post.id }} clock-post-{{ post.id }}"
-                    title="Who this goes to. A customer is somebody on the list who has paid for something, or who you have flagged as one.">
-              {% for key, label in audiences %}
-              <option value="{{ key }}">{{ label }} ({{ audience_counts[key] }})</option>
-              {% endfor %}
-            </select>
-          </td>
-          <td>
-            <input type="text" name="subject"
-                   form="send-post-{{ post.id }} clock-post-{{ post.id }}" value="{{ post.title }}"
-                   maxlength="120" title="What people see in their inbox. The post's title is used if you leave it.">
-          </td>
-          <td>
-            {#  On the clock from the same row it is sent from. The
-                schedule posts to its own action rather than the send
-                form's, so the two cannot be confused for each other. #}
-            {% set booked = post_scheduled.get(post.id) %}
-            <form method="post" id="clock-post-{{ post.id }}"
-                  action="{{ url_for('admin.newsletter_post_schedule', post_id=post.id) }}"></form>
-            {% if booked %}
-            <span class="hint" data-local-time="{{ booked.send_at }}Z"
-                  title="This post goes out on its own at this time.">{{ booked.send_at }} UTC</span>
-            <button type="submit" class="btn btn-small" form="clock-post-{{ post.id }}"
-                    name="cancel" value="1"
-                    title="Take this off the clock. Nothing is sent and nothing is lost.">Cancel</button>
-            {% else %}
-            <input type="datetime-local" name="send_at" form="clock-post-{{ post.id }}"
-                   title="When to send it. This is your own clock — the time you see is the time it goes.">
-            <input type="hidden" name="tz_offset" data-tz-offset form="clock-post-{{ post.id }}" value="0">
-            <button type="submit" class="btn btn-small" form="clock-post-{{ post.id }}"
-                    {{ 'disabled' if not email_ready or not has_address or not counts.active }}
-                    title="Send this post automatically at the time beside it. It stays a draft until it goes.">Schedule</button>
-            {% endif %}
-          </td>
-          <td class="col-icons">
-            <span class="row-actions">
-              <a class="icon-btn" target="_blank" rel="noopener"
-                 href="{{ url_for('admin.newsletter_preview_post', post_id=post.id) }}"
-                 data-confirm="You are about to open a preview of the email this post would send — plainer than the page, on purpose. Nothing is sent."
-                 title="See exactly what lands in an inbox">👁</a>
-              <a class="icon-btn" href="{{ url_for('admin.blog_post_edit', blog_id=entry.blog.id, post_id=post.id) }}"
-                 data-confirm="You are about to open &quot;{{ post.title }}&quot; to edit it."
-                 title="Edit this post">✎</a>
-              <button type="submit" class="icon-btn" form="send-post-{{ post.id }}"
-                      {{ 'disabled' if not email_ready or not has_address or not counts.active }}
-                      data-confirm="You are about to email &quot;{{ post.title }}&quot; to the audience chosen beside it. It cannot be taken back.{% if not post.published_at %} This post is a draft, so it will be published first — otherwise the “read it online” link in the email would not work.{% endif %}"
-                      data-confirm-danger="1"
-                      title="{{ 'Publish this post and send it to the list' if not post.published_at else 'Send this post to the list' }}">✉</button>
-            </span>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
-{% endif %}
-{% endfor %}
+{#  A blog's posts are no longer a section of this screen.
 
-{% if history %}
-<div class="card">
-  <h2>What has gone out</h2>
-  <div class="table-scroll">
-    <table class="simple-table">
-      <thead><tr><th>When</th><th>Subject</th><th>Sent to</th><th></th></tr></thead>
-      <tbody>
-        {% for h in history %}
-        <tr>
-          <td>{{ h.sent_at[:16] }}</td>
-          {#  A record outlives what it was sent from: the page or post
-              may have been deleted since, and forty emails having gone
-              out is still true. So the link is only offered when there
-              is somewhere to point it. #}
-          <td>
-            {% if h.target_kind == 'post' and h.blog_slug and h.post_published %}
-            <a href="{{ url_for('public.blog_post', slug=h.blog_slug, post_slug=h.post_slug) }}" target="_blank" rel="noopener">{{ h.subject or h.title }}</a>
-            {% elif h.target_kind == 'page' and h.page_slug and h.page_public %}
-            <a href="{{ url_for('public.page', slug=h.page_slug) }}" target="_blank" rel="noopener">{{ h.subject or h.title }}</a>
-            {% else %}
-            {{ h.subject or h.title }}
-            {% endif %}
-          </td>
-          <td>{{ h.recipients }}{% if h.audience == 'customers' %} <span class="hint">(customers)</span>{% endif %}{% if h.failed %} <span class="hint">({{ h.failed }} failed)</span>{% endif %}</td>
-          <td>
-            {#  Per row, with a confirmation that says what is lost. This
-                line is the record that the send happened; removing it is
-                a deliberate act, not tidying. #}
-            <form method="post" action="{{ url_for('admin.newsletter_send_forget', send_id=h.id) }}"
-                  class="cms-delete-form"
-                  data-confirm="Remove this from the record of what you have sent? Nothing reaches the people it went to — but this line is how you would answer &quot;you emailed me&quot; later, and nothing else keeps it.">
-              <button type="submit" class="icon-btn"
-                      title="Remove this send from the record. The email itself has already gone; this only forgets that it did.">&times;</button>
-            </form>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
-{% endif %}
+    They were listed here, per blog, so each post could be sent as an
+    issue of its own -- which made "the blog" a part of one screen
+    instead of something an owner can put IN a newsletter, and meant a
+    newsletter could be a post or be written, never both.
+
+    A blog is newsletter CONTENT now: the "Blog posts" block in the
+    editor, and the "From the blog" layout to start from. That is this
+    project's own rule -- a capability is a tool you drop in, not a fixed
+    section -- applied to the newsletter.
+
+    Sending a page is untouched above: a page is not a post, and nobody
+    asked for it to move. #}
+
+{#  "What has gone out" was a card of its own. It is rows in the one
+    table above now -- a newsletter that has gone is the same newsletter,
+    and the only thing the card did that the table did not was let one
+    line be removed from the record, which the table does. #}
 
 <script src="{{ static_url('js/admin/modal.js') }}"></script>
 <script src="{{ static_url('js/admin/local-time.js') }}"></script>

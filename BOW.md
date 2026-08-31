@@ -7021,3 +7021,71 @@ Taken together, 3 and 4 are the same move: one editor, used by
 newsletters and by the messages that send themselves, with the
 differences expressed as which blocks and which variables a given
 message offers.
+
+### A blog stopped being a section and became content (2026-08-28)
+
+Feedback item 2's other half. The Newsletters screen listed every blog
+with its latest posts, so each post could be sent as an issue of its
+own. That made "the blog" a part of one screen rather than something an
+owner can put IN a newsletter -- and it meant a newsletter could be a
+post or be written, never both.
+
+It is a **block** now (`posts` in `BLOCK_TYPES`) and a **layout** ("From
+the blog"). This project's own rule, applied to the editor: a capability
+is a tool you drop in, not a fixed section that only exists on one
+screen.
+
+Three things it had to get right.
+
+**Resolved by the caller, not inside `email_layouts`.** That module
+renders an email and knows nothing about blogs or the database, which is
+what keeps it callable from a template, a checker and a scheduled send
+alike. `render()` takes a `posts_for` callable; the route passes one
+built from `blog_service`. A caller that passes none gets an empty
+block, which the canvas draws as an empty slot.
+
+**Resolved at SEND time, and nothing about it is live.** What arrives is
+what was true when it was sent. A block that re-read the blog later would
+make the copy in somebody's inbox disagree with the copy in the record.
+Published posts only -- a draft has no address, so including one would
+put a "Read it" link into an inbox pointing at a 404, and unlike a page
+an email cannot be corrected after it has gone.
+
+**The block stores the CHOICE, not the posts.** `blog_id` and `count`,
+one to ten. Storing the resolved posts would freeze them at the moment
+somebody clicked, so a newsletter written on Monday and sent on Friday
+would carry Monday's list.
+
+`missing()` gained "has no blog chosen", and lost the separate
+`missing_posts()` I had written ten minutes earlier -- two functions
+answering "what is stopping a send" is the drift this project keeps
+warning about. It also learned that a newsletter made only of posts HAS
+words: somebody wrote them, in the posts, and demanding a sentence on
+top would be demanding a covering note nobody wanted to write.
+
+### The ribbon paid for it, and the bound moved with its reason
+
+Adding a blog select and a count took the ribbon to five rows and 258px.
+The toolbar was set at FORM size -- 13px controls in 190px boxes -- which
+is the general "admin screens are too large" complaint in the one place
+it can be measured against a target. Reset to toolbar size (12px, 150px)
+it came back to four rows and 200px.
+
+The check said three. It says four now, and the comment says why rather
+than the number being quietly raised: eleven controls do not share a row
+at 852px. What the bound is FOR is that the next control is not free.
+
+### A check that passed for the wrong reason, again
+
+"There is no separate 'What has gone out' card" passed while the card
+was still in the template -- it only ever rendered `{% if history %}`,
+and the install being checked had no history. True, and meaningless.
+
+The card is genuinely gone now: those rows are in the one table, and the
+only thing the card did that the table did not -- removing a single line
+from the record -- the table does. The claim is asserted against the
+TEMPLATE, where it cannot be true by accident.
+
+That is the third time this week a check has passed because the thing it
+was looking for could not appear. **Ask whether a check can go red
+before believing it went green.**
