@@ -62,8 +62,11 @@ with sync_playwright() as p:
     print("A newsletter opens ready to write in")
     print("-" * 66)
     page.goto(EDIT, wait_until="networkidle")
+    #  An opening, the plainest shape, and a sign-off. The opening and
+    #  the sign-off are the owner's own words written IN the newsletter,
+    #  which is why the middle is what is compared.
     check("it starts with the plainest shape",
-          kinds(page) == ["heading", "text"], str(kinds(page)))
+          kinds(page)[1:-1] == ["heading", "text"], str(kinds(page)))
     check("the Template dropdown is the way to change that",
           page.query_selector("#layout-select") is not None)
 
@@ -80,8 +83,18 @@ with sync_playwright() as p:
         asked = page.query_selector("#cms-modal-backdrop:not([hidden])")
         check("%s: it does not ask, because nothing is written" % choice,
               asked is None)
+        #  Every arrangement opens and closes with the owner's own words
+        #  now -- those are blocks in the newsletter rather than two
+        #  settings applied invisibly to every send -- so what is
+        #  compared is the shape BETWEEN them.
         check("%s: the canvas is the new arrangement" % choice,
-              kinds(page) == want, str(kinds(page)))
+              kinds(page)[1:-1] == want, str(kinds(page)))
+        check("%s: ...opening and closing with the owner's words" % choice,
+              page.evaluate(
+                  """() => { const b = JSON.parse(
+                       document.querySelector('[data-blocks-store]').value);
+                     return b.length > 2 && b[0].role === 'intro'
+                            && b[b.length - 1].role === 'exit'; }"""))
         check("%s: and the dropdown agrees with the canvas" % choice,
               page.input_value("#layout-select") == choice,
               page.input_value("#layout-select"))

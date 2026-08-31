@@ -48,8 +48,21 @@ def _look(db):
     return newsletter.look_from(palette.role_ramps(template) if template else {}, fonts)
 
 
-def _wrapped(db, subject, view_url):
-    """The greeting and the sign-off, with their two placeholders filled."""
+def _wrapped(db, subject, view_url, blocks=None):
+    """The greeting and the sign-off, with their two placeholders filled.
+
+    Skipped entirely for a newsletter that carries its OWN opening or
+    sign-off, which every newly written one now does: those are blocks in
+    the newsletter, written where they will be read, rather than two
+    settings applied invisibly to everything.
+
+    A newsletter written before that -- and a page or a post, which have
+    no blocks to hold an opening -- still gets the site-wide pair. That
+    is what lets this change cost nobody their words without rewriting
+    anybody's drafts underneath them.
+    """
+    if blocks is not None and email_layouts.has_own_wrapper(blocks):
+        return "", ""
     intro, outro = _wrapper(db)
     return (newsletter.wrapper_html(intro, subject, view_url or ""),
             newsletter.wrapper_html(outro, subject, view_url or ""))
@@ -337,7 +350,8 @@ def newsletter_issue_new():
     #  A new newsletter opens with its layout's arrangement already in
     #  it, because an empty canvas does not show what a template IS --
     #  which is the whole reason for choosing one.
-    newsletter.save_blocks(db, new_id, "", email_layouts.starting_blocks(layout, db))
+    newsletter.save_blocks(db, new_id, "", email_layouts.starting_blocks(
+        layout, db, newsletter.blocks_of))
     db.commit()
     return redirect(url_for("admin.newsletter_issue_edit", newsletter_id=new_id))
 
@@ -376,13 +390,15 @@ def newsletter_issue_edit(newsletter_id):
         block_styles=email_layouts.block_styles(look),
         look=look,
         layout=email_layouts.LAYOUTS[row["layout"]],
-        layout_choices=email_layouts.choices(db),
+        layout_choices=email_layouts.choices(db, newsletter.sent_composed),
         #  What each template would lay out, so changing the dropdown can
         #  show the new arrangement without a round trip to ask what it
         #  is. Data, not logic: the arrangements are still decided in one
         #  place, here.
-        layout_starts={key: email_layouts.starting_blocks(key, db)
-                       for key, _n, _b in email_layouts.choices(db)},
+        layout_starts={key: email_layouts.starting_blocks(
+                           key, db, newsletter.blocks_of)
+                       for key, _n, _b in email_layouts.choices(
+                           db, newsletter.sent_composed)},
         blocks=newsletter.composed_blocks(row),
         block_types=email_layouts.BLOCK_TYPES,
         block_order=email_layouts.BLOCK_ORDER,
@@ -422,7 +438,8 @@ def newsletter_issue_preview(newsletter_id):
                    values_json=json.dumps({"blocks": _blocks_from_form(request.form)}))
     site_title = (get_site_settings(db) or {}).get("site_title") or "Our newsletter"
     line, _ = newsletter.sender_line(legal.settings_for(db), site_title)
-    intro, outro = _wrapped(db, row["subject"], None)
+    intro, outro = _wrapped(db, row["subject"], None,
+                            newsletter.composed_blocks(row))
     return newsletter.to_email_html(
         _composed_sections(db, row), site_title, "#unsubscribe-link", line,
         None, look=_look(db), intro=intro, outro=outro)
@@ -516,7 +533,14 @@ def _run_scheduled(app, row):
             if isinstance(verdict, newsletter.Blocked):
                 scheduling.finish(db, row["id"], 0, 0, verdict.message)
                 return
-            intro, outro = _wrapped(db, subject, view_url)
+            #  A scheduled send of a composed newsletter reads its own
+            #  blocks, so one carrying its own opening is not given a
+            #  second one an hour after it was written.
+            intro, outro = _wrapped(
+                db, subject, view_url,
+                newsletter.composed_blocks(newsletter.get_composed(db, row["target_id"]))
+                if row["kind"] == "newsletter"
+                and newsletter.get_composed(db, row["target_id"]) else None)
             sent, failed = newsletter.deliver(
                 db, mailer, email_settings, verdict, sections, subject, view_url,
                 _look(db), intro, outro, row["audience"], row["kind"], row["target_id"],
@@ -648,7 +672,8 @@ def newsletter_issue_send(newsletter_id):
         flash("Fill in %s first." % ", ".join(wanted), "error")
         return redirect(back)
     return _send_it(db, "newsletter", newsletter_id, _composed_sections(db, row),
-                    row["subject"], None, back)
+                    row["subject"], None, back,
+                    blocks=newsletter.composed_blocks(row))
 
 
 @bp.route("/newsletters/issue/<int:newsletter_id>/copy", methods=["POST"])
@@ -763,7 +788,7 @@ def newsletter_issue_delete(newsletter_id):
     return redirect(url_for("admin.newsletters"))
 
 
-def _send_it(db, kind, target_id, sections, subject, view_url, back):
+def _send_it(db, kind, target_id, sections, subject, view_url, back, blocks=None):
     """Everything a send has to be sure of, once, for a page or a post.
 
     Both callers used to be one route with the page baked into it. The
@@ -788,7 +813,7 @@ def _send_it(db, kind, target_id, sections, subject, view_url, back):
     if isinstance(verdict, newsletter.Blocked):
         flash(verdict.message, "error")
         return redirect(url_for(verdict.where) if verdict.where else back)
-    intro, outro = _wrapped(db, subject, view_url)
+    intro, outro = _wrapped(db, subject, view_url, blocks)
     sent, failed = newsletter.deliver(
         db, mailer, email_settings, verdict, sections, subject, view_url,
         _look(db), intro, outro, audience, kind, target_id,

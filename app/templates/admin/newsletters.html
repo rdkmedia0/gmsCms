@@ -165,6 +165,47 @@
   </form>
 </div>
 
+{#  This was "How every email opens and closes", at the top of the
+    screen, and the title was the problem as much as the placement: it
+    was two settings written once and applied invisibly to everything,
+    so the one place they could not be read was the place they would be
+    read from.
+
+    A NEWSLETTER carries its own opening and sign-off now -- they are
+    blocks, written in the newsletter where they will be read. What is
+    left here is the case that has no blocks to hold them: a page or a
+    post you send. So it sits beside those, and says so. #}
+<div class="card">
+  <div class="integration-head">
+    <h2>When you send a page or a post</h2>
+    <span class="hint">A newsletter carries its own &mdash; write it in the newsletter.</span>
+  </div>
+  <p class="hint">A page or a post has no opening of its own, so this is put around it.
+    Plain writing, not code: leave a blank line to start a new paragraph. Two shortcuts
+    you can type: <code>{{ '{{title}}' }}</code> becomes the subject line, and
+    <code>{{ '{{link}}' }}</code> becomes the address of the online copy (nothing at all
+    when the page is off the site).</p>
+  <form method="post" action="{{ url_for('admin.newsletter_wrapper') }}">
+    <label for="newsletter_intro">Before it</label>
+    <textarea id="newsletter_intro" name="newsletter_intro" rows="2"
+              placeholder="Hello — here is this month's letter."
+              title="Sits above a page or post you send. A newsletter written here carries its own opening instead.">{{ wrapper.newsletter_intro }}</textarea>
+
+    <label for="newsletter_outro">After it</label>
+    <textarea id="newsletter_outro" name="newsletter_outro" rows="2"
+              placeholder="Thanks for reading. Reply to this if you want to tell us something."
+              title="Sits below a page or post you send, above the address and unsubscribe line.">{{ wrapper.newsletter_outro }}</textarea>
+
+    <div class="cms-newsletter-fixed" title="Added to every message by this app. It cannot be edited or removed: an email to a list has to carry a postal address and a working unsubscribe link, and a template that could delete them would be a template that could break the law.">
+      <p class="hint"><strong>Always added, and not editable:</strong></p>
+      <p class="hint">{{ wrapper_sender_line or 'Your business name and postal address — set on the Legal pages screen' }}<br>
+      You are getting this because you asked us to. <u>Unsubscribe</u>.</p>
+    </div>
+
+    <button type="submit" class="btn btn-small btn-primary" title="Save the words put around a page or a post you send">Save</button>
+  </form>
+</div>
+
 {% if not pages %}
 <div class="card">
   <p>No newsletters yet. Make a new page and start it as a <strong>Newsletter</strong> — it arrives with something to type over, and everything else about it is an ordinary page. Any page you already have can become one from its own settings.</p>

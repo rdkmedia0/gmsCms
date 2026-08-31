@@ -115,6 +115,27 @@ EMAIL_FONTS = (
 
 ALIGNMENTS = (("left", "Left"), ("center", "Centred"), ("right", "Right"))
 
+#  What a block is FOR. Only the two that a send has to know about: a
+#  newsletter carrying its own opening must not also be given the
+#  site-wide one.
+ROLES = ("intro", "exit")
+ROLE_NAMES = {"intro": "Opening", "exit": "Sign-off"}
+
+
+def has_own_wrapper(blocks):
+    """Does this newsletter carry its own opening or sign-off?
+
+    The greeting and sign-off used to be two settings applied to every
+    send -- written once, invisibly, to everything. They are blocks in
+    the newsletter now, written where they will be read.
+
+    This is what lets that change cost nobody their words: a newsletter
+    written before it has no such block and is still wrapped the old way,
+    and one written after is not wrapped at all. No migration, and
+    nothing rewritten under anybody.
+    """
+    return any(b.get("role") in ROLES for b in normalise(blocks))
+
 
 def blank(kind):
     """A new block of one kind, with everything it needs to be drawn.
@@ -124,7 +145,17 @@ def blank(kind):
     canvas needs to draw its empty shape.
     """
     kind = kind if kind in BLOCK_TYPES else "text"
-    made = {"type": kind, "style": {}}
+    #  `role` is what a block is FOR, not what it is. An intro and a
+    #  sign-off are both words -- giving them block types of their own
+    #  would mean two more entries in BLOCK_TYPES that render exactly
+    #  like `text`, and a third the day somebody wants a postscript.
+    #
+    #  It earns its place because the SEND has to know: a newsletter
+    #  carrying its own intro must not also get the site-wide greeting
+    #  wrapped around it, and one written before this existed must still
+    #  get it. The role is how those two are told apart, without a
+    #  migration that rewrites anybody's drafts.
+    made = {"type": kind, "style": {}, "role": ""}
     if kind == "heading":
         made.update({"text": "", "level": 2})
     elif kind == "text":
@@ -201,6 +232,8 @@ def normalise(blocks):
             if made["level"] not in (1, 2, 3):
                 made["level"] = 2
         made["style"] = _clean_style(raw.get("style"))
+        role = str(raw.get("role") or "")
+        made["role"] = role if role in ROLES else ""
         out.append(made)
     return out
 
@@ -312,6 +345,11 @@ LAYOUTS = {
 #  shipped one, and so any code reading a key can tell them apart without
 #  a database lookup.
 SAVED_PREFIX = "saved:"
+#  A newsletter that has already GONE is an arrangement somebody
+#  approved and a reader received, which is a better starting point than
+#  anything shipped. Offered in the same dropdown, prefixed so a key can
+#  be told apart without a lookup.
+SENT_PREFIX = "sent:"
 
 
 def _slugify(name):
@@ -333,19 +371,56 @@ def saved(db):
     return list(rows)
 
 
+def _intro(text):
+    return {"type": "text", "text": text, "role": "intro", "style": {}}
+
+
+def _exit(text):
+    return {"type": "text", "text": text, "role": "exit", "style": {}}
+
+
+#  Every shipped arrangement opens and closes with words the owner
+#  writes IN the newsletter. They were two settings on another screen,
+#  applied invisibly to everything, so the one place they could not be
+#  read was the place they would be read from.
+for _key, _open, _close in (
+        ("letter", "Hello,", "Thanks for reading."),
+        ("story", "Hello,", "Thanks for reading."),
+        ("two-up", "Hello,", "Thanks for reading."),
+        ("announcement", "Hello,", "Thanks for reading."),
+):
+    LAYOUTS[_key]["blocks"] = (
+        [_intro(_open)] + list(LAYOUTS[_key]["blocks"]) + [_exit(_close)])
+
 LAYOUTS["from-the-blog"] = {
     "name": "From the blog",
     "blurb": "A line of your own, then your latest posts with a link to each. "
              "The shape for a round-up.",
     "blocks": [
+        _intro("Hello,"),
         _h("The latest from us"),
         _t("Here is what we have written lately."),
         {"type": "posts", "blog_id": "", "count": 3, "style": {}},
+        _exit("Thanks for reading."),
     ],
 }
 
 
-def choices(db=None):
+def sent_arrangements(db, sent_lookup=None, limit=6):
+    """Recent newsletters that have gone out, newest first.
+
+    Passed IN rather than queried here: this module renders an email and
+    does not know what a send is. The caller knows both.
+    """
+    if db is None or sent_lookup is None:
+        return []
+    try:
+        return list(sent_lookup(db, limit))
+    except Exception:  # noqa: BLE001 - a dropdown must not break a screen
+        return []
+
+
+def choices(db=None, sent_lookup=None):
     """(key, name, blurb) for the dropdown, in a fixed order so the list
     does not shuffle between visits.
 
@@ -359,6 +434,16 @@ def choices(db=None):
     for row in saved(db):
         out.append((SAVED_PREFIX + row["slug"], row["name"],
                     "One of yours, saved from a newsletter you had already laid out."))
+    #  ...and the ones already sent, last, because they grow. A
+    #  newsletter that went out is an arrangement somebody approved and a
+    #  reader received, which is why "start from last month's" is the
+    #  most common way anybody writes this month's.
+    for row in sent_arrangements(db, sent_lookup):
+        out.append((SENT_PREFIX + str(row["id"]),
+                    "%s (sent %s)" % (row["subject"] or "Untitled",
+                                      (row["sent_at"] or "")[:10]),
+                    "One you have already sent. Starting from it copies its "
+                    "arrangement, not its send."))
     return out
 
 
@@ -393,7 +478,7 @@ def delete_layout(db, key):
     return db.execute("DELETE FROM email_layouts WHERE slug = ?", (slug,)).rowcount > 0
 
 
-def starting_blocks(key, db=None):
+def starting_blocks(key, db=None, blocks_of_sent=None):
     """A fresh copy of one layout's arrangement.
 
     A copy, because these are module-level dictionaries: handing the real
@@ -402,6 +487,11 @@ def starting_blocks(key, db=None):
     read from its row and needs no such care, but goes through the same
     normalise so both kinds arrive in one shape.
     """
+    if str(key or "").startswith(SENT_PREFIX) and blocks_of_sent is not None:
+        try:
+            return normalise(blocks_of_sent(db, int(str(key)[len(SENT_PREFIX):])))
+        except (TypeError, ValueError):
+            return []
     if str(key or "").startswith(SAVED_PREFIX) and db is not None:
         slug = str(key)[len(SAVED_PREFIX):]
         try:

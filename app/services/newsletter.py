@@ -799,3 +799,24 @@ def post_rows_for(db, blog_service, blog_id, count, link_for, excerpt_words=28):
             "url": link_for(blog, post) if link_for else "",
         })
     return rows
+
+
+def sent_composed(db, limit=6):
+    """Composed newsletters that have already gone, newest send first.
+
+    A newsletter that went out is an arrangement somebody approved and a
+    reader received, which is why "start from last month's" is how most
+    people write this month's. Distinct rows only: sending one twice does
+    not make it two templates.
+    """
+    return db.execute(
+        "SELECT n.id, n.subject, MAX(s.sent_at) AS sent_at "
+        "FROM newsletters n "
+        "JOIN newsletter_sends s ON s.target_kind = 'newsletter' AND s.target_id = n.id "
+        "GROUP BY n.id ORDER BY sent_at DESC LIMIT ?", (limit,)).fetchall()
+
+
+def blocks_of(db, newsletter_id):
+    """One newsletter's blocks, by id -- for starting another from it."""
+    row = get_composed(db, newsletter_id)
+    return composed_blocks(row) if row else []

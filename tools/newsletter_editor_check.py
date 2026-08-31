@@ -302,8 +302,17 @@ with sync_playwright() as p:
     page.click("#cms-modal-confirm")
     settle(page)
     laid = kinds(page)
+    #  Every arrangement now opens and closes with the owner's own words
+    #  -- an opening and a sign-off are blocks IN the newsletter, not two
+    #  settings applied invisibly to every send. So what this asserts is
+    #  the shape between them, plus the fact that they are there.
     check("the new arrangement is laid out",
-          laid == ["heading", "text", "button"], str(laid))
+          laid[1:-1] == ["heading", "text", "button"], str(laid))
+    check("...opening and closing with the owner's own words", page.evaluate(
+        """() => { const b = JSON.parse(
+               document.querySelector('[data-blocks-store]').value);
+             return b.length > 2 && b[0].role === 'intro'
+                    && b[b.length - 1].role === 'exit'; }"""))
     check("...and it is the one the server declares", page.evaluate(
         """() => {
              const starts = JSON.parse(

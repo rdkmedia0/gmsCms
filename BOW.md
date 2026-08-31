@@ -7089,3 +7089,49 @@ TEMPLATE, where it cannot be true by accident.
 That is the third time this week a check has passed because the thing it
 was looking for could not appear. **Ask whether a check can go red
 before believing it went green.**
+
+### An opening belongs to the newsletter, not to the site (2026-08-28)
+
+Feedback item 3. "How every email opens and closes" was two settings,
+written once and applied invisibly to every send -- so the one place
+they could not be read was the place they would be read from.
+
+They are **blocks** now, with a `role` of `intro` or `exit`, written into
+the newsletter where they will be read. Every shipped arrangement opens
+and closes with them.
+
+**A role, not a block type.** An opening is words and so is a sign-off;
+giving them types of their own would mean two more entries in
+`BLOCK_TYPES` rendering exactly like `text`, and a third the day
+somebody wants a postscript. The role earns its place because the SEND
+has to know something the type cannot tell it.
+
+**Which is the part that cost nobody their words.** Removing the wrapper
+outright would have silently dropped the greeting from every existing
+draft -- the intro was applied at send time and is not in the blocks, so
+it would simply have stopped arriving. Instead `_wrapped()` asks whether
+the newsletter carries its own: one written before this has no roled
+block and is still wrapped the old way; one written after is not wrapped
+at all. No migration, and nothing rewritten under anybody.
+
+**And the card did not just disappear.** A page or a post has no blocks
+to hold an opening, so the setting still applies to those -- it sits
+beside them now and says exactly that ("When you send a page or a post")
+rather than claiming to be how every email opens. Deleting it would have
+removed a capability rather than moved one.
+
+**Past emails are templates.** A newsletter that has gone out is an
+arrangement somebody approved and a reader received, which is why "start
+from last month's" is how most people write this month's. Sent ones are
+in the same Template dropdown, prefixed `sent:`, resolved through a
+callable the caller supplies -- `email_layouts` renders an email and does
+not know what a send is.
+
+Two checker notes. Three separate checks compared a layout to a flat list
+of block types and all three broke, correctly: every arrangement has two
+more blocks than it did. They compare the middle now and assert the
+opening and sign-off separately, which is a better statement of what the
+layout IS. And `sent_composed` joined on `s.kind` where the column is
+`s.target_kind` -- SQLite raised nothing, the join simply matched no rows
+and the dropdown was quietly missing a section. **A join that matches
+nothing looks exactly like a feature that is switched off.**

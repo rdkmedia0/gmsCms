@@ -30,7 +30,8 @@ os.environ["DATA_DIR"] = DATA_DIR
 from app import create_app                                    # noqa: E402
 from app.db import get_db                                     # noqa: E402
 from app import mailer                                        # noqa: E402
-from app.services import newsletter, scheduling, subscribers  # noqa: E402
+from app.services import (email_layouts, newsletter, scheduling,  # noqa: E402
+                          subscribers)
 
 SENT = []
 mailer.is_configured = lambda settings: True
@@ -375,6 +376,52 @@ with app.app_context():
 recoloured = client.get("/admin/newsletters/%d/preview?parts=all" % page_id).get_data(as_text=True)
 check("an owner's own colour override wins",
       "color:#0f5132" in recoloured and "#8a1b3d" not in recoloured)
+
+#  An opening and a sign-off belong to the NEWSLETTER, not to the site.
+#
+#  They were two settings applied invisibly to every send -- so the one
+#  place they could not be read was the place they would be read from.
+#  They are blocks now, with a `role`, written where they will be read.
+#
+#  The interesting half is that this cost nobody their words. A
+#  newsletter written BEFORE has no such block and is still given the
+#  site-wide pair; one written after is not. No migration, and nothing
+#  rewritten under anybody.
+with app.app_context():
+    db = get_db()
+    fresh = email_layouts.starting_blocks("letter", db)
+    check("a new newsletter opens with the owner's own words",
+          any(b.get("role") == "intro" for b in fresh), str([b.get("role") for b in fresh]))
+    check("...and closes with them",
+          any(b.get("role") == "exit" for b in fresh))
+    check("...so it is not given the site-wide pair as well",
+          email_layouts.has_own_wrapper(fresh))
+    #  The compatibility that makes the change safe.
+    check("one written before this still gets the site-wide pair",
+          not email_layouts.has_own_wrapper([{"type": "text", "text": "hello"}]))
+    for key, _n, _b in email_layouts.choices(db):
+        check("every shipped layout opens and closes: %s" % key,
+              email_layouts.has_own_wrapper(email_layouts.starting_blocks(key, db)))
+
+    #  A newsletter that has gone is an arrangement somebody approved and
+    #  a reader received, which is the best starting point there is.
+    made = newsletter.create_composed(db, "letter", "Last month")
+    newsletter.save_blocks(db, made, "Last month",
+                           email_layouts.starting_blocks("letter", db))
+    newsletter.record_send(db, "newsletter", made, "Last month", 9, 0, "all")
+    db.commit()
+    offered = [k for k, _n, _b in email_layouts.choices(db, newsletter.sent_composed)]
+    check("a sent newsletter is offered as a template",
+          any(k.startswith("sent:") for k in offered), str(offered))
+    started = email_layouts.starting_blocks(
+        [k for k in offered if k.startswith("sent:")][0], db, newsletter.blocks_of)
+    check("...and starting from it gives its arrangement",
+          [b["type"] for b in started] == [b["type"] for b in
+                                           email_layouts.starting_blocks("letter", db)],
+          str([b["type"] for b in started]))
+    db.execute("DELETE FROM newsletter_sends WHERE target_id = ?", (made,))
+    newsletter.delete_composed(db, made)
+    db.commit()
 
 #  A newsletter can be thrown away, and what it leaves behind matters
 #  more than the deletion. Two things outlive it deliberately -- the
