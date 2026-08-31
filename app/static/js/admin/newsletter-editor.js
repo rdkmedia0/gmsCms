@@ -399,12 +399,14 @@
     if (!block) {
       if (name) name.textContent = "No block";
       if (postsControls) {
+        postsControls.hidden = true;
         postsControls.classList.add("cms-tools-idle");
         postsControls.querySelectorAll("[data-block-field]").forEach(function (f) {
           f.disabled = true;
         });
       }
       if (aside) {
+        aside.hidden = true;
         aside.classList.add("cms-tools-idle");
         var noneField = aside.querySelector("[data-block-field='url']");
         if (noneField) { noneField.disabled = true; noneField.value = ""; }
@@ -436,14 +438,27 @@
       //  223px the moment a button was selected, which wrapped a row --
       //  the toolbar changing shape as it is used is the thing the other
       //  block controls are dimmed to prevent.
+      //  Hidden, not dimmed: at five sets the group wrapped and the
+      //  ribbon stood at six rows. The group's height is pinned in CSS,
+      //  so the bar still does not change shape.
+      aside.hidden = !wants;
       aside.classList.toggle("cms-tools-idle", !wants);
       //  The posts controls wake for a posts block, and only then.
       if (postsControls) {
         var isPosts = block.type === "posts";
+        postsControls.hidden = !isPosts;
         postsControls.classList.toggle("cms-tools-idle", !isPosts);
         postsControls.querySelectorAll("[data-block-field]").forEach(function (f) {
           f.disabled = !isPosts;
         });
+        //  A picture's size, which only a picture has.
+        var scale = form.querySelector("[data-block-field='scale']");
+        if (scale) {
+          var isImage = block.type === "image";
+          scale.disabled = !isImage;
+          scale.hidden = !isImage;
+          if (isImage) scale.value = String(block.scale || 100);
+        }
         if (isPosts) {
           var blogField = postsControls.querySelector("[data-block-field='blog_id']");
           if (blogField) blogField.value = block.blog_id == null ? "" : String(block.blog_id);
@@ -682,7 +697,8 @@
         if (selected === null) return;
         collect();
         var which = field.dataset.blockField;
-        blocks[selected][which] = field.value;
+        blocks[selected][which] = which === "scale"
+          ? parseInt(field.value, 10) || 100 : field.value;
         if (which === "blog_id") {
           //  A post from the old blog is not a post of the new one.
           blocks[selected].post_id = "";
@@ -697,6 +713,19 @@
         //  drift from the one that draws what is sent.
         reload(selected);
       });
+    });
+  }
+
+  var scaleField = form.querySelector("[data-block-field='scale']");
+  if (scaleField) {
+    scaleField.addEventListener("change", function () {
+      if (selected === null) return;
+      collect();
+      blocks[selected].scale = parseInt(scaleField.value, 10) || 100;
+      //  Through the server, which is what renders the size into the
+      //  email -- a second renderer here would drift from the one that
+      //  draws what is sent.
+      reload(selected);
     });
   }
 
@@ -799,6 +828,30 @@
     };
     schedulePick.addEventListener("change", showWhen);
     showWhen();
+  }
+
+  //  Write with AI: ask for the brief, then post it. A dialog rather
+  //  than a box open in the ribbon, which cost a row of chrome above
+  //  every message for a control most visits do not use.
+  var aiBtn = form.querySelector("[data-write-with-ai]");
+  if (aiBtn) {
+    aiBtn.addEventListener("click", async function () {
+      var answer = window.cmsModal
+        ? await window.cmsModal({
+            message: "What should this newsletter say? A sentence or two is "
+              + "enough. It writes a draft you can edit — nothing is sent.",
+            showInput: true, defaultValue: "",
+            confirmLabel: "Write a draft", danger: false,
+          })
+        : window.prompt("What is this one about?");
+      var brief = answer && answer.value !== undefined ? answer.value : answer;
+      if (!brief || !String(brief).trim()) return;
+      var hidden = document.querySelector("[data-ai-brief]");
+      var target = document.getElementById("cms-ai-form");
+      if (!hidden || !target) return;
+      hidden.value = String(brief).trim();
+      target.submit();
+    });
   }
 
   //  ---- keeping an arrangement you like -------------------------------

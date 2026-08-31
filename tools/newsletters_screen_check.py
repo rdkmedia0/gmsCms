@@ -93,15 +93,21 @@ try:
         print()
         print("Writing one is the first thing, not a card to read first")
         print("-" * 66)
-        write = page.evaluate(
-            """() => { const b = Array.from(document.querySelectorAll('button'))
-                  .find(x => x.textContent.trim() === 'Write a newsletter');
-                 const t = document.querySelector('.cms-newsletter-table');
-                 return { y: Math.round(b.getBoundingClientRect().top),
-                          table: Math.round(t.getBoundingClientRect().top),
-                          inCard: !!b.closest('.card') }; }""")
-        check("it is above the list", write["y"] < write["table"], str(write))
-        check("...and not inside a card", not write["inCard"], str(write))
+        #  There is no button that opens a newsletter any more: the
+        #  creation TOOL is the top of the page, and the list and the
+        #  schedules are below it. Three tools in the order they are
+        #  used.
+        order = page.evaluate(
+            """() => { const t = document.querySelector('.cms-issue-form');
+                 const l = document.querySelector('.cms-newsletter-table');
+                 const s = document.querySelector('.cms-schedule-form');
+                 if (!t || !l || !s) return null;
+                 return [t, l, s].map(e => Math.round(e.getBoundingClientRect().top)); }""")
+        check("the creation tool is on the page", order is not None, str(order))
+        check("...above the list, which is above the schedules",
+              order is not None and order == sorted(order), str(order))
+        check("...and it is a real editor, with its scripts",
+              page.evaluate("() => typeof window.cmsLocalTime") == "object")
 
         #  Offered beside writing one by hand, because it is the same
         #  act with a different starting point -- and only when there is

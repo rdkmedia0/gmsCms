@@ -31,7 +31,12 @@ def _source(rel):
     return io.open(os.path.join(here, rel), encoding="utf-8").read()
 
 
-ISSUE_EDIT = _source("app/templates/admin/newsletter_issue_edit.html")
+#  The editor's markup lives in a PARTIAL now: it is the top of the
+#  Newsletters page as well as its own screen, and two copies of it is
+#  how the two screens come to offer different controls. Both are read,
+#  so an assertion about "the editor" is about wherever it is written.
+ISSUE_EDIT = (_source("app/templates/partials/newsletter_editor.html")
+              + _source("app/templates/admin/newsletter_issue_edit.html"))
 EDITOR_JS = _source("app/static/js/admin/newsletter-editor.js")
 BLOCKS_TPL = _source("app/templates/emails/blocks.html")
 NEWSLETTERS_SCREEN = _source("app/templates/admin/newsletters.html")
@@ -145,8 +150,12 @@ with app.test_request_context("/"):
     check("...and the render mode written for it",
           "specimen" not in open(
               "/app/app/templates/emails/blocks.html", encoding="utf-8").read())
-    check("one button starts a newsletter instead",
-          "Write a newsletter</button>" in NEWSLETTERS_SCREEN)
+    #  ...and there is no button to start one either: the creation tool
+    #  IS the top of the page now, so the page always has a newsletter in
+    #  it rather than a button that makes one.
+    check("the creation tool is the page, not a button that opens one",
+          "partials/newsletter_editor.html" in NEWSLETTERS_SCREEN
+          and "Write a newsletter</button>" not in NEWSLETTERS_SCREEN)
     check("the shape is chosen in the editor",
           "layout-select" in ISSUE_EDIT and "layoutStarts" in EDITOR_JS)
 

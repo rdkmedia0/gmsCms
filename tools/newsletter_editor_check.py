@@ -90,9 +90,13 @@ with sync_playwright() as p:
     check("so are the style controls", page.evaluate(
         """() => ['align','font','color','bg'].every(
              k => document.querySelector('[data-block-style=\"' + k + '\"]'))"""))
+    #  A HIDDEN input is machinery behind a button that carries the
+    #  sentence, not a control somebody points at -- the same exclusion
+    #  the screen audit already makes, for the same reason.
     check("every control carries a sentence", page.evaluate(
         """() => Array.from(document.querySelectorAll(
              '.cms-issue-toolbar button, .cms-issue-toolbar select, .cms-issue-toolbar input'))
+             .filter(c => c.type !== 'hidden')
              .every(c => (c.title && c.title.trim())
                       || (c.closest('label[title]') && c.closest('label[title]').title.trim()))"""))
     check("the style controls are dead until a block is chosen", page.evaluate(
@@ -381,14 +385,20 @@ with sync_playwright() as p:
              const btn = wrap.querySelector('button');
              const p = pick.getBoundingClientRect();
              const b = btn.getBoundingClientRect();
-             return { joined: Math.round(p.left - b.right),
+             return { hasSchedules: pick.options.length > 1,
+                      joined: Math.round(p.left - b.right),
                       bordered: getComputedStyle(wrap).borderStyle !== 'none',
                       dateHidden: wrap.querySelector('[data-send-at]').hidden,
                       width: Math.round(wrap.getBoundingClientRect().width) }; }""")
     check("Schedule and which schedule read as one control",
           sched["bordered"] and abs(sched["joined"]) <= 2, str(sched))
+    #  Only meaningful when there IS a schedule to pick: with none
+    #  defined the picker's single option is "a time I choose", so the
+    #  date box is correctly shown. Asserting it hidden regardless was
+    #  asserting that an install with no schedules cannot schedule.
     check("...and a date is only asked for a one-off",
-          sched["dateHidden"], str(sched))
+          sched["hasSchedules"] == sched["dateHidden"] or not sched["hasSchedules"],
+          str(sched))
 
     #  4. Everything that happens TO the newsletter is in one row under
     #     it, Delete included -- it used to sit alone in a card under

@@ -1017,7 +1017,7 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
     nine controls; see the note in newsletter_issue_edit.html for where
     that leaves it. A select still shows enough of "Georgia" or
     "Centred" to be read. */
-.cms-block-tools select { width: 108px; }
+.cms-block-tools select { width: 96px; }
 .cms-issue-toolbar button { padding: 3px 7px; font-size: 12px; }
 .cms-issue-toolbar .cms-color-label { display: inline-flex; align-items: center; gap: 3px; }
 .cms-issue-toolbar input[type=color] { width: 26px; height: 22px; padding: 0; border-width: 1px; }
@@ -1056,6 +1056,37 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
 /*  Which blog a Blog-posts block shows, and how many. Dimmed rather than
     hidden, for the same reason as the link field beside it: the ribbon
     must not change height as it is used. */
+/*  The selected block's controls, grouped by what they DO.
+    
+    It was eleven controls in a line with two identical colour pairs in
+    it, distinguished only by which swatch they sat beside -- so nothing
+    said which control acted on what. Four small sets with a word each:
+    where it sits, its words, what is behind it, where it points. The
+    seam between them is what makes them read as sets rather than as a
+    queue. */
+.cms-tool-set {
+  display: inline-flex; align-items: center; gap: 2px;
+  padding-right: 6px; margin-right: 1px;
+  border-right: 1px solid #eceef2;
+}
+.cms-tool-set:last-child { border-right: 0; padding-right: 0; }
+.cms-tool-set.cms-tools-idle { opacity: .5; }
+/*  A set that does not apply to the selected block is HIDDEN, and the
+    group keeps its height so the bar cannot change shape anyway.
+    
+    Dimming everything was right when there were three sets and wrong at
+    five: measured, the group wrapped permanently and the ribbon stood at
+    six rows. Hiding what does not apply and pinning the height keeps
+    both properties -- only relevant controls, and a bar that does not
+    move as it is used. */
+.cms-tool-set[hidden] { display: none; }
+.cms-block-tools { min-height: 30px; }
+.cms-tool-set-label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: .05em;
+  color: #8a93a0; margin-right: 1px;
+}
+/*  A picture's size sits with WHERE it goes, not with how words look. */
+.cms-scale-select { width: 96px; }
 .cms-toolbar-posts { display: inline-flex; align-items: center; gap: 4px; }
 .cms-toolbar-posts.cms-tools-idle { opacity: .5; }
 /*  FIXED widths, not max-widths.
@@ -1067,14 +1098,22 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
     selected and 153px with something -- the same "changes shape as it is
     used" fault as the selected-block label, arriving by a different
     route. A width that cannot vary cannot wrap. */
-.cms-toolbar-posts select { width: 104px; }
+.cms-toolbar-posts select { width: 92px; }
 .cms-toolbar-count { width: 48px; flex: 0 0 48px; }
-.cms-toolbar-input { width: 140px; flex: 0 0 140px; }
+.cms-toolbar-input { width: 118px; flex: 0 0 118px; }
 
 /*  ---- the Newsletters list ----
     
     Writing one is an ACTION at the top, not a card to read first. It was
     a card with a heading and a paragraph wrapped around one button. */
+/*  The creation tool is a card like the others, and everything inside
+    it is the tool -- so the card gives it a heading and gets out of the
+    way rather than adding a second frame around a thing that already
+    has one. */
+.cms-tool-card > .cms-issue-form { margin-top: 10px; }
+.cms-hidden-form { display: none; }
+.cms-ai-brief { width: 150px; }
+
 .cms-newsletter-actions {
   display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px;
   margin: 0 0 14px;
@@ -1178,12 +1217,47 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
     Send and Schedule on the left, Save and Preview pushed right: the two
     that leave the building are not the two that do not, and putting a
     hand's width between them is the cheapest way to say so. */
+/*  What happens to the message, under it, in one row that reads as one
+    row: the two that leave the building on the left, the two that do
+    not on the right, and the one that cannot be undone held apart.
+    
+    It had grown into a line of buttons at three different heights with
+    a date box floating in the middle. Everything in it is set to one
+    height now, and the groups are separated by space rather than by
+    hoping. */
 .cms-compose-actions {
+  /*  center, not stretch: stretch made the spacer and the Delete group
+      50px tall against 36px buttons, which is where the three different
+      heights came from. */
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
-  padding: 8px 12px; margin: 10px 0 0;
+  padding: 9px 12px; margin: 12px 0 0;
   background: #fff; border: 1px solid #e2e4e9;
   border-radius: var(--cms-ui-radius-surface);
 }
+/*  ONE height for everything in the row. Measured before: Send, Save
+    and Preview stood 37px, the schedule group 51px and Delete 51px --
+    three heights in a line of related actions, which is most of what
+    made it read as a pile rather than a row. */
+.cms-compose-actions > .btn,
+.cms-compose-actions .cms-compose-schedule,
+.cms-compose-actions .cms-compose-danger .btn {
+  height: 36px; display: inline-flex; align-items: center; box-sizing: border-box;
+}
+.cms-compose-actions .cms-compose-danger {
+  display: inline-flex; align-items: center;
+}
+/*  The base .btn carries a top margin, for buttons that follow a field
+    in a form. In a ROW of buttons it is 14px of nothing above each one
+    -- which is what made the Delete group 50px against its 36px button,
+    and the row three heights instead of one. */
+.cms-compose-actions .btn { margin: 0; }
+.cms-compose-schedule > .btn, .cms-compose-schedule select,
+.cms-compose-schedule input[type=datetime-local] {
+  height: 100%; box-sizing: border-box;
+}
+/*  The one that leaves the building, said with weight rather than with
+    a colour somebody has to learn. */
+.cms-compose-actions [data-send] { font-weight: 600; }
 .cms-compose-spacer { flex: 1 1 auto; }
 /*  Schedule and its time are one control, so they are drawn as one: a
     button and a field sharing a border, rather than two things with a
@@ -1197,8 +1271,17 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
 }
 .cms-compose-schedule > .btn {
   border: 0; border-radius: 0; border-right: 1px solid #d6dae1;
-  background: #f7f8fa; font-size: 13px; padding: 6px 10px;
+  background: #f7f8fa; font-size: 13px; padding: 6px 10px; min-height: 0;
 }
+/*  Which schedule, and which of its dates -- inside the same border as
+    the button, because the three are one decision. */
+.cms-compose-schedule select {
+  border: 0; border-right: 1px solid #d6dae1; border-radius: 0;
+  margin: 0; padding: 6px 8px; font-size: 13px; width: auto;
+  background: #fff; max-width: 190px;
+}
+.cms-compose-schedule select:last-of-type { border-right: 0; }
+.cms-compose-schedule select[hidden] { display: none; }
 .cms-compose-schedule > .btn:hover { background: #eef0f4; }
 .cms-compose-actions input[type=datetime-local] {
   width: auto; margin: 0; border: 0; border-radius: 0;

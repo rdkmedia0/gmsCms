@@ -1,0 +1,383 @@
+{#  The newsletter creation tool.
+
+    A partial, because it is the top of the Newsletters page now rather
+    than a screen of its own: writing one, the list of them and the
+    schedules are three tools on one page, and moving between them
+    should not be moving between screens.
+
+    `admin/newsletter_issue_edit.html` still renders it, so a link
+    straight to an issue keeps working. #}
+{% from "partials/wysiwyg_toolbar.html" import wysiwyg_toolbar %}
+{% if ai_ready %}
+{#  Its own form, because it posts somewhere else -- the controls sit in
+    the ribbon by `form=` rather than by being inside it. Nesting a form
+    inside a form is invalid and the browser drops the inner one. #}
+<form method="post" id="cms-ai-form" class="cms-hidden-form"
+      action="{{ url_for('admin.newsletter_issue_write') }}"></form>
+{% endif %}
+<form method="post" class="cms-issue-form cms-compose" id="cms-tool">
+
+  {#  ---- the ribbon ---- #}
+  <div class="cms-issue-toolbar" data-newsletter-toolbar>
+
+    {#  1. The shape. Changing it lays the blocks out afresh, which
+        replaces what is there -- so the editor asks first. #}
+    <div class="cms-toolbar-group">
+      <label class="cms-toolbar-label" for="layout-select">Template</label>
+      <select id="layout-select" name="layout" class="cms-toolbar-select"
+              title="The arrangement this newsletter starts from. Changing it lays the blocks out again, and asks first.">
+        {% for key, name, blurb in layout_choices %}
+        <option value="{{ key }}" {% if key == item.layout %}selected{% endif %}
+                title="{{ blurb }}">{{ name }}</option>
+        {% endfor %}
+      </select>
+      {#  An arrangement somebody likes is one they will want again. It
+          keeps what is ON SCREEN, not what was last saved, and asks for
+          a name -- a name they chose is one they will recognise in this
+          dropdown six weeks later.
+
+          Remove sits beside it and wakes only on a saved one: a shipped
+          layout is in the code and would be back on the next boot, so
+          offering to delete one would be a button that lies. #}
+      <button type="button" class="icon-btn" data-save-layout
+              data-save-layout-url="{{ url_for('admin.newsletter_layout_save') }}"
+              title="Save this arrangement as a template, so you can start from it again.">&#128190;</button>
+      <button type="button" class="icon-btn" data-delete-layout
+              data-delete-layout-url="{{ url_for('admin.newsletter_layout_delete') }}"
+              title="Remove the selected template. Only ones you saved yourself can be removed."
+              disabled>&#10005;</button>
+    </div>
+
+    {#  Writing the first draft from a sentence. In the tool's header,
+        beside the other things that fill a newsletter, rather than on
+        the page around it -- it fills THIS newsletter.
+
+        Offered only when there is a provider to ask: a button that
+        cannot work is worse than no button. #}
+    {% if ai_ready %}
+    {#  One button, and it asks for the brief in the shared dialog.
+
+        It was a text box sitting open in the ribbon, which cost a whole
+        row of chrome above the message for a control almost nobody uses
+        on any given visit -- measured, the bar went to six rows. The
+        same shape "save this layout" already takes. #}
+    <button type="button" class="icon-btn" data-write-with-ai
+            data-write-url="{{ url_for('admin.newsletter_issue_write') }}"
+            title="Write a first draft with AI. It asks what this one is about, replaces what is in the tool, and sends nothing.">&#10024;</button>
+    <input type="hidden" name="brief" form="cms-ai-form" data-ai-brief value="">
+    {% endif %}
+
+    {#  2. What can go in it. Every one of these is optional -- a
+        newsletter is whatever blocks it has, and a template only decides
+        which ones it STARTS with. #}
+    <div class="cms-toolbar-group">
+      <span class="cms-toolbar-label">Add</span>
+      {% for kind in block_order %}
+      <button type="button" class="cms-add-block" data-add-block="{{ kind }}"
+              data-block-name="{{ block_types[kind].name }}"
+              title="Add {{ block_types[kind].name }} below what you have selected. {{ block_types[kind].hint }}">
+        <span aria-hidden="true">{{ block_types[kind].icon }}</span>
+        {{ block_types[kind].name }}
+      </button>
+      {% endfor %}
+    </div>
+
+    {#  A deliberate break, not a wrap.
+
+        Measured rather than estimated, and the estimate was wrong in a
+        way worth recording: the bar is 852px, not the 1440 the window
+        suggests, because it sits in the admin's content column. At that
+        width all four groups wrapped one-per-row -- four rows, 157px of
+        chrome above the canvas.
+
+        This puts the two "what you are MAKING" groups together on the
+        first row, which they fit (264 + 432 = 696). The second row is
+        the writing tools and the selected block's style, and those do
+        NOT fit together (314 + 614 = 928), so the block group takes a
+        third row of its own. Three deliberate rows rather than four
+        accidental ones.
+
+        Getting to two would mean moving this block's ↑ ↓ ✕ onto the
+        selected block in the canvas -- which is arguably where they
+        belong, acting on the thing where it is -- but that is a change
+        to how the editor is used, not a layout tweak, so it is left for
+        somebody to ask for. #}
+    <span class="cms-toolbar-break" aria-hidden="true"></span>
+
+    {#  3. Writing. The shared toolbar, minus the group that acts on a
+        whole block rather than on selected words -- those are next
+        door, because "make this word red" and "make this block red" are
+        different acts and two controls that look alike but differ would
+        be worse than either. #}
+    <div class="cms-toolbar-group cms-toolbar-writing">
+      {{ wysiwyg_toolbar(include_image=false, include_icon=false, include_layout=false) }}
+    </div>
+
+    {#  4. The selected block, grouped by what each control DOES.
+
+        It was eleven controls in a line -- "PICTURE 2 | Left | The
+        site's own | A [swatch] ↺A | A [swatch] ↺A | LINKS TO [url]" --
+        with two identical pairs distinguished only by which swatch they
+        sat beside, and nothing saying which acted on what. Four jobs,
+        named: where it sits, how the words look, what is behind it, and
+        what it points at. The last two wake only for the blocks that
+        have them.
+
+        Dimmed rather than hidden while nothing is selected, so the row
+        does not change shape as it is used. #}
+    <div class="cms-toolbar-group cms-block-tools" data-block-tools>
+      <span class="cms-toolbar-label cms-selected-name" data-selected-name
+            title="Which block these controls act on. Click one in the message to choose it."
+      >No block</span>
+
+      <span class="cms-tool-set" data-set="place" title="Where this block sits in the card.">
+        <select data-block-style="align" class="cms-toolbar-select"
+                title="Which side of the card this block sits on.">
+          {% for value, label in alignments %}
+          <option value="{{ value }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+        {#  A picture's size belongs here: it is where the block sits and
+            how much room it takes, not how its words look. A share of
+            the card rather than a pixel width -- an email is read at
+            whatever width the client gives it, and 300px is most of a
+            phone. #}
+        <select data-block-style-plain="scale" class="cms-toolbar-select cms-scale-select"
+                data-block-field="scale" disabled
+                title="How wide the picture is, as a share of the letter. A size in pixels would be most of the screen on a phone.">
+          {% for value, label in image_scales %}
+          <option value="{{ value }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </span>
+
+      <span class="cms-tool-set" data-set="words" title="How the words in this block look.">
+        <span class="cms-tool-set-label">Words</span>
+        <select data-block-style="font" class="cms-toolbar-select"
+                title="The typeface for this block. Only families already installed on the reader's machine are offered — a webfont cannot travel to an inbox.">
+          {% for value, label in email_fonts %}
+          <option value="{{ value }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+        <input type="color" data-block-style="color" value="#333c47"
+               title="The colour of the words in this block.">
+        <button type="button" class="cms-color-reset" data-block-style-clear="color"
+                title="Put the words back to the site's own colour.">&#10226;</button>
+      </span>
+
+      <span class="cms-tool-set" data-set="behind" title="The colour behind this block.">
+        <span class="cms-tool-set-label">Behind</span>
+        <input type="color" data-block-style="bg" value="#f2f4f7"
+               title="The colour behind this block. It is painted on the whole box, not just the words.">
+        <button type="button" class="cms-color-reset" data-block-style-clear="bg"
+                title="Remove the colour behind this block.">&#10226;</button>
+      </span>
+
+      {#  Where a button or a picture points. A property of the selected
+          block like the rest, so it stands with them -- dimmed rather
+          than hidden, because the row must not change shape as it is
+          used. #}
+      <span class="cms-tool-set cms-toolbar-link cms-tools-idle" data-block-aside hidden>
+        <span class="cms-tool-set-label" data-aside-label>Link</span>
+        <input type="url" id="block-url" class="cms-toolbar-input" data-block-field="url"
+               placeholder="https://" disabled
+               title="The web address this opens. Leave it blank and the block is left out of the send.">
+      </span>
+
+      {#  Which blog, and which post. One block is one post. #}
+      <span class="cms-tool-set cms-toolbar-posts cms-tools-idle" data-posts-controls hidden>
+        <span class="cms-tool-set-label">Post</span>
+        <select id="block-blog" class="cms-toolbar-select" data-block-field="blog_id" disabled
+                title="Which blog the post comes from.">
+          <option value="">&mdash; blog &mdash;</option>
+          {% for b in blogs_for_blocks %}
+          <option value="{{ b.id }}">{{ b.name }}</option>
+          {% endfor %}
+        </select>
+        <select id="block-post" class="cms-toolbar-select" data-block-field="post_id" disabled
+                title="Which post to include. One block is one post — add another Blog post block for a second.">
+          <option value="">&mdash; choose &mdash;</option>
+        </select>
+      </span>
+
+      {#  Move and remove are not here. They live ON the selected block
+          (see cms-block-handle), because a bare "×" at the end of a
+          group that is dimmed until you select something is a control
+          nobody finds -- it was reported as "I can add items but not
+          remove them", and it was there and working the whole time. #}
+    </div>
+
+  </div>
+
+  {#  ---- the header: who it is for, and what it says on the tin ---- #}
+  <div class="cms-compose-header">
+    <div class="cms-compose-row">
+      <label for="audience" title="Who this goes to. Only people who have confirmed their address are ever written to.">To</label>
+      <select id="audience" name="audience"
+              title="Everyone who has confirmed their address, or only the people who have bought something.">
+        {% for key, label in audiences %}
+        <option value="{{ key }}" {% if last and last.audience == key %}selected{% endif %}>
+          {{ label }} ({{ audience_counts[key] }})</option>
+        {% endfor %}
+      </select>
+      <span class="cms-compose-note">Only confirmed addresses are ever written to.</span>
+    </div>
+
+    <div class="cms-compose-row">
+      {#  One field, not a title and a subject that can disagree. It is
+          what people see in their inbox AND what this newsletter is
+          called in the list below -- the list already showed it as the
+          name, which was the tell. #}
+      <label for="subject" title="What this newsletter is called, and what people see in their inbox before they open it">Name</label>
+      <input type="text" id="subject" name="subject" maxlength="200" value="{{ item.subject }}"
+             placeholder="What this one is about"
+             title="What this newsletter is called, and the subject line people see. Say the thing, don't tease it.">
+      <span class="cms-compose-note">Also the subject line.</span>
+    </div>
+  </div>
+
+  {#  ---- anything standing between this and a send ---- #}
+  {% if not email_ready %}
+  <p class="flash flash-warning">Email isn&rsquo;t set up, so nothing can be sent yet.
+    <a href="{{ url_for('admin.settings_email') }}">Set it up &rarr;</a></p>
+  {% endif %}
+  {% if not has_address %}
+  <p class="flash flash-warning">A newsletter has to carry your postal address by law, and there isn&rsquo;t one yet.
+    <a href="{{ url_for('admin.legal_pages') }}">Add it &rarr;</a></p>
+  {% endif %}
+  {% if missing %}
+  <p class="flash flash-warning">Still needed before this can go: {{ missing | join(', ') }}.</p>
+  {% endif %}
+
+  {#  The styles the SENT email writes onto each kind of block, handed to
+      the editor so a heading made here arrives looking like the heading
+      that will be sent. One dictionary, read by both sides -- see
+      email_layouts.block_styles. #}
+  <script type="application/json" id="cms-email-block-styles">{{ block_styles | tojson }}</script>
+  {#  Each schedule's next dates, so choosing one can fill the date list
+      without a round trip. Times are UTC; the browser draws them in the
+      reader's own clock, which is the clock the owner typed them in. #}
+  <script type="application/json" id="cms-schedule-dates">{{ schedule_choices | tojson }}</script>
+  {#  What each template would lay out. Read when the Template dropdown
+      changes, so the canvas can be replaced without a round trip to ask
+      what that template is made of. #}
+  <script type="application/json" id="cms-layout-starts">{{ layout_starts | tojson }}</script>
+  {#  Each blog's published posts, so choosing a blog fills the post list
+      without a round trip. Published only: a draft has no address, and a
+      "Read it" link into an inbox pointing at a 404 cannot be corrected
+      once the email has gone. #}
+  <script type="application/json" id="cms-blog-posts">{{ blog_posts | tojson }}</script>
+
+  {#  The ground behind the card is the site's own, the way it will be in
+      the inbox -- so the thing being written into looks like the thing
+      that arrives, down to the colour behind it. #}
+  <div class="cms-issue-canvas-ground" style="background: {{ look.ground }};">
+    <div class="cms-issue-canvas" style="font-family: {{ look.body_font }};">
+      {{ canvas | safe }}
+      <div class="cms-issue-canvas-foot">
+        <hr>
+        <p>{{ sender_line }}<br>You are getting this because you asked us to. <u>Unsubscribe</u>.</p>
+        <p class="cms-issue-canvas-note">This part is added for you and cannot be edited &mdash; a
+          newsletter has to carry both by law.</p>
+      </div>
+    </div>
+  </div>
+
+  {#  ---- what the buttons do ----
+      Send and Schedule carry their own `formaction`, so all three read
+      the one "who gets it" control below. Preview opens in its own tab
+      and POSTs what is ON SCREEN, so it previews the draft in front of
+      you rather than the last thing saved. #}
+  <div class="cms-compose-actions">
+    <button type="submit" class="btn btn-primary" data-send
+            formaction="{{ url_for('admin.newsletter_issue_send', newsletter_id=item.id) }}"
+            title="Send this now, to the people chosen below. It cannot be unsent.">Send</button>
+
+    <span class="cms-compose-schedule">
+      <button type="submit" class="btn" data-schedule
+              formaction="{{ url_for('admin.newsletter_issue_schedule', newsletter_id=item.id) }}"
+              title="Send it automatically at the time beside this. You do not have to be here.">Schedule</button>
+      {#  The schedules you have defined, not a date to retype. That is
+          what naming them was for: "Monthly newsletter" is a thing you
+          recognise, and the next time it comes round is worked out
+          rather than typed. "A time I choose" is still there for the
+          one-off, and reveals the date box. #}
+      <select name="schedule_name" data-schedule-pick
+              title="Which of your schedules to send it on. You then choose which of its dates.">
+        {% for s in schedule_choices %}
+        <option value="{{ s.name }}" title="{{ s.says }}">{{ s.name }}</option>
+        {% endfor %}
+        <option value="">A time I choose</option>
+      </select>
+      {#  The dates that schedule produces, to choose from. Booking its
+          next occurrence silently was the app choosing the date -- "the
+          first Monday" might be tomorrow, and this issue might not be
+          ready by tomorrow.
+
+          A list rather than a free calendar, because only certain dates
+          are valid: a date picker cannot express "the first Monday of
+          the month", so it would either allow dates the schedule does
+          not produce or quietly move the one that was picked.
+
+          It sends ONCE, at the date chosen. #}
+      <select name="schedule_date" data-schedule-date
+              title="Which of that schedule's dates to send on. It goes once, at that time."></select>
+      <input type="datetime-local" name="send_at" data-send-at
+             data-scheduled-utc="{{ scheduled.send_at if scheduled else '' }}"
+             {% if schedule_choices %}hidden{% endif %}
+             title="When to send it. This is your own clock — the time you see here is the time it goes.">
+      {#  The browser's own offset, so what the owner typed is read in the
+          clock they typed it on. Filled by newsletter-editor.js. #}
+      <input type="hidden" name="tz_offset" data-tz-offset value="0">
+    </span>
+
+    <span class="cms-compose-spacer"></span>
+
+    <button type="submit" class="btn" title="Keep this. Nothing is sent.">Save</button>
+    <button type="submit" class="btn" formtarget="_blank"
+            formaction="{{ url_for('admin.newsletter_issue_preview', newsletter_id=item.id) }}"
+            title="Open it in its own tab, exactly as it will arrive &mdash; including what you have just changed.">Preview</button>
+
+    {#  With the other things you can do to this newsletter, rather than
+        alone in a card under everything. Held apart from them because it
+        is the one that cannot be undone. #}
+    <span class="cms-compose-danger">
+      <button type="submit" class="btn" data-delete-issue
+              formaction="{{ url_for('admin.newsletter_issue_delete', newsletter_id=item.id) }}"
+              title="Delete this newsletter. What was already sent stays on the record.">Delete</button>
+    </span>
+  </div>
+
+  {#  ONE field, because the canvas IS the form: the editor reads the
+      whole arrangement out of the page and writes it here as JSON. A
+      named input per slot is what the fixed-slot model did, and it is
+      exactly what stopped a newsletter having two pictures.
+
+      `forceescape`, not bare `tojson`: tojson escapes for a SCRIPT block,
+      leaving the double quotes JSON is made of intact -- so in an
+      attribute the browser ends the value at the first one and the field
+      arrives as the two characters `[{`. Everything downstream then
+      quietly behaves as though the newsletter had no blocks in it. #}
+  <input type="hidden" name="blocks_json" data-blocks-store
+         value="{{ blocks | tojson | forceescape }}">
+</form>
+
+{#  ---- what has happened to it, and what is about to ---- #}
+{% if scheduled or last %}
+<div class="card cms-compose-status">
+  {% if scheduled %}
+  <p><strong>Scheduled.</strong> This goes out on its own at
+    <time datetime="{{ scheduled.send_at }}Z" data-local-time="{{ scheduled.send_at }}Z">{{ scheduled.send_at }} UTC</time>
+    &mdash; you do not have to be here.</p>
+  <form method="post" action="{{ url_for('admin.newsletter_issue_schedule', newsletter_id=item.id) }}">
+    <input type="hidden" name="cancel" value="1">
+    <button type="submit" class="btn btn-small"
+            title="Take this off the clock. Nothing is sent and nothing is lost.">Cancel this schedule</button>
+  </form>
+  {% endif %}
+  {% if last %}
+  <p class="hint">Last sent {{ last.sent_at[:16] }} to {{ last.recipients }}
+    {{ 'person' if last.recipients == 1 else 'people' }}.</p>
+  {% endif %}
+</div>
+{% endif %}

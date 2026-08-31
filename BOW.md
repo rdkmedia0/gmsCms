@@ -7386,3 +7386,81 @@ raises `TypeError` on the first comparison. Everything crossing the
 boundary is aware UTC now; the wall-clock arithmetic in the middle is
 naive on purpose, because attaching a zone before the DAY is known is
 exactly what makes a clock change come out an hour wrong.
+
+## Eight more, and one of them is the screen (2026-08-28)
+
+**1. The selected-block row does not read as anything.** It is
+"PICTURE 2 | Left | The site's own | A [swatch] ↺A | A [swatch] ↺A |
+LINKS TO [url]" -- eleven controls in a line, two of them identical
+pairs distinguished only by which swatch they sit next to. Nothing in it
+says which control does what to what. It wants grouping by job: where
+the block sits, how its words look, what is behind it, where it points.
+
+**2. A picture needs a size.** It arrives full width and stays there.
+Every other thing in the editor can be adjusted and this cannot, which
+makes a picture the one block an owner has to work around rather than
+with.
+
+**3. "Every month" is first, last, or a day you choose.** It caps at 28
+today, which is an assumption standing in for a decision -- February is
+why, and "the last day" is the thing people actually mean when they say
+the end of the month. First and last are exact in every month; a chosen
+day needs to say what it does in a month that does not have it.
+
+**4. A schedule shows the fields its choice needs.** Partly true already
+-- the weekday and the monthday swap -- and it has to keep being true as
+the monthly options grow.
+
+**5. The Newsletters page is three tools, in order.** The creation tool,
+then the saved newsletters, then the schedules. Edit or copy loads that
+newsletter straight into the tool above rather than opening another
+screen. This is the biggest of the eight: the editor stops being a
+separate page.
+
+**6. Write with AI belongs in the creation tool's header**, beside the
+other things that fill a newsletter, not on the page around it.
+
+**7. The Subject IS the newsletter's name.** One field, not a title and
+a subject that can disagree -- and the table already lists it as the
+name, which is the tell.
+
+**8. The send bar, and the page.** Send / Schedule / Save / Preview /
+Delete do not read as a row of related actions, and the page as a whole
+wants ordinary formatting rather than what it has grown into.
+
+### What building those eight turned up (2026-08-28)
+
+**A script in the middle of a page runs before the rest of it exists.**
+The editor's scripts moved into the partial with the editor -- which
+placed them halfway down the Newsletters page, above the list and the
+schedules. `local-time.js` then found no schedule form and its
+show-only-relevant-fields never ran: every field visible on every
+choice, silently. They live at the END of each page now.
+
+**And a `<script>` inside `{% block title %}` never runs at all.** Put
+there by replacing the FIRST `{% endblock %}` instead of the last. The
+page loads, every control is present, and none of them do anything --
+which is indistinguishable from a feature nobody wired up, and took
+three rounds of measuring to find because there is no error anywhere.
+
+**Filtering lines by substring deleted a comment.** Removing the old
+`<script src=".../local-time.js">` tags by dropping every line
+containing `local-time.js` also dropped a Jinja comment that mentioned
+the file by name -- so the comment lost its opener and the rest of it
+rendered as page text: *"Without it 9am is 9am UTC..."* on screen, under
+Your schedules. Match the thing, not a word inside it.
+
+**Dimming stopped scaling.** Five sets of block controls wrapped
+permanently and the ribbon stood at six rows. Dim-don't-hide was right
+at three sets and wrong at five: what does not apply is hidden now, and
+the group's height is pinned so the bar still cannot change shape as it
+is used. Both properties, rather than choosing between them.
+
+**A text box open in a toolbar costs a row of chrome forever** for a
+control most visits never touch. "Write with AI" is one button that asks
+in the shared dialog, the same shape "save this layout" already takes.
+
+**A base `.btn` margin-top made a row of buttons three heights.** 14px
+of nothing above each button, right after a form field and wrong in a
+row of actions -- which is most of what made the send bar read as a pile
+rather than a row. One height, measured: 36px, and the bar 56px.

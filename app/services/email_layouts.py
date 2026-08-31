@@ -118,6 +118,12 @@ ALIGNMENTS = (("left", "Left"), ("center", "Centred"), ("right", "Right"))
 #  What a block is FOR. Only the two that a send has to know about: a
 #  newsletter carrying its own opening must not also be given the
 #  site-wide one.
+#  What a picture can be scaled to, as a share of the card's width.
+#  Named rather than a free number: "half" is a decision somebody can
+#  make in a dropdown, and 63% is a number nobody meant.
+IMAGE_SCALES = ((100, "Full width"), (75, "Three quarters"),
+                (50, "Half"), (33, "A third"), (25, "A quarter"))
+
 ROLES = ("intro", "exit")
 ROLE_NAMES = {"intro": "Opening", "exit": "Sign-off"}
 
@@ -161,7 +167,12 @@ def blank(kind):
     elif kind == "text":
         made["text"] = ""
     elif kind == "image":
-        made.update({"src": "", "alt": "", "url": ""})
+        #  `scale` is a PERCENTAGE of the card's width, not a pixel size.
+        #  An email is read at whatever width the client gives it, and a
+        #  picture told to be 300px is 300px on a phone too -- which is
+        #  most of the screen. A percentage says what the owner means:
+        #  "half as wide as the letter".
+        made.update({"src": "", "alt": "", "url": "", "scale": 100})
     elif kind == "button":
         made.update({"label": "", "url": ""})
     elif kind == "posts":
@@ -219,6 +230,15 @@ def normalise(blocks):
                 continue
             if raw.get(key) is not None:
                 made[key] = raw[key]
+        if kind == "image":
+            try:
+                made["scale"] = int(made.get("scale") or 100)
+            except (TypeError, ValueError):
+                made["scale"] = 100
+            #  25 is small enough to be a thumbnail beside text and 100
+            #  is the width of the card. Below a quarter a picture in an
+            #  email is decoration nobody can make out.
+            made["scale"] = max(25, min(100, made["scale"]))
         if kind == "posts":
             made["blog_id"] = str(made.get("blog_id") or "")
             made["post_id"] = str(made.get("post_id") or "")

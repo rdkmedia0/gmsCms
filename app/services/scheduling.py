@@ -200,6 +200,15 @@ REPEATS = (("daily", "Every day"),
            ("monthly", "Every month"),
            ("once", "Once, at a set time"))
 
+#  Which day of the month "every month" means. It used to be a number
+#  capped at 28, which is an assumption standing in for a decision:
+#  February is why the cap existed, and "the last day" is what people
+#  actually mean by the end of the month -- a thing no fixed number can
+#  say, because it is 28, 29, 30 or 31 depending on the month.
+MONTH_DAYS = (("first", "the 1st"),
+              ("last", "the last day"),
+              ("day", "a day I choose"))
+
 WEEKDAYS = (("0", "Monday"), ("1", "Tuesday"), ("2", "Wednesday"),
             ("3", "Thursday"), ("4", "Friday"), ("5", "Saturday"),
             ("6", "Sunday"))
@@ -223,7 +232,8 @@ def template(db, name):
 
 
 def save_template(db, name, repeat_kind, hour, minute, weekday=None,
-                  monthday=None, when=None, tz_offset=0, tz_name=None):
+                  monthday=None, when=None, tz_offset=0, tz_name=None,
+                  month_day="first"):
     """(saved, error). Saving the same name again replaces it."""
     name = (name or "").strip()
     if not name:
@@ -251,9 +261,19 @@ def save_template(db, name, repeat_kind, hour, minute, weekday=None,
         hour = _int(hour, 0, 23, 9)
         minute = _int(minute, 0, 59, 0)
         weekday = _int(weekday, 0, 6, 0) if repeat_kind == "weekly" else None
-        #  28, not 31: a schedule set to the 30th silently never happens
-        #  in February, which is a gap nobody notices for a year.
-        monthday = _int(monthday, 1, 28, 1) if repeat_kind == "monthly" else None
+        #  1 means the first, 0 means the LAST day of whatever month it
+        #  lands in, and anything else is the day somebody chose. A
+        #  chosen day a month does not have falls back to that month's
+        #  last day rather than being skipped -- see _month_day(). The
+        #  old cap of 28 was February wearing a number.
+        if repeat_kind != "monthly":
+            monthday = None
+        elif month_day == "last":
+            monthday = 0
+        elif month_day == "first":
+            monthday = 1
+        else:
+            monthday = _int(monthday, 1, 31, 1)
 
     try:
         offset = int(tz_offset)
@@ -293,11 +313,33 @@ def describe_template(row):
     if kind == "daily":
         return "Every day at %s" % at
     if kind == "monthly":
-        return "Day %d of every month at %s" % (row["monthday"] or 1, at)
+        day = row["monthday"]
+        if not day:
+            return "The last day of every month at %s" % at
+        if day == 1:
+            return "The 1st of every month at %s" % at
+        return "Day %d of every month at %s" % (day, at)
     if kind == "once":
         return "Once, at %s" % ((row["once_at"] or "")[:16] or at)
     day = dict(WEEKDAYS).get(str(row["weekday"] if row["weekday"] is not None else 0), "")
     return "Every %s at %s" % (day, at)
+
+
+def _month_day(year, month, wanted):
+    """The day this schedule means, in THIS month.
+
+    0 means the last day, which is the only way to say "the end of the
+    month" -- it is 28, 29, 30 or 31 depending on where you are, and no
+    fixed number says it. A chosen day the month does not have lands on
+    that month's last day rather than being skipped: an owner who picked
+    the 31st means "the end", and skipping February and April entirely is
+    not what they asked for.
+    """
+    import calendar
+    last = calendar.monthrange(year, month)[1]
+    if not wanted:
+        return last
+    return min(int(wanted), last)
 
 
 def _zone_of(row):
@@ -394,10 +436,11 @@ def upcoming(row, now, count=8):
             month = wall.month + 1
             year = wall.year + (1 if month > 12 else 0)
             month = 1 if month > 12 else month
-            try:
-                wall = wall.replace(year=year, month=month)
-            except ValueError:      # a day this month does not have
-                break
+            #  Recomputed per month rather than carried: the last day of
+            #  January is not the last day of February, and a schedule
+            #  that carried 31 forward would skip half the year.
+            wall = wall.replace(year=year, month=month,
+                                day=_month_day(year, month, row["monthday"]))
     return out
 
 
@@ -427,11 +470,14 @@ def next_occurrence(row, now):
         return _to_utc_wall(row, when if when > now
                             else when + datetime.timedelta(days=1))
     if kind == "monthly":
-        day = row["monthday"] or 1
+        day = _month_day(when.year, when.month, row["monthday"])
         if when.day > day or (when.day == day and when <= now):
             month = when.month + 1
             year = when.year + (1 if month > 12 else 0)
             month = 1 if month > 12 else month
+            #  Worked out again for the NEXT month, because "the last
+            #  day" is a different number there and so is a chosen 31st.
+            day = _month_day(year, month, row["monthday"])
             return _to_utc_wall(row, when.replace(year=year, month=month, day=day))
         return _to_utc_wall(row, when.replace(day=day))
     weekday = row["weekday"] if row["weekday"] is not None else 0

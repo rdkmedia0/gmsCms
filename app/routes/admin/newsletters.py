@@ -90,8 +90,13 @@ def newsletters():
     email_settings = get_email_settings(db)
     line, has_address = newsletter.sender_line(legal.settings_for(db),
                                                (get_site_settings(db) or {}).get("site_title"))
+    #  The creation tool is the top of this page now, so the page always
+    #  has a newsletter in it: the one asked for, the newest draft, or a
+    #  fresh one.
+    current = _tool_newsletter(db, request.args.get("issue", type=int))
     return render_template(
         "admin/newsletters.html",
+        **_editor_context(db, current),
         pages=pages,
         #  One row per newsletter, whatever point of its life it is at.
         #  Yours / Going out on its own / What has gone out were three
@@ -104,7 +109,7 @@ def newsletters():
             for t in scheduling.templates(db)],
         weekdays=scheduling.WEEKDAYS,
         repeats=scheduling.REPEATS,
-        ai_ready=assistant.is_configured(db),
+        month_days=scheduling.MONTH_DAYS,
         #  The newsletters built for the job, newest first, and the
         #  layouts one can be started from.
         #  Everything on the clock, in one place: a schedule was only
@@ -128,7 +133,6 @@ def newsletters():
         post_sends={post["id"]: newsletter.last_send(db, "post", post["id"])
                     for b in blog_service.list_blogs(db)
                     for post in blog_service.posts_for(db, b["id"], published_only=False, limit=10)},
-        audiences=subscribers.AUDIENCES,
         wrapper=dict(zip(WRAPPER_KEYS, _wrapper(db))),
         wrapper_sender_line=newsletter.sender_line(
             legal.settings_for(db), (get_site_settings(db) or {}).get("site_title"))[0],
@@ -141,13 +145,8 @@ def newsletters():
         #  is the card that stated the same two numbers as a heading --
         #  the Email list screen's subject, repeated here, which is how
         #  two places come to disagree.
-        audience_counts={key: subscribers.audience_count(db, key)
-                         for key, _label in subscribers.AUDIENCES},
         history=newsletter.history(db),
         counts=subscribers.counts(db),
-        email_ready=mailer.is_configured(email_settings),
-        sender_line=line,
-        has_address=has_address,
     )
 
 
@@ -359,6 +358,92 @@ def newsletter_issue_new():
     return redirect(url_for("admin.newsletter_issue_edit", newsletter_id=new_id))
 
 
+def _editor_context(db, row):
+    """Everything the creation tool needs to draw one newsletter.
+
+    One function because there are two ways in: the Newsletters page
+    carries the tool at its top, and a link straight to an issue still
+    opens it. Two copies of this list is how the two come to differ in
+    which controls they offer.
+    """
+    line, has_address = newsletter.sender_line(
+        legal.settings_for(db), (get_site_settings(db) or {}).get("site_title"))
+    look = _look(db)
+    blocks = newsletter.composed_blocks(row)
+    return dict(
+        item=row,
+        #  Each schedule, what it means in words, and the next few dates
+        #  it produces -- offered rather than decided. Booking its next
+        #  occurrence silently was the app choosing the date, and the
+        #  date is the owner's: "the first Monday" might be tomorrow, and
+        #  this issue might not be ready by tomorrow.
+        schedule_choices=[
+            {"name": t["name"], "says": scheduling.describe_template(t),
+             "dates": [{"utc": d.strftime("%Y-%m-%d %H:%M:%S")}
+                       for d in scheduling.upcoming(t, scheduling.utcnow(), 8)]}
+            for t in scheduling.templates(db)],
+        #  The email itself, with its slots opened up. This IS the
+        #  editor: what is written into is what is sent.
+        canvas=email_layouts.render(blocks, look, edit=True,
+                                    posts_for=_post_resolver(db)),
+        blogs_for_blocks=[{"id": b["id"], "name": b["name"]}
+                          for b in blog_service.list_blogs(db)],
+        #  Published only, and titles only: the editor needs enough to
+        #  choose with, and the words are resolved at send time so a post
+        #  edited afterwards goes out as it now reads.
+        blog_posts={str(b["id"]): [{"id": p["id"], "title": p["title"] or "Untitled"}
+                                   for p in blog_service.posts_for(
+                                       db, b["id"], published_only=True, limit=50)]
+                    for b in blog_service.list_blogs(db)},
+        block_styles=email_layouts.block_styles(look),
+        look=look,
+        layout=email_layouts.LAYOUTS.get(row["layout"]) or email_layouts.LAYOUTS["letter"],
+        layout_choices=email_layouts.choices(db, newsletter.sent_composed),
+        layout_starts={key: email_layouts.starting_blocks(
+                           key, db, newsletter.blocks_of)
+                       for key, _n, _b in email_layouts.choices(
+                           db, newsletter.sent_composed)},
+        blocks=blocks,
+        block_types=email_layouts.BLOCK_TYPES,
+        block_order=email_layouts.BLOCK_ORDER,
+        image_scales=email_layouts.IMAGE_SCALES,
+        email_fonts=email_layouts.EMAIL_FONTS,
+        alignments=email_layouts.ALIGNMENTS,
+        missing=email_layouts.missing(blocks),
+        audiences=subscribers.AUDIENCES,
+        audience_counts={key: subscribers.audience_count(db, key)
+                         for key, _label in subscribers.AUDIENCES},
+        last=newsletter.last_send(db, "newsletter", row["id"]),
+        scheduled=scheduling.pending_for(db, "newsletter", row["id"]),
+        email_ready=mailer.is_configured(get_email_settings(db)),
+        ai_ready=assistant.is_configured(db),
+        sender_line=line,
+        has_address=has_address,
+    )
+
+
+def _tool_newsletter(db, wanted=None):
+    """Which newsletter the creation tool is holding.
+
+    The one asked for, or the newest draft, or a fresh one. The page IS
+    the tool now, so it always has something in it -- and a site with no
+    drafts gets exactly one blank, which is the tool being ready rather
+    than litter.
+    """
+    if wanted:
+        row = newsletter.get_composed(db, wanted)
+        if row:
+            return row
+    for row in newsletter.list_composed(db):
+        if not newsletter.last_send(db, "newsletter", row["id"]):
+            return row
+    made = newsletter.create_composed(db, "letter", "")
+    newsletter.save_blocks(db, made, "", email_layouts.starting_blocks("letter", db),
+                           layout="letter")
+    db.commit()
+    return newsletter.get_composed(db, made)
+
+
 @bp.route("/newsletters/issue/<int:newsletter_id>", methods=["GET", "POST"])
 @login_required
 def newsletter_issue_edit(newsletter_id):
@@ -376,69 +461,8 @@ def newsletter_issue_edit(newsletter_id):
         flash("Saved.", "success")
         return redirect(url_for("admin.newsletter_issue_edit", newsletter_id=newsletter_id))
 
-    line, has_address = newsletter.sender_line(
-        legal.settings_for(db), (get_site_settings(db) or {}).get("site_title"))
-    look = _look(db)
-    return render_template(
-        "admin/newsletter_issue_edit.html",
-        item=row,
-        #  The email itself, with its slots opened up. This IS the editor:
-        #  what is written into is what is sent.
-        #  The schedules to choose from, and what each means in words.
-        #  Asking for a raw date and time again is the thing named
-        #  schedules were built to stop.
-        #  Each schedule, what it means in words, and the next few dates
-        #  it produces -- offered rather than decided. Booking its next
-        #  occurrence silently was the app choosing the date, and the
-        #  date is the owner's choice: "the first Monday" might be
-        #  tomorrow, and this issue might not be ready by tomorrow.
-        schedule_choices=[
-            {"name": t["name"], "says": scheduling.describe_template(t),
-             "dates": [{"utc": d.strftime("%Y-%m-%d %H:%M:%S")}
-                       for d in scheduling.upcoming(t, scheduling.utcnow(), 8)]}
-            for t in scheduling.templates(db)],
-        canvas=email_layouts.render(newsletter.composed_blocks(row), look, edit=True,
-                                    posts_for=_post_resolver(db)),
-        blogs_for_blocks=[{"id": b["id"], "name": b["name"]}
-                          for b in blog_service.list_blogs(db)],
-        #  Published only, and titles only: the editor needs enough to
-        #  choose with, and the words themselves are resolved at send
-        #  time so a post edited afterwards goes out as it now reads.
-        blog_posts={str(b["id"]): [{"id": p["id"], "title": p["title"] or "Untitled"}
-                                   for p in blog_service.posts_for(
-                                       db, b["id"], published_only=True, limit=50)]
-                    for b in blog_service.list_blogs(db)},
-        #  What the sent email writes onto each block, so the editor can
-        #  write the same thing onto a block the toolbar has just made.
-        block_styles=email_layouts.block_styles(look),
-        look=look,
-        layout=email_layouts.LAYOUTS[row["layout"]],
-        layout_choices=email_layouts.choices(db, newsletter.sent_composed),
-        #  What each template would lay out, so changing the dropdown can
-        #  show the new arrangement without a round trip to ask what it
-        #  is. Data, not logic: the arrangements are still decided in one
-        #  place, here.
-        layout_starts={key: email_layouts.starting_blocks(
-                           key, db, newsletter.blocks_of)
-                       for key, _n, _b in email_layouts.choices(
-                           db, newsletter.sent_composed)},
-        blocks=newsletter.composed_blocks(row),
-        block_types=email_layouts.BLOCK_TYPES,
-        block_order=email_layouts.BLOCK_ORDER,
-        email_fonts=email_layouts.EMAIL_FONTS,
-        alignments=email_layouts.ALIGNMENTS,
-        missing=email_layouts.missing(newsletter.composed_blocks(row)),
-        audiences=subscribers.AUDIENCES,
-        audience_counts={key: subscribers.audience_count(db, key)
-                         for key, _label in subscribers.AUDIENCES},
-        last=newsletter.last_send(db, "newsletter", newsletter_id),
-        #  What is on the clock for this one, so the screen can show it
-        #  rather than the owner having to remember.
-        scheduled=scheduling.pending_for(db, "newsletter", newsletter_id),
-        email_ready=mailer.is_configured(get_email_settings(db)),
-        sender_line=line,
-        has_address=has_address,
-    )
+    return render_template("admin/newsletter_issue_edit.html",
+                           **_editor_context(db, row))
 
 
 @bp.route("/newsletters/issue/<int:newsletter_id>/preview", methods=["GET", "POST"])
@@ -816,7 +840,8 @@ def newsletter_schedule_template_save():
         #  The zone, not just the offset: only a zone knows when the
         #  clocks change, and an offset captured in summer is wrong all
         #  winter.
-        tz_name=request.form.get("tz_name"))
+        tz_name=request.form.get("tz_name"),
+        month_day=request.form.get("month_day") or "first")
     if error:
         flash(error, "error")
     else:

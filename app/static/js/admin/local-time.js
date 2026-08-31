@@ -109,6 +109,19 @@
       });
     });
   }
-  repeat.addEventListener("change", show);
+  //  ...and the day-number box only when "a day I choose" is chosen.
+  //  Three questions where the answer to the second decides whether the
+  //  third exists at all.
+  var dayKind = form.querySelector("[data-monthday-kind]");
+  var dayNumber = form.querySelector("[data-monthday-number]");
+  function showDay() {
+    if (!dayKind || !dayNumber) return;
+    var wants = repeat.value === "monthly" && dayKind.value === "day";
+    dayNumber.hidden = !wants;
+    dayNumber.querySelectorAll("input").forEach(function (f) { f.disabled = !wants; });
+  }
+  if (dayKind) dayKind.addEventListener("change", showDay);
+  repeat.addEventListener("change", function () { show(); showDay(); });
   show();
+  showDay();
 })();

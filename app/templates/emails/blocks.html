@@ -51,9 +51,14 @@
             is sent unless there is a picture. #}
         {%- if b.src %}
           {%- if b.url %}<a href="{{ b.url }}">{% endif %}
-          <img src="{{ b.src }}" width="536" alt="{{ b.alt }}"
-               style="display:block;width:100%;max-width:536px;height:auto;border:0;
-                      border-radius:6px;margin:0 auto;">
+          {#  Scaled as a share of the card, and centred at any size.
+              A `width` attribute as well as the CSS, because Outlook
+              sizes from the attribute and ignores the rest. #}
+          <img src="{{ b.src }}" width="{{ (536 * (b.scale or 100) / 100) | round | int }}"
+               alt="{{ b.alt }}"
+               style="display:block;width:{{ b.scale or 100 }}%;
+                      max-width:{{ (536 * (b.scale or 100) / 100) | round | int }}px;
+                      height:auto;border:0;border-radius:6px;margin:0 auto;">
           {%- if b.url %}</a>{% endif %}
         {%- elif edit %}
         <div class="cms-block-empty" data-pick-image

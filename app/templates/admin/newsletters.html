@@ -1,5 +1,6 @@
 {% extends "admin/base.html" %}
-{% block title %}Newsletters — My Site Admin{% endblock %}
+{% block title %}Newsletters — My Site Admin
+{% endblock %}
 {% block content %}
 <h1>Email</h1>
 {#  One section, three screens: writing, who it goes to, and how it
@@ -10,46 +11,20 @@
 {#  A newsletter of its own comes first, because it is the one built for
     the job. Sending a page or a post still works and is below. #}
 <h1>Newsletters</h1>
-{#  Writing one is the first thing on the screen, not a card to read
-    first. There is no shape picker: the editor's own Template dropdown
-    makes that choice better, at full size, with the blocks in front of
-    you -- a choice offered twice is one somebody makes twice, and the
-    earlier time is made with less information. #}
-<div class="cms-newsletter-actions">
-  <form method="post" action="{{ url_for('admin.newsletter_issue_new') }}">
-    <button type="submit" class="btn btn-primary"
-            title="Start a new newsletter and open it. You choose its shape from the Template dropdown inside, and it lays out as you choose.">Write a newsletter</button>
-  </form>
-  {#  The same act with a different starting point, so it stands beside
-      writing one by hand rather than in a section of its own.
+{#  Three tools, in the order they are used: write one, look at what
+    you have, decide when they go.
 
-      Offered only when there is a provider to ask. A button that cannot
-      work is worse than no button -- and "not set up" is a different
-      thing from "cannot", which is why the hint says which. #}
-  {% if ai_ready %}
-  <form method="post" action="{{ url_for('admin.newsletter_issue_write') }}"
-        class="cms-write-with-ai">
-    <input type="text" name="brief" maxlength="400" required
-           placeholder="What is this one about?"
-           title="A sentence or two about what this issue should say. It writes a draft you can edit — nothing is sent.">
-    <button type="submit" class="btn"
-            title="Write a first draft from that. It opens in the editor for you to read and change; nothing is sent.">Write with AI</button>
-  </form>
-  {% endif %}
-  <span class="hint">Built for email &mdash; tables and inline styling, which is what an
-    inbox can actually draw, in your site&rsquo;s own colours and fonts as closely as
-    email allows.{% if ai_ready %} A draft written for you still has to be read and
-    sent by you.{% endif %}</span>
+    The creation tool was a screen of its own and is the top of this page
+    now. Edit or copy in the list below loads that newsletter straight
+    into it, so moving between "which one" and "writing it" is not
+    moving between screens. #}
+<div class="card cms-tool-card">
+  <div class="integration-head">
+    <h2>{% if item.subject %}{{ item.subject }}{% else %}New newsletter{% endif %}</h2>
+    <span class="hint">The name you give it below is the subject line people see.</span>
+  </div>
+  {% include "partials/newsletter_editor.html" %}
 </div>
-
-{% if not email_ready %}
-<p class="flash flash-warning">Email isn&rsquo;t set up, so nothing can be sent yet.
-  <a href="{{ url_for('admin.settings_email') }}">Set it up &rarr;</a></p>
-{% endif %}
-{% if not has_address %}
-<p class="flash flash-warning">A newsletter has to carry your postal address by law, and
-  there isn&rsquo;t one yet. <a href="{{ url_for('admin.legal_pages') }}">Add it &rarr;</a></p>
-{% endif %}
 
 {#  ONE table.
 
@@ -75,8 +50,8 @@
         <tr {% if r.waiting %}class="is-waiting"{% endif %}>
           <td>
             {% if r.editable %}
-            <a href="{{ url_for('admin.newsletter_issue_edit', newsletter_id=r.id) }}"
-               title="Open this newsletter.">{{ r.subject }}</a>
+            <a href="{{ url_for('admin.newsletters', issue=r.id) }}#cms-tool"
+               title="Load this newsletter into the tool at the top of this page.">{{ r.subject }}</a>
             {% else %}
             {{ r.subject }} <span class="hint">({{ r.kind }})</span>
             {% endif %}
@@ -88,8 +63,8 @@
           <td>{{ r.audience }}</td>
           <td class="cms-col-actions">
             {% if r.editable %}
-            <a class="icon-btn" href="{{ url_for('admin.newsletter_issue_edit', newsletter_id=r.id) }}"
-               title="Open this newsletter to write or send it.">&#9998;</a>
+            <a class="icon-btn" href="{{ url_for('admin.newsletters', issue=r.id) }}#cms-tool"
+               title="Load this newsletter into the tool at the top of this page.">&#9998;</a>
             <form method="post" action="{{ url_for('admin.newsletter_issue_copy', newsletter_id=r.id) }}">
               <button type="submit" class="icon-btn"
                       title="Start a new one from this. The original is untouched.">&#128203;</button>
@@ -175,8 +150,8 @@
 
   <form method="post" action="{{ url_for('admin.newsletter_schedule_template_save') }}"
         class="cms-schedule-form" data-schedule-form>
-    {#  The clock the hour below was typed on, filled by local-time.js.
-        Without it "9am" is 9am UTC, which is 11am in Zurich in summer --
+    {#  The clock the hour below was typed on, filled by the local-time
+        script. Without it "9am" is 9am UTC, which is 11am in Zurich in summer --
         and nobody notices until the newsletter arrives two hours late. #}
     <input type="hidden" name="tz_offset" data-tz-offset value="0">
     <input type="hidden" name="tz_name" data-tz-name value="">
@@ -201,10 +176,22 @@
         {% endfor %}
       </select></label>
 
-    <label for="sched-monthday" data-when="monthly"
-           title="Which date each month. 1 to 28, because a schedule set to the 30th never happens in February.">on day
-      <input type="number" id="sched-monthday" name="monthday" min="1" max="28" value="1"
-             title="Which date each month. 1 to 28, because the 30th never happens in February."></label>
+    {#  First, last, or a day you choose. It was a number capped at 28,
+        which is February wearing an assumption -- and "the last day" is
+        what people mean by the end of the month, which no fixed number
+        can say. #}
+    <label for="sched-monthday-kind" data-when="monthly"
+           title="Which day of the month it goes out.">on
+      <select id="sched-monthday-kind" name="month_day" data-monthday-kind
+              title="The 1st, the last day of the month, or a day you choose.">
+        {% for value, label in month_days %}
+        <option value="{{ value }}">{{ label }}</option>
+        {% endfor %}
+      </select></label>
+    <label for="sched-monthday" data-when="monthly" data-monthday-number hidden
+           title="Which day. A month that does not have it uses its last day, so nothing is skipped.">day
+      <input type="number" id="sched-monthday" name="monthday" min="1" max="31" value="1"
+             title="Which day of the month. A month that does not have it — the 31st in February — uses that month's last day, so nothing is skipped."></label>
 
     <label for="sched-hour" data-when="daily weekly monthly"
            title="The hour it goes out, on your own clock.">at
@@ -249,6 +236,14 @@
     and the only thing the card did that the table did not was let one
     line be removed from the record, which the table does. #}
 
-<script src="{{ static_url('js/admin/modal.js') }}"></script>
+{#  At the END of the page, because the tool, the list and the schedules are all above: a script that runs
+    before the markup it drives simply finds nothing, and finding
+    nothing looks exactly like a feature nobody wired up. That is what
+    happened when these lived inside the editor partial -- the schedule
+    form below it did not exist yet, so its "show only the fields this
+    choice needs" never ran. #}
 <script src="{{ static_url('js/admin/local-time.js') }}"></script>
+<script src="{{ static_url('js/wysiwyg-commands.js') }}"></script>
+<script src="{{ static_url('js/admin/image-picker.js') }}"></script>
+<script src="{{ static_url('js/admin/newsletter-editor.js') }}"></script>
 {% endblock %}
