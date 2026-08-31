@@ -9,7 +9,6 @@ from flask import has_request_context
 
 from . import bootstrap
 from .services import site
-from .services import backup
 from . import db as db_module
 from .db import init_db, get_db, DATA_DIR
 from .services import packages
@@ -289,26 +288,19 @@ def create_app():
             response.headers["Content-Disposition"] = "attachment"
         return response
 
-    @app.after_request
-    def _run_due_backup(response):
-        """Takes the scheduled backup when one is due.
-
-        Driven by requests rather than a timer thread: gunicorn runs
-        several workers and each would start its own, which is more moving
-        parts than a small site needs. The claim in
-        services/backup.claim_due_run is what stops two workers both
-        writing an archive at the same moment. A site nobody visits at all
-        will not back itself up, which is a fair trade for having no
-        background threads to reason about.
-        """
-        try:
-            db = get_db()
-            name = backup.run_scheduled(db, app)
-            if name:
-                app.logger.info("Scheduled backup written: %s", name)
-        except Exception as e:  # noqa: BLE001 - never break a response over this
-            app.logger.warning("Scheduled backup skipped: %s", e)
-        return response
+    #  There WAS an after_request here taking the scheduled backup, on
+    #  the grounds that gunicorn runs several workers and a timer thread
+    #  in each is more moving parts than a small site needs. That was
+    #  true when it was written and is not any more: there is a poller,
+    #  it is armed by the first request each worker handles, and it
+    #  already runs scheduled sends and scheduled publishes with a claim
+    #  that settles which worker acts.
+    #
+    #  Two consequences of moving, both good. A site nobody visits now
+    #  backs itself up -- under the old hook it could not, and that was
+    #  written down as a fair trade rather than fixed. And a backup can
+    #  be booked for 3am on the first Sunday, which "every week" could
+    #  never say.
 
     @app.after_request
     def _learn_public_address(response):

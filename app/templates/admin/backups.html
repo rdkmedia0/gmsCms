@@ -1,5 +1,6 @@
 {% extends "admin/base.html" %}
-{% block title %}Backups — My Site Admin{% endblock %}
+{% block title %}Backups — My Site Admin<script src="{{ static_url('js/admin/local-time.js') }}"></script>
+{% endblock %}
 {% block content %}
 <h1>Backups</h1>
 <p class="hint">A copy of everything: your pages, orders, customers, bookings, uploaded pictures and the files people have paid for. This is the only thing that helps if the site is deleted or damaged — nothing else here recovers from that.</p>
@@ -21,10 +22,19 @@
 <div class="card">
   <h2>Automatic backups</h2>
   <form method="post" action="{{ url_for('admin.backup_settings') }}" class="fulfilment-form">
-    <label for="schedule">How often</label>
-    <select id="schedule" name="schedule" title="Automatic backups are written to this machine. Download copies elsewhere too.">
-      {% for value, label in schedules %}
-      <option value="{{ value }}" {{ 'selected' if settings.schedule == value }}>{{ label }}</option>
+    {#  One of the site's named schedules -- the same list a newsletter is
+        sent on and a post is published on. Backups had a list of their
+        own ("Every day", "Every week") with no time of day and no clock,
+        which is a second answer to a question this app had already
+        answered properly: a named schedule carries the hour, the weekday
+        or month day, and the clock it was typed on. #}
+    <label for="schedule">When</label>
+    <select id="schedule" name="schedule"
+            title="Which of your schedules backups are taken on. Saving books the next one — there is no second button.">
+      <option value="" {{ 'selected' if not settings.schedule }}>Not scheduled</option>
+      {% for s in schedules %}
+      <option value="{{ s.row.name }}" title="{{ s.says }}"
+              {{ 'selected' if settings.schedule == s.row.name }}>{{ s.row.name }} &mdash; {{ s.says }}</option>
       {% endfor %}
     </select>
 
@@ -39,7 +49,12 @@
     <button type="submit" class="btn btn-primary btn-small" title="Save what a backup should include. It does not make one — use Back up now.">Save</button>
   </form>
   <p class="hint">
+    {% if waiting %}Next one is due
+      <time data-utc="{{ waiting.send_at }}">{{ waiting.send_at[:16] }}</time>.{% endif %}
     {% if settings.last_run %}Last automatic backup: {{ settings.last_run.replace('T', ' ')[:16] }}.{% else %}No automatic backup has run yet.{% endif %}
+    {% if not schedules %}You have no schedules yet &mdash; make one on the
+    <a href="{{ url_for('admin.newsletters') }}">Newsletters</a> or
+    <a href="{{ url_for('admin.blogs_screen') }}">Blog</a> screen and it will be offered here.{% endif %}
     They're saved in <code>{{ backup_dir }}</code>, which is on the same volume as the site &mdash; good for undoing a mistake, no help if the machine itself is lost. Download the ones that matter.
   </p>
 </div>

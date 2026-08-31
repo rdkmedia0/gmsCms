@@ -363,6 +363,77 @@ with app.app_context():
     check("a post that has been deleted is written down, not retried",
           bool(said), repr(said))
 
+    print()
+    print("A backup runs on the same clock as everything else")
+    print("-" * 70)
+    #  Backups had a schedule of their own -- "off", "daily", "weekly",
+    #  no time of day, no clock -- with a claim of their own, run by a
+    #  hook on every response. Which meant a site nobody visited never
+    #  backed itself up, and that was written down as a fair trade
+    #  rather than fixed.
+    #
+    #  The one real difference from a send, and the thing worth proving:
+    #  a send happens ONCE at the moment chosen, and a backup RE-BOOKS
+    #  itself, because a backup that happens once is not a backup.
+    from app.services import backup as backup_service                 # noqa: E402
+    scheduling.save_template(db, "Nightly", "daily", hour=3, minute=0,
+                             tz_offset=0, tz_name=None)
+    db.commit()
+    backup_service.save_settings(db, "Nightly", 3, False)
+    booked = backup_service.book_next(db)
+    db.commit()
+    check("saving the setting books the next one", booked is not None, str(booked))
+    waiting = scheduling.pending_for(db, "backup", backup_service.BACKUP_TARGET)
+    check("...as a job like any other", waiting is not None
+          and waiting["template_name"] == "Nightly",
+          str(dict(waiting)) if waiting else "nothing waiting")
+
+    #  Bring it forward rather than waiting until 3am.
+    db.execute("UPDATE newsletter_schedule SET send_at = ? WHERE kind = 'backup'",
+               (scheduling._stamp(scheduling.utcnow() - datetime.timedelta(minutes=1)),))
+    db.commit()
+    job = [row for row in scheduling.due(db) if row["kind"] == "backup"]
+    check("it comes due", len(job) == 1, str(len(job)))
+    before = len(SENT)
+    scheduling.claim(db, job[0]["id"])
+    db.commit()
+    _run_scheduled(app, job[0])
+
+    db4 = get_db()
+    check("a backup was written",
+          len(backup_service.list_backups()) >= 1,
+          str(len(backup_service.list_backups())))
+    check("...and nobody was emailed about it", len(SENT) == before)
+    done = db4.execute("SELECT * FROM newsletter_schedule WHERE id = ?",
+                       (job[0]["id"],)).fetchone()
+    check("...the job finished cleanly", bool(done["done_at"]) and not done["error"],
+          "%s / %s" % (done["done_at"], done["error"]))
+    #  The whole point.
+    again = scheduling.pending_for(db4, "backup", backup_service.BACKUP_TARGET)
+    check("...and the next one is already booked", again is not None,
+          "nothing waiting")
+    check("...for a moment in the future",
+          again is not None and again["send_at"] > scheduling._stamp(scheduling.utcnow()),
+          str(again["send_at"]) if again else "-")
+
+    #  Not scheduled means not scheduled: the same control, both ways.
+    backup_service.save_settings(db4, "", 3, False)
+    backup_service.book_next(db4)
+    db4.commit()
+    check("choosing Not scheduled takes it off the clock",
+          scheduling.pending_for(db4, "backup", backup_service.BACKUP_TARGET) is None)
+
+    #  A schedule somebody deleted is not a crash, and not a backup that
+    #  silently never happens under a name nothing answers to.
+    backup_service.save_settings(db4, "Nightly", 3, False)
+    backup_service.book_next(db4)
+    scheduling.delete_template(db4, "Nightly")
+    db4.commit()
+    check("a deleted schedule reads as not scheduled",
+          backup_service.settings_for(db4)["schedule"] == ""
+          or backup_service.book_next(db4) is None,
+          backup_service.settings_for(db4)["schedule"])
+
 shutil.rmtree(DATA_DIR, ignore_errors=True)
 print()
 print("%d checks, %d failed" % (passed + len(failures), len(failures)))

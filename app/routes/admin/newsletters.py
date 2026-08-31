@@ -701,6 +701,23 @@ def _run_scheduled(app, row):
             #  wrapper. Answered first, so none of the checks below --
             #  every one of which is about an inbox -- can refuse a post
             #  going public for a reason that has nothing to do with it.
+            #  A backup is the one due job that is not about anybody
+            #  reading anything: no list, no address, no wrapper. And it
+            #  is the one that RE-BOOKS itself -- a send happens once at
+            #  the moment chosen, deliberately, but a backup that happens
+            #  once is not a backup.
+            #
+            #  Re-booked by whoever ran it, which is exactly one worker,
+            #  because the claim already settled that.
+            if row["kind"] == "backup":
+                from ...services import backup as backup_service
+                made = backup_service.run_now(db, app)
+                nxt = backup_service.book_next(db)
+                scheduling.finish(db, row["id"], 0, 0,
+                                  None if made else "The backup could not be written.")
+                db.commit()
+                app.logger.info("Scheduled backup written: %s (next %s)", made, nxt)
+                return
             if row["kind"] == "publish":
                 made = blog_service.publish(db, row["target_id"])
                 scheduling.finish(db, row["id"], 0, 0,

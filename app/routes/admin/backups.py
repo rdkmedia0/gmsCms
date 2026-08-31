@@ -14,7 +14,7 @@ from flask import request, flash, redirect, url_for, render_template, send_file,
 from . import bp
 from ..auth import login_required
 from ...db import get_db
-from ...services import backup
+from ...services import backup, scheduling
 
 
 @bp.route("/backups")
@@ -25,7 +25,12 @@ def backups():
         "admin/backups.html",
         backups=backup.list_backups(),
         settings=backup.settings_for(db),
-        schedules=backup.SCHEDULES,
+        #  The site's named schedules -- the same list a newsletter is
+        #  sent on. Backups had a two-option list of their own, which is
+        #  a second answer to a question this app had already answered.
+        schedules=[{"row": t, "says": scheduling.describe_template(t)}
+                   for t in scheduling.templates(db)],
+        waiting=scheduling.pending_for(db, "backup", backup.BACKUP_TARGET),
         backup_dir=backup.BACKUP_DIR,
     )
 
@@ -127,12 +132,30 @@ def backup_restore():
 @login_required
 def backup_settings():
     db = get_db()
-    backup.save_settings(
+    chosen = backup.save_settings(
         db,
         request.form.get("schedule"),
         request.form.get("keep", type=int),
         request.form.get("include_media") == "1",
     )
+    #  Saving the setting is what books it. There is no second button:
+    #  the same rule the newsletter and the post editors follow, for the
+    #  same reason -- a control you set, save, and watch do nothing is a
+    #  control that lies.
+    when = backup.book_next(db)
     db.commit()
-    flash("Backup schedule saved.", "success")
+    if chosen and when:
+        flash("Backups will be taken on the %s schedule. The next one is due %s."
+              % (chosen, when.strftime("%d %b %Y at %H:%M UTC")), "success")
+    elif chosen:
+        flash("Saved, but that schedule has no next date in it, so nothing is "
+              "booked yet.", "warning")
+    else:
+        flash("Saved. Backups are not scheduled — you can still take one whenever "
+              "you like.", "success")
+    #  Arms this worker's poller if it is not already running: a site
+    #  whose only scheduled thing is a backup would otherwise never
+    #  start one.
+    from .newsletters import arm_scheduler
+    arm_scheduler(current_app._get_current_object())
     return redirect(url_for("admin.backups"))

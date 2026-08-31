@@ -578,6 +578,28 @@ def _migrate(db):
     #  winter, twice a year, and nobody connects the two.
     _add_column(db, "schedule_templates", "tz_name", "TEXT")
 
+    #  Backups used to carry a schedule of their own -- "off", "daily" or
+    #  "weekly", with no time of day and no clock -- run by a hook on
+    #  every response. They run on a NAMED schedule now, the same ones a
+    #  newsletter and a post use.
+    #
+    #  An install that had one is carried across rather than switched
+    #  off: somebody asked for daily backups and an upgrade that silently
+    #  stops taking them is the worst kind of upgrade. 3am, because that
+    #  is when the old hook would never have run one and it is when a
+    #  small site is quiet.
+    old = db.execute("SELECT value FROM settings WHERE key = 'backup_schedule'").fetchone()
+    if old and old["value"] in ("daily", "weekly"):
+        name = "Daily backup" if old["value"] == "daily" else "Weekly backup"
+        db.execute(
+            "INSERT OR IGNORE INTO schedule_templates "
+            "(name, repeat_kind, weekday, hour, minute, tz_offset) "
+            "VALUES (?, ?, ?, 3, 0, 0)",
+            (name, old["value"], 6 if old["value"] == "weekly" else None))
+        db.execute("UPDATE settings SET value = ? WHERE key = 'backup_schedule'", (name,))
+    elif old and old["value"] == "off":
+        db.execute("UPDATE settings SET value = '' WHERE key = 'backup_schedule'")
+
     #  A newsletter arrangement somebody wants again.
     #
     #  A layout is "a starting arrangement, not a kind" -- the shipped

@@ -55,8 +55,21 @@ MEDIA_SOURCES = (
 COUNTED_TABLES = ("pages", "sections", "templates", "orders", "customers",
                   "entitlements", "bookings", "digital_files", "subscribers")
 
-SCHEDULES = (("off", "Never"), ("daily", "Every day"), ("weekly", "Every week"))
-SCHEDULE_INTERVALS = {"daily": datetime.timedelta(days=1), "weekly": datetime.timedelta(days=7)}
+#  There is no schedule list here any more.
+#
+#  Backups had their own: "Every day" or "Every week", with no time of
+#  day, no timezone, and a claim of their own -- a second, weaker copy of
+#  something this app already does properly. A backup now runs on one of
+#  the NAMED schedules (services/scheduling.py), the same ones a
+#  newsletter is sent on and a post is published on: made once, named by
+#  the owner, and carrying the hour, the weekday or month day, and the
+#  clock they were typed on.
+#
+#  What differs, and it is the only thing that does: a send happens ONCE
+#  at the moment chosen, deliberately -- a schedule says when the next
+#  one goes, it does not keep sending. A backup is the opposite: it is
+#  worth nothing unless it keeps happening. So a backup job books the
+#  next occurrence when it finishes. See `_run_scheduled`.
 
 
 def backup_dir():
@@ -280,11 +293,16 @@ def settings_for(db):
         r["key"]: r["value"]
         for r in db.execute(
             "SELECT key, value FROM settings WHERE key IN "
-            "('backup_schedule', 'backup_keep', 'backup_last_run', 'backup_include_media')"
+            "('backup_schedule', 'backup_keep', 'backup_last_run', "
+            "'backup_include_media')"
         ).fetchall()
     }
     return {
-        "schedule": rows.get("backup_schedule") or "off",
+        #  The NAME of a schedule in schedule_templates, or empty for
+        #  "not scheduled". It was "daily"/"weekly"/"off"; an install
+        #  carrying one of those is migrated in db.py, so the old words
+        #  never reach this.
+        "schedule": rows.get("backup_schedule") or "",
         "keep": int(rows.get("backup_keep") or 7),
         "last_run": rows.get("backup_last_run") or "",
         "include_media": (rows.get("backup_include_media") or "1") != "0",
@@ -292,7 +310,16 @@ def settings_for(db):
 
 
 def save_settings(db, schedule, keep, include_media):
-    schedule = schedule if schedule in dict(SCHEDULES) else "off"
+    """Which schedule backups run on, how many to keep, and what goes in.
+
+    The schedule is checked against the named ones rather than a fixed
+    list of its own: a name that no longer exists means not scheduled,
+    which is what deleting a schedule should do.
+    """
+    from . import scheduling
+    schedule = (schedule or "").strip()
+    if schedule and not scheduling.template(db, schedule):
+        schedule = ""
     keep = max(1, min(60, int(keep or 7)))
     for key, value in (
         ("backup_schedule", schedule),
@@ -304,50 +331,52 @@ def save_settings(db, schedule, keep, include_media):
             "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
             (key, value),
         )
+    return schedule
 
 
-def claim_due_run(db):
-    """True for exactly one caller when a scheduled backup is due.
+#  One backup schedule for the site, so the job it books has no target of
+#  its own to point at. Zero, named here rather than written as a bare 0
+#  in four places.
+BACKUP_TARGET = 0
 
-    Two gunicorn workers each want to run the schedule, and both would
-    otherwise write an archive at the same moment. The claim is a
-    conditional UPDATE — SQLite settles which one wins, so no lock file
-    and nothing to clean up after a crash.
+
+def book_next(db, when=None):
+    """Puts the next backup on the clock, or takes it off.
+
+    Called when the settings are saved and again by each run, because a
+    backup that happens once is not a backup. Returns the moment booked,
+    or None when nothing is scheduled.
+    """
+    from . import scheduling
+    scheduling.cancel(db, "backup", BACKUP_TARGET)
+    name = settings_for(db)["schedule"]
+    if not name:
+        return None
+    row = scheduling.template(db, name)
+    if not row:
+        return None
+    dates = scheduling.upcoming(row, when or scheduling.utcnow(), 1)
+    if not dates:
+        return None
+    scheduling.schedule(db, "backup", BACKUP_TARGET, "Backup", "all", dates[0],
+                        template_name=name)
+    return dates[0]
+
+
+def run_now(db, app=None):
+    """Takes a scheduled backup and tidies up after it. Returns its name.
+
+    No claim of its own: the job was already claimed by whoever is
+    running it, the same way a scheduled send is. This used to hold a
+    second claim -- a conditional UPDATE on a settings row -- which was
+    the same idea implemented twice.
     """
     config = settings_for(db)
-    interval = SCHEDULE_INTERVALS.get(config["schedule"])
-    if not interval:
-        return False
-    now = datetime.datetime.now()
-    if config["last_run"]:
-        try:
-            if datetime.datetime.fromisoformat(config["last_run"]) + interval > now:
-                return False
-        except ValueError:
-            pass
-    previous = config["last_run"]
-    cur = db.execute(
-        "UPDATE settings SET value = ? WHERE key = 'backup_last_run' AND value = ?",
-        (now.isoformat(timespec="seconds"), previous),
-    )
-    if not cur.rowcount:
-        if previous:
-            return False
-        #  First ever run: the row may not exist at all.
-        try:
-            db.execute("INSERT INTO settings (key, value) VALUES ('backup_last_run', ?)",
-                       (now.isoformat(timespec="seconds"),))
-        except sqlite3.IntegrityError:
-            return False
-    db.commit()
-    return True
-
-
-def run_scheduled(db, app=None):
-    """Takes the scheduled backup if one is due. Returns its name or None."""
-    if not claim_due_run(db):
-        return None
-    config = settings_for(db)
-    name = create_backup(db, app=app, include_media=config["include_media"], label="scheduled")
+    name = create_backup(db, app=app, include_media=config["include_media"],
+                         label="scheduled")
     prune(config["keep"])
+    db.execute(
+        "INSERT INTO settings (key, value) VALUES ('backup_last_run', ?) "
+        "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        (datetime.datetime.now().isoformat(timespec="seconds"),))
     return name
