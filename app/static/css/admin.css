@@ -1516,3 +1516,17 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
   border-radius: var(--cms-ui-radius-control);
 }
 .cms-featured-slot .cms-featured-remove { margin: 8px 0 12px; }
+
+/*  The plan, before anything is spent. A definition list because that
+    is what it is: a set of questions and the answers this run would
+    give. */
+.cms-plan { display: grid; grid-template-columns: max-content 1fr; gap: 8px 20px;
+            margin: 4px 0 14px; align-items: baseline; }
+.cms-plan dt { font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
+               color: #6b7480; }
+.cms-plan dd { margin: 0; }
+.cms-plan-card { border-left: 3px solid var(--primary, #2563eb); }
+/*  A heading inside a form, grouping the questions that belong together
+    -- how it sounds, how it looks, what it costs. */
+.cms-form-heading { font-size: 15px; margin: 22px 0 2px; padding-top: 14px;
+                    border-top: 1px solid #eef0f3; }

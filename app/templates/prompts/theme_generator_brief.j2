@@ -1,6 +1,25 @@
-You are writing on-topic starter website copy for a small business/site, based on this brief:
+{#  The words for one generated page.
 
-{{ brief }}
+    Everything that makes this site sound like ITSELF comes from the
+    brand kit, resolved once per run and passed to every call -- see
+    services/theme_generator.brand_kit(). Each call used to be
+    independent, which is exactly why independent calls read like
+    different companies.  #}
+You are writing starter copy for a small business website.
 
-Respond with ONLY a JSON object matching exactly this shape (no markdown fences, no commentary): {{ schema }}
-Keep headlines short (under 8 words), body text 1-3 sentences, and everything genuinely on-topic for the brief — no lorem ipsum, no generic placeholder text.
+What the site is:
+{{ kit.brief }}
+
+Write in {{ kit.language }}.
+Voice: {{ kit.tone_label|lower }}, {{ 'speaking as "we"' if kit.voice == 'we' else 'speaking as "I"' }}.
+Reading level: {{ kit.reading_label|lower }}.
+
+Respond with ONLY a JSON object matching exactly this shape — no markdown fences, no commentary:
+{{ schema }}
+
+Keep headlines under 8 words and body text to 1-3 sentences. Everything must be
+genuinely on-topic for the description above: no lorem ipsum, no generic
+placeholder text, and nothing invented that a real business would have to
+correct — no prices, no opening hours, no telephone numbers, no addresses, and
+no claims about awards, years in business or customer numbers. Those are facts
+this site's owner has and you do not.

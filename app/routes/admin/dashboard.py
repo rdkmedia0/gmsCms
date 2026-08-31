@@ -7,6 +7,7 @@ from ...db import get_db
 from ...services import blog as blog_service
 from ... import assistant, ai_image
 from ...services import theme_generator as theme_generator_mod
+from ...services.design import FONT_PAIRINGS, SHAPE_PRESETS, SHADOW_PRESETS
 from ...services.palette import _match_palette_roles, color_scheme_choices
 from ...services.sections import _insert_layout_chunks
 from ...services import site
@@ -213,40 +214,53 @@ def help():
 def theme_generator():
     """Generate a look, and hand it back as a template to look at.
 
-    It used to append sections to whichever page you picked, which meant
-    the only way to undo it was to delete them one at a time. It writes a
-    Template Package now and installs it WITHOUT activating it: what
-    comes back is a template you can preview, activate, keep, export or
-    throw away. See services/theme_generator.py for why that one change
-    carries most of the feature.
+    Two steps on purpose. "Show me the plan" costs nothing and spends
+    nothing: it says which sections will be made, how many pictures, and
+    how many calls to the provider. Only the second press runs it. A
+    generator that spends real money and minutes on a misunderstanding,
+    and says so afterwards, gets used once.
 
     Thin, like every route here: parse the request, call one service
     function, say what happened.
     """
     db = get_db()
     if request.method == "POST":
-        palette = None
-        preset = request.form.get("color_preset", "")
-        if preset and preset in COLOR_PRESETS:
-            #  The chosen colours travel WITH the package, as its own
-            #  palette, rather than being written over whatever look
-            #  happens to be active. That was the old behaviour and it
-            #  changed the live site as a side effect of generating
-            #  something you had not looked at yet.
-            chosen = COLOR_PRESETS[preset]
-            palette = [{"slug": role, "name": role.title(), "color": value}
-                       for role, value in chosen.items() if value]
+        kit = theme_generator_mod.brand_kit(
+            brief=(request.form.get("brief") or "").strip(),
+            tone=request.form.get("tone", "warm"),
+            voice=request.form.get("voice", "we"),
+            reading=request.form.get("reading", "normal"),
+            language=request.form.get("language", "English"),
+            palette=_preset_palette(request.form.get("color_preset", "")),
+            fonts=request.form.get("fonts", ""),
+            shape=request.form.get("shape", ""),
+            shadow=request.form.get("shadow", ""),
+            image_budget=request.form.get("image_budget", "1"),
+        )
+        name = (request.form.get("name") or "").strip()
+        layout_key = request.form.get("layout", "landing")
+        page_title = (request.form.get("page_title") or "Home").strip()
+
+        #  Looking is free. Everything below this line costs something.
+        if request.form.get("preview"):
+            try:
+                shown = theme_generator_mod.plan(
+                    kit, layout_key, name, page_title,
+                    use_ai_images=request.form.get("use_ai_images") == "1",
+                    fill_scope=request.form.get("fill_scope", "all"))
+            except theme_generator_mod.ThemeGenError as e:
+                flash(str(e), "error")
+                return redirect(url_for("admin.theme_generator"))
+            return render_template("admin/theme_generator.html",
+                                   plan=shown, form=request.form,
+                                   **_theme_generator_context(db))
+
         try:
             slug = theme_generator_mod.generate(
-                db, current_app.static_folder,
-                name=(request.form.get("name") or "").strip(),
-                layout_key=request.form.get("layout", "landing"),
-                brief=(request.form.get("brief") or "").strip(),
-                fill_scope=request.form.get("fill_scope", "all"),
+                db, current_app.static_folder, name=name, layout_key=layout_key,
+                kit=kit, fill_scope=request.form.get("fill_scope", "all"),
                 use_ai_images=request.form.get("use_ai_images") == "1",
-                palette=palette,
-                page_title=(request.form.get("page_title") or "Home").strip(),
-            )
+                page_title=page_title)
         except theme_generator_mod.ThemeGenError as e:
             flash(str(e), "error")
             return redirect(url_for("admin.theme_generator"))
@@ -257,10 +271,37 @@ def theme_generator():
               % (made["name"] if made else slug), "success")
         return redirect(url_for("admin.templates_screen"))
 
-    return render_template(
-        "admin/theme_generator.html",
+    return render_template("admin/theme_generator.html",
+                           **_theme_generator_context(db))
+
+
+def _preset_palette(preset):
+    """A colour preset as a palette the package can carry.
+
+    It used to be written over whatever look was active, which changed
+    the live site as a side effect of generating something nobody had
+    looked at yet.
+    """
+    if not preset or preset not in COLOR_PRESETS:
+        return None
+    chosen = COLOR_PRESETS[preset]
+    return [{"slug": role, "name": role.title(), "color": value}
+            for role, value in chosen.items() if value]
+
+
+def _theme_generator_context(db):
+    """Everything the screen offers, in one place so the two ways in --
+    first visit and coming back with a plan -- cannot drift."""
+    return dict(
         layouts=theme_generator_mod.LAYOUTS,
         color_presets=color_scheme_choices(db),
+        tones=theme_generator_mod.TONES,
+        voices=theme_generator_mod.VOICES,
+        readings=theme_generator_mod.READING,
+        image_budgets=theme_generator_mod.IMAGE_BUDGETS,
+        font_pairings=FONT_PAIRINGS,
+        shapes=SHAPE_PRESETS,
+        shadows=SHADOW_PRESETS,
         ai_configured=assistant.is_configured(db),
         image_gen_configured=ai_image.is_configured(db),
         #  A provider that cannot make pictures AT ALL is not the same as

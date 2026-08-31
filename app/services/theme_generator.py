@@ -84,11 +84,146 @@ _SCHEMAS = {
 }
 
 
+# ---------------------------------------------------- the brand kit
+#
+#  Everything a run needs to sound and look like ONE site, worked out
+#  once and passed into every call. Each call used to be independent,
+#  which is exactly why independent calls read like different companies:
+#  one page formal and one chatty, one palette and another, a photograph
+#  in three styles.
+#
+#  Every field is a value the app already has a control for -- a font
+#  pairing, a shape, a shadow, a palette -- because a generated look has
+#  to be one an owner can go on editing.
+
+TONES = (
+    ("warm", "Warm and friendly"),
+    ("plain", "Plain and direct"),
+    ("expert", "Expert and precise"),
+    ("playful", "Playful"),
+)
+
+VOICES = (("we", "We — a team"), ("i", "I — one person"))
+
+READING = (
+    ("simple", "Simple — short sentences, everyday words"),
+    ("normal", "Normal"),
+    ("technical", "Technical — assumes the reader knows the field"),
+)
+
+#  How many pictures a run may make. Named rather than typed, because
+#  the number is a cost and a wait, and "6" tells nobody that.
+IMAGE_BUDGETS = (
+    ("0", "None — use placeholders"),
+    ("1", "One, for the top of the page"),
+    ("3", "Up to three"),
+)
+
+
+def brand_kit(brief="", tone="warm", voice="we", reading="normal",
+              language="English", palette=None, fonts="", shape="", shadow="",
+              image_budget="1"):
+    """One kit, resolved once, read by every prompt and every picture.
+
+    Returns plain data -- no db, no request -- so a checker, a script and
+    a route all build it the same way.
+    """
+    from .design import FONT_PAIRINGS, SHAPE_PRESETS, SHADOW_PRESETS
+    try:
+        budget = max(0, min(3, int(image_budget)))
+    except (TypeError, ValueError):
+        budget = 1
+    return {
+        "brief": (brief or "").strip(),
+        "tone": tone if tone in dict(TONES) else "warm",
+        "tone_label": dict(TONES).get(tone, dict(TONES)["warm"]),
+        "voice": voice if voice in dict(VOICES) else "we",
+        "reading": reading if reading in dict(READING) else "normal",
+        "reading_label": dict(READING).get(reading, dict(READING)["normal"]),
+        #  A free field on purpose: this app ships in one language and is
+        #  installed in many. A closed list would be a list of the
+        #  languages somebody thought of.
+        "language": (language or "English").strip() or "English",
+        "palette": palette or None,
+        "fonts": fonts if fonts in FONT_PAIRINGS else "",
+        "shape": shape if shape in SHAPE_PRESETS else "",
+        "shadow": shadow if shadow in SHADOW_PRESETS else "",
+        "image_budget": budget,
+        #  One direction for every picture in a run. Generating each from
+        #  its own section's words is why AI sites look assembled out of
+        #  stock: five photographs by five photographers.
+        "image_direction": _image_direction(brief, tone),
+    }
+
+
+def _image_direction(brief, tone):
+    """What every picture in this run should look like."""
+    feel = {
+        "warm": "warm natural light, inviting, unstaged",
+        "plain": "clean daylight, uncluttered, matter-of-fact",
+        "expert": "controlled light, precise, considered composition",
+        "playful": "bright, high colour, a sense of movement",
+    }.get(tone, "warm natural light, inviting, unstaged")
+    return ("photographic, %s, consistent across every image in this set; "
+            "no text, no logos, no watermarks" % feel)
+
+
+# ---------------------------------------------------------- the plan
+#
+#  What a run WILL do, worked out before it does any of it. A generator
+#  that spends real money and minutes on a misunderstanding, and only
+#  says so afterwards, gets used once.
+
+
+def plan(kit, layout_key, name, page_title="Home", use_ai_images=True,
+         fill_scope="all"):
+    """(what it will make, what it will cost) without asking anybody.
+
+    Takes the same answers the run takes, including whether pictures are
+    wanted at all -- a plan that promises a photograph the run will not
+    make is worse than no plan, and that is exactly what it did before
+    the checker caught it: it read the budget and ignored whether the
+    provider could make one.
+    """
+    if layout_key not in LAYOUTS:
+        raise ThemeGenError("Unknown layout.")
+    sections = {
+        "landing": ["a banner across the top",
+                    "a short introduction",
+                    "three cards side by side",
+                    "a closing banner"],
+        "about": ["a banner across the top",
+                  "the story, as running text",
+                  "a closing banner"],
+        "simple": ["a banner across the top", "one block of writing"],
+    }[layout_key]
+    writes = bool(kit["brief"]) and fill_scope != "none"
+    #  One picture: the banner at the top. The rest of a layout's banners
+    #  take the placeholder, which is a picture the owner replaces from
+    #  their own Media Library.
+    pictures = 1 if (use_ai_images and kit["image_budget"] > 0) else 0
+    banners = len([s for s in sections if "banner" in s])
+    return {
+        "name": name or "Generated look",
+        "layout": LAYOUTS[layout_key]["label"],
+        "pages": [{"title": page_title or "Home", "sections": sections}],
+        "sections": len(sections),
+        "pictures": pictures,
+        "placeholders": max(0, banners - pictures),
+        #  One call for the words, one per picture. Named rather than
+        #  hidden, because it is what the run costs.
+        "calls": (1 if writes else 0) + pictures,
+        "writes": writes,
+        "language": kit["language"],
+        "tone": kit["tone_label"],
+    }
+
+
 # ------------------------------------------------- asking the provider
 
 
-def _prompt(brief, schema):
-    """The brief, as the prompt file writes it.
+def _prompt(kit, schema):
+    """The brand kit, as the prompt file writes it.
 
     Rendered through the Jinja environment rather than `render_template`,
     which runs the app's context processors -- and one of those reads the
@@ -99,7 +234,7 @@ def _prompt(brief, schema):
     time this was tested outside a browser.
     """
     template = current_app.jinja_env.get_template("prompts/theme_generator_brief.j2")
-    return template.render(brief=brief, schema=schema)
+    return template.render(kit=kit, schema=schema)
 
 
 def _ai_json(db, prompt):
@@ -194,11 +329,18 @@ def _cards_chunk(cards):
 
 
 
-def layout_chunks(db, layout_key, brief, fill_scope, use_ai_images):
-    """The HTML chunks for one layout. `fill_scope` "none" asks nobody."""
+def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images):
+    """The HTML chunks for one layout. `fill_scope` "none" asks nobody.
+
+    Takes the brand KIT rather than a bare brief: the tone, the language
+    and the reading level are what stop two pages from the same run
+    sounding like two companies, and they can only do that if every call
+    gets them.
+    """
     if layout_key not in LAYOUTS:
         raise ThemeGenError("Unknown layout.")
 
+    brief = kit["brief"]
     fill = fill_scope != "none"
     copy = {}
     if fill:
@@ -206,14 +348,17 @@ def layout_chunks(db, layout_key, brief, fill_scope, use_ai_images):
             raise ThemeGenError(
                 "Describe your site or business, so the AI has something to "
                 "write about.")
-        copy = _ai_json(db, _prompt(brief, _SCHEMAS[layout_key]))
+        copy = _ai_json(db, _prompt(kit, _SCHEMAS[layout_key]))
 
     def val(key, fallback):
         return (copy.get(key) or fallback) if fill else fallback
 
+    #  One direction for every picture in a run -- see
+    #  brand_kit()["image_direction"].
     hero = _maybe_generate_image(
-        db, "A background image for a website hero banner about: %s"
-        % (brief or layout_key), use_ai_images)
+        db, "A wide background photograph for the top of a website about: %s. %s"
+        % (brief or layout_key, kit["image_direction"]),
+        use_ai_images and kit["image_budget"] > 0)
 
     chunks = []
     if layout_key == "landing":
@@ -287,7 +432,7 @@ def sections_for(chunks):
 
 
 def build_package(db, name, pages, palette=None, google_fonts_url=None,
-                  work_dir=None):
+                  shape=None, shadow=None, work_dir=None):
     """Writes a package directory and returns (its path, its slug).
 
     `pages` is a list of {title, slug_suffix, sections}. A package with
@@ -312,6 +457,13 @@ def build_package(db, name, pages, palette=None, google_fonts_url=None,
         manifest["palette"] = palette
     if google_fonts_url:
         manifest["google_fonts_url"] = google_fonts_url
+    #  A shape and a shadow are values the Corners/Depth controls already
+    #  carry, and install_theme_package writes them straight onto the
+    #  installed row. The generator picks values; it does not write CSS.
+    if shape:
+        manifest["shape_override"] = shape
+    if shadow:
+        manifest["shadow_override"] = shadow
     with open(os.path.join(pkg_dir, "manifest.json"), "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2, ensure_ascii=False)
 
@@ -333,29 +485,51 @@ def build_package(db, name, pages, palette=None, google_fonts_url=None,
     return pkg_dir, slug
 
 
-def generate(db, static_folder, name, layout_key, brief, fill_scope,
-             use_ai_images, palette=None, page_title=None):
+def generate(db, static_folder, name, layout_key, kit, fill_scope,
+             use_ai_images, page_title=None):
     """Generate a look, install it as a template, and say which one.
 
     Installed, NOT activated. That is the whole difference from what this
     did before: it hands back something to look at, keep, throw away or
     export, rather than editing a live page in a way that has to be
     undone by hand.
+
+    The look the kit asks for travels WITH the package -- its palette,
+    its fonts, its shape and shadow -- rather than being written over
+    whatever happens to be active. Generating something you have not seen
+    yet must not change the site you are looking at.
     """
     from . import packages
     name = (name or "").strip() or "Generated look"
-    chunks = layout_chunks(db, layout_key, brief, fill_scope, use_ai_images)
+    chunks = layout_chunks(db, layout_key, kit, fill_scope, use_ai_images)
     pages = [{
         "title": (page_title or "Home").strip() or "Home",
         "slug_suffix": "",
         "sections": sections_for(chunks),
     }]
-    pkg_dir, slug = build_package(db, name, pages, palette=palette)
+    pkg_dir, slug = build_package(
+        db, name, pages,
+        palette=kit.get("palette"),
+        google_fonts_url=_fonts_url(kit.get("fonts")),
+        shape=kit.get("shape"), shadow=kit.get("shadow"))
     try:
         packages.install_theme_package(
             db, slug, static_folder, pkg_dir_override=pkg_dir, is_builtin=False)
     finally:
-        #  The working copy is not the installed one -- install copies it
-        #  into static/themes/<slug>/ -- so it goes.
         shutil.rmtree(os.path.dirname(pkg_dir), ignore_errors=True)
     return slug
+
+
+def _fonts_url(pairing):
+    """The local stylesheet for a font pairing, or nothing.
+
+    Local, always: every selectable font in this app is bundled as real
+    .woff2 files and nothing here fetches Google at runtime, by design.
+    Never write a fonts.googleapis.com URL into a package -- see
+    CLAUDE.md's "Fonts are fully self-hosted".
+    """
+    if not pairing:
+        return None
+    from .design import FONT_PAIRINGS
+    spec = FONT_PAIRINGS.get(pairing) or {}
+    return spec.get("google_fonts_url") or None

@@ -90,7 +90,7 @@ with app.app_context():
         "SELECT value FROM settings WHERE key = 'site_title'").fetchone()
 
     slug = tg.generate(db, static_folder, name="A Checker Look",
-                       layout_key="landing", brief="", fill_scope="none",
+                       layout_key="landing", kit=tg.brand_kit(brief=""), fill_scope="none",
                        use_ai_images=False)
     db.commit()
 
@@ -164,7 +164,7 @@ with app.app_context():
     print("Two runs are two templates")
     print("-" * 70)
     second = tg.generate(db, static_folder, name="A Checker Look",
-                         layout_key="simple", brief="", fill_scope="none",
+                         layout_key="simple", kit=tg.brand_kit(brief=""), fill_scope="none",
                          use_ai_images=False)
     db.commit()
     check("the same name twice does not collide", second != slug,
@@ -178,8 +178,7 @@ with app.app_context():
     print("-" * 70)
     REPLIES["content"] = json.dumps(ANSWER)
     written = tg.generate(db, static_folder, name="Bakery Look",
-                          layout_key="landing", brief="a corner bakery",
-                          fill_scope="all", use_ai_images=False)
+                          layout_key="landing", kit=tg.brand_kit(brief="a corner bakery"), fill_scope="all", use_ai_images=False)
     db.commit()
     wdir = os.path.join(static_folder, "themes", written, "pages")
     wdata = json.load(io.open(
@@ -191,7 +190,7 @@ with app.app_context():
     #  Words are words. A stray "<" in a headline is a headline.
     REPLIES["content"] = json.dumps(dict(ANSWER, hero_headline="Bread & <b>butter</b>"))
     escaped = tg.generate(db, static_folder, name="Escaped Look",
-                          layout_key="simple", brief="x", fill_scope="all",
+                          layout_key="simple", kit=tg.brand_kit(brief="x"), fill_scope="all",
                           use_ai_images=False)
     db.commit()
     edir = os.path.join(static_folder, "themes", escaped, "pages")
@@ -209,7 +208,7 @@ with app.app_context():
     REPLIES["content"] = ""
     try:
         tg.generate(db, static_folder, name="Nope", layout_key="simple",
-                    brief="something", fill_scope="all", use_ai_images=False)
+                    kit=tg.brand_kit(brief="something"), fill_scope="all", use_ai_images=False)
         check("an empty reply is refused", False, "it went through")
     except tg.ThemeGenError as e:
         said = str(e)
@@ -221,7 +220,7 @@ with app.app_context():
     REPLIES["content"] = "I'm afraid I can't do that."
     try:
         tg.generate(db, static_folder, name="Nope", layout_key="simple",
-                    brief="something", fill_scope="all", use_ai_images=False)
+                    kit=tg.brand_kit(brief="something"), fill_scope="all", use_ai_images=False)
         check("prose instead of content is refused", False, "it went through")
     except tg.ThemeGenError as e:
         check("prose instead of content is refused", True)
@@ -230,7 +229,7 @@ with app.app_context():
 
     try:
         tg.generate(db, static_folder, name="Nope", layout_key="simple",
-                    brief="", fill_scope="all", use_ai_images=False)
+                    kit=tg.brand_kit(brief=""), fill_scope="all", use_ai_images=False)
         check("no brief is refused before anything is spent", False, "it went through")
     except tg.ThemeGenError as e:
         check("no brief is refused before anything is spent",
@@ -238,10 +237,85 @@ with app.app_context():
 
     try:
         tg.generate(db, static_folder, name="Nope", layout_key="nonsense",
-                    brief="x", fill_scope="none", use_ai_images=False)
+                    kit=tg.brand_kit(brief="x"), fill_scope="none", use_ai_images=False)
         check("an unknown layout is refused", False, "it went through")
     except tg.ThemeGenError:
         check("an unknown layout is refused", True)
+
+    print()
+    print("One kit, read by everything in the run")
+    print("-" * 70)
+    #  Each call used to be independent, which is exactly why independent
+    #  calls read like different companies: one page formal and one
+    #  chatty, a photograph in three styles.
+    kit = tg.brand_kit(brief="a corner bakery", tone="expert", voice="i",
+                       reading="simple", language="German",
+                       fonts="cormorant-jost", shape="soft", shadow="subtle",
+                       image_budget="3")
+    check("the kit keeps what it was given",
+          kit["language"] == "German" and kit["voice"] == "i"
+          and kit["fonts"] == "cormorant-jost", str(kit)[:120])
+    check("...and refuses what it was not",
+          tg.brand_kit(tone="nonsense", fonts="nope", shape="nope")["tone"] == "warm")
+    check("...and there is ONE image direction for the whole run",
+          bool(kit["image_direction"]) and "consistent" in kit["image_direction"],
+          kit["image_direction"])
+
+    REPLIES["content"] = json.dumps(ANSWER)
+    prompt = tg._prompt(kit, tg._SCHEMAS["landing"])
+    check("the prompt says which language", "German" in prompt, prompt[:120])
+    check("...and the tone, and who is speaking",
+          "expert" in prompt.lower() and '"I"' in prompt, prompt[:200])
+    #  Facts a model does not have are facts it must not invent: a price
+    #  or an opening time it made up is one the owner has to find and
+    #  correct, and may not.
+    check("...and forbids inventing facts the owner has",
+          "opening hours" in prompt and "telephone" in prompt)
+
+    print()
+    print("The look travels with the template, not over the site")
+    print("-" * 70)
+    looked = tg.generate(db, static_folder, name="Looked", layout_key="simple",
+                         kit=kit, fill_scope="all", use_ai_images=False)
+    db.commit()
+    man = json.load(io.open(os.path.join(
+        static_folder, "themes", looked, "manifest.json"), encoding="utf-8"))
+    check("the package carries the shape", man.get("shape_override") == "soft", str(man))
+    check("...the shadow", man.get("shadow_override") == "subtle")
+    check("...and the fonts, as a LOCAL stylesheet",
+          (man.get("google_fonts_url") or "").startswith("/static/fonts/"),
+          str(man.get("google_fonts_url")))
+    check("...never a live Google Fonts URL",
+          "fonts.googleapis.com" not in json.dumps(man))
+
+    print()
+    print("Looking costs nothing")
+    print("-" * 70)
+    #  The plan is worked out without asking anybody anything. If it ever
+    #  starts calling the provider, this goes red: the stub records it.
+    asked = {"n": 0}
+    real = assistant._call_provider
+    assistant._call_provider = lambda db, m, t: (asked.__setitem__("n", asked["n"] + 1),
+                                                 {"content": REPLIES["content"]})[1]
+    shown = tg.plan(kit, "landing", "A plan", "Home")
+    assistant._call_provider = real
+    check("the plan asks the provider nothing", asked["n"] == 0, str(asked["n"]))
+    check("...and says how many sections", shown["sections"] == 4, str(shown))
+    check("...how many pictures", shown["pictures"] >= 1, str(shown))
+    check("...and what it will cost", shown["calls"] >= 1, str(shown))
+    check("...in the language it will write",
+          shown["language"] == "German", str(shown["language"]))
+    blank = tg.plan(tg.brand_kit(brief="", image_budget="0"), "simple",
+                    "Nothing", "Home", use_ai_images=False)
+    check("a run that asks nobody says so", blank["calls"] == 0 and not blank["writes"],
+          str(blank))
+    #  The flaw this check found: the plan promised a picture without
+    #  knowing whether the run could make one. It reads the same answers
+    #  the run does now.
+    no_pics = tg.plan(kit, "landing", "No pictures", "Home", use_ai_images=False)
+    check("...and a plan promises no picture the run will not make",
+          no_pics["pictures"] == 0 and no_pics["placeholders"] >= 1, str(no_pics))
+    check("...counting only the words as its cost", no_pics["calls"] == 1, str(no_pics))
 
 print()
 print("  %d ok, %d failed" % (passed, len(failures)))
