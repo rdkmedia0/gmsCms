@@ -482,6 +482,11 @@ def newsletter_issue_edit(newsletter_id):
             layout=(request.form.get("layout") or "").strip() or None)
         db.commit()
         flash("Saved.", "success")
+        #  Back where it was pressed. The tool is on two pages, and
+        #  saving from one of them should not land somebody on the other.
+        back = (request.form.get("next") or "").strip()
+        if back.startswith("/admin/"):
+            return redirect(back)
         return redirect(url_for("admin.newsletter_issue_edit", newsletter_id=newsletter_id))
 
     return render_template("admin/newsletter_issue_edit.html",

@@ -1087,6 +1087,11 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
 }
 /*  A picture's size sits with WHERE it goes, not with how words look. */
 .cms-scale-select { width: 96px; }
+/*  The typeface, with the text tools. It is disabled until a block is
+    chosen like the block's other properties, so it is dimmed there
+    rather than in the group it came from. */
+.cms-font-select { width: 108px; }
+.cms-font-select:disabled { opacity: .5; }
 .cms-toolbar-posts { display: inline-flex; align-items: center; gap: 4px; }
 .cms-toolbar-posts.cms-tools-idle { opacity: .5; }
 /*  FIXED widths, not max-widths.
@@ -1178,6 +1183,14 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
   display: inline-flex; align-items: center; gap: 6px; margin: 0;
   font-size: 13px; color: #55606d;
 }
+/*  ...and `hidden` has to win.
+    
+    A rule that gives an element a display overrules the hidden
+    ATTRIBUTE, silently: the JavaScript set it, the CSS ignored it, and
+    the field sat there greyed instead of gone. Reported as "instead of
+    greying out options they should be removed", which is what the code
+    already believed it was doing. */
+.cms-schedule-form label[hidden] { display: none; }
 .cms-schedule-form input, .cms-schedule-form select {
   width: auto; margin: 0; padding: 5px 8px; font-size: 14px; border-width: 1px;
 }
@@ -1350,13 +1363,37 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
     they belong anyway -- you act on the thing where the thing is.
     Absolutely positioned so nothing that is not the email is added to
     the email's own table flow. */
+/*  The selected block's own panel, above the block.
+    
+    It was a three-button handle, and the block's CONTROLS were in the
+    ribbon at the top of the page -- so changing a picture at the foot of
+    the canvas meant looking somewhere else entirely, with nothing on
+    screen connecting the two. This is the shape the live site already
+    uses for a section's tool panel: the tools for a thing, on the thing.
+    
+    Still parented to the CANVAS and positioned over the block, never
+    inside it: nothing that is not the email may live in that table. */
 .cms-block-handle {
   position: absolute; z-index: 4;
-  display: flex; gap: 2px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
   background: #fff; border: 1px solid #d7dde5;
-  border-radius: var(--cms-ui-radius-control);
-  box-shadow: 0 1px 4px rgba(0,0,0,.12); padding: 2px;
+  border-radius: var(--cms-ui-radius-surface);
+  box-shadow: 0 2px 8px rgba(0,0,0,.14); padding: 4px 6px;
 }
+/*  Inside the panel the group is just a row -- it has no seam of its own
+    to draw, because the panel is the seam. */
+.cms-block-handle .cms-block-tools {
+  border: 0; padding: 0; margin: 0; min-height: 0;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
+}
+.cms-block-handle .cms-block-tools select,
+.cms-block-handle .cms-block-tools input[type=url] {
+  padding: 3px 6px; font-size: 12px; border-width: 1px;
+}
+/*  Move and remove sit at the end, after the controls they are least
+    like: everything before them changes the block, these two move it or
+    take it away. */
+.cms-block-handle [data-handle] { order: 9; }
 .cms-block-handle button {
   width: 24px; height: 22px; padding: 0; line-height: 1;
   border: none; background: none; cursor: pointer;

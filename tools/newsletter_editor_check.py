@@ -42,6 +42,46 @@ def kinds(page):
         ".map(b => b.dataset.blockType)")
 
 
+def pick(page, kind):
+    """Click a block the way a person does -- on the block's own words.
+
+    Not the middle of its cell. A selected block opens space at its top
+    for its tool panel (see `showBlockHandle`), and on a short block --
+    a button, a divider -- that space contains the cell's geometric
+    centre, which is where a naive click lands. Clicking the content is
+    both what a person does and what the panel must never cover.
+    """
+    cell = page.query_selector("[data-block][data-block-type='%s']" % kind)
+    box = cell.bounding_box()
+    page.mouse.click(box["x"] + 30, box["y"] + box["height"] - 8)
+    page.wait_for_timeout(150)
+
+
+def panel_clear_of_other_blocks(page):
+    """Does the tool panel cover a block it is not about?
+
+    This is the failure the space exists to prevent: floating the panel
+    above the selected block put it over the block ABOVE, and a short
+    one was covered completely -- unselectable, because its own controls
+    ate every click aimed at it.
+    """
+    return page.evaluate("""() => {
+      const h = document.querySelector('.cms-block-handle');
+      if (!h) return 'no panel';
+      const sel = document.querySelector('[data-block].cms-block-selected');
+      const p = h.getBoundingClientRect();
+      const bad = [];
+      document.querySelectorAll('[data-block]').forEach(function (c) {
+        if (c === sel) return;
+        const r = c.getBoundingClientRect();
+        const over = Math.min(p.bottom, r.bottom) - Math.max(p.top, r.top);
+        const across = Math.min(p.right, r.right) - Math.max(p.left, r.left);
+        if (over > 2 && across > 2) bad.push(c.dataset.blockType + ' by ' + Math.round(over) + 'px');
+      });
+      return bad.length ? bad.join(', ') : '';
+    }""")
+
+
 def stored(page):
     return page.evaluate(
         "() => JSON.parse(document.querySelector('[data-blocks-store]').value || '[]')")
@@ -172,8 +212,7 @@ with sync_playwright() as p:
     before = kinds(page)
     check("it starts as the two blocks it was given", before == ["heading", "text"], str(before))
 
-    page.click("[data-block][data-block-type='text']")
-    page.wait_for_timeout(100)
+    pick(page, "text")
     page.click("[data-add-block='button']")
     settle(page)
     after = kinds(page)
@@ -190,8 +229,7 @@ with sync_playwright() as p:
     #  The control is on the BLOCK, not in the toolbar: what you are
     #  about to remove is the thing you are pointing at, and there is
     #  nothing to read to find out which one it will take.
-    page.click("[data-block][data-block-type='image']")
-    page.wait_for_timeout(150)
+    pick(page, "image")
     check("choosing a block puts its own controls on it",
           page.query_selector(".cms-block-handle") is not None)
     check("...including one to take it away",
@@ -205,21 +243,25 @@ with sync_playwright() as p:
     print()
     print("A block can be moved and styled, and the email carries it")
     print("-" * 68)
-    page.click("[data-block][data-block-type='heading']")
-    page.wait_for_timeout(100)
+    pick(page, "heading")
     check("choosing one wakes the style controls", page.evaluate(
         """() => !document.querySelector('[data-block-style=\"align\"]').disabled"""))
     check("...and says which one", page.evaluate(
         "() => document.querySelector('[data-selected-name]').textContent").startswith("Heading"))
 
+    #  The panel is ABOUT one block and must not sit on another. It used
+    #  to float above the selected block, which is over the block above
+    #  it -- and a short one was covered whole, so it could not be
+    #  clicked at all while its neighbour was selected.
+    covering = panel_clear_of_other_blocks(page)
+    check("the panel covers no other block", covering == "", covering)
+
     page.select_option("[data-block-style='align']", "center")
     settle(page)
-    page.click("[data-block][data-block-type='heading']")
-    page.wait_for_timeout(100)
+    pick(page, "heading")
     page.select_option("[data-block-style='font']", "Georgia, 'Times New Roman', serif")
     settle(page)
-    page.click("[data-block][data-block-type='heading']")
-    page.wait_for_timeout(100)
+    pick(page, "heading")
     page.evaluate("""
       () => {
         const c = document.querySelector("[data-block-style='bg']");
@@ -240,8 +282,7 @@ with sync_playwright() as p:
            }""") == "rgb(255, 243, 205)")
 
     #  Moving it. The words have to come with it, not stay behind.
-    page.click("[data-block][data-block-type='heading']")
-    page.wait_for_timeout(100)
+    pick(page, "heading")
     page.click(".cms-block-handle [data-handle='1']")
     settle(page)
     moved = kinds(page)
@@ -332,25 +373,31 @@ with sync_playwright() as p:
 
     #  1. Where a button points was a CARD under the message holding one
     #     field. It is a property of the selected block, exactly as its
-    #     alignment is, so it belongs with those in the ribbon.
+    #     alignment is, so it stands with the block's other controls --
+    #     which are now on the block itself, in its tool panel, rather
+    #     than in the ribbon at the top of the screen. What matters has
+    #     not changed: it is WITH the controls it belongs to, and it is
+    #     not a form of its own underneath the message.
     page.click("[data-add-block='button']")
     settle(page)
-    page.click("[data-block][data-block-type='button']")
-    page.wait_for_timeout(200)
+    pick(page, "button")
     where = page.evaluate(
         """() => { const f = document.getElementById('block-url');
              if (!f) return 'missing';
-             const bar = document.querySelector('.cms-issue-toolbar');
-             const canvas = document.querySelector('.cms-issue-canvas-ground');
+             const tools = document.querySelector('[data-block-tools]');
+             const align = document.querySelector('[data-block-style=\"align\"]');
              const r = f.getBoundingClientRect();
-             return { inToolbar: !!bar && bar.contains(f),
-                      aboveCanvas: r.top < canvas.getBoundingClientRect().top,
+             return { withItsBlock: !!tools && tools.contains(f),
+                      besideAlign: !!align && align.closest('[data-block-tools]')
+                                   === f.closest('[data-block-tools]'),
                       width: Math.round(r.width),
                       card: !!f.closest('.card') }; }""")
-    check("a block's link is in the ribbon with its other controls",
-          where != "missing" and where["inToolbar"], str(where))
+    check("a block's link stands with that block's other controls",
+          where != "missing" and where["withItsBlock"], str(where))
+    check("...in the same panel as its alignment",
+          where != "missing" and where["besideAlign"], str(where))
     check("...not a card under the message",
-          where != "missing" and not where["card"] and where["aboveCanvas"], str(where))
+          where != "missing" and not where["card"], str(where))
     check("...and is a control's width, not a form's",
           where != "missing" and where["width"] <= 260, str(where))
 
@@ -464,8 +511,7 @@ with sync_playwright() as p:
              c.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); }""")
     page.wait_for_timeout(250)
     idle = ribbon()
-    page.click("[data-block][data-block-type='text']")
-    page.wait_for_timeout(250)
+    pick(page, "text")
     busy = ribbon()
     check("the ribbon is the same height whether or not a block is chosen",
           idle["h"] == busy["h"], "idle %s, selected %s" % (idle, busy))

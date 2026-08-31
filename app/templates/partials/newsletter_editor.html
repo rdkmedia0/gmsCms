@@ -15,7 +15,18 @@
 <form method="post" id="cms-ai-form" class="cms-hidden-form"
       action="{{ url_for('admin.newsletter_issue_write') }}"></form>
 {% endif %}
-<form method="post" class="cms-issue-form cms-compose" id="cms-tool">
+{#  An explicit action, because this tool is on two pages now.
+
+    A form with no action posts to the page it is on. That was correct
+    while the editor was only its own screen, and became "405 Method Not
+    Allowed" the moment the Newsletters page carried it -- pressing Save
+    there posted to a GET-only route. The action names the route that
+    SAVES, wherever the tool is standing. #}
+<form method="post" class="cms-issue-form cms-compose" id="cms-tool"
+      action="{{ url_for('admin.newsletter_issue_edit', newsletter_id=item.id) }}">
+  {#  ...and where to come back to, so saving from the Newsletters page
+      returns to it rather than dropping somebody on another screen. #}
+  <input type="hidden" name="next" value="{{ request.full_path }}">
 
   {#  ---- the ribbon ---- #}
   <div class="cms-issue-toolbar" data-newsletter-toolbar>
@@ -111,6 +122,20 @@
         be worse than either. #}
     <div class="cms-toolbar-group cms-toolbar-writing">
       {{ wysiwyg_toolbar(include_image=false, include_icon=false, include_layout=false) }}
+      {#  The typeface belongs with the text tools, not with the selected
+          block's colours: it is a thing you do to WORDS, and bold,
+          italic and the headings are already here.
+
+          It still acts on the whole block rather than on a selection --
+          an email cannot carry two faces in one paragraph reliably, and
+          a control that appeared to apply to three words and did not
+          would be worse than one that says what it does. #}
+      <select data-block-style="font" class="cms-toolbar-select cms-font-select"
+              title="The typeface for the selected block. Only families already installed on the reader's machine are offered — a webfont cannot travel to an inbox.">
+        {% for value, label in email_fonts %}
+        <option value="{{ value }}">{{ label }}</option>
+        {% endfor %}
+      </select>
     </div>
 
     {#  4. The selected block, grouped by what each control DOES.
@@ -151,14 +176,8 @@
         </select>
       </span>
 
-      <span class="cms-tool-set" data-set="words" title="How the words in this block look.">
-        <span class="cms-tool-set-label">Words</span>
-        <select data-block-style="font" class="cms-toolbar-select"
-                title="The typeface for this block. Only families already installed on the reader's machine are offered — a webfont cannot travel to an inbox.">
-          {% for value, label in email_fonts %}
-          <option value="{{ value }}">{{ label }}</option>
-          {% endfor %}
-        </select>
+      <span class="cms-tool-set" data-set="words" title="The colour of the words in this block.">
+        <span class="cms-tool-set-label">Colour</span>
         <input type="color" data-block-style="color" value="#333c47"
                title="The colour of the words in this block.">
         <button type="button" class="cms-color-reset" data-block-style-clear="color"

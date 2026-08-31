@@ -42,6 +42,10 @@
   var canvas = form.querySelector(".cms-issue-canvas");
   var toolbar = form.querySelector("[data-newsletter-toolbar]");
   var blockTools = form.querySelector("[data-block-tools]");
+  //  Where the block's controls live while nothing is selected. They
+  //  move into the panel above the selected block and come back here
+  //  afterwards, so the form never loses them.
+  var toolsHome = blockTools ? blockTools.parentNode : null;
   var aside = form.querySelector("[data-block-aside]");
   if (!store || !canvas) return;
 
@@ -359,6 +363,16 @@
   function showBlockHandle() {
     var h = blockHandle();
     if (selected === null) {
+      //  The panel is removed with nothing selected, and it now carries
+      //  the block's controls -- so they are parked back in the ribbon
+      //  first. Removing a node that holds the only copy of six selects
+      //  would take them out of the form.
+      if (blockTools && toolsHome && blockTools.parentNode !== toolsHome) {
+        toolsHome.appendChild(blockTools);
+      }
+      canvas.querySelectorAll("[data-block]").forEach(function (c) {
+        c.style.paddingTop = "";
+      });
       if (h.parentNode) h.parentNode.removeChild(h);
       return;
     }
@@ -380,10 +394,51 @@
     //  selection that created it, and NOTHING could be selected by
     //  clicking at all.
     if (h.parentNode !== canvas) canvas.appendChild(h);
-    var box = cell.getBoundingClientRect();
+    //  The block's own controls come WITH the handle, above the block
+    //  they act on -- the shape the live site already uses for a
+    //  section's tool panel.
+    //
+    //  They were in the ribbon, which meant the controls for a thing
+    //  were nowhere near the thing: you clicked a picture at the bottom
+    //  of the canvas and looked up to a bar at the top to change it, and
+    //  nothing on screen connected the two. Moved rather than rebuilt --
+    //  the selects carry their options from the server, and a second
+    //  copy built in JavaScript is how the two come to differ.
+    if (blockTools && blockTools.parentNode !== h) h.appendChild(blockTools);
+
+    //  The block makes room for its own panel.
+    //
+    //  Floating it above the block put it over the block ABOVE, which
+    //  is a different block, and a short one was covered completely --
+    //  its controls swallowed every click aimed at it, so a block could
+    //  become unselectable by having something selected next to it.
+    //  Measured, not reasoned about: the checker's click reported
+    //  `<input data-block-style="color"> from <div class="cms-block-handle">
+    //  intercepts pointer events`.
+    //
+    //  So the space is real space. The selected cell takes padding of
+    //  the panel's own height while it is selected, the panel sits in
+    //  it, and nothing is ever underneath it. This is the shape the live
+    //  page editor already has, where a section's tool panel is in the
+    //  flow and pushes the section down.
+    canvas.querySelectorAll("[data-block]").forEach(function (c) {
+      if (c !== cell) c.style.paddingTop = "";
+    });
+    cell.style.paddingTop = "";
     var frame = canvas.getBoundingClientRect();
-    h.style.top = (box.top - frame.top - 12) + "px";
-    h.style.left = (box.right - frame.left - 78) + "px";
+    var box = cell.getBoundingClientRect();
+    h.style.left = Math.max(2, box.left - frame.left) + "px";
+    h.style.width = Math.max(240, box.width) + "px";
+    //  Measured AFTER the controls are in it and the width is set --
+    //  offsetHeight before either is the height of an empty box.
+    var tall = h.offsetHeight;
+    //  Opening the gap moves the block, so where the panel goes has to
+    //  be read again afterwards.
+    cell.style.paddingTop = (tall + 10) + "px";
+    box = cell.getBoundingClientRect();
+    frame = canvas.getBoundingClientRect();
+    h.style.top = Math.max(2, box.top - frame.top + 4) + "px";
+    h.style.left = Math.max(2, box.left - frame.left) + "px";
     h.querySelector("[data-handle='-1']").disabled = selected === 0;
     h.querySelector("[data-handle='1']").disabled = selected === blocks.length - 1;
   }
@@ -393,7 +448,13 @@
     var block = selected === null ? null : blocks[selected];
     var name = blockTools.querySelector("[data-selected-name]");
     blockTools.classList.toggle("cms-tools-idle", !block);
-    blockTools.querySelectorAll("select, input, button").forEach(function (c) {
+    //  Every control that acts on the selected block, wherever it
+    //  stands. The typeface is with the text tools now, and scoping
+    //  this to one group meant it was never enabled, never listened to
+    //  and never read back -- silently, because a select that nothing
+    //  listens to simply does nothing.
+    form.querySelectorAll("[data-block-style], [data-block-style-clear]")
+        .forEach(function (c) {
       c.disabled = !block;
     });
     if (!block) {
@@ -499,7 +560,7 @@
   }
 
   function setControl(key, value) {
-    var control = blockTools.querySelector("[data-block-style='" + key + "']");
+    var control = form.querySelector("[data-block-style='" + key + "']");
     if (control) control.value = value;
   }
 
@@ -631,7 +692,7 @@
   }
 
   if (blockTools) {
-    blockTools.querySelectorAll("[data-block-style]").forEach(function (control) {
+    form.querySelectorAll("[data-block-style]").forEach(function (control) {
       //  `change`, not `input`: a colour picker fires continuously while
       //  a finger is moving, and each one of those would be a save.
       control.addEventListener("change", function () {
@@ -645,7 +706,7 @@
       });
     });
 
-    blockTools.querySelectorAll("[data-block-style-clear]").forEach(function (btn) {
+    form.querySelectorAll("[data-block-style-clear]").forEach(function (btn) {
       btn.addEventListener("click", function () {
         if (selected === null) return;
         collect();

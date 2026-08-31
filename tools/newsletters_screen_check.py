@@ -218,6 +218,59 @@ try:
               bool(mine) and "Every Monday at 09:00" in mine[0], str(mine))
 
         print()
+        print("Saving from this page saves")
+        print("-" * 66)
+        #  The tool is on two pages now, and a form with no action posts
+        #  to the page it is on -- which was correct while the editor was
+        #  only its own screen, and became "405 Method Not Allowed" the
+        #  moment this page carried it. An owner pressed Save and got an
+        #  error page.
+        page.fill("#subject", "Checker save")
+        page.evaluate("""() => Array.from(
+            document.querySelectorAll('.cms-compose-actions button'))
+            .find(b => b.textContent.trim() === 'Save').click()""")
+        page.wait_for_load_state("networkidle")
+        page.wait_for_timeout(600)
+        body = page.evaluate("() => document.body.innerText")
+        check("pressing Save does not answer Method Not Allowed",
+              "Method Not Allowed" not in body, body[:60])
+        check("...it saves", "Saved." in body, body[:70])
+        check("...and comes back to this page, not another one",
+              "/admin/newsletters" in page.url and "/issue/" not in page.url,
+              page.url)
+
+        print()
+        print("A schedule removes what does not apply")
+        print("-" * 66)
+        #  `hidden` loses to a rule that gives the element a display: the
+        #  labels are inline-flex, so every "hide what does not apply"
+        #  set an attribute the CSS then overruled, and the fields sat
+        #  there greyed instead of gone. Checked as "is it actually not
+        #  displayed", not as "is the attribute set".
+        def gone(sel):
+            return page.evaluate(
+                """(s) => { const e = document.querySelector(s);
+                     if (!e) return true;
+                     const l = e.closest('[data-when]') || e;
+                     return l.hidden && getComputedStyle(l).display === 'none'; }""",
+                sel)
+
+        page.select_option("#sched-repeat", "monthly")
+        page.wait_for_timeout(250)
+        check("monthly: the weekday is gone, not greyed", gone("#sched-weekday"))
+        check("...and the day-of-month choice is there",
+              not gone("#sched-monthday-kind"))
+        page.select_option("#sched-repeat", "weekly")
+        page.wait_for_timeout(250)
+        check("weekly: the weekday is there", not gone("#sched-weekday"))
+        check("...and the day of the month is gone", gone("#sched-monthday-kind"))
+        page.select_option("#sched-repeat", "once")
+        page.wait_for_timeout(250)
+        check("once: a date and a time, and nothing else",
+              not gone("#sched-when") and gone("#sched-hour")
+              and gone("#sched-weekday"))
+
+        print()
         print("A blog is content, not a section of this screen")
         print("-" * 66)
         #  It was listed here per blog so each post could be sent as an
