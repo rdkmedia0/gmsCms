@@ -430,7 +430,52 @@ def _mix(one, two, amount):
     return _hex(tuple(x + (y - x) * amount for x, y in zip(a, b)))
 
 
-def page_colours(palette):
+def page_colours(palette, ground=""):
+    """Ground, ink, tint, hairline and the two safe accent variants.
+
+    `ground` is the colour read off a picture the owner showed us, when
+    they showed us one. It may be DARK -- and that is the whole point of
+    reading it: simbasax.com is a black site, and a generator that
+    samples it, keeps the three brand colours and then builds a white
+    page has read half the picture. A dark ground inverts the ink, the
+    tint, the hairline and the card, all of which are tokens the
+    stylesheet already reads, so nothing needs a new rule.
+    """
+    if ground and _rgb(ground) and _relative_luminance(_rgb(ground)) < 0.18:
+        return _dark_page(palette, ground)
+    return _light_page(palette, ground)
+
+
+def _dark_page(palette, ground):
+    """The same six colours, for a site whose ground is dark."""
+    roles = {r.get("slug"): r.get("color") for r in (palette or [])
+             if isinstance(r, dict) and r.get("color")}
+    primary = roles.get("primary") or "#888888"
+    accent = roles.get("accent") or roles.get("secondary") or primary
+    #  Not pure white: an off-white lifted towards the brand reads as
+    #  chosen, and full white on near-black vibrates.
+    ink = _mix("#f4f4f4", primary, 0.06)
+    #  A band on a dark page is LIGHTER than the ground, not darker --
+    #  the direction of the step is what makes it read as a band at all.
+    tint = _mix(ground, "#ffffff", 0.07)
+    line = _mix(ground, "#ffffff", 0.16)
+    card = _mix(ground, "#ffffff", 0.05)
+    accent_ink = ink if contrast(ink, accent) >= contrast("#111111", accent) else "#111111"
+    #  The accent has to carry as TEXT on a dark ground, which usually
+    #  means lightening it rather than darkening it.
+    accent_text = accent
+    for step in range(1, 13):
+        if contrast(accent_text, ground) >= 4.5:
+            break
+        accent_text = _mix(accent, "#ffffff", step * 0.07)
+    return {
+        "--site-ground": ground, "--site-ink": ink, "--site-tint": tint,
+        "--site-line": line, "--site-card-bg": card,
+        "--site-accent-ink": accent_ink, "--site-accent-text": accent_text,
+    }
+
+
+def _light_page(palette, ground=""):
     """Ground, ink, tint, hairline and the two safe accent variants.
 
     Returned as a plain dict of CSS custom properties, so the caller
@@ -444,7 +489,10 @@ def page_colours(palette):
     if not _rgb(primary):
         return {}
 
-    ground = _mix("#ffffff", primary, 0.03)
+    #  The picture's own pale ground when it gave us one -- Hacker
+    #  News's cream is the whole first impression of that page and
+    #  cannot be derived from a brand colour.
+    ground = ground if (ground and _rgb(ground)) else _mix("#ffffff", primary, 0.03)
     ink = _mix(primary, "#000000", 0.55)
     #  ...unless the brand is already so dark that darkening it further
     #  makes an ink nobody could tell from black.
@@ -467,6 +515,8 @@ def page_colours(palette):
         "--site-ink": ink,
         "--site-tint": tint,
         "--site-line": line,
+        #  A card on a light page is white; the ground is the warm one.
+        "--site-card-bg": "#ffffff",
         "--site-accent-ink": accent_ink,
         "--site-accent-text": accent_text,
     }

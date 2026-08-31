@@ -943,6 +943,38 @@ with app.app_context():
                   "--site-content-max"):
         check("...%s is a token the stylesheet reads" % token,
               ("var(%s" % token) in css_now and (token + ":") in css_now)
+    #  A dark reference makes a dark site. Sampling a black page, keeping
+    #  its three brand colours and then building a white one is reading
+    #  half the picture.
+    from app.services.palette import page_colours, contrast              # noqa: E402
+    pal = [{"slug": "primary", "color": "#382828"},
+           {"slug": "accent", "color": "#ff4000"}]
+    dark = page_colours(pal, "#000000")
+    check("a dark picture makes a dark page",
+          dark["--site-ground"] == "#000000"
+          and contrast(dark["--site-ink"], dark["--site-ground"]) > 7,
+          str(dark))
+    check("...with its bands lighter than the ground, not darker",
+          contrast(dark["--site-tint"], "#000000") > 1.0
+          and dark["--site-tint"] != "#000000", dark["--site-tint"])
+    light = page_colours(pal, "#f8f8f0")
+    check("...and a pale picture keeps its own pale ground",
+          light["--site-ground"] == "#f8f8f0", light["--site-ground"])
+    #  A band cannot wear a lens: --site-radius may be 50%/30%, which on
+    #  a full-width band draws an ellipse with the page showing through
+    #  the corners.
+    #  A surface that paints its own background states its own ink. On a
+    #  light site an inherited dark ink hides this; on a dark one the
+    #  hero's filled button, the stats boxes and a card's link all came
+    #  out white on white.
+    for surface in (".cms-banner-overlay .cms-btn:not(.cms-btn-ghost) { color:",
+                    ".cms-stat { color:", ".cms-card-link { color:"):
+        check("a surface says its own ink: %s" % surface.split(" {")[0][:34],
+              surface in css_now)
+    check("a wide surface takes the safe radius, not the shape",
+          ".cms-stat, .cms-cta, .cms-quote" in css_now
+          and "var(--site-radius-safe" in css_now)
+
     check("...and a template that chooses none renders as it always did",
           all(("var(%s," % t) in css_now
               for t in ("--site-hero-min", "--site-band-pad", "--site-lead",

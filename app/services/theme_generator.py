@@ -216,7 +216,13 @@ def _ground_from(colours):
             continue
         r, g, b = (int(colour[i:i + 2], 16) for i in (1, 3, 5))
         #  Rec. 709 luma, the same weighting `readable_on` uses.
-        if (0.2126 * r + 0.7152 * g + 0.0722 * b) >= 232:
+        luma = 0.2126 * r + 0.7152 * g + 0.0722 * b
+        #  PALE enough to carry dark text, or DARK enough to carry light
+        #  text. It was only the first, so a black site sampled its
+        #  three brand colours, threw away the black, and came back
+        #  white -- which is not what anybody pointing at a dark site
+        #  is asking for.
+        if luma >= 232 or luma <= 46:
             return colour
     return ""
 
@@ -788,11 +794,23 @@ def _maybe_generate_image(db, prompt, use_ai_images):
         return PLACEHOLDER_IMAGE
     from flask import current_app
     from .. import ai_image
-    try:
-        if not ai_image.is_configured(db):
-            return PLACEHOLDER_IMAGE
-        image_bytes = ai_image.generate_image(db, prompt, width=1600, height=600)
-    except Exception:                                         # noqa: BLE001
+    #  Asked twice, like the words are.
+    #
+    #  A diffusion backend that is busy refuses or times out, and the
+    #  same request a minute later succeeds -- and the difference to the
+    #  owner is a front page with a photograph or a front page with a
+    #  flat colour where the photograph should be. One retry, never a
+    #  loop.
+    image_bytes = None
+    for attempt in (1, 2):
+        try:
+            if not ai_image.is_configured(db):
+                return PLACEHOLDER_IMAGE
+            image_bytes = ai_image.generate_image(db, prompt, width=1600, height=600)
+            break
+        except Exception:                                     # noqa: BLE001
+            image_bytes = None
+    if not image_bytes:
         return PLACEHOLDER_IMAGE
     unique_name = "%s.png" % uuid.uuid4().hex
     os.makedirs(current_app.config["UPLOAD_FOLDER"], exist_ok=True)
@@ -1079,7 +1097,7 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
             "quote": val("quote", "Something a customer said about you."),
             "name": "", "role": "", "photo": "",
             "style": "large",
-        }, {"layout_width": "auto", "bg_color": tint}))
+        }, {"layout_width": "full", "bg_color": tint}))
         #  And it closes on the brand colour, not on a second photograph.
         #
         #  The CTA tool's "solid" tone paints the band in the site's own
@@ -1269,7 +1287,8 @@ def sections_for(chunks):
 def _ink_of(kit):
     """The site's own dark, as a real colour a section can be painted in."""
     from .palette import page_colours
-    return page_colours(kit.get("palette") or []).get("--site-ink") or "#241f1f"
+    return (page_colours(kit.get("palette") or [], kit.get("ground") or "")
+            .get("--site-ink") or "#241f1f")
 
 
 def _tint_of(kit):
@@ -1286,10 +1305,9 @@ def _tint_of(kit):
     #  only ever a paler version of the same hue -- so a site read from a
     #  cream page got a pink band, and the one colour that would have
     #  made it look like the thing it was read from was thrown away.
-    if kit.get("ground"):
-        return kit["ground"]
     from .palette import page_colours
-    derived = page_colours(kit.get("palette") or []).get("--site-tint")
+    derived = page_colours(kit.get("palette") or [],
+                           kit.get("ground") or "").get("--site-tint")
     if derived:
         return derived
     from .palette import tint_shade_ramp
@@ -1305,7 +1323,8 @@ def _tint_of(kit):
 
 def build_package(db, name, pages, palette=None, google_fonts_url=None,
                   shape=None, shadow=None, work_dir=None,
-                  nav_layout=None, footer_layout=None, composition=None):
+                  nav_layout=None, footer_layout=None, composition=None,
+                  ground=None):
     """Writes a package directory and returns (its path, its slug).
 
     `pages` is a list of {title, slug_suffix, sections}. A package with
@@ -1346,6 +1365,12 @@ def build_package(db, name, pages, palette=None, google_fonts_url=None,
     }
     if palette:
         manifest["palette"] = palette
+    if ground:
+        #  The ground the picture sat on. Carried beside the palette
+        #  because it is the same kind of thing -- a colour somebody
+        #  chose by choosing a picture -- and because a dark site is
+        #  a dark site on whoever installs it.
+        manifest["ground_color"] = ground
     if google_fonts_url:
         manifest["google_fonts_url"] = google_fonts_url
     #  A shape and a shadow are values the Corners/Depth controls already
@@ -1545,7 +1570,7 @@ def generate(db, static_folder, name, kit, fill_scope, use_ai_images,
         palette=kit.get("palette"),
         google_fonts_url=_fonts_url(kit.get("fonts")),
         shape=kit.get("shape"), shadow=kit.get("shadow"),
-        composition=kit.get("composition"))
+        composition=kit.get("composition"), ground=kit.get("ground"))
     try:
         packages.install_theme_package(
             db, slug, static_folder, pkg_dir_override=pkg_dir, is_builtin=False)

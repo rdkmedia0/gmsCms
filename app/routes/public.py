@@ -1988,7 +1988,8 @@ def _theme_override_css(template):
     #  inaccessible page.
     try:
         for name, value in palette_mod.page_colours(
-                json.loads(template["palette_json"] or "[]")).items():
+                json.loads(template["palette_json"] or "[]"),
+                _column(template, "ground_color") or "").items():
             lines.append("%s: %s;" % (name, value))
     except (ValueError, TypeError):
         pass

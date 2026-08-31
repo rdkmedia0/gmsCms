@@ -233,6 +233,11 @@ def _generate_gemini(settings, prompt, width, height, reference_image_bytes, ref
     raise ImageGenError(reason)
 
 
+#  How long a picture may take. Generous on purpose -- see the comment
+#  at the request below.
+IMAGE_TIMEOUT = 420
+
+
 def _generate_openwebui(settings, prompt, width, height, reference_image_bytes, reference_mime):
     """Open WebUI's own image-generation API — /api/v1/images/generations,
     OpenAI DALL-E-shaped. It proxies to whatever backend is configured on
@@ -271,7 +276,14 @@ def _generate_openwebui(settings, prompt, width, height, reference_image_bytes, 
         headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
     )
     try:
-        with urllib.request.urlopen(req, timeout=120) as resp:
+        #  A diffusion backend on a shared GPU takes as long as it takes:
+        #  measured on a real install, a 1600x600 banner came back at
+        #  around three minutes when a chat model had just been swapped
+        #  out, and 120s turned that into "took too long" on a run the
+        #  owner had already waited five minutes for. The picture is
+        #  most of what a generated page IS -- it is worth the wait, and
+        #  a page that arrives without one reads as broken.
+        with urllib.request.urlopen(req, timeout=IMAGE_TIMEOUT) as resp:
             data = json.loads(resp.read().decode())
     except urllib.error.HTTPError as e:
         detail = e.read().decode(errors="ignore")[:300]

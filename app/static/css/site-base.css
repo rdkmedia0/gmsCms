@@ -2830,6 +2830,14 @@ body.cms-logged-in .cms-basket-link.cms-basket-align-float-top { top: 60px; }
 
 /*  A button that a preset can actually shape. */
 .cms-btn {
+  /*  ONE geometry.
+      -----------
+      The nav was a 999px pill, the cards were rounded, and the buttons
+      were square -- three different answers to the same question on one
+      page, which reads as components stitched together rather than a
+      design. A button takes the site's own corner, like everything
+      else. */
+  border-radius: var(--site-radius, 8px);
   padding: var(--site-btn-pad, 12px 18px);
   font-size: var(--site-btn-size, 16px);
   font-weight: var(--site-btn-weight, 600);
@@ -2885,7 +2893,11 @@ body.cms-logged-in .cms-basket-link.cms-basket-align-float-top { top: 60px; }
     one hairline -- the grey fill was the only grey object on the page
     and read as the default it was. */
 .cms-card {
-  background: var(--site-card-bg, var(--site-ground, #fff));
+  /*  White on a warm off-white ground, so a card reads as an object
+      sitting on the page. Card and ground the same colour, separated by
+      a faint line, is the "dirty" look -- three near-identical surfaces
+      (ground, card, tint) that nobody chose. */
+  background: var(--site-card-bg, #fff);
   border: 1px solid var(--site-line, #e2e2e2);
   padding: var(--site-card-pad, 28px);
   text-align: var(--site-card-align, inherit);
@@ -2906,3 +2918,80 @@ body.cms-logged-in .cms-basket-link.cms-basket-align-float-top { top: 60px; }
     padding-block: var(--site-band-pad-mobile, var(--site-band-pad-tight, 64px));
   }
 }
+
+
+/*  A BAND, not an island.
+    ---------------------
+    A section carrying a background colour is a band across the page. Set
+    to the content width with a radius on it, it floats as a rounded
+    island with the page's ground trapped down both sides -- four of
+    them in a row, which is what made the page read as blocks stacked up
+    rather than a page. A coloured section reaches the edges and squares
+    its corners; its CONTENTS still sit on the page's axis (see the
+    full-bleed inset rule above).
+
+    Keyed on the section carrying a background, because that is exactly
+    the condition that makes it a band. Nothing else changes. */
+.site-content .cms-section[style*="background-color"] > .block {
+  border-radius: 0;
+}
+.site-content .cms-section[style*="background-color"] > .block > * {
+  border-radius: 0;
+}
+
+/*  The testimonial's quote glyph sat halfway down the sentence, reading
+    as a double slash. It belongs on the first line, at cap height. */
+.cms-quote-large .cms-quote-mark, .cms-quote .cms-quote-mark,
+.cms-block-testimonial .cms-quote-mark { vertical-align: top; line-height: 1; }
+
+/*  A phone stacks the footer's columns, and the row gap between them was
+    inheriting the space meant to separate BANDS. Three headings with
+    100px of nothing between them is not a footer. */
+@media (max-width: 640px) {
+  .cms-columns { row-gap: 28px; }
+}
+
+
+/*  A BAND CANNOT WEAR A LENS.
+    -------------------------
+    `--site-radius` may be `50% / 30%` (organic) or a 999px pill. On a
+    button or a small card that is the shape the owner chose; on a
+    full-width band, a stats row or a call-to-action it turns the band
+    into an ellipse with the page showing through four corners --
+    measured on a real render: three stat boxes as ovals inside an oval,
+    and a CTA drawn as a blue lozenge.
+
+    CLAUDE.md already names the rule and the variable: anything that
+    cannot wear the real shape takes `--site-radius-safe`, which is
+    always a plain length. These are those things -- the wide, tall
+    surfaces a page is made of, as against the small objects on it. */
+.cms-stat, .cms-cta, .cms-quote, .cms-quote-large, .cms-block > .cms-card-shape {
+  border-radius: var(--site-radius-safe, 10px);
+}
+
+
+/*  A SURFACE STATES ITS OWN INK.
+    ----------------------------
+    CLAUDE.md says this about the editor's chrome and it is just as true
+    of the page: anything that paints a background of its own must say
+    what colour text on it is, and never let the site's colour reach it
+    by inheritance. On a light site nobody notices, because the
+    inherited ink happens to be dark. On a DARK site -- which a dark
+    reference picture now produces -- every one of these turned white on
+    white:
+
+      * the hero's filled button (white fill, and the page's near-white
+        ink),
+      * the stats boxes (a pale --primary-50 fill, near-white labels),
+      * a card's trailing link (--primary, a dark brown, on a dark card).
+
+    Each one is a surface that knew its own background and not its own
+    foreground. */
+.cms-banner-overlay .cms-btn:not(.cms-btn-ghost) { color: #14100f; }
+.cms-banner-overlay .cms-btn:not(.cms-btn-ghost):hover { color: #14100f; }
+.cms-stat { color: #14100f; }
+.cms-stat-label { color: #14100f; opacity: .72; }
+/*  A link inside a card takes the accent that was DARKENED (or
+    lightened) to pass on this page's ground -- not the raw brand
+    colour, which is chosen to be a background. */
+.cms-card-link { color: var(--site-accent-text, var(--primary, currentColor)); }
