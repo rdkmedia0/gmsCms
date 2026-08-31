@@ -48,7 +48,19 @@ body {
   font-family: var(--site-font-family);
   background: var(--bg);
   color: var(--text);
-  font-size: 18px;
+  /*  An admin screen is a workbench, not a page to read.
+
+      This was 18px, with 30px headings and inputs 50px tall, and an
+      owner reported the whole admin as "overly large text and fields".
+      Measured across fourteen screens that was exactly right: a text
+      input holding a site name stood as tall as a button, and a screen
+      showed six controls where twelve would fit -- so you scrolled to
+      see the thing you were working on.
+
+      15px is the size the rest of this app already uses for anything
+      dense: the toolbar, the tables, the hints. The screens now agree
+      with them. tools/admin_density_check.py holds the line. */
+  font-size: 15px;
   line-height: 1.5;
 }
 
@@ -77,12 +89,12 @@ body {
 
 .admin-main { max-width: 900px; margin: 0 auto; padding: 24px; }
 
-h1 { font-family: var(--site-heading-font-family); font-weight: var(--site-heading-weight); font-size: 30px; margin-bottom: 16px; }
-h2 { font-family: var(--site-heading-font-family); font-weight: var(--site-heading-weight); font-size: 22px; margin: 0; }
-h3 { font-family: var(--site-heading-font-family); font-weight: var(--site-heading-weight); font-size: 18px; }
+h1 { font-family: var(--site-heading-font-family); font-weight: var(--site-heading-weight); font-size: 25px; margin-bottom: 12px; }
+h2 { font-family: var(--site-heading-font-family); font-weight: var(--site-heading-weight); font-size: 19px; margin: 0; }
+h3 { font-family: var(--site-heading-font-family); font-weight: var(--site-heading-weight); font-size: 16px; }
 
 .muted { color: var(--muted); }
-.hint { color: var(--muted); font-size: 15px; }
+.hint { color: var(--muted); font-size: 13px; }
 
 .card {
   background: var(--card-bg);
@@ -106,8 +118,12 @@ input[type=text], input[type=password], input[type=file], input[type=email],
 input[type=date], input[type=number], input[type=tel], input[type=url],
 input[type=search], select, textarea {
   width: 100%;
-  padding: 12px 14px;
-  font-size: 17px;
+  /*  ~38px tall, down from ~50. A one-line answer does not need the
+      height of a button plus its padding twice over. The border stays
+      2px: it is what makes a field look like a field at this size, and
+      thinning it to save two pixels would cost more than it saved. */
+  padding: 6px 11px;
+  font-size: 15px;
   border: 2px solid var(--border);
   border-radius: var(--cms-ui-radius-control);
   font-family: inherit;
@@ -116,8 +132,8 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--c
 
 .btn {
   display: inline-block;
-  padding: 10px 18px;
-  font-size: 16px;
+  padding: 8px 15px;
+  font-size: 15px;
   font-weight: 600;
   border-radius: var(--cms-ui-radius-control);
   border: 2px solid var(--border);
@@ -132,7 +148,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--c
 .btn-primary:hover { background: var(--cms-ui-accent-dark); }
 .btn-danger { color: var(--danger); border-color: var(--danger); }
 .btn-danger:hover { background: var(--danger); color: white; }
-.btn-small { padding: 6px 12px; font-size: 14px; margin-top: 0; }
+.btn-small { padding: 4px 10px; font-size: 13px; margin-top: 0; }
 .btn-block { display: block; width: 100%; text-align: center; }
 
 .media-library-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; margin-top: 16px; }
@@ -795,6 +811,16 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
       hits reliably, and there is no reason to be dainty with the width
       on a phone. */
   .btn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+  /*  The screens are set denser now, and a phone must not follow them
+      down: 44px is the smallest thing a thumb hits reliably, and that
+      is a fact about thumbs rather than about screen sizes. Fields get
+      their height back here, and the text with it. */
+  input[type=text], input[type=password], input[type=email],
+  input[type=date], input[type=number], input[type=tel], input[type=url],
+  input[type=search], select, textarea {
+    min-height: 44px; padding: 10px 12px; font-size: 16px;
+  }
+  body { font-size: 16px; }
   .card-header .btn, .inline-form > .btn { flex: 1 1 auto; }
 
   /*  Anything meant to be tapped gets a thumb-sized target. The panel
@@ -851,8 +877,13 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
 /*  The fields inherit the shared control style above, so they already
     match each other; these only stop a date field shrinking to its own
     idea of how wide a date is. */
+/*  Width only. The size was stated again here -- 16px in 10px of
+    padding -- which made these three the only controls on any admin
+    screen still standing at the old height after everything else came
+    down. A rule that restates what it inherits is a rule that stops
+    following it. */
 .cms-order-filters select,
-.cms-order-filters input[type="date"] { width: 100%; font-size: 16px; padding: 10px 12px; }
+.cms-order-filters input[type="date"] { width: 100%; }
 .cms-order-filters .filter-actions { display: flex; gap: 8px; align-items: end; }
 .cms-order-filters .filter-actions .btn { white-space: nowrap; }
 .cms-order-filters > .hint { margin: 14px 0 0; }
@@ -986,7 +1017,7 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
     nine controls; see the note in newsletter_issue_edit.html for where
     that leaves it. A select still shows enough of "Georgia" or
     "Centred" to be read. */
-.cms-block-tools select { max-width: 108px; }
+.cms-block-tools select { width: 108px; }
 .cms-issue-toolbar button { padding: 3px 7px; font-size: 12px; }
 .cms-issue-toolbar .cms-color-label { display: inline-flex; align-items: center; gap: 3px; }
 .cms-issue-toolbar input[type=color] { width: 26px; height: 22px; padding: 0; border-width: 1px; }
@@ -1021,13 +1052,24 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
     forbids for the other block controls, so it takes the same answer. */
 .cms-toolbar-link { display: inline-flex; align-items: center; gap: 4px; }
 .cms-toolbar-link.cms-tools-idle { opacity: .5; }
-.cms-toolbar-input { max-width: 150px; }
+
 /*  Which blog a Blog-posts block shows, and how many. Dimmed rather than
     hidden, for the same reason as the link field beside it: the ribbon
     must not change height as it is used. */
 .cms-toolbar-posts { display: inline-flex; align-items: center; gap: 4px; }
 .cms-toolbar-posts.cms-tools-idle { opacity: .5; }
-.cms-toolbar-count { width: 48px; }
+/*  FIXED widths, not max-widths.
+    
+    A select is as wide as its widest option, so this group changed width
+    with its contents: "— choose —" while idle is wider than a blog's
+    name once one is picked, and the four pixels that bought wrapped the
+    whole group onto a second row. The ribbon was then 194px with nothing
+    selected and 153px with something -- the same "changes shape as it is
+    used" fault as the selected-block label, arriving by a different
+    route. A width that cannot vary cannot wrap. */
+.cms-toolbar-posts select { width: 104px; }
+.cms-toolbar-count { width: 48px; flex: 0 0 48px; }
+.cms-toolbar-input { width: 140px; flex: 0 0 140px; }
 
 /*  ---- the Newsletters list ----
     

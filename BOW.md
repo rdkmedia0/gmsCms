@@ -7135,3 +7135,52 @@ layout IS. And `sent_composed` joined on `s.kind` where the column is
 `s.target_kind` -- SQLite raised nothing, the join simply matched no rows
 and the dropdown was quietly missing a section. **A join that matches
 nothing looks exactly like a feature that is switched off.**
+
+### "Overly large text and fields", measured (2026-08-28)
+
+Feedback item 1, and the only one of the four that was not a request for
+a different shape. It wants numbers, because "too large" is not
+actionable until you ask what each control is HOLDING.
+
+`tools/admin_density_check.py` walks fourteen admin screens and measures
+control heights, heading sizes, body text, and how many short answers
+are stretched across the whole column. Before:
+
+    no control is taller than a one-line input needs   FAILED  tallest 94px
+    headings are headings, not banners                 FAILED  largest h1 32px
+    running text is set for reading, not for posters   FAILED  body 18px
+
+The sources were three lines of CSS: `body { font-size: 18px }`,
+`h1 { 30px }`, and every input at `padding: 12px 14px; font-size: 17px`
+with a 2px border -- about 50px each. An admin screen is a workbench,
+and a workbench that shows six controls where twelve would fit makes
+somebody scroll to see the thing they are working on. 15px body, 25px
+h1, 36px controls now.
+
+**The phone does not follow it down.** 44px is the smallest thing a
+thumb hits reliably and that is a fact about thumbs, not about screen
+sizes; the mobile block gives fields their height back and takes the
+text to 16px, which is also what stops iOS zooming the page on focus.
+Measured: 36px/15px on a desktop, 45px/16px on a phone.
+
+Three things the measuring turned up that reading would not have.
+
+**A rule that restates what it inherits stops following it.** The Orders
+filters set `font-size: 16px; padding: 10px 12px` again, locally -- so
+after everything else came down, those three selects were the only
+controls on any screen still standing at the old height. The local rule
+now sets width, which is the only thing it was ever for.
+
+**`/admin/media` is a 404**, and the checker was measuring the error
+page's own 32px heading and reporting it as an admin screen set too
+large. A finding about a screen that does not exist is worse than no
+finding, because it hides the real one: the path is wrong (it is
+`/admin/images`). A 404 is reported now, never measured.
+
+**A select is as wide as its widest option.** The Blog-posts controls
+changed the block-tools group's width by four pixels between "— choose
+—" and a chosen blog's name, and four pixels wrapped the group onto a
+second row -- so the ribbon was 194px with nothing selected and 153px
+with something. The same "changes shape as it is used" fault as the
+selected-block label, arriving by a different route. Fixed widths, not
+max-widths: a width that cannot vary cannot wrap.
