@@ -32,9 +32,12 @@ DATA_DIR = tempfile.mkdtemp(prefix="fresh-install-")
 os.environ["DATA_DIR"] = DATA_DIR
 
 failures = []
+RUN = 0
 
 
 def check(name, ok, detail=""):
+    global RUN
+    RUN += 1
     print("%-58s %s%s" % (name, "ok" if ok else "FAILED", "  " + detail if detail and not ok else ""))
     if not ok:
         failures.append(name)
@@ -159,6 +162,54 @@ for path in sorted(set(screens)):
         broken.append(path)
 check("every admin screen opens", not broken, str(broken))
 
+#  ------------------------------------------- the schema a new site gets
+#
+#  A migration is written against a database that already exists, and is
+#  then run for the first time on one that does not. The two paths can
+#  disagree silently: `_add_column` tolerates a missing table on purpose
+#  -- right for an old database, and on a NEW one it means the column is
+#  quietly never added, because the CREATE is further down the same
+#  function. That happened, and nothing here would have caught it.
+with app.app_context():
+    db = get_db()
+
+    def columns(table):
+        return {r["name"] for r in db.execute("PRAGMA table_info(%s)" % table)}
+
+    orders = columns("orders")
+    for col in ("invoice_ref", "invoice_pdf", "invoice_url"):
+        check("a new database has orders.%s" % col, col in orders, str(sorted(orders)))
+
+    tables = {r["name"] for r in db.execute(
+        "SELECT name FROM sqlite_master WHERE type = 'table'")}
+    check("...and a table to keep a saved newsletter layout in",
+          "email_layouts" in tables)
+
+    #  The four messages that send themselves ship real words, and on a
+    #  brand-new install those words are the only ones there are.
+    from app.services import site_emails                       # noqa: E402
+    for key in site_emails.ORDER:
+        body = site_emails.body(db, key)
+        check("%s ships wording on a fresh install" % key,
+              bool(body.strip()) and body == site_emails.MESSAGES[key]["body_default"],
+              body[:60])
+    filled = site_emails.preview(db, "order")
+    check("...and the order message fills in with no braces left",
+          "{{" not in filled and "42.00 CHF" in filled, filled[:80])
+    #  The fault that opened this up, guarded where a new owner meets it.
+    check("...and says nothing about other orders",
+          "sessions to book" not in filled and "downloads left" not in filled,
+          filled[:120])
+
+    #  Layouts: the shipped ones are there and nobody else's are.
+    from app.services import email_layouts                     # noqa: E402
+    keys = [k for k, _n, _b in email_layouts.choices(db)]
+    check("the four shipped layouts are offered",
+          keys == ["letter", "story", "two-up", "announcement"], str(keys))
+    check("...and no saved layout from anybody else's install",
+          not email_layouts.saved(db))
+
+
 #  ------------------------------------------------------- and boots again
 second = create_app()
 with second.app_context():
@@ -174,7 +225,7 @@ with second.app_context():
 
 shutil.rmtree(DATA_DIR, ignore_errors=True)
 print()
-print("%d checks, %d failed" % (23, len(failures)))
+print("%d checks, %d failed" % (RUN, len(failures)))
 if failures:
     print("failed:", ", ".join(failures))
 sys.exit(1 if failures else 0)

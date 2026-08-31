@@ -6877,3 +6877,37 @@ And the layout-change check drove `select_option`, which lays the blocks
 out again and reloads -- three reloads deep, the check was about timing
 rather than about the button. It sets the value and fires `change` for
 what the button does, and posts to the route for what the route does.
+
+### A fresh install was not checked for any of today's schema
+
+`fresh_install_check.py` boots against an empty `DATA_DIR` twice and asks
+what a first five minutes would. It knew nothing about the invoice
+columns, the saved-layouts table, or the wording the four self-sending
+messages ship with -- all added today.
+
+That matters more than the usual "add a check" note, because the two
+paths through a migration genuinely disagree. `_add_column` tolerates a
+missing table **on purpose**: these ALTERs exist to bring an OLDER
+database up to date, and on a brand new one the table may not exist yet.
+Which means on a new install a misplaced `_add_column` does not fail --
+it does nothing at all, silently, and the column is missing forever. That
+is exactly what happened with `orders.invoice_ref`: added above the
+`CREATE TABLE orders` that creates the table it alters. An existing
+install was fine; a new one had no column and the first sale would have
+500'd.
+
+Proved rather than asserted. Putting the three `_add_column` calls back
+above the CREATE:
+
+    a new database has orders.invoice_ref   FAILED  ['amount_total',
+      'created_at', 'currency', 'customer_id', 'id', 'line_items',
+      'provider', 'provider_ref', 'status']
+
+**Anything a migration adds gets a line in the fresh-install checker**,
+not because schema drift is likely but because this particular failure is
+invisible on the machine you are developing on -- your database already
+has the column, from the run where the ALTER was in the right place.
+
+Its hand-maintained total (`23 checks`) is counted now, for the same
+reason `newsletter_check.py`'s was: it would have become a lie with the
+first line added.
