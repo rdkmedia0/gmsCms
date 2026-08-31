@@ -62,18 +62,30 @@
         style="background: {{ colour }}" title="{{ colour }}"></span>{% endfor %}
       {% if plan.look.fonts %}<span class="hint">{{ font_pairings[plan.look.fonts].name }}.</span>{% endif %}
       {% if plan.look.shape %}<span class="hint">{{ plan.look.shape|title }} corners,
-        {{ plan.look.shadow or 'no' }} shadow.</span>{% endif %}
+        {% if plan.look.shadow in ('', 'none') %}no{% else %}{{ plan.look.shadow }}{% endif %}
+        shadow.</span>{% endif %}
       {% if plan.look.why %}<br><span class="hint">{{ plan.look.why }}</span>{% endif %}
     </dd>
     {% endif %}
     {% if signals %}
     <dt>From your picture</dt>
     <dd>
+      {#  Only what this row ADDS. When the picture's reading was taken
+          it is already stated above, and saying it twice makes two rows
+          somebody has to compare to find out they agree. What is said
+          here instead is where it did NOT win -- which is always because
+          the owner set that one by hand, and is the thing worth
+          knowing. #}
       {% if signals.feel %}It reads as <strong>{{ signals.feel }}</strong>.<br>{% endif %}
-      <span class="hint">
-        {%- if signals.fonts %}Typefaces like {{ font_pairings[signals.fonts].name }}. {% endif %}
-        {%- if signals.shape %}{{ signals.shape|title }} corners. {% endif %}
-        {%- if signals.shadow %}{{ signals.shadow|title }} shadow.{% endif %}</span><br>
+      {% set overridden = [] %}
+      {% if signals.fonts and signals.fonts != plan.look.fonts %}
+        {% set _ = overridden.append('typefaces like ' ~ font_pairings[signals.fonts].name) %}{% endif %}
+      {% if signals.shape and signals.shape != plan.look.shape %}
+        {% set _ = overridden.append(signals.shape ~ ' corners') %}{% endif %}
+      {% if signals.shadow and signals.shadow != plan.look.shadow %}
+        {% set _ = overridden.append(signals.shadow ~ ' shadow') %}{% endif %}
+      {% if overridden %}<span class="hint">It also suggested {{ overridden|join(', ') }} —
+        your own choice above wins.</span><br>{% endif %}
       <span class="hint">Read from how it looks, never from what it says. Change any of it below
         before you make it — what was read is a guess.</span>
     </dd>

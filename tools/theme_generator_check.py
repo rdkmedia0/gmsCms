@@ -559,6 +559,15 @@ with app.app_context():
                          encoding="utf-8").read()
     check("...and the screen shows it without waiting to be asked",
           "plan.look and (plan.look.colours" in screen_now)
+    #  A reading that was TAKEN is already stated as the look; saying it
+    #  again under "from your picture" makes two rows somebody has to
+    #  compare to find out they agree. What that row adds is where the
+    #  reading did not win -- which is always somebody's own choice.
+    check("...and the picture row says only what it adds",
+          "signals.fonts != plan.look.fonts" in screen_now
+          and "your own choice above wins" in screen_now)
+    check("...and no look is called a none shadow",
+          "in ('', 'none') %}no{%" in screen_now)
 
     from_ref = tg.brand_kit(ref_colours=["#1d6b58", "#d94f2b"])
     check("read colours become a palette",
