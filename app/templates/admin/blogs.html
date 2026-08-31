@@ -3,15 +3,24 @@
 {% block content %}
 <h1>Blog</h1>
 
-{#  The blogs themselves, first: a post belongs to one, and the picker
-    at the top of the writing tool is a list of these. Making one is done
-    rarely and reading this list is done constantly -- it says what the
-    site HAS before the screen starts asking what to add to it. #}
+{#  One blog at a time.
+
+    Your blogs, then the writing tool, then what is in that blog, then
+    the times things go out. The same order the Newsletters screen has,
+    with the blogs first because a post belongs to one and everything
+    below follows whichever is current.
+
+    Every action on this page comes back to this page. Deleting a post
+    used to land on the blog's own manage screen -- which cannot show you
+    the delete worked -- and renaming a blog landed on the Dashboard. #}
+
+{% set back = url_for('admin.blogs_screen', blog=current_blog) %}
+
 <div class="card">
   <div class="integration-head">
     <h2>Your blogs</h2>
     <span class="hint">A set of posts with an address of its own. Show one anywhere with the
-      <strong>Blog</strong> tool.</span>
+      <strong>Blog</strong> tool. Choose one to work in.</span>
   </div>
   {% if blogs %}
   <div class="table-scroll">
@@ -19,21 +28,33 @@
       <thead><tr><th>Name</th><th>Address</th><th>Posts</th><th class="cms-col-actions"></th></tr></thead>
       <tbody>
         {% for b in blogs %}
-        <tr>
-          <td>
-            <form method="post" action="{{ url_for('admin.blog_rename', blog_id=b.id) }}"
-                  class="inline-form cms-rename-form">
-              <input type="text" name="name" value="{{ b.name }}" aria-label="Blog name"
-                     title="What this blog is called. Its web address does not change, so links to its posts keep working.">
-              <button type="submit" class="icon-btn"
-                      title="Save this blog's new name. Its web address does not change, so links to its posts keep working.">&#128190;</button>
-            </form>
+        <tr {% if b.id == current_blog %}class="is-current"{% endif %}>
+          <td class="col-tag">
+            {#  The current blog is a row you press, not a dropdown
+                somewhere else: the row IS the choice, and the one you
+                are working in says so. #}
+            {% if b.id == current_blog %}
+            <strong title="This is the blog you are working in.">{{ b.name }}</strong>
+            <span class="badge" title="The writing tool and the list below are about this blog.">working in this</span>
+            {% else %}
+            <a href="{{ url_for('admin.blogs_screen', blog=b.id) }}"
+               title="Work in this blog. The writing tool and the list below follow it.">{{ b.name }}</a>
+            {% endif %}
           </td>
           <td><code class="blog-address"
                     title="Where posts in this blog live. Renaming does not change it.">/blog/{{ b.slug }}/&hellip;</code></td>
           <td>{{ b.posts }}</td>
           <td class="cms-col-actions">
+            <form method="post" action="{{ url_for('admin.blog_rename', blog_id=b.id) }}"
+                  class="inline-form cms-rename-form">
+              <input type="hidden" name="next" value="{{ back }}">
+              <input type="text" name="name" value="{{ b.name }}" aria-label="Blog name"
+                     title="What this blog is called. Its web address does not change, so links to its posts keep working.">
+              <button type="submit" class="icon-btn"
+                      title="Save this blog's new name. Its web address does not change, so links to its posts keep working.">&#128190;</button>
+            </form>
             <form method="post" action="{{ url_for('admin.blog_delete', blog_id=b.id) }}">
+              <input type="hidden" name="next" value="{{ url_for('admin.blogs_screen') }}">
               <button type="submit" class="icon-btn icon-btn-danger"
                       data-confirm="You are about to delete the blog &quot;{{ b.name }}&quot; and its {{ b.posts }} post{{ 's' if b.posts != 1 }}. A blog is a set of posts, so the posts go with it. This cannot be undone."
                       data-confirm-danger="1"
@@ -47,72 +68,98 @@
   </div>
   {% endif %}
   <form method="post" action="{{ url_for('admin.blog_new') }}" class="inline-form">
+    <input type="hidden" name="next" value="{{ url_for('admin.blogs_screen') }}">
     <input type="text" name="name" placeholder="Journal, News, Recipes&hellip;"
            title="What to call the new blog. Its web address is made from this.">
     <button type="submit" class="btn btn-small" title="Start a new blog">+ Add a blog</button>
   </form>
 </div>
 
-
-{#  The same three things, in the same order, as the Newsletters screen:
-    the tool that makes one, everything that has been made, and the times
-    this site publishes at. An owner who has written a newsletter has
-    already learnt this page. #}
-
-{% if post %}
+{% if not blogs %}
+<div class="card">
+  <h2>Start a blog first</h2>
+  <p class="hint">A blog is a set of posts with an address of its own. Make one above and the
+    writing tool appears here.</p>
+</div>
+{% elif post %}
 <div class="card cms-tool-card">
   <div class="cms-tool-head">
     <h2>{% if post.title %}{{ post.title }}{% else %}New post{% endif %}</h2>
-    <span class="hint">Write it here. It is a draft until you say otherwise.</span>
+    <span class="hint">Writing in <strong>{{ current_blog_row.name if current_blog_row }}</strong>.
+      It is a draft until you say otherwise.</span>
   </div>
   {% include "partials/blog_post_editor.html" %}
 </div>
 {% else %}
-<div class="card">
-  <h2>Start a blog first</h2>
-  <p class="hint">A blog is a set of posts with an address of its own. Make one below and the
-    writing tool appears here.</p>
+{#  No draft, and nothing is made until somebody asks.
+
+    The screen used to create a blank one on arrival if there were none
+    -- so deleting your only draft and coming back produced another, and
+    the delete read as having done nothing. It had worked; the screen had
+    made a replacement before anybody could see. A GET does not write. #}
+<div class="card cms-tool-card">
+  <div class="cms-tool-head">
+    <h2>Nothing in progress</h2>
+    <span class="hint">Every post in <strong>{{ current_blog_row.name if current_blog_row }}</strong>
+      is published. Start the next one when you are ready.</span>
+  </div>
+  <form method="post" action="{{ url_for('admin.blog_post_start') }}" class="inline-form">
+    <input type="hidden" name="blog" value="{{ current_blog }}">
+    <button type="submit" class="btn btn-primary"
+            title="Start a new post in this blog. It opens here, as a draft.">Write a new post</button>
+  </form>
 </div>
 {% endif %}
 
 <div class="card">
   <div class="integration-head">
     <h2>Your posts</h2>
-    <span class="hint">Everything written, in every blog. Newest first.</span>
+    <span class="hint">Everything in
+      <strong>{{ current_blog_row.name if current_blog_row else 'this blog' }}</strong>, newest first.</span>
   </div>
   {% if post_rows %}
   <div class="table-scroll">
     <table class="simple-table cms-people-table">
       <thead>
-        <tr><th>Title</th><th>Blog</th><th>State</th><th>Date</th><th class="cms-col-actions"></th></tr>
+        <tr><th>Title</th><th>State</th><th class="col-when">Date</th><th class="cms-col-actions"></th></tr>
       </thead>
       <tbody>
         {% for item in post_rows %}
-        <tr {% if post and item.row.id == post.id %}class="is-open"{% endif %}>
+        <tr {% if post and item.row.id == post.id %}class="is-current"{% endif %}>
           <td>
-            <a href="{{ url_for('admin.blogs_screen', post=item.row.id) }}"
-               title="Open this post in the writing tool at the top of this page.">
+            <a href="{{ url_for('admin.blogs_screen', blog=item.row.blog_id, post=item.row.id) }}#cms-post-tool"
+               title="Open this post in the writing tool above.">
               {{ item.row.title or 'Untitled' }}</a>
           </td>
-          <td>{{ item.row.blog_name }}</td>
-          <td>
-            {%- if item.state == 'published' %}<span class="pill pill-good" title="Anybody can read this.">Published</span>
-            {%- elif item.state == 'waiting' %}<span class="pill" title="This publishes itself at the time shown, without you being here.">Publishing
+          <td class="col-tag">
+            {%- if item.state == 'published' %}<span class="badge" title="Anybody can read this.">Published</span>
+            {%- elif item.state == 'waiting' %}<span class="badge" title="This publishes itself at the time shown, without you being here.">Publishing
               <time data-utc="{{ item.job.send_at }}">{{ item.job.send_at[:16] }}</time></span>
-            {%- else %}<span class="pill pill-quiet" title="Written, but only you can see it while you are logged in.">Draft</span>
+            {%- else %}<span class="badge" title="Written, but only you can see it while you are logged in.">Draft</span>
             {%- endif %}
           </td>
-          <td class="cms-col-when">{{ item.row.published_at[:10] if item.row.published_at else '&mdash;' | safe }}</td>
+          <td class="col-when">{% if item.row.published_at %}{{ item.row.published_at[:10] }}{% else %}<span class="hint">&mdash;</span>{% endif %}</td>
           <td class="cms-col-actions">
+            {#  Every one of these carries where to come back to, so an
+                action taken on this list ends on this list. #}
             {% if item.row.published_at %}
             <a class="icon-btn" target="_blank" rel="noopener"
                href="{{ url_for('public.blog_post', slug=item.row.blog_slug, post_slug=item.row.slug) }}"
                title="Open this post on the site, in its own tab.">&#8599;</a>
             {% endif %}
-            <a class="icon-btn" href="{{ url_for('admin.blogs_screen', post=item.row.id) }}"
+            <a class="icon-btn"
+               href="{{ url_for('admin.blogs_screen', blog=item.row.blog_id, post=item.row.id) }}#cms-post-tool"
                title="Open this post in the writing tool above.">&#9998;</a>
+            <form method="post"
+                  action="{{ url_for('admin.blog_post_publish', blog_id=item.row.blog_id, post_id=item.row.id) }}">
+              <input type="hidden" name="next" value="{{ back }}">
+              <button type="submit" class="icon-btn"
+                      title="{{ 'Put this back to a draft, so only you can see it.' if item.row.published_at else 'Publish this post now, so anybody can read it.' }}">
+                {{ '&#128274;' | safe if item.row.published_at else '&#128065;' | safe }}</button>
+            </form>
             <form method="post" class="cms-delete-form"
                   action="{{ url_for('admin.blog_post_delete', blog_id=item.row.blog_id, post_id=item.row.id) }}">
+              <input type="hidden" name="next" value="{{ back }}">
               <button type="submit" class="icon-btn icon-btn-danger"
                       data-confirm="You are about to delete the post &quot;{{ item.row.title or 'Untitled' }}&quot;. This cannot be undone."
                       data-confirm-danger="1"
@@ -125,13 +172,11 @@
     </table>
   </div>
   {% else %}
-  <p class="hint">Nothing written yet. The tool above starts the first one.</p>
+  <p class="hint">Nothing in this blog yet. The tool above starts the first one.</p>
   {% endif %}
 </div>
 
 {% include "partials/schedules.html" %}
-
-
 
 {% from "partials/icon_picker.html" import icon_picker_grid with context %}
 {{ icon_picker_grid(include_none=false) }}

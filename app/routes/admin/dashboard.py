@@ -112,31 +112,42 @@ def dashboard():
 @bp.route("/blogs")
 @login_required
 def blogs_screen():
-    """Writing a post, everything written, and the times you publish at.
+    """One blog at a time: choose it, write in it, see what is in it.
 
-    The same three things in the same order as the Newsletters screen,
-    and deliberately: an owner who has written a newsletter has learnt
-    this screen. It was a tree of blogs with a pencil beside each post,
-    which is a file manager -- it told you what existed and gave you
-    nowhere to write.
+    The same three things in the same order as the Newsletters screen --
+    the tool, what has been made, the times things go out -- with the
+    blogs themselves first, because a post belongs to one and everything
+    below follows whichever is current.
 
-    A post and a newsletter are the same act with a different ending, so
-    they get the same shape: the tool at the top, what has been made in
-    the middle, and the schedules underneath.
+    Everything happens HERE. Deleting a post used to leave you on the
+    blog's own manage page, which is a different screen that cannot show
+    you the delete worked; renaming a blog left you on the Dashboard.
+    Three actions in a row was three screens.
     """
     db = get_db()
     from ...services import blog as blogs, scheduling
     context = _screen_context(db)
-    post = _tool_post(db, request.args.get("post", type=int))
+    every = blogs.list_blogs(db)
+
+    #  The blog everything else is about. Asked for in the address so it
+    #  survives an action and a redirect -- which is what makes "delete
+    #  this post" able to come back to the list it was deleted from.
+    current = request.args.get("blog", type=int)
+    if not any(b["id"] == current for b in every):
+        current = every[0]["id"] if every else None
+
+    post = _tool_post(db, request.args.get("post", type=int), current)
     waiting = {row["target_id"]: row for row in scheduling.recent(db, limit=200)
                if row["kind"] == "publish" and not row["claimed_at"]}
     context.update(
+        current_blog=current,
+        current_blog_row=next((b for b in every if b["id"] == current), None),
         post=post,
-        #  Every post, from every blog, in one table. They were one list
-        #  per blog, which reads as several small screens and hides the
-        #  only question anybody asks of this page: what have I written,
-        #  and what is still a draft.
-        post_rows=blogs.everything(db, waiting),
+        #  This blog's posts. It was every post from every blog in one
+        #  table, which reads as a site-wide list and then offers actions
+        #  that only make sense inside one blog.
+        post_rows=[row for row in blogs.everything(db, waiting)
+                   if current is None or row["row"]["blog_id"] == current],
         post_scheduled=waiting.get(post["id"]) if post else None,
         post_layouts=blogs.layout_choices(),
         post_layout_html={key: blogs.starting_html(key)
@@ -156,34 +167,52 @@ def blogs_screen():
     return render_template("admin/blogs.html", **context)
 
 
-def _tool_post(db, wanted=None):
+@bp.route("/blogs/write", methods=["POST"])
+@login_required
+def blog_post_start():
+    """Start a post in the current blog, and stay here.
+
+    A deliberate act, which is the whole point. The screen used to make a
+    blank draft on every visit if there were no drafts -- so deleting the
+    only draft and coming back produced another one, and the delete read
+    as having done nothing. It had worked; the screen had simply made a
+    replacement before anybody could see.
+    """
+    db = get_db()
+    from ...services import blog as blogs
+    blog_id = request.form.get("blog", type=int)
+    if not blogs.get_blog(db, blog_id):
+        first = blogs.list_blogs(db)
+        if not first:
+            flash("Start a blog first — a post has to live in one.", "error")
+            return redirect(url_for("admin.blogs_screen"))
+        blog_id = first[0]["id"]
+    made = blogs.create_post(db, blog_id, "", published_at="")
+    db.commit()
+    return redirect(url_for("admin.blogs_screen", blog=blog_id, post=made) + "#cms-post-tool")
+
+
+def _tool_post(db, wanted=None, blog_id=None):
     """Which post the creation tool is holding.
 
-    The one asked for, or the newest draft, or a fresh one. The same
-    shape `_tool_newsletter` has, for the same reason: the page IS the
-    tool, so it always has something in it -- and a site with no drafts
-    gets exactly one blank, which is the tool being ready rather than
-    litter.
-
-    None only when there is no blog to write in, which the screen says
-    rather than working around.
+    The one asked for, or the newest draft in this blog, or nothing --
+    and nothing is a real answer, drawn as "start one". It used to CREATE
+    a draft here when there were none, which meant the screen wrote to
+    the database on a GET, and deleting your only draft and returning
+    made another one.
     """
     from ...services import blog as blogs
-    every = blogs.list_blogs(db)
-    if not every:
-        return None
     if wanted:
         row = blogs.post_with_blog(db, wanted)
         if row:
             return row
+    if not blog_id:
+        return None
     draft = db.execute(
-        "SELECT id FROM blog_posts WHERE published_at IS NULL OR published_at = '' "
-        "ORDER BY id DESC LIMIT 1").fetchone()
-    if draft:
-        return blogs.post_with_blog(db, draft["id"])
-    made = blogs.create_post(db, every[0]["id"], "", published_at="")
-    db.commit()
-    return blogs.post_with_blog(db, made)
+        "SELECT id FROM blog_posts WHERE blog_id = ? "
+        "AND (published_at IS NULL OR published_at = '') "
+        "ORDER BY id DESC LIMIT 1", (blog_id,)).fetchone()
+    return blogs.post_with_blog(db, draft["id"]) if draft else None
 
 
 @bp.route("/design/pages")
@@ -263,20 +292,21 @@ def theme_generator():
             flash(ref_note, "warning")
         name = (request.form.get("name") or "").strip()
         layout_key = request.form.get("layout", "landing")
-        page_title = (request.form.get("page_title") or "Home").strip()
         mode = request.form.get("mode", "scratch")
         if mode not in dict(theme_generator_mod.MODES):
             mode = "scratch"
-        wanted = theme_generator_mod.page_list(request.form.get("pages", ""))
-        if not wanted:
-            wanted = [page_title or "Home"]
+        #  The Pages list is the only place pages are named. There was a
+        #  second field holding one name, from when this made one page,
+        #  and it sat under a list of three saying the page was called
+        #  Home -- two controls for one answer, one of them lying.
+        wanted = theme_generator_mod.page_list(request.form.get("pages", "")) or ["Home"]
 
         #  Looking is free. Everything below this line costs something.
         if request.form.get("preview"):
             try:
                 shown = theme_generator_mod.plan(
                     db, kit, name, mode=mode, pages_wanted=wanted,
-                    layout_key=layout_key, page_title=page_title,
+                    layout_key=layout_key,
                     use_ai_images=request.form.get("use_ai_images") == "1",
                     fill_scope=request.form.get("fill_scope", "all"))
             except theme_generator_mod.ThemeGenError as e:
@@ -292,8 +322,7 @@ def theme_generator():
                 db, current_app.static_folder, name=name, kit=kit,
                 fill_scope=request.form.get("fill_scope", "all"),
                 use_ai_images=request.form.get("use_ai_images") == "1",
-                mode=mode, pages_wanted=wanted,
-                layout_key=layout_key, page_title=page_title)
+                mode=mode, pages_wanted=wanted, layout_key=layout_key)
         except theme_generator_mod.ThemeGenError as e:
             flash(str(e), "error")
             return redirect(url_for("admin.theme_generator"))

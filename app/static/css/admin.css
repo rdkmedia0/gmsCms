@@ -1570,3 +1570,7 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
               border: 1px solid rgba(0,0,0,.15); vertical-align: middle; margin-right: 4px; }
 .cms-plan-pages { margin: 0 0 4px; padding-left: 18px; }
 .cms-plan-pages li { margin: 0 0 2px; }
+/*  The blog being worked in, and the post open in the tool. Marked
+    rather than merely selected somewhere else: the row IS the choice. */
+.cms-people-table tr.is-current > td { background: #f5f8ff; }
+.cms-people-table tr.is-current strong { font-weight: 600; }

@@ -108,12 +108,13 @@
     <textarea name="pages" id="tg-pages" rows="3"
               title="The pages to make, one per line or separated by commas. The first is the front page; the rest get a layout chosen from their name, and the plan shows you which before anything runs."
               placeholder="Home&#10;About&#10;Contact">{{ form.pages if form else '' }}</textarea>
-    <p class="hint">One per line. Only used when writing new pages — keeping or rewriting your words uses
-      the pages you already have.</p>
+    <p class="hint">One per line, the first is the front page. Leave it empty and you get one page
+      called Home. Only used when writing new pages — keeping or rewriting your words uses the pages
+      you already have.</p>
   </div>
 
   <div class="form-row">
-    <label>Layout</label>
+    <label>Front page layout</label>
     <div class="tg-layout-choices">
       {% for key, layout in layouts.items() %}
       <label class="tg-layout-choice">
@@ -124,14 +125,16 @@
       </label>
       {% endfor %}
     </div>
+    <p class="hint">This is the shape of the FIRST page. Any others in the list above get a
+      shape chosen from their name — an About page gets the story one, a Contact page the small
+      one — and the plan tells you which before anything is made.</p>
   </div>
 
-  <div class="form-row">
-    <label for="tg-page-title">Page called</label>
-    <input type="text" id="tg-page-title" name="page_title" maxlength="60"
-           value="{{ form.page_title if form else 'Home' }}"
-           title="The page this look ships with. Loading the template's content puts this page on your site.">
-  </div>
+  {#  There was a "Page called" field here, holding one name, from when
+      this made one page. The Pages list above is the same question asked
+      properly, and two controls for one answer is one of them lying --
+      it sat under a list of three pages saying the page was called
+      "Home". #}
 
   {#  ---- how it should sound ----
       Resolved once into a brand kit and passed into every call. Each
@@ -196,8 +199,8 @@
 
   <div class="form-row">
     <label for="tg-colors">Colours</label>
-    <select id="tg-colors" name="color_preset" title="A colour scheme for this template. It travels with the template — your current site's colours are not touched.">
-      <option value="">Leave the colours to the template</option>
+    <select id="tg-colors" name="color_preset" title="A colour scheme for this template. It travels with the template — your current site's colours are not touched. The standard colours are this app's own, and you can change them in the Colours panel afterwards.">
+      <option value="">The standard colours</option>
       {#  color_scheme_choices() is a dict of {key: {...}} -- the eight
           built-in schemes plus every installed template's own palette. #}
       {% for key, scheme in color_presets.items() %}
@@ -209,7 +212,7 @@
   <div class="form-row">
     <label for="tg-fonts">Fonts</label>
     <select id="tg-fonts" name="fonts" title="A typeface pairing. Every font this app offers is bundled with it — nothing is fetched from Google at page load.">
-      <option value="">Leave the fonts to the template</option>
+      <option value="">The standard fonts</option>
       {% for key, pairing in font_pairings.items() %}
       <option value="{{ key }}" {{ 'selected' if form and form.fonts == key }}>{{ pairing.name }}</option>
       {% endfor %}
@@ -219,7 +222,7 @@
   <div class="form-row">
     <label for="tg-shape">Corners</label>
     <select id="tg-shape" name="shape" title="How sharp or round the corners are on cards, buttons and pictures.">
-      <option value="">Leave the corners to the template</option>
+      <option value="">The standard corners</option>
       {% for key, preset in shapes.items() %}
       <option value="{{ key }}" {{ 'selected' if form and form.shape == key }}>{{ preset.name or key|title }}</option>
       {% endfor %}
@@ -229,7 +232,7 @@
   <div class="form-row">
     <label for="tg-shadow">Depth</label>
     <select id="tg-shadow" name="shadow" title="How much shadow sits under cards and banners.">
-      <option value="">Leave the depth to the template</option>
+      <option value="">The standard depth</option>
       {% for key, preset in shadows.items() %}
       <option value="{{ key }}" {{ 'selected' if form and form.shadow == key }}>{{ preset.name or key|title }}</option>
       {% endfor %}

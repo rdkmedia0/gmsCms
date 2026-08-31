@@ -355,10 +355,10 @@ def plan(db, kit, name, mode="scratch", pages_wanted=None, layout_key=None,
         }
 
     wanted = pages_wanted or ([page_title] if page_title else ["Home"])
-    if layout_key and len(wanted) == 1:
-        keys = [layout_key]
-    else:
-        keys = [layout_for(title, i) for i, title in enumerate(wanted)]
+    #  Same rule as the run: the choice is the front page's, and the
+    #  plan has to say what the run will do, not what it might.
+    keys = [(layout_key or "landing") if i == 0 else layout_for(title, i)
+            for i, title in enumerate(wanted)]
     if any(k not in LAYOUTS for k in keys):
         raise ThemeGenError("Unknown layout.")
 
@@ -727,7 +727,13 @@ def generate(db, static_folder, name, kit, fill_scope, use_ai_images,
         wanted = pages_wanted or ([page_title] if page_title else ["Home"])
         pages = []
         for i, title in enumerate(wanted):
-            key = layout_key if (layout_key and len(wanted) == 1) else layout_for(title, i)
+            #  The chosen layout is the FRONT PAGE's, always. It used to
+            #  apply only when exactly one page was asked for, so adding
+            #  a second page to the list silently turned the Layout
+            #  control off -- it was still there, still set, and no
+            #  longer doing anything. Every later page is guessed from
+            #  its name, and the plan says which before it runs.
+            key = (layout_key or "landing") if i == 0 else layout_for(title, i)
             chunks = layout_chunks(db, key, kit, fill_scope, use_ai_images,
                                    #  One picture for the run, at the top
                                    #  of the first page. Every later page

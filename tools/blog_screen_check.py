@@ -65,6 +65,17 @@ with sync_playwright() as pw:
     page.goto(BASE + "/admin/blogs")
     settle(page)
 
+    #  The screen no longer writes a draft into the database just because
+    #  somebody looked at it -- that is what made deleting your only
+    #  draft look as though it had failed, since coming back made
+    #  another. So starting one is a deliberate press, and this does what
+    #  a person does.
+    if not page.query_selector("#cms-post-tool"):
+        starter = page.query_selector("form[action*='/blogs/write'] button")
+        if starter:
+            starter.click()
+            settle(page)
+
     print()
     print("The writing comes first")
     print("-" * 68)
@@ -216,6 +227,83 @@ with sync_playwright() as pw:
                         "<= document.documentElement.clientWidth + 1"),
           str(page.evaluate("() => [document.documentElement.scrollWidth, "
                             "document.documentElement.clientWidth]")))
+
+    print()
+    print("Everything happens here")
+    print("-" * 68)
+    #  Deleting a post landed on the blog's own manage screen -- which
+    #  cannot show you the delete worked -- and the message said "Post
+    #  deleted." whether or not anything had been. Reported as "it says
+    #  deleted and it is not".
+    page.goto(BASE + "/admin/blogs")
+    settle(page)
+    check("the blog being worked in is marked", page.evaluate(
+        "() => !!document.querySelector('tr.is-current')"))
+    check("...and another can be chosen from the same row", page.evaluate(
+        """() => [...document.querySelectorAll('tbody tr')]
+             .some(r => r.querySelector('a[href*="/admin/blogs?blog="]'))
+           || document.querySelectorAll('tbody tr').length === 1"""))
+    #  The POST and BLOG actions, not every form on the page: the
+    #  schedules card has a delete of its own and belongs to a different
+    #  screen's list, so a selector matching "/delete" anywhere read it
+    #  as a blog action missing its return.
+    check("every action on the list says where to come back to", page.evaluate(
+        """() => { const forms = [...document.querySelectorAll(
+             'form[action*="/blogs/"]')].filter(f => /(delete|publish|rename)/
+               .test(f.getAttribute('action')));
+             return forms.length > 0 && forms.every(
+               f => !!f.querySelector('input[name="next"]')); }"""),
+          page.evaluate("""() => [...document.querySelectorAll('form[action*="/blogs/"]')]
+             .filter(f => /(delete|publish|rename)/.test(f.getAttribute('action')))
+             .filter(f => !f.querySelector('input[name="next"]'))
+             .map(f => f.getAttribute('action')).slice(0, 3).join(' ')"""))
+
+    rows = lambda: page.evaluate(
+        """() => { const h = [...document.querySelectorAll('h2')]
+             .find(x => x.textContent.trim() === 'Your posts');
+             return [...h.closest('.card').querySelectorAll('tbody tr td:first-child')]
+               .map(t => t.textContent.trim()); }""")
+    if not page.query_selector("#cms-post-tool"):
+        starter = page.query_selector("form[action*='/blogs/write'] button")
+        if starter:
+            starter.click()
+            settle(page)
+    page.fill("#post-title", "A post the checker deletes")
+    page.click("#cms-post-tool button.btn-primary")
+    settle(page)
+    before = rows()
+    check("the post is in the list", "A post the checker deletes" in before, str(before[:3]))
+
+    page.query_selector(
+        "tr:has-text('A post the checker deletes') form[action*='/delete'] button").click()
+    page.wait_for_timeout(700)
+    #  Clicking the confirm navigates, which destroys the context the
+    #  evaluate is running in -- so the click is made with a locator and
+    #  the navigation is waited for, rather than from inside the page.
+    confirm = page.query_selector(
+        ".cms-modal-backdrop:not([hidden]) button.btn-primary, "
+        ".cms-modal-backdrop:not([hidden]) button.btn-danger")
+    if not confirm:
+        buttons = page.query_selector_all(".cms-modal-backdrop:not([hidden]) button")
+        confirm = buttons[-1] if buttons else None
+    if confirm:
+        confirm.click()
+    settle(page)
+    check("deleting stays on this screen",
+          "/admin/blogs" in page.url and "/posts/" not in page.url, page.url)
+    after = rows()
+    check("...and the post is actually gone",
+          "A post the checker deletes" not in after, str(after[:3]))
+    check("...and it says so", page.evaluate(
+        """() => [...document.querySelectorAll('.flash')]
+             .some(f => f.textContent.indexOf('deleted') >= 0)"""))
+    #  The screen used to make a blank draft on arrival, so deleting the
+    #  only draft and coming back produced another -- which is what made
+    #  a working delete read as broken.
+    page.goto(BASE + "/admin/blogs")
+    settle(page)
+    check("...and looking at the screen writes nothing",
+          len(rows()) == len(after), "%d then %d" % (len(after), len(rows())))
 
     check("no console errors", not errors, "; ".join(errors[:3]))
     browser.close()

@@ -286,19 +286,22 @@ def _published_date(form, existing="", scheduled=None):
 @bp.route("/blogs/new", methods=["POST"])
 @login_required
 def blog_new():
-    """Makes a blog. The Dashboard could list them and open them, and
-    could not make one -- the only way to get a blog was to drop a Blog
-    tool on a page and let it make one for you, which is a fine shortcut
-    and a poor only route."""
+    """Makes a blog, and comes back to where you asked for it.
+
+    These all landed on the Dashboard, whichever screen you started
+    from -- so making a blog, renaming it and writing in it was three
+    screens for one piece of work. `next` is honoured the same way a
+    post's save honours it, and only for same-site paths.
+    """
     db = get_db()
     name = (request.form.get("name") or "").strip()
     if not name:
         flash("Give the blog a name.", "error")
-        return redirect(url_for("admin.dashboard"))
+        return redirect(_post_return_url(url_for("admin.blogs_screen")))
     blog_service.create_blog(db, name)
     db.commit()
     flash('Blog "%s" created.' % name, "success")
-    return redirect(url_for("admin.dashboard"))
+    return redirect(_post_return_url(url_for("admin.blogs_screen")))
 
 
 @bp.route("/blogs/<int:blog_id>/rename", methods=["POST"])
@@ -309,10 +312,10 @@ def blog_rename(blog_id):
     db = get_db()
     if not blog_service.get_blog(db, blog_id):
         flash("That blog no longer exists.", "error")
-        return redirect(url_for("admin.dashboard"))
+        return redirect(_post_return_url(url_for("admin.blogs_screen")))
     blog_service.rename_blog(db, blog_id, request.form.get("name"))
     db.commit()
-    return redirect(url_for("admin.dashboard"))
+    return redirect(_post_return_url(url_for("admin.blogs_screen")))
 
 
 @bp.route("/blogs/<int:blog_id>/delete", methods=["POST"])
@@ -323,12 +326,12 @@ def blog_delete(blog_id):
     row = blog_service.get_blog(db, blog_id)
     if not row:
         flash("That blog no longer exists.", "error")
-        return redirect(url_for("admin.dashboard"))
+        return redirect(_post_return_url(url_for("admin.blogs_screen")))
     posts = blog_service.delete_blog(db, blog_id)
     db.commit()
     flash('Deleted "%s" and %d post%s.' % (row["name"], posts, "" if posts == 1 else "s"),
           "success")
-    return redirect(url_for("admin.dashboard"))
+    return redirect(_post_return_url(url_for("admin.blogs_screen")))
 
 
 @bp.route("/blogs/<int:blog_id>")
@@ -338,7 +341,7 @@ def blog_manage(blog_id):
     blog = blog_service.get_blog(db, blog_id)
     if not blog:
         flash("That blog no longer exists.", "error")
-        return redirect(url_for("admin.dashboard"))
+        return redirect(_post_return_url(url_for("admin.blogs_screen")))
     posts = blog_service.posts_for(db, blog_id, published_only=False)
     return render_template("admin/blog_manage.html", blog=blog, posts=posts)
 
@@ -548,10 +551,15 @@ def blog_post_update(blog_id, post_id):
 @login_required
 def blog_post_delete(blog_id, post_id):
     db = get_db()
-    db.execute("DELETE FROM blog_posts WHERE id = ? AND blog_id = ?", (post_id, blog_id))
+    #  What actually happened, said. It always said "Post deleted." --
+    #  including when the WHERE clause matched nothing, which is a
+    #  message that cannot be trusted the one time it matters.
+    gone = db.execute("DELETE FROM blog_posts WHERE id = ? AND blog_id = ?",
+                      (post_id, blog_id)).rowcount
     db.commit()
-    flash("Post deleted.", "success")
-    return redirect(url_for("admin.blog_manage", blog_id=blog_id))
+    flash("Post deleted." if gone else "That post was already gone.",
+          "success" if gone else "warning")
+    return redirect(_post_return_url(url_for("admin.blog_manage", blog_id=blog_id)))
 
 
 @bp.route("/blogs/<int:blog_id>/posts/<int:post_id>/image-upload", methods=["POST"])
