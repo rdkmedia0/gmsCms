@@ -7631,3 +7631,98 @@ Two classes whose names differ by a prefix, belonging to two stylesheets
 with different jobs, is a trap that will spring again. The test is the
 one already in CLAUDE.md: could a visitor ever see it? `cms-` is the
 site's and the editor's; the admin's own styles are not.
+
+## 2026-08-31 (later) — the generator stopped editing your site
+
+### The one change that carried the rest
+
+The AI Theme Generator appended sections to whichever page you picked.
+Generating was therefore an edit to a live site, and the undo was
+"delete the sections it added, one at a time" — which is why nobody
+would ever have used it to generate five pages.
+
+It writes a Template Package now and installs it *without activating
+it*. That single change brought six things that would each have been
+their own feature: preview before applying, one all-or-nothing apply,
+undo by re-activating what was active, export, media owned by the
+template, and an inventory of what a package will do before it does it.
+
+CLAUDE.md had listed this as a deferred follow-up — "a Theme Generator
+layout is structurally a package with no content". It is a package *with*
+content now, which is the same insight from the other side.
+
+### A service that could not run outside a request
+
+Moving it into `app/services/` broke it immediately, and the failure was
+the useful kind: `render_template` for its prompt runs the app's context
+processors, and one of those reads the session. So the service died with
+"Working outside of request context" the first time a checker called it
+without a browser.
+
+That is exactly the coupling the service rule exists to prevent, and it
+was invisible while the only caller was a route. It renders through the
+Jinja environment now.
+
+### Independent calls read as different companies
+
+Every call the generator made was independent. That is precisely why AI
+sites sound assembled rather than written: one page formal, one chatty,
+a photograph in three styles, a palette that changes between pages.
+
+A brand kit is resolved once per run — tone, whether the site says "we"
+or "I", reading level, language, palette, fonts, corners, depth, and one
+image direction — and every call reads it.
+
+### Looking should be free, and a plan must not promise what the run will not do
+
+"Show me the plan" asks the provider nothing and says what would be made
+and what it would cost. The checker counts provider calls during a plan
+and goes red if looking ever starts costing something.
+
+It caught a real flaw immediately: the plan promised a picture without
+knowing whether the run could make one — it read the image budget and
+ignored whether pictures were switched on at all. A plan that promises a
+photograph the run will not make is worse than no plan.
+
+### A rewrite must not lose a fact
+
+The three content modes are keep-my-words, rewrite, and write-new. The
+middle one is what most people with a site actually want, and it is the
+one that can do real damage: a telephone number or an opening time
+dropped in a rewrite is a mistake the owner has to find, and may never.
+
+So it is deliberately timid. The model is shown the LINES of a section
+and asked for the same number back. Anything else — a different count, an
+empty answer, a refusal — keeps the original, silently. The checker
+proves the timid path, not just the happy one.
+
+### Style is fair to admire; words are somebody's work
+
+You can point the generator at a page you like. It reads colours,
+typefaces, corners and depth, and it *cannot* read anything else: the
+extractor returns colours, font names and two preset words, so there is
+nothing in its output that could carry somebody's copy or their
+photographs. That is asserted against a page whose markup contains a
+headline and a paragraph — neither survives into what was read.
+
+Fetching a URL is also a request this app makes on somebody's behalf, so
+it is http(s) only, refuses any address that resolves to a non-public
+host, and re-checks **every redirect hop** — because a public address can
+redirect to a private one, and checking only the first hop checks the
+half an attacker does not control.
+
+### An escape became a control character
+
+Three times this session a `\b` or a `\n` written into a file arrived
+mangled. Twice it was a real newline inside a string literal, which is at
+least a syntax error. The third time it was worse: `\b` arrived as a
+literal BACKSPACE (0x08) inside a regular expression, so the pattern
+asked for a backspace and matched nothing — silently, and invisibly in
+every editor and diff.
+
+The tell was a shadow reader that called every 28px blur "subtle" while
+the identical expression, typed by hand, worked. `email_layout_check`'s
+sweep of `app/` for control characters is the net under this, and it is
+green — but the lesson is the same one BOW.md already records: build the
+pattern (`String.fromCharCode`, an explicit `RegExp`) rather than typing
+an escape into a file that is being written by a tool.

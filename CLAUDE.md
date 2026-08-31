@@ -84,8 +84,8 @@ app/
                          # OFL/Apache license text in fonts/licenses/ — see
                          # "Fonts are fully self-hosted" below
   assistant.py, ai_image.py, ai_video.py, mailer.py, crypto.py, icons.py, db.py, csrf.py
-  theme_generator.py, theme_layouts.py   # AI Theme Generator (distinct
-                                          # from Template Packages — see below)
+                                          # (the AI Theme Generator lives in
+                                          # services/ now — see below)
 ```
 
 ## The admin is buttons, then tabs
@@ -617,14 +617,52 @@ existing one for the exact shape). When adding logic that operates on
 packages, add it to `app/services/packages.py`, not back into a route
 file.
 
-Note this is distinct from the **AI Theme Generator** (`theme_generator.py`
-+ `theme_layouts.py`, reached via `routes/admin/dashboard.py`'s
-`theme_generator` route) — that's a from-scratch AI-copywriting flow using
-its own small fixed layout skeletons (`landing`/`about`/`simple` in
-`theme_layouts.LAYOUTS`), not a package. The two were considered for
-unification (a Theme Generator layout is conceptually "a package with
-structure but no content") but kept separate for now — see "Deferred
-follow-ups" below.
+**The AI Theme Generator makes one of these** (`services/theme_generator.py`,
+reached from `routes/admin/dashboard.py`). It used to append three or four
+sections to whichever page you picked, which made generating an edit to a
+live site whose undo was "delete the sections it added, one at a time".
+It writes a package now and installs it through the same installer an
+uploaded `.zip` goes through, **without activating it** — so what comes
+back is a template to look at, keep, use, export or throw away, and six
+things come free: preview, one all-or-nothing apply, undo by re-activating
+what was active, export, media owned by the template, and
+`package_inventory()`.
+
+What that means for anything added to it:
+
+- **It picks values; it never writes rules.** A look is a palette, fonts,
+  a shape and a shadow — every one of them a value the existing controls
+  already carry. No `theme.css` travels with a generated package and no
+  rule hides in the markup. Emitting *tokens* the stylesheet already
+  consumes would be acceptable one day; emitting CSS never is.
+- **Everything it emits is built from real tools**, so an owner can go on
+  editing it by hand. A class the generator invented is a look nobody can
+  edit with the controls they have, and nothing on screen says so —
+  `theme_generator_check.py` fails on any class no tool produces.
+- **It carries no identity.** A package may carry a business name; this
+  one must not invent one, and a generator is the likeliest thing here to
+  overwrite the site's own by accident.
+- **A brand kit is resolved once per run** — tone, voice, reading level,
+  language, palette, fonts, shape, depth, and one image direction — and
+  read by every call. Independent calls are exactly why generated sites
+  read as several different companies.
+- **Looking is free.** "Show me the plan" asks the provider nothing and
+  says what the run would make and what it would cost. The checker counts
+  provider calls during a plan and goes red if looking ever starts
+  costing something.
+- **Three modes, three intentions**: keep my words (no AI at all),
+  rewrite them (same facts, different voice — an answer of the wrong
+  shape keeps the original, because a rewrite that drops a phone number
+  is a mistake the owner may never find), or write new pages.
+- **A reference page gives style and only style** (`services/style_extract.py`):
+  colours, typefaces, corners, depth. It cannot return prose — there is
+  nothing in its output that could carry somebody's words or pictures —
+  and it refuses any address that is not a public http(s) host, re-checking
+  every redirect hop.
+
+Runs are synchronous. They should become claimed jobs (the discipline is
+in `services/scheduling.py`) when a run grows past what a request should
+hold; at three pages it is three requests and does not need to be.
 
 ## The site's identity is the site's, never the template's
 
@@ -1476,10 +1514,11 @@ scoped feature, not part of "finish the refactor":
   conceptually a Template Package scoped to one section instead of a
   whole site — an admin could save a section they built as a reusable
   pattern.
-- **AI Theme Generator ↔ Template Packages**: a Theme Generator layout
-  (`theme_layouts.LAYOUTS`) is structurally "a package with no content" —
-  could be unified into one system instead of two, if that duplication
-  ever becomes a real maintenance cost.
+- ~~**AI Theme Generator ↔ Template Packages**~~ — **done**. The
+  generator writes a Template Package and installs it without activating
+  it; `theme_layouts.py` is gone. See "The AI Theme Generator makes one of
+  these" above. What is still deferred from that work: runs as claimed
+  jobs, which only matters once a run outgrows a request.
 
 ## Refactor history
 
