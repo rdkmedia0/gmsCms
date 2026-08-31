@@ -89,9 +89,9 @@ BLOCK_TYPES = {
     #  live, which is right for an email -- what arrived is what was true
     #  when it was sent.
     "posts": {
-        "name": "Blog posts",
+        "name": "Blog post",
         "icon": "📰",
-        "hint": "The latest posts from one of your blogs, with a link to each.",
+        "hint": "One post from one of your blogs, with a link to it. Add another block for a second post.",
     },
 }
 
@@ -165,10 +165,15 @@ def blank(kind):
     elif kind == "button":
         made.update({"label": "", "url": ""})
     elif kind == "posts":
-        #  `blog_id` empty means "not chosen yet", which the canvas draws
-        #  as an empty slot rather than silently picking a blog for
-        #  somebody. `count` is how many of the latest to include.
-        made.update({"blog_id": "", "count": 3})
+        #  One blog and one POST. It took "the latest three", which is a
+        #  feed rather than a choice: an owner deciding what goes in this
+        #  issue is choosing a post, not a number. Two posts means two
+        #  blocks, which is what blocks are for and how the rest of the
+        #  editor already works.
+        #
+        #  Empty means "not chosen yet", which the canvas draws as an
+        #  empty slot rather than silently picking one for somebody.
+        made.update({"blog_id": "", "post_id": ""})
     return made
 
 
@@ -215,15 +220,8 @@ def normalise(blocks):
             if raw.get(key) is not None:
                 made[key] = raw[key]
         if kind == "posts":
-            try:
-                made["count"] = int(made.get("count") or 3)
-            except (TypeError, ValueError):
-                made["count"] = 3
-            #  One to ten. Nought is a block that draws nothing, and a
-            #  newsletter carrying forty posts is a newsletter nobody
-            #  scrolls to the end of.
-            made["count"] = max(1, min(10, made["count"]))
             made["blog_id"] = str(made.get("blog_id") or "")
+            made["post_id"] = str(made.get("post_id") or "")
         if kind == "heading":
             try:
                 made["level"] = int(made.get("level") or 2)
@@ -400,7 +398,7 @@ LAYOUTS["from-the-blog"] = {
         _intro("Hello,"),
         _h("The latest from us"),
         _t("Here is what we have written lately."),
-        {"type": "posts", "blog_id": "", "count": 3, "style": {}},
+        {"type": "posts", "blog_id": "", "post_id": "", "style": {}},
         _exit("Thanks for reading."),
     ],
 }
@@ -705,14 +703,14 @@ def missing(blocks):
                 gaps.append("%s has no words on it" % where)
         elif kind == "image" and not block.get("src"):
             gaps.append("%s has no picture in it" % where)
-        elif kind == "posts" and not block.get("blog_id"):
-            gaps.append("%s has no blog chosen" % where)
+        elif kind == "posts" and not (block.get("blog_id") and block.get("post_id")):
+            gaps.append("%s has no post chosen" % where)
     #  A newsletter made only of posts HAS words -- somebody wrote them,
     #  in the posts. Asking for a sentence on top of them would be asking
     #  for a covering note nobody wanted to write.
     has_words = any((b["type"] in ("heading", "text") and (b.get("text") or "").strip())
                     for b in normalise(blocks))
-    has_posts = any(b["type"] == "posts" and b.get("blog_id")
+    has_posts = any(b["type"] == "posts" and b.get("post_id")
                     for b in normalise(blocks))
     if not has_words and not has_posts:
         gaps.insert(0, "There are no words in it yet")
@@ -744,8 +742,9 @@ def render(blocks, look, edit=False, posts_for=None):
             #  is what keeps it callable from a template, a checker and a
             #  scheduled send alike. A caller that passes no resolver gets
             #  an empty block, which the canvas draws as an empty slot.
-            made["posts"] = list(posts_for(block["blog_id"], block["count"])) \
-                if (posts_for and block.get("blog_id")) else []
+            made["posts"] = list(posts_for(block["blog_id"], block["post_id"])) \
+                if (posts_for and block.get("blog_id")
+                    and block.get("post_id")) else []
         prepared.append(made)
     return render_template("emails/blocks.html", look=look, blocks=prepared,
                            edit=edit)

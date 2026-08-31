@@ -7268,3 +7268,74 @@ saw, which is the only real proof a check is worth having.
 `target_kind` and `target_id`; `newsletter_schedule` uses `kind` and
 `target_id`. Two tables about the same thing, named differently, and the
 one I typed was the one I had been reading five minutes earlier.
+
+## Six more, from using the rebuilt screens (2026-08-28)
+
+Recorded before building, same as the last four. Where I am reading INTO
+the words rather than out of them it says so.
+
+**1. A Blog-posts block is one blog and one POST.** It takes "the latest
+three", which is a feed rather than a choice -- an owner picking what
+goes in this issue is picking a post, not a count. Somebody who wants two
+posts adds a second block, which is what blocks are for and is already
+how everything else in the editor works.
+
+**2. Scheduling a newsletter chooses from the schedules.** The editor
+still asks for a raw date and time, which is the thing named schedules
+were built to stop. The control in the actions row becomes a list of the
+schedules you have defined.
+
+**3. Schedules take the options a mail scheduler takes** -- every day,
+every week, every month, or a custom time -- and show when each last
+sent. That is the shape people already know from Outlook.
+
+Where I am reading in: **assigning a repeating schedule sets the NEXT
+occurrence, and does not re-send the same newsletter forever.** A
+schedule that mailed identical words to the same list every month is a
+thing nobody can take back, and "last send date" is satisfied by
+recording when a schedule last fired. If continuous recurrence against
+NEW content is wanted, that is a different feature and needs its own
+decision -- say so and it gets built.
+
+**4. "When you send a page or a post" goes.** Said twice now: the
+opening and the sign-off belong in the newsletter. This is the second
+half of that -- the card was kept because a page or a post had no blocks
+to hold them, and the answer is that sending a page or a post is not how
+a newsletter is written any more.
+
+**5. The page-newsletter section goes with it.** A page whose type is
+`newsletter` was the original way to write one; a composed newsletter
+and the Blog-posts block replace both routes into it. What must survive:
+the RECORD of anything already sent that way, which is in the one table
+and carries no foreign key precisely so it outlives what it was sent
+from.
+
+**6. Send now, from the list, asking first** -- and warning if that
+newsletter is already on the clock, because sending it by hand does not
+take it off and the list would otherwise get it twice.
+
+### What building those six turned up (2026-08-28)
+
+**A required field on a shared form refuses every button on it.** The
+editor's date box was made `required` when "a time I choose" was
+selected -- and that form carries Send, Schedule, Save, Preview, Delete
+and every structural action in the editor, so adding a block simply
+stopped working, silently, with the browser refusing to submit. Shown,
+never required: the server already refuses a schedule with no time and
+says which of the two is missing. **The rule belongs to the action, not
+to the form.**
+
+**A block's stored shape changed and every existing one 500'd.**
+`render()` still read `block["count"]` after the block became blog +
+post, so opening a newsletter that already had one raised. What made it
+take longer than it should: an earlier edit reported success and had not
+persisted -- the pattern differed by whitespace and the assert I trusted
+was in a script whose output I read rather than whose result I checked.
+**Re-read the file after editing it.** Every edit since prints what it
+finds on disk afterwards.
+
+**And a "Send now" that leaves the schedule alone sends twice.** Sending
+by hand does not take a newsletter off the clock; the job is still there
+and would send it again that night. It is cancelled, and said, because
+the alternative is the list getting the same newsletter twice and
+nobody knowing why.

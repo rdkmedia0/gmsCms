@@ -75,14 +75,20 @@ def _stamp(when):
     return when.astimezone(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
 
-def schedule(db, kind, target_id, subject, audience, when_utc):
+def schedule(db, kind, target_id, subject, audience, when_utc, template_name=None):
     """Put one send on the clock. Replaces any pending one for the same
-    thing, because "schedule it" said twice means the second time."""
+    thing, because "schedule it" said twice means the second time.
+
+    `template_name` is the named schedule it came from, kept so the list
+    can say "First Monday" rather than a timestamp somebody has to
+    decode. Null for a moment somebody typed.
+    """
     cancel(db, kind, target_id)
     db.execute(
-        "INSERT INTO newsletter_schedule (kind, target_id, subject, audience, send_at) "
-        "VALUES (?, ?, ?, ?, ?)",
-        (kind, target_id, subject or "", audience or "all", _stamp(when_utc)))
+        "INSERT INTO newsletter_schedule (kind, target_id, subject, audience, "
+        "send_at, template_name) VALUES (?, ?, ?, ?, ?, ?)",
+        (kind, target_id, subject or "", audience or "all", _stamp(when_utc),
+         template_name))
 
 
 def cancel(db, kind, target_id):
@@ -176,14 +182,24 @@ def start(app, run_one):
 #  ---- Named schedules ---------------------------------------------------
 #
 #  A time somebody sends at, defined once and assigned, rather than a
-#  datetime retyped into a box every month. The list can then say "First
-#  Monday" where it used to say a timestamp, which is what somebody
-#  recognises.
+#  datetime retyped into a box every month. The list then says "First
+#  Monday" where it used to say a timestamp.
 #
-#  Deliberately a TIME and not a recurring auto-send. A schedule that
-#  re-sent the same newsletter every month would mail the same words to
-#  the same people repeatedly, and that is not a thing you can take back.
-#  Recurrence is a separate decision and is not made here.
+#  The shape a mail scheduler offers, because that is the one people
+#  already know: every day, every week on a chosen day, every month on a
+#  chosen date, or a one-off time.
+#
+#  **Assigning one sets the NEXT occurrence. It does not re-send.** A
+#  schedule that mailed identical words to the same list every month is a
+#  thing nobody can take back, so a repeating schedule answers "when is
+#  the next one" and the sending stays a decision somebody makes. What
+#  `last_used_at` records is when this schedule last put something on the
+#  clock, which is the question "when did this last go" actually asks.
+REPEATS = (("daily", "Every day"),
+           ("weekly", "Every week"),
+           ("monthly", "Every month"),
+           ("once", "Once, at a set time"))
+
 WEEKDAYS = (("0", "Monday"), ("1", "Tuesday"), ("2", "Wednesday"),
             ("3", "Thursday"), ("4", "Friday"), ("5", "Saturday"),
             ("6", "Sunday"))
@@ -198,11 +214,22 @@ def templates(db):
         return []
 
 
-def save_template(db, name, hour, minute, weekday=None, monthday=None):
+def template(db, name):
+    try:
+        return db.execute("SELECT * FROM schedule_templates WHERE name = ?",
+                          (name,)).fetchone()
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def save_template(db, name, repeat_kind, hour, minute, weekday=None,
+                  monthday=None, when=None):
     """(saved, error). Saving the same name again replaces it."""
     name = (name or "").strip()
     if not name:
         return False, "Give it a name so you can pick it out later."
+    if repeat_kind not in dict(REPEATS):
+        return False, "Choose how often it repeats."
 
     def _int(value, low, high, default=None):
         try:
@@ -211,20 +238,31 @@ def save_template(db, name, hour, minute, weekday=None, monthday=None):
             return default
         return n if low <= n <= high else default
 
-    hour = _int(hour, 0, 23, 9)
-    minute = _int(minute, 0, 59, 0)
-    weekday = _int(weekday, 0, 6)
-    monthday = _int(monthday, 1, 28)
-    #  28, not 31: a schedule set to the 30th silently never happens in
-    #  February, which is the kind of gap nobody notices for a year.
-    if weekday is not None and monthday is not None:
-        return False, "Choose a day of the week or a day of the month, not both."
+    #  A one-off carries its whole moment; the repeating ones carry the
+    #  part of it that repeats.
+    if repeat_kind == "once":
+        moment = to_utc(when, 0)
+        if moment is None:
+            return False, "Give it a date and a time."
+        hour, minute, weekday, monthday = moment.hour, moment.minute, None, None
+        once_at = _stamp(moment)
+    else:
+        once_at = None
+        hour = _int(hour, 0, 23, 9)
+        minute = _int(minute, 0, 59, 0)
+        weekday = _int(weekday, 0, 6, 0) if repeat_kind == "weekly" else None
+        #  28, not 31: a schedule set to the 30th silently never happens
+        #  in February, which is a gap nobody notices for a year.
+        monthday = _int(monthday, 1, 28, 1) if repeat_kind == "monthly" else None
+
     db.execute(
-        "INSERT INTO schedule_templates (name, hour, minute, weekday, monthday) "
-        "VALUES (?, ?, ?, ?, ?) ON CONFLICT(name) DO UPDATE SET "
+        "INSERT INTO schedule_templates (name, repeat_kind, hour, minute, "
+        "weekday, monthday, once_at) VALUES (?, ?, ?, ?, ?, ?, ?) "
+        "ON CONFLICT(name) DO UPDATE SET repeat_kind = excluded.repeat_kind, "
         "hour = excluded.hour, minute = excluded.minute, "
-        "weekday = excluded.weekday, monthday = excluded.monthday",
-        (name, hour, minute, weekday, monthday))
+        "weekday = excluded.weekday, monthday = excluded.monthday, "
+        "once_at = excluded.once_at",
+        (name, repeat_kind, hour, minute, weekday, monthday, once_at))
     return True, None
 
 
@@ -233,40 +271,53 @@ def delete_template(db, name):
                       (name,)).rowcount > 0
 
 
+def mark_used(db, name, when):
+    """When this schedule last put something on the clock."""
+    if not name:
+        return
+    db.execute("UPDATE schedule_templates SET last_used_at = ? WHERE name = ?",
+               (_stamp(when) if hasattr(when, "strftime") else when, name))
+
+
 def describe_template(row):
     """The schedule in words, which is what a list column should say."""
     at = "%02d:%02d" % (row["hour"], row["minute"])
-    if row["weekday"] is not None:
-        day = dict(WEEKDAYS).get(str(row["weekday"]), "")
-        return "Every %s at %s" % (day, at)
-    if row["monthday"] is not None:
-        return "Day %d of the month at %s" % (row["monthday"], at)
-    return "Every day at %s" % at
+    kind = row["repeat_kind"] if "repeat_kind" in row.keys() else "weekly"
+    if kind == "daily":
+        return "Every day at %s" % at
+    if kind == "monthly":
+        return "Day %d of every month at %s" % (row["monthday"] or 1, at)
+    if kind == "once":
+        return "Once, at %s" % ((row["once_at"] or "")[:16] or at)
+    day = dict(WEEKDAYS).get(str(row["weekday"] if row["weekday"] is not None else 0), "")
+    return "Every %s at %s" % (day, at)
 
 
 def next_occurrence(row, now):
     """When this named schedule next comes round, from `now` (UTC-naive).
 
-    Returned rather than stored, because "the first Monday" is a rule and
-    a stored date is an answer that goes stale the moment it passes.
+    Worked out rather than stored, because "the first Monday" is a rule
+    and a stored date is an answer that goes stale the moment it passes.
     """
+    kind = row["repeat_kind"] if "repeat_kind" in row.keys() else "weekly"
+    if kind == "once":
+        try:
+            return datetime.datetime.strptime(row["once_at"], "%Y-%m-%d %H:%M:%S")
+        except (TypeError, ValueError):
+            return None
     when = now.replace(hour=row["hour"], minute=row["minute"],
                        second=0, microsecond=0)
-    if row["weekday"] is not None:
-        ahead = (row["weekday"] - when.weekday()) % 7
-        when = when + datetime.timedelta(days=ahead)
-        if when <= now:
-            when = when + datetime.timedelta(days=7)
-        return when
-    if row["monthday"] is not None:
-        if when.day > row["monthday"] or (when.day == row["monthday"] and when <= now):
+    if kind == "daily":
+        return when if when > now else when + datetime.timedelta(days=1)
+    if kind == "monthly":
+        day = row["monthday"] or 1
+        if when.day > day or (when.day == day and when <= now):
             month = when.month + 1
             year = when.year + (1 if month > 12 else 0)
             month = 1 if month > 12 else month
-            when = when.replace(year=year, month=month, day=row["monthday"])
-        else:
-            when = when.replace(day=row["monthday"])
-        return when
-    if when <= now:
-        when = when + datetime.timedelta(days=1)
-    return when
+            return when.replace(year=year, month=month, day=day)
+        return when.replace(day=day)
+    weekday = row["weekday"] if row["weekday"] is not None else 0
+    ahead = (weekday - when.weekday()) % 7
+    when = when + datetime.timedelta(days=ahead)
+    return when if when > now else when + datetime.timedelta(days=7)

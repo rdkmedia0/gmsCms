@@ -72,3 +72,32 @@
   window.cmsLocalTime = { stampOffsets: stampOffsets, showLocalTimes: showLocalTimes,
                           fillLocalField: fillLocalField };
 })();
+
+
+//  The schedule form asks only what the chosen repeat needs.
+//
+//  Every field at once is four questions where the answer to the first
+//  decides which of the others exist: "on which day" means nothing to a
+//  daily schedule, and a date and time mean nothing to a repeating one.
+(function () {
+  "use strict";
+  var form = document.querySelector("[data-schedule-form]");
+  if (!form) return;
+  var repeat = form.querySelector("[data-repeat]");
+  if (!repeat) return;
+
+  function show() {
+    var kind = repeat.value;
+    form.querySelectorAll("[data-when]").forEach(function (el) {
+      var wants = el.dataset.when.split(" ").indexOf(kind) >= 0;
+      el.hidden = !wants;
+      //  A hidden required field stops the form submitting with no
+      //  visible reason, which reads as a broken button.
+      el.querySelectorAll("input, select").forEach(function (f) {
+        f.disabled = !wants;
+      });
+    });
+  }
+  repeat.addEventListener("change", show);
+  show();
+})();

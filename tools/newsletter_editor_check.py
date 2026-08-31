@@ -370,18 +370,25 @@ with sync_playwright() as p:
     #  3. Schedule and its time are one control, drawn as one. They were
     #     a button and a 240px date box with a gap between them and no
     #     visible relationship.
+    #  Schedule and WHICH schedule, drawn as one control. The date box
+    #  was the second half of this and is now the exception rather than
+    #  the rule: naming the schedules is what stopped a date being typed
+    #  every month, so the picker sits beside the button and the date
+    #  only appears for a one-off.
     sched = page.evaluate(
         """() => { const wrap = document.querySelector('.cms-compose-schedule');
-             const input = wrap.querySelector('input[type=datetime-local]');
+             const pick = wrap.querySelector('[data-schedule-pick]');
              const btn = wrap.querySelector('button');
-             const w = wrap.getBoundingClientRect();
-             const i = input.getBoundingClientRect();
+             const p = pick.getBoundingClientRect();
              const b = btn.getBoundingClientRect();
-             return { joined: Math.round(i.left - b.right),
+             return { joined: Math.round(p.left - b.right),
                       bordered: getComputedStyle(wrap).borderStyle !== 'none',
-                      width: Math.round(w.width) }; }""")
-    check("Schedule and its time read as one control",
+                      dateHidden: wrap.querySelector('[data-send-at]').hidden,
+                      width: Math.round(wrap.getBoundingClientRect().width) }; }""")
+    check("Schedule and which schedule read as one control",
           sched["bordered"] and abs(sched["joined"]) <= 2, str(sched))
+    check("...and a date is only asked for a one-off",
+          sched["dateHidden"], str(sched))
 
     #  4. Everything that happens TO the newsletter is in one row under
     #     it, Delete included -- it used to sit alone in a card under

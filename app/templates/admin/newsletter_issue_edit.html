@@ -154,9 +154,10 @@
           <option value="{{ b.id }}">{{ b.name }}</option>
           {% endfor %}
         </select>
-        <input type="number" class="cms-toolbar-count" data-block-field="count"
-               min="1" max="10" value="3" disabled
-               title="How many of the latest posts to include, up to ten.">
+        <select id="block-post" class="cms-toolbar-select" data-block-field="post_id" disabled
+                title="Which post to include. One block is one post &mdash; add another Blog post block for a second.">
+          <option value="">&mdash; choose &mdash;</option>
+        </select>
       </span>
 
       {#  Move and remove are not here. They live ON the selected block
@@ -214,6 +215,11 @@
       changes, so the canvas can be replaced without a round trip to ask
       what that template is made of. #}
   <script type="application/json" id="cms-layout-starts">{{ layout_starts | tojson }}</script>
+  {#  Each blog's published posts, so choosing a blog fills the post list
+      without a round trip. Published only: a draft has no address, and a
+      "Read it" link into an inbox pointing at a 404 cannot be corrected
+      once the email has gone. #}
+  <script type="application/json" id="cms-blog-posts">{{ blog_posts | tojson }}</script>
 
   {#  The ground behind the card is the site's own, the way it will be in
       the inbox -- so the thing being written into looks like the thing
@@ -244,8 +250,21 @@
       <button type="submit" class="btn" data-schedule
               formaction="{{ url_for('admin.newsletter_issue_schedule', newsletter_id=item.id) }}"
               title="Send it automatically at the time beside this. You do not have to be here.">Schedule</button>
+      {#  The schedules you have defined, not a date to retype. That is
+          what naming them was for: "Monthly newsletter" is a thing you
+          recognise, and the next time it comes round is worked out
+          rather than typed. "A time I choose" is still there for the
+          one-off, and reveals the date box. #}
+      <select name="schedule_name" data-schedule-pick
+              title="Which of your schedules to send it on. The next time it comes round is worked out for you.">
+        {% for name, says in schedule_choices %}
+        <option value="{{ name }}" title="{{ says }}">{{ name }}</option>
+        {% endfor %}
+        <option value="">A time I choose</option>
+      </select>
       <input type="datetime-local" name="send_at" data-send-at
              data-scheduled-utc="{{ scheduled.send_at if scheduled else '' }}"
+             {% if schedule_choices %}hidden{% endif %}
              title="When to send it. This is your own clock — the time you see here is the time it goes.">
       {#  The browser's own offset, so what the owner typed is read in the
           clock they typed it on. Filled by newsletter-editor.js. #}

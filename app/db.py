@@ -565,6 +565,13 @@ def _migrate(db):
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    #  How often a named schedule comes round, and when it last fired.
+    #  `repeat` is the shape a mail scheduler offers: daily, weekly,
+    #  monthly, or a one-off time somebody typed.
+    _add_column(db, "schedule_templates", "repeat_kind", "TEXT NOT NULL DEFAULT 'weekly'")
+    _add_column(db, "schedule_templates", "last_used_at", "TEXT")
+    _add_column(db, "schedule_templates", "once_at", "TEXT")
+
     #  A newsletter arrangement somebody wants again.
     #
     #  A layout is "a starting arrangement, not a kind" -- the shipped

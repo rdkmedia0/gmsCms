@@ -443,12 +443,12 @@
         postsControls.classList.toggle("cms-tools-idle", !isPosts);
         postsControls.querySelectorAll("[data-block-field]").forEach(function (f) {
           f.disabled = !isPosts;
-          if (isPosts) {
-            f.value = block[f.dataset.blockField] == null
-              ? (f.type === "number" ? 3 : "")
-              : block[f.dataset.blockField];
-          }
         });
+        if (isPosts) {
+          var blogField = postsControls.querySelector("[data-block-field='blog_id']");
+          if (blogField) blogField.value = block.blog_id == null ? "" : String(block.blog_id);
+          fillPosts(block.blog_id, block.post_id);
+        }
       }
       var urlField = aside.querySelector("[data-block-field='url']");
       if (urlField) urlField.disabled = !wants;
@@ -644,17 +644,57 @@
   //  the link field: a property of the selected block, dimmed rather
   //  than hidden so the ribbon does not change height as it is used.
   var postsControls = form.querySelector("[data-posts-controls]");
+  //  Each blog's published posts, so choosing a blog fills the post list
+  //  without a round trip. Read from a JSON block rather than built into
+  //  this file per page -- the rule this project keeps for anything that
+  //  is data rather than a URL or a flag.
+  var BLOG_POSTS = {};
+  try {
+    var el = document.getElementById("cms-blog-posts");
+    BLOG_POSTS = JSON.parse((el && el.textContent) || "{}");
+  } catch (e) {
+    BLOG_POSTS = {};
+  }
+
+  //  One block is one post. The list only ever holds the chosen blog's,
+  //  because "which post" is meaningless until "which blog" is answered.
+  function fillPosts(blogId, chosen) {
+    var pick = form.querySelector("[data-block-field='post_id']");
+    if (!pick) return;
+    var posts = BLOG_POSTS[String(blogId)] || [];
+    pick.innerHTML = "";
+    var none = document.createElement("option");
+    none.value = "";
+    none.textContent = posts.length ? "— choose —" : "— no published posts —";
+    pick.appendChild(none);
+    posts.forEach(function (post) {
+      var o = document.createElement("option");
+      o.value = String(post.id);
+      o.textContent = post.title;
+      pick.appendChild(o);
+    });
+    pick.value = chosen == null ? "" : String(chosen);
+  }
+
   if (postsControls) {
     postsControls.querySelectorAll("[data-block-field]").forEach(function (field) {
       field.addEventListener("change", function () {
         if (selected === null) return;
         collect();
-        blocks[selected][field.dataset.blockField] =
-          field.type === "number" ? parseInt(field.value, 10) || 3 : field.value;
-        //  Reloaded through the SERVER, because the posts themselves are
-        //  resolved there -- choosing a blog has to fetch its posts, and
-        //  a second renderer in JavaScript would drift from the one that
-        //  renders what is sent.
+        var which = field.dataset.blockField;
+        blocks[selected][which] = field.value;
+        if (which === "blog_id") {
+          //  A post from the old blog is not a post of the new one.
+          blocks[selected].post_id = "";
+          fillPosts(field.value, "");
+          //  No round trip yet: nothing is drawn until a POST is chosen,
+          //  and asking the server to render an empty slot again is a
+          //  reload for nothing.
+          return;
+        }
+        //  The post's words come from the server, which is also what
+        //  renders them into the email -- a second renderer here would
+        //  drift from the one that draws what is sent.
         reload(selected);
       });
     });
@@ -690,6 +730,28 @@
       deleteIssueBtn.dataset.confirmed = "1";
       deleteIssueBtn.click();
     });
+  }
+
+  //  "A time I choose" is the one-off, and only then is a date box any
+  //  use. Hiding it the rest of the time is the whole point of having
+  //  named the schedules.
+  var schedulePick = form.querySelector("[data-schedule-pick]");
+  var sendAt = form.querySelector("[data-send-at]");
+  if (schedulePick && sendAt) {
+    var showWhen = function () {
+      //  Shown, never REQUIRED. This is one form with six buttons on it
+      //  -- Send, Schedule, Save, Preview, Delete, and every structural
+      //  action in the editor -- so a required field here refuses all of
+      //  them until a date is typed, for actions that have nothing to do
+      //  with scheduling. Adding a block simply stopped working.
+      //
+      //  The server already refuses a schedule with no time, and says
+      //  which of the two is missing. That is the right place for it:
+      //  the rule belongs to the action, not to the form.
+      sendAt.hidden = schedulePick.value !== "";
+    };
+    schedulePick.addEventListener("change", showWhen);
+    showWhen();
   }
 
   //  ---- keeping an arrangement you like -------------------------------

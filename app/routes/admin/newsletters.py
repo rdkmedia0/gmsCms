@@ -103,6 +103,7 @@ def newsletters():
             {"row": t, "says": scheduling.describe_template(t)}
             for t in scheduling.templates(db)],
         weekdays=scheduling.WEEKDAYS,
+        repeats=scheduling.REPEATS,
         ai_ready=assistant.is_configured(db),
         #  The newsletters built for the job, newest first, and the
         #  layouts one can be started from.
@@ -383,10 +384,22 @@ def newsletter_issue_edit(newsletter_id):
         item=row,
         #  The email itself, with its slots opened up. This IS the editor:
         #  what is written into is what is sent.
+        #  The schedules to choose from, and what each means in words.
+        #  Asking for a raw date and time again is the thing named
+        #  schedules were built to stop.
+        schedule_choices=[(t["name"], scheduling.describe_template(t))
+                          for t in scheduling.templates(db)],
         canvas=email_layouts.render(newsletter.composed_blocks(row), look, edit=True,
                                     posts_for=_post_resolver(db)),
         blogs_for_blocks=[{"id": b["id"], "name": b["name"]}
                           for b in blog_service.list_blogs(db)],
+        #  Published only, and titles only: the editor needs enough to
+        #  choose with, and the words themselves are resolved at send
+        #  time so a post edited afterwards goes out as it now reads.
+        blog_posts={str(b["id"]): [{"id": p["id"], "title": p["title"] or "Untitled"}
+                                   for p in blog_service.posts_for(
+                                       db, b["id"], published_only=True, limit=50)]
+                    for b in blog_service.list_blogs(db)},
         #  What the sent email writes onto each block, so the editor can
         #  write the same thing onto a block the toolbar has just made.
         block_styles=email_layouts.block_styles(look),
@@ -600,9 +613,24 @@ def _put_on_clock(db, kind, target_id, subject, sections, back):
     was always going to fail is worse than a refusal, because it looks
     like it worked.
     """
-    when = scheduling.to_utc(request.form.get("send_at"), request.form.get("tz_offset"))
+    #  A named schedule, or a moment somebody typed. The named one is
+    #  the point of having them: it says WHEN in words the owner chose,
+    #  and the next occurrence is worked out rather than retyped.
+    picked = (request.form.get("schedule_name") or "").strip()
+    template = scheduling.template(db, picked) if picked else None
+    if picked and not template:
+        flash("That schedule no longer exists.", "error")
+        return redirect(back)
+    if template is not None:
+        when = scheduling.next_occurrence(template, scheduling.utcnow())
+        if not when:
+            flash("That schedule does not have a next time in it.", "error")
+            return redirect(back)
+    else:
+        when = scheduling.to_utc(request.form.get("send_at"),
+                                 request.form.get("tz_offset"))
     if not when:
-        flash("Choose a date and time to send it.", "error")
+        flash("Choose a schedule, or a date and time to send it.", "error")
         return redirect(back)
     if when <= scheduling.utcnow():
         flash("That time has already passed — pick one in the future, or press Send now.",
@@ -625,7 +653,10 @@ def _put_on_clock(db, kind, target_id, subject, sections, back):
               "one to build the unsubscribe link. Set it on the Sending email screen.", "error")
         return redirect(url_for("admin.settings_email"))
 
-    scheduling.schedule(db, kind, target_id, subject, audience, when)
+    scheduling.schedule(db, kind, target_id, subject, audience, when,
+                        template_name=picked or None)
+    if picked:
+        scheduling.mark_used(db, picked, scheduling.utcnow())
     db.commit()
     arm_scheduler(current_app._get_current_object())
     flash("Scheduled. It goes out on its own — you do not have to be here.", "success")
@@ -719,6 +750,40 @@ def newsletter_issue_copy(newsletter_id):
     return redirect(url_for("admin.newsletter_issue_edit", newsletter_id=new_id))
 
 
+@bp.route("/newsletters/issue/<int:newsletter_id>/send-now", methods=["POST"])
+@login_required
+def newsletter_issue_send_now(newsletter_id):
+    """Send it from the list, without opening it first.
+
+    The same send the editor does -- same checks, same refusals -- so
+    there is one path a newsletter can leave by, not two that can
+    disagree about whether it was ready.
+    """
+    db = get_db()
+    row = newsletter.get_composed(db, newsletter_id)
+    if not row:
+        flash("That newsletter no longer exists.", "error")
+        return redirect(url_for("admin.newsletters"))
+    back = url_for("admin.newsletters")
+    still_missing = email_layouts.missing(newsletter.composed_blocks(row))
+    if still_missing or not (row["subject"] or "").strip():
+        wanted = (["a subject"] if not (row["subject"] or "").strip() else []) \
+            + still_missing
+        flash("Fill in %s first." % ", ".join(wanted), "error")
+        return redirect(url_for("admin.newsletter_issue_edit",
+                                newsletter_id=newsletter_id))
+    #  Sending by hand does NOT take it off the clock -- the job is still
+    #  there and would send it again. Cancelled here, and said, because
+    #  the alternative is the list getting it twice.
+    was_waiting = scheduling.cancel(db, "newsletter", newsletter_id)
+    if was_waiting:
+        flash("This one was waiting on a schedule; that has been taken off "
+              "so it does not go twice.", "success")
+    return _send_it(db, "newsletter", newsletter_id, _composed_sections(db, row),
+                    row["subject"], None, back,
+                    blocks=newsletter.composed_blocks(row))
+
+
 @bp.route("/newsletters/schedules/save", methods=["POST"])
 @login_required
 def newsletter_schedule_template_save():
@@ -726,10 +791,11 @@ def newsletter_schedule_template_save():
     retyped into a date box every month."""
     db = get_db()
     ok_, error = scheduling.save_template(
-        db, request.form.get("name"), request.form.get("hour"),
-        request.form.get("minute"),
+        db, request.form.get("name"), request.form.get("repeat_kind"),
+        request.form.get("hour"), request.form.get("minute"),
         request.form.get("weekday") or None,
-        request.form.get("monthday") or None)
+        request.form.get("monthday") or None,
+        when=request.form.get("when") or None)
     if error:
         flash(error, "error")
     else:

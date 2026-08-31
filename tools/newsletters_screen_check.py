@@ -71,8 +71,11 @@ if not found:
     print("Could not create a newsletter to look at: %s %s" % (status, where))
     sys.exit(2)
 made.append(found.group(1))
+#  A schedule now says how often it repeats -- the options a mail
+#  scheduler offers -- so the old post is refused for saying nothing.
 post("/admin/newsletters/schedules/save",
-     {"name": SCHEDULE, "weekday": "0", "hour": "9", "minute": "0"})
+     {"name": SCHEDULE, "repeat_kind": "weekly", "weekday": "0",
+      "hour": "9", "minute": "0"})
 
 try:
     with sync_playwright() as p:
@@ -158,10 +161,17 @@ try:
         check("the list counts are not repeated here", page.evaluate(
             """() => !Array.from(document.querySelectorAll('h2'))
                  .some(h => /on the list/.test(h.textContent))"""))
-        check("every row offers edit, copy and delete", page.evaluate(
+        #  Four: edit, send now, copy, delete. Send now joined them so a
+        #  newsletter can go without being opened first.
+        check("every row offers edit, send, copy and delete", page.evaluate(
             """() => { const r = document.querySelector('.cms-newsletter-table tbody tr');
                  return r.querySelectorAll(
-                   '.cms-col-actions a, .cms-col-actions button').length; }""") == 3)
+                   '.cms-col-actions a, .cms-col-actions button').length; }""") == 4)
+        #  ...and sending asks first, because it cannot be unsent.
+        check("...and sending asks first", page.evaluate(
+            """() => { const f = document.querySelector(
+                 '.cms-newsletter-table form[action*="/send-now"]');
+                 return !!f && /cannot be unsent/.test(f.dataset.confirm || ''); }"""))
 
         print()
         print("Last month's is how you write this month's")
@@ -189,10 +199,13 @@ try:
         print()
         print("A schedule is a name you assign, not a date you retype")
         print("-" * 66)
+        #  A table now, with what each means in words and when it last
+        #  put something on the clock.
         named = page.evaluate(
-            """() => Array.from(document.querySelectorAll('.cms-schedule-list li'))
-                 .map(li => li.querySelector('strong').textContent.trim()
-                   + ' | ' + li.querySelector('.hint').textContent.trim())""")
+            """() => Array.from(document.querySelectorAll(
+                 '.cms-schedule-table tbody tr'))
+                 .map(r => r.cells[0].innerText.trim() + ' | '
+                        + r.cells[1].innerText.trim())""")
         mine = [n for n in named if n.startswith(SCHEDULE)]
         check("a named schedule is kept", bool(mine), str(named))
         check("...and says what it means in words",

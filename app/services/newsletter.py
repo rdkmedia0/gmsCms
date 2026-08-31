@@ -772,16 +772,17 @@ def copy_composed(db, newsletter_id):
     return new_id
 
 
-def post_rows_for(db, blog_service, blog_id, count, link_for, excerpt_words=28):
-    """The latest posts of one blog, flattened for an email.
+def post_rows_for(db, blog_service, blog_id, post_id, link_for, excerpt_words=28):
+    """One chosen post of one blog, flattened for an email.
 
     Resolved HERE rather than inside email_layouts, which renders an
     email and knows nothing about blogs -- that is what keeps it callable
     from a template, a checker and a scheduled send alike.
 
-    Published only. A draft has no address to link to, so including one
-    would put a "Read it" link into somebody's inbox pointing at a 404 --
-    and unlike a page, an email cannot be corrected once it has gone.
+    Published only, which also means a post chosen and later unpublished
+    simply drops out: a draft has no address to link to, so including one
+    would put a "Read it" link into somebody's inbox pointing at a 404,
+    and unlike a page an email cannot be corrected once it has gone.
     """
     try:
         blog = blog_service.get_blog(db, int(blog_id))
@@ -789,9 +790,13 @@ def post_rows_for(db, blog_service, blog_id, count, link_for, excerpt_words=28):
         return []
     if not blog:
         return []
+    #  ONE post, chosen. It used to take the latest N, which is a feed
+    #  rather than a choice -- and an owner deciding what goes in this
+    #  issue is choosing a post. Two posts means two blocks.
     rows = []
-    for post in blog_service.posts_for(db, blog["id"], published_only=True,
-                                       limit=max(1, min(10, int(count or 3)))):
+    chosen = [p for p in blog_service.posts_for(db, blog["id"], published_only=True)
+              if str(p["id"]) == str(post_id)]
+    for post in chosen:
         words = re.sub(r"<[^>]+>", " ", post["content"] or "")
         words = re.sub(r"\s+", " ", words).strip().split(" ")
         excerpt = " ".join(words[:excerpt_words])
