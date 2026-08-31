@@ -248,6 +248,51 @@ with app.app_context():
           newsletter.last_send(db, "post", post_id) is not None)
 
     print()
+    print("A named schedule offers dates, and books exactly one")
+    print("-" * 70)
+    #  Assigning a schedule used to book its next occurrence silently,
+    #  which is the app choosing the date. It offers them; the owner
+    #  chooses; ONE send is booked. A repeating schedule says when the
+    #  next one goes -- it does not keep sending.
+    scheduling.save_template(db, "Mondays", "weekly", 9, 0, weekday=0,
+                             tz_name="Europe/Zurich")
+    db.commit()
+    row = scheduling.template(db, "Mondays")
+    dates = scheduling.upcoming(row, scheduling.utcnow(), 8)
+    check("it offers several dates to choose from", len(dates) == 8, str(len(dates)))
+    check("...every one a Monday",
+          all(d.weekday() == 0 for d in dates),
+          str([d.strftime("%a") for d in dates[:3]]))
+    check("...in order, none in the past",
+          dates == sorted(dates) and dates[0] > scheduling.utcnow())
+    #  The clock change is the one this gets wrong by default: stepping
+    #  in UTC drifts an hour, and a 9am schedule starts arriving at 8am
+    #  for half the year without anybody connecting the two.
+    from zoneinfo import ZoneInfo
+    local = [d.replace(tzinfo=datetime.timezone.utc).astimezone(
+        ZoneInfo("Europe/Zurich")) for d in dates]
+    check("...and every one reads 09:00 on the owner's own clock, "
+          "across the clock change",
+          all(d.hour == 9 and d.minute == 0 for d in local),
+          str([d.strftime("%d %b %H:%M") for d in local]))
+
+    chosen = dates[2]
+    scheduling.schedule(db, "newsletter", 4242, "Picked", "all", chosen,
+                        template_name="Mondays")
+    db.commit()
+    waiting = db.execute(
+        "SELECT * FROM newsletter_schedule WHERE kind = 'newsletter' "
+        "AND target_id = 4242").fetchall()
+    check("choosing one books exactly one send", len(waiting) == 1, str(len(waiting)))
+    check("...at the date that was chosen",
+          waiting[0]["send_at"] == chosen.strftime("%Y-%m-%d %H:%M:%S"),
+          waiting[0]["send_at"])
+    check("...and the row remembers which schedule it came from",
+          waiting[0]["template_name"] == "Mondays", str(waiting[0]["template_name"]))
+    db.execute("DELETE FROM newsletter_schedule WHERE target_id = 4242")
+    scheduling.delete_template(db, "Mondays")
+    db.commit()
+
     print("Scheduling twice means the second time")
     print("-" * 70)
     nid5 = make_newsletter(db, "Twice")

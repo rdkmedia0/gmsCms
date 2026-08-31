@@ -211,6 +211,10 @@
       that will be sent. One dictionary, read by both sides -- see
       email_layouts.block_styles. #}
   <script type="application/json" id="cms-email-block-styles">{{ block_styles | tojson }}</script>
+  {#  Each schedule's next dates, so choosing one can fill the date list
+      without a round trip. Times are UTC; the browser draws them in the
+      reader's own clock, which is the clock the owner typed them in. #}
+  <script type="application/json" id="cms-schedule-dates">{{ schedule_choices | tojson }}</script>
   {#  What each template would lay out. Read when the Template dropdown
       changes, so the canvas can be replaced without a round trip to ask
       what that template is made of. #}
@@ -256,12 +260,25 @@
           rather than typed. "A time I choose" is still there for the
           one-off, and reveals the date box. #}
       <select name="schedule_name" data-schedule-pick
-              title="Which of your schedules to send it on. The next time it comes round is worked out for you.">
-        {% for name, says in schedule_choices %}
-        <option value="{{ name }}" title="{{ says }}">{{ name }}</option>
+              title="Which of your schedules to send it on. You then choose which of its dates.">
+        {% for s in schedule_choices %}
+        <option value="{{ s.name }}" title="{{ s.says }}">{{ s.name }}</option>
         {% endfor %}
         <option value="">A time I choose</option>
       </select>
+      {#  The dates that schedule produces, to choose from. Booking its
+          next occurrence silently was the app choosing the date -- "the
+          first Monday" might be tomorrow, and this issue might not be
+          ready by tomorrow.
+
+          A list rather than a free calendar, because only certain dates
+          are valid: a date picker cannot express "the first Monday of
+          the month", so it would either allow dates the schedule does
+          not produce or quietly move the one that was picked.
+
+          It sends ONCE, at the date chosen. #}
+      <select name="schedule_date" data-schedule-date
+              title="Which of that schedule's dates to send on. It goes once, at that time."></select>
       <input type="datetime-local" name="send_at" data-send-at
              data-scheduled-utc="{{ scheduled.send_at if scheduled else '' }}"
              {% if schedule_choices %}hidden{% endif %}

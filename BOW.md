@@ -7339,3 +7339,50 @@ by hand does not take a newsletter off the clock; the job is still there
 and would send it again that night. It is cancelled, and said, because
 the alternative is the list getting the same newsletter twice and
 nobody knowing why.
+
+### Assigning a schedule offers its dates, and books one (2026-08-28)
+
+Corrected by the owner: assigning a schedule gives them the next
+available dates to choose from, and it sends **once**.
+
+What it did was book the next occurrence silently, which is the app
+choosing the date -- and the date is the owner's. "The first Monday"
+might be tomorrow, and this issue might not be ready by tomorrow.
+
+A LIST of the schedule's own dates rather than a free calendar, because
+only certain dates are valid: a date picker cannot express "the first
+Monday of the month", so it would either accept dates the schedule does
+not produce or quietly move the one that was picked. The chosen date is
+checked against the schedule's own list on the way in, so a stale page
+cannot book a time that schedule never offered.
+
+### Which surfaced the clock change
+
+The dates are shown to the owner in their own clock, and that is how the
+real bug became visible: the eighth Monday offered read **08:00 where
+the first seven read 09:00**.
+
+An OFFSET is right on the day it is captured and wrong after the clocks
+change. A "9am Monday" schedule saved in summer starts arriving at 8am
+all winter, twice a year, and nobody connects the newsletter being early
+to a setting they typed in June. It would never have been noticed while
+the app was choosing the date, because nobody was reading the dates.
+
+Two things fix it and both were needed. The browser sends its ZONE
+(`Intl.DateTimeFormat().resolvedOptions().timeZone`), not just an
+offset, because only a zone knows when the change happens. And
+`upcoming()` steps in WALL time and converts each date, rather than
+adding seven days to a UTC moment -- stepping in UTC crosses the change
+and drifts. Measured after: all eight read 09:00, and the stored UTC
+correctly goes 07:00, 07:00 ... 08:00 on 26 October.
+
+The offset stays as the fallback, for a schedule saved before this and
+for a browser that will not say.
+
+**And one kind of datetime leaves that module.** `utcnow()` is aware;
+the zone path returned naive and the offset path aware, which is worse
+than either being wrong -- it works until somebody has no zone, and then
+raises `TypeError` on the first comparison. Everything crossing the
+boundary is aware UTC now; the wall-clock arithmetic in the middle is
+naive on purpose, because attaching a zone before the DAY is known is
+exactly what makes a clock change come out an hour wrong.

@@ -21,6 +21,17 @@
 
   function stampOffsets(root) {
     var minutes = String(new Date().getTimezoneOffset());
+    //  The zone's NAME as well as the offset. An offset says what the
+    //  clock reads today; only the name says when it changes, and a
+    //  schedule saved in summer otherwise starts arriving an hour early
+    //  all winter.
+    (root || document).querySelectorAll("[data-tz-name]").forEach(function (field) {
+      try {
+        field.value = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+      } catch (e) {
+        field.value = "";
+      }
+    });
     (root || document).querySelectorAll("[data-tz-offset]").forEach(function (field) {
       field.value = minutes;
     });

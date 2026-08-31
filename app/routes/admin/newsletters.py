@@ -387,8 +387,16 @@ def newsletter_issue_edit(newsletter_id):
         #  The schedules to choose from, and what each means in words.
         #  Asking for a raw date and time again is the thing named
         #  schedules were built to stop.
-        schedule_choices=[(t["name"], scheduling.describe_template(t))
-                          for t in scheduling.templates(db)],
+        #  Each schedule, what it means in words, and the next few dates
+        #  it produces -- offered rather than decided. Booking its next
+        #  occurrence silently was the app choosing the date, and the
+        #  date is the owner's choice: "the first Monday" might be
+        #  tomorrow, and this issue might not be ready by tomorrow.
+        schedule_choices=[
+            {"name": t["name"], "says": scheduling.describe_template(t),
+             "dates": [{"utc": d.strftime("%Y-%m-%d %H:%M:%S")}
+                       for d in scheduling.upcoming(t, scheduling.utcnow(), 8)]}
+            for t in scheduling.templates(db)],
         canvas=email_layouts.render(newsletter.composed_blocks(row), look, edit=True,
                                     posts_for=_post_resolver(db)),
         blogs_for_blocks=[{"id": b["id"], "name": b["name"]}
@@ -622,9 +630,16 @@ def _put_on_clock(db, kind, target_id, subject, sections, back):
         flash("That schedule no longer exists.", "error")
         return redirect(back)
     if template is not None:
-        when = scheduling.next_occurrence(template, scheduling.utcnow())
+        #  The date they chose from that schedule's own list -- checked
+        #  against it, so a stale page cannot book a time the schedule
+        #  does not produce. It sends ONCE, at that moment: a schedule
+        #  says when the next one goes, it does not keep sending.
+        offered = scheduling.upcoming(template, scheduling.utcnow(), 8)
+        wanted = (request.form.get("schedule_date") or "").strip()
+        allowed = {d.strftime("%Y-%m-%d %H:%M:%S"): d for d in offered}
+        when = allowed.get(wanted) or (offered[0] if offered else None)
         if not when:
-            flash("That schedule does not have a next time in it.", "error")
+            flash("That schedule has no next date in it.", "error")
             return redirect(back)
     else:
         when = scheduling.to_utc(request.form.get("send_at"),
@@ -795,7 +810,13 @@ def newsletter_schedule_template_save():
         request.form.get("hour"), request.form.get("minute"),
         request.form.get("weekday") or None,
         request.form.get("monthday") or None,
-        when=request.form.get("when") or None)
+        when=request.form.get("when") or None,
+        #  The clock the hour was typed on. Without it "9am" is 9am UTC.
+        tz_offset=request.form.get("tz_offset") or 0,
+        #  The zone, not just the offset: only a zone knows when the
+        #  clocks change, and an offset captured in summer is wrong all
+        #  winter.
+        tz_name=request.form.get("tz_name"))
     if error:
         flash(error, "error")
     else:

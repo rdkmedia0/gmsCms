@@ -571,6 +571,12 @@ def _migrate(db):
     _add_column(db, "schedule_templates", "repeat_kind", "TEXT NOT NULL DEFAULT 'weekly'")
     _add_column(db, "schedule_templates", "last_used_at", "TEXT")
     _add_column(db, "schedule_templates", "once_at", "TEXT")
+    _add_column(db, "schedule_templates", "tz_offset", "INTEGER NOT NULL DEFAULT 0")
+    #  The owner's ZONE, not just their offset. An offset is right on the
+    #  day it was captured and wrong after the clocks change: a "9am
+    #  Monday" schedule captured in summer starts arriving at 8am in
+    #  winter, twice a year, and nobody connects the two.
+    _add_column(db, "schedule_templates", "tz_name", "TEXT")
 
     #  A newsletter arrangement somebody wants again.
     #

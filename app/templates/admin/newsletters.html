@@ -175,6 +175,11 @@
 
   <form method="post" action="{{ url_for('admin.newsletter_schedule_template_save') }}"
         class="cms-schedule-form" data-schedule-form>
+    {#  The clock the hour below was typed on, filled by local-time.js.
+        Without it "9am" is 9am UTC, which is 11am in Zurich in summer --
+        and nobody notices until the newsletter arrives two hours late. #}
+    <input type="hidden" name="tz_offset" data-tz-offset value="0">
+    <input type="hidden" name="tz_name" data-tz-name value="">
     <label for="sched-name" title="What you will call this when you pick it. A name you chose is one you will recognise six weeks later.">Name
       <input type="text" id="sched-name" name="name" maxlength="60" required
              placeholder="Monthly newsletter"

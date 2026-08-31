@@ -737,6 +737,47 @@
   //  named the schedules.
   var schedulePick = form.querySelector("[data-schedule-pick]");
   var sendAt = form.querySelector("[data-send-at]");
+  var scheduleDate = form.querySelector("[data-schedule-date]");
+
+  //  Each schedule's next dates. Offered rather than decided: booking
+  //  the next occurrence silently was the app choosing the date, and
+  //  "the first Monday" might be tomorrow.
+  var SCHEDULE_DATES = {};
+  try {
+    var sd = document.getElementById("cms-schedule-dates");
+    (JSON.parse((sd && sd.textContent) || "[]") || []).forEach(function (s) {
+      SCHEDULE_DATES[s.name] = s.dates || [];
+    });
+  } catch (e) {
+    SCHEDULE_DATES = {};
+  }
+
+  //  Drawn in the reader's own clock, which is the clock the owner typed
+  //  the schedule in. A UTC timestamp in a list of dates somebody is
+  //  choosing between is a sum they should not have to do.
+  function readable(utc) {
+    var when = new Date(utc.replace(" ", "T") + "Z");
+    if (isNaN(when.getTime())) return utc;
+    return when.toLocaleString(undefined, {
+      weekday: "short", day: "numeric", month: "short",
+      hour: "2-digit", minute: "2-digit",
+    });
+  }
+
+  function fillDates(name) {
+    if (!scheduleDate) return;
+    var dates = SCHEDULE_DATES[name] || [];
+    scheduleDate.innerHTML = "";
+    dates.forEach(function (d) {
+      var o = document.createElement("option");
+      o.value = d.utc;
+      o.textContent = readable(d.utc);
+      scheduleDate.appendChild(o);
+    });
+    scheduleDate.hidden = !dates.length;
+    scheduleDate.disabled = !dates.length;
+  }
+
   if (schedulePick && sendAt) {
     var showWhen = function () {
       //  Shown, never REQUIRED. This is one form with six buttons on it
@@ -748,7 +789,13 @@
       //  The server already refuses a schedule with no time, and says
       //  which of the two is missing. That is the right place for it:
       //  the rule belongs to the action, not to the form.
-      sendAt.hidden = schedulePick.value !== "";
+      var custom = schedulePick.value === "";
+      sendAt.hidden = !custom;
+      if (scheduleDate) {
+        scheduleDate.hidden = custom;
+        scheduleDate.disabled = custom;
+        if (!custom) fillDates(schedulePick.value);
+      }
     };
     schedulePick.addEventListener("change", showWhen);
     showWhen();
