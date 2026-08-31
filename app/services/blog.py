@@ -179,6 +179,73 @@ def posts_for(db, blog_id, published_only=True, limit=0):
 # ----------------------------------------------------------- the tool
 
 
+POST_LAYOUTS = {
+    "plain": {
+        "name": "Just words",
+        "blurb": "A heading and paragraphs. The plainest thing to write.",
+        "html": ("<h2>What this is about</h2>"
+                 "<p>Write the first paragraph here. Say the thing rather than "
+                 "introducing it — most people decide in one line whether "
+                 "to read on.</p>"
+                 "<p>Then the rest of it.</p>"),
+    },
+    "story": {
+        "name": "With a picture",
+        "blurb": "A picture at the top, then the story. Use the toolbar's "
+                 "picture button to choose one.",
+        "html": ("<h2>What this is about</h2>"
+                 "<p>Write the first paragraph here.</p>"
+                 "<h3>And the next part</h3>"
+                 "<p>Use the picture button above to put a photograph at the "
+                 "top of the post.</p>"),
+    },
+    "howto": {
+        "name": "How to do something",
+        "blurb": "A short opening and then numbered steps.",
+        "html": ("<h2>How to do the thing</h2>"
+                 "<p>One or two sentences on what this is for and who it is "
+                 "for.</p>"
+                 "<h3>What you need</h3>"
+                 "<ul><li>The first thing</li><li>The second thing</li></ul>"
+                 "<h3>The steps</h3>"
+                 "<ul><li>Do this first.</li><li>Then this.</li>"
+                 "<li>And finally this.</li></ul>"),
+    },
+    "news": {
+        "name": "An announcement",
+        "blurb": "Short. What has changed, when, and what to do about it.",
+        "html": ("<h2>What has changed</h2>"
+                 "<p>Say it in one sentence.</p>"
+                 "<p>Then when it takes effect, and what — if anything "
+                 "— anybody needs to do.</p>"),
+    },
+}
+
+#  The order they are offered in. Plainest first: it is the one most
+#  posts are, and the first option is the one somebody takes when they
+#  do not want to choose.
+POST_LAYOUT_ORDER = ("plain", "story", "howto", "news")
+
+
+def layout_choices():
+    """(key, name, blurb) for each starting arrangement.
+
+    A layout is a STARTING ARRANGEMENT, not a kind -- the same thing
+    PAGE_LAYOUTS and the newsletter's layouts are, and for the same
+    reason. Once it is on the page it is an ordinary post and nothing
+    later asks which layout it was made from. Adding one is a dictionary
+    entry, never a template and never a route.
+    """
+    return [(key, POST_LAYOUTS[key]["name"], POST_LAYOUTS[key]["blurb"])
+            for key in POST_LAYOUT_ORDER if key in POST_LAYOUTS]
+
+
+def starting_html(key):
+    """The words a layout starts from. Empty for one nobody offers."""
+    spec = POST_LAYOUTS.get(key)
+    return spec["html"] if spec else ""
+
+
 def post_with_blog(db, post_id):
     """One post, carrying its blog's name and address.
 

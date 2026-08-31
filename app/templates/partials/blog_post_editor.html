@@ -22,6 +22,32 @@
       action="{{ url_for('admin.blog_post_edit', blog_id=post.blog_id, post_id=post.id) }}">
   <input type="hidden" name="next" value="{{ next_url or request.full_path }}">
 
+  {#  ---- the ribbon: what this is starting from ----
+
+      The same shape the newsletter editor has, and the same rule: a
+      layout is a STARTING ARRANGEMENT, not a kind. Choosing one lays out
+      a post you then write over, and nothing afterwards asks which one
+      it came from.
+
+      It asks before replacing work, and asks only when there IS work --
+      the newsletter's dropdown learnt that the hard way: "does it
+      contain words" is the obvious test and it is wrong, because a
+      layout lays out words of its own, so a new post answered yes and
+      every change asked to replace nothing. #}
+  <div class="cms-issue-toolbar">
+    <div class="cms-toolbar-group">
+      <label class="cms-toolbar-label" for="post-layout">Template</label>
+      <select id="post-layout" class="cms-toolbar-select" data-post-layout
+              title="A starting arrangement for this post. Choosing one lays out headings and paragraphs you then write over.">
+        <option value="">&mdash; start from &mdash;</option>
+        {% for key, name, blurb in post_layouts %}
+        <option value="{{ key }}" title="{{ blurb }}">{{ name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <script type="application/json" id="cms-post-layouts">{{ post_layout_html | tojson }}</script>
+  </div>
+
   {#  ---- the header: which blog, what it is called, who can read it ---- #}
   <div class="cms-compose-header">
     <div class="cms-compose-row">
@@ -106,18 +132,22 @@
             title="Keep this post with the settings above. Ticking Published makes it public.">Save</button>
 
     <span class="cms-compose-schedule">
-      <button type="submit" class="btn"
-              formaction="{{ url_for('admin.blog_post_schedule', blog_id=post.blog_id, post_id=post.id) }}"
-              title="Publish it automatically at the time beside this. You do not have to be here.">Publish later</button>
+      {#  Save does the work here too, the same as the newsletter's: a
+          "Publish later" button beside Save made this a control you
+          could set, save, and watch do nothing. "Not scheduled" is the
+          default and is also how you take one back off. #}
+      <label class="cms-tool-set-label" for="post-when">When</label>
       {#  The schedules that have been named, not a date to retype -- and
           the dates that schedule produces, to choose between. See
           admin/schedule-picker.js. #}
-      <select name="schedule_name" data-schedule-pick
-              title="Which of your schedules to publish it on. You then choose which of its dates.">
+      <select name="schedule_name" id="post-when" data-schedule-pick
+              title="When this post appears. Leave it Not scheduled to keep it a draft or publish it yourself; pick a schedule and Save puts it on the clock.">
+        <option value="none" {% if not post_scheduled %}selected{% endif %}>Not scheduled</option>
         {% for s in schedule_choices %}
-        <option value="{{ s.name }}" title="{{ s.says }}">{{ s.name }}</option>
+        <option value="{{ s.name }}" title="{{ s.says }}"
+                {% if post_scheduled and post_scheduled.template_name == s.name %}selected{% endif %}>{{ s.name }}</option>
         {% endfor %}
-        <option value="">A time I choose</option>
+        <option value="" {% if post_scheduled and not post_scheduled.template_name %}selected{% endif %}>A time I choose</option>
       </select>
       <select name="schedule_date" data-schedule-date
               title="Which of that schedule's dates to publish on. It happens once, at that time."></select>
@@ -149,9 +179,7 @@
   <p class="hint cms-post-waiting" title="This post goes public by itself at the time shown.">
     Waiting to be published
     <time data-utc="{{ post_scheduled.send_at }}">{{ post_scheduled.send_at[:16] }}</time>.
-    <button type="submit" class="btn btn-small"
-            formaction="{{ url_for('admin.blog_post_schedule_cancel', blog_id=post.blog_id, post_id=post.id) }}"
-            title="Take this off the schedule. The post stays as it is.">Take it off</button>
+    To take it off, set <strong>When</strong> back to &ldquo;Not scheduled&rdquo; and press Save.
   </p>
   {% endif %}
 </form>

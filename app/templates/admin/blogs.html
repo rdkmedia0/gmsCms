@@ -3,6 +3,57 @@
 {% block content %}
 <h1>Blog</h1>
 
+{#  The blogs themselves, first: a post belongs to one, and the picker
+    at the top of the writing tool is a list of these. Making one is done
+    rarely and reading this list is done constantly -- it says what the
+    site HAS before the screen starts asking what to add to it. #}
+<div class="card">
+  <div class="integration-head">
+    <h2>Your blogs</h2>
+    <span class="hint">A set of posts with an address of its own. Show one anywhere with the
+      <strong>Blog</strong> tool.</span>
+  </div>
+  {% if blogs %}
+  <div class="table-scroll">
+    <table class="simple-table cms-people-table">
+      <thead><tr><th>Name</th><th>Address</th><th>Posts</th><th class="cms-col-actions"></th></tr></thead>
+      <tbody>
+        {% for b in blogs %}
+        <tr>
+          <td>
+            <form method="post" action="{{ url_for('admin.blog_rename', blog_id=b.id) }}"
+                  class="inline-form cms-rename-form">
+              <input type="text" name="name" value="{{ b.name }}" aria-label="Blog name"
+                     title="What this blog is called. Its web address does not change, so links to its posts keep working.">
+              <button type="submit" class="icon-btn"
+                      title="Save this blog's new name. Its web address does not change, so links to its posts keep working.">&#128190;</button>
+            </form>
+          </td>
+          <td><code class="blog-address"
+                    title="Where posts in this blog live. Renaming does not change it.">/blog/{{ b.slug }}/&hellip;</code></td>
+          <td>{{ b.posts }}</td>
+          <td class="cms-col-actions">
+            <form method="post" action="{{ url_for('admin.blog_delete', blog_id=b.id) }}">
+              <button type="submit" class="icon-btn icon-btn-danger"
+                      data-confirm="You are about to delete the blog &quot;{{ b.name }}&quot; and its {{ b.posts }} post{{ 's' if b.posts != 1 }}. A blog is a set of posts, so the posts go with it. This cannot be undone."
+                      data-confirm-danger="1"
+                      title="Delete this blog and every post in it.">&times;</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+  <form method="post" action="{{ url_for('admin.blog_new') }}" class="inline-form">
+    <input type="text" name="name" placeholder="Journal, News, Recipes&hellip;"
+           title="What to call the new blog. Its web address is made from this.">
+    <button type="submit" class="btn btn-small" title="Start a new blog">+ Add a blog</button>
+  </form>
+</div>
+
+
 {#  The same three things, in the same order, as the Newsletters screen:
     the tool that makes one, everything that has been made, and the times
     this site publishes at. An owner who has written a newsletter has
@@ -80,54 +131,7 @@
 
 {% include "partials/schedules.html" %}
 
-{#  Making and removing the blogs themselves. Below the writing, because
-    it is done once and the writing is done every week -- the old screen
-    put the file manager first and the writing nowhere. #}
-<div class="card">
-  <div class="integration-head">
-    <h2>Your blogs</h2>
-    <span class="hint">A set of posts with an address of its own. Show one anywhere with the
-      <strong>Blog</strong> tool.</span>
-  </div>
-  {% if blogs %}
-  <div class="table-scroll">
-    <table class="simple-table cms-people-table">
-      <thead><tr><th>Name</th><th>Address</th><th>Posts</th><th class="cms-col-actions"></th></tr></thead>
-      <tbody>
-        {% for b in blogs %}
-        <tr>
-          <td>
-            <form method="post" action="{{ url_for('admin.blog_rename', blog_id=b.id) }}"
-                  class="inline-form cms-rename-form">
-              <input type="text" name="name" value="{{ b.name }}" aria-label="Blog name"
-                     title="What this blog is called. Its web address does not change, so links to its posts keep working.">
-              <button type="submit" class="icon-btn"
-                      title="Save this blog's new name. Its web address does not change, so links to its posts keep working.">&#128190;</button>
-            </form>
-          </td>
-          <td><code class="blog-address"
-                    title="Where posts in this blog live. Renaming does not change it.">/blog/{{ b.slug }}/&hellip;</code></td>
-          <td>{{ b.posts }}</td>
-          <td class="cms-col-actions">
-            <form method="post" action="{{ url_for('admin.blog_delete', blog_id=b.id) }}">
-              <button type="submit" class="icon-btn icon-btn-danger"
-                      data-confirm="You are about to delete the blog &quot;{{ b.name }}&quot; and its {{ b.posts }} post{{ 's' if b.posts != 1 }}. A blog is a set of posts, so the posts go with it. This cannot be undone."
-                      data-confirm-danger="1"
-                      title="Delete this blog and every post in it.">&times;</button>
-            </form>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% endif %}
-  <form method="post" action="{{ url_for('admin.blog_new') }}" class="inline-form">
-    <input type="text" name="name" placeholder="Journal, News, Recipes&hellip;"
-           title="What to call the new blog. Its web address is made from this.">
-    <button type="submit" class="btn btn-small" title="Start a new blog">+ Add a blog</button>
-  </form>
-</div>
+
 
 {% from "partials/icon_picker.html" import icon_picker_grid with context %}
 {{ icon_picker_grid(include_none=false) }}

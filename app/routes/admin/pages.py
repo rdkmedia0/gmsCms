@@ -214,17 +214,73 @@ def _post_return_url(default):
     return default
 
 
-def _published_date(form, existing=""):
+def _apply_publish_schedule(db, post_id):
+    """Put this post on the clock to publish itself, or take it off.
+
+    `none` is the default and means not scheduled: it cancels anything
+    waiting, so the same control that books a publish is how you take one
+    back. Everything it says, it says by flashing.
+    """
+    from ...services import scheduling
+    from .newsletters import _when_from_form
+    wanted = (request.form.get("schedule_name") or "none").strip()
+    post = db.execute("SELECT * FROM blog_posts WHERE id = ?", (post_id,)).fetchone()
+    if not post:
+        return
+    if wanted == "none":
+        if scheduling.cancel(db, "publish", post_id):
+            db.commit()
+            flash("Taken off the schedule. The post is as you left it.", "success")
+        return
+    if post["published_at"]:
+        flash("Saved. It is already published, so there is nothing to wait for — "
+              "untick Published if you want it to appear later instead.", "warning")
+        return
+    when, named, refusal = _when_from_form(db)
+    if refusal:
+        flash("Saved, but not put on the clock: %s" % refusal[0].lower() + refusal[1:],
+              "warning")
+        return
+    scheduling.schedule(db, "publish", post_id, post["title"] or "", "all", when,
+                        template_name=named)
+    if named:
+        scheduling.mark_used(db, named, scheduling.utcnow())
+    db.commit()
+    flash("It will be published by itself at the time you chose.", "success")
+
+
+def _waiting_to_publish(db, post_id):
+    """The scheduled publish this post is waiting on, if any."""
+    from ...services import scheduling
+    return scheduling.pending_for(db, "publish", post_id)
+
+
+def _published_date(form, existing="", scheduled=None):
     """Turns "publish this" plus an optional date into a stored date.
 
     Publishing used to mean typing a date, which asks somebody to know
     that a date is what makes a post public. Ticking the box is the
-    decision; the date is a detail, and today's is the obvious default.
+    decision; the date is a detail.
+
+    And the date follows the DECISION rather than being a third thing to
+    keep in step: published now means today, and a post waiting on a
+    schedule carries the day it will appear. It was today's date either
+    way, so a post written on Monday to go out on Friday said Monday --
+    on the post, in the list, and in the blog's own ordering.
     """
     if not form.get("publish"):
+        #  Not published now. If it is waiting on a schedule, that is the
+        #  day it will appear; until then it has no date, because it has
+        #  no date -- a draft with a date on it reads as published.
         return ""
     typed = (form.get("published_at") or "").strip()
-    return typed or existing or datetime.date.today().isoformat()
+    if typed:
+        return typed
+    if existing:
+        return existing
+    if scheduled and scheduled["send_at"]:
+        return str(scheduled["send_at"])[:10]
+    return datetime.date.today().isoformat()
 
 
 @bp.route("/blogs/new", methods=["POST"])
@@ -347,13 +403,20 @@ def blog_post_edit(blog_id, post_id):
                 title,
                 request.form.get("excerpt", "").strip(),
                 request.form.get("content", "").strip(),
-                _published_date(request.form, post["published_at"]),
+                _published_date(request.form, post["published_at"],
+                                _waiting_to_publish(db, post_id)),
                 (request.form.get("featured_image") or "").strip() or None,
                 post_id,
             ),
         )
         db.commit()
         flash("Post updated.", "success")
+        #  ...and when it appears. Save does the work, the same as the
+        #  newsletter's: a "Publish later" button beside Save made the
+        #  picker a control you could set, save, and watch do nothing.
+        #
+        #  AFTER the commit, so a refusal can never cost the writing.
+        _apply_publish_schedule(db, post_id)
         return redirect(_post_return_url(
             url_for("admin.blog_post_edit", blog_id=blog_id, post_id=post_id)))
     #  What the Send panel on this screen needs to know. Worked out here
@@ -380,6 +443,9 @@ def blog_post_edit(blog_id, post_id):
         "admin/blog_post_edit.html", blog=blog,
         post=blog_service.post_with_blog(db, post_id),
         blogs=blog_service.list_blogs(db),
+        post_layouts=blog_service.layout_choices(),
+        post_layout_html={key: blog_service.starting_html(key)
+                          for key, _n, _b in blog_service.layout_choices()},
         post_scheduled=waiting.get(post_id),
         schedule_choices=[
             {"name": t["name"], "says": scheduling_service.describe_template(t),

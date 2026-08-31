@@ -70,10 +70,15 @@ with sync_playwright() as pw:
     print("-" * 68)
     order = page.evaluate(
         "() => [...document.querySelectorAll('h1, h2')].map(h => h.textContent.trim())")
-    check("the tool, then what is written, then the schedules",
-          order[:1] == ["Blog"]
+    #  Your blogs, then the writing, then what is written, then the
+    #  times. A post belongs to a blog, and the picker at the top of the
+    #  writing tool is a list of them -- so the screen says what the site
+    #  HAS before it starts asking what to add to it.
+    check("blogs, the tool, what is written, then the schedules",
+          order[:2] == ["Blog", "Your blogs"]
           and "Your posts" in order and "Your schedules" in order
-          and order.index("Your posts") < order.index("Your schedules"),
+          and order.index("Your blogs") < order.index("Your posts")
+          < order.index("Your schedules"),
           " | ".join(order))
     check("...and the writing tool is above the list",
           page.evaluate("""() => {
@@ -123,6 +128,30 @@ with sync_playwright() as pw:
                   && !(c.closest('label') && c.closest('label').title.trim()))
         .map(c => c.name || c.type).slice(0, 6)""")
     check("every control on the tool says what it does", not bare, str(bare))
+
+    #  A template is a starting ARRANGEMENT, not a kind -- the same
+    #  thing the newsletter's layouts are, and the same rule: once it is
+    #  on the page it is an ordinary post, and nothing later asks which
+    #  one it came from.
+    check("it offers templates to start from", page.evaluate(
+        """() => { const s = document.querySelector('[data-post-layout]');
+             return !!s && s.options.length > 2; }"""))
+    page.select_option("[data-post-layout]", "howto")
+    page.wait_for_timeout(500)
+    check("...and choosing one lays the post out", page.evaluate(
+        """() => { const b = document.querySelector('.cms-richtext [contenteditable]');
+             return !!b && b.textContent.indexOf('What you need') >= 0; }"""))
+    check("...into the field that gets saved", page.evaluate(
+        """() => (document.querySelector('#post-content').value || '')
+             .indexOf('What you need') >= 0"""))
+
+    #  Save does the work here too. A "Publish later" button beside Save
+    #  made the picker a control you could set, save, and watch do
+    #  nothing -- the same fault the newsletter's Schedule button was.
+    check("when it appears is a control, not a second button", page.evaluate(
+        """() => { const s = document.querySelector('#post-when');
+             return !!s && s.options[0].value === 'none' && s.value === 'none'
+                 && !document.querySelector("[formaction*='/schedule']"); }"""))
 
     print()
     print("A post can actually be written")

@@ -135,6 +135,9 @@ def blogs_screen():
         #  and what is still a draft.
         post_rows=blogs.everything(db, waiting),
         post_scheduled=waiting.get(post["id"]) if post else None,
+        post_layouts=blogs.layout_choices(),
+        post_layout_html={key: blogs.starting_html(key)
+                          for key, _n, _b in blogs.layout_choices()},
         schedule_choices=[
             {"name": t["name"], "says": scheduling.describe_template(t),
              "dates": [{"utc": d.strftime("%Y-%m-%d %H:%M:%S")}

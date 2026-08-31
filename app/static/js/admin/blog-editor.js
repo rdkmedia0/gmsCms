@@ -28,6 +28,85 @@
   var offset = form.querySelector("[data-tz-offset]");
   if (offset) offset.value = String(-new Date().getTimezoneOffset());
 
+  //  Starting from a template.
+  //
+  //  A layout is a starting ARRANGEMENT, not a kind: it lays out
+  //  headings and paragraphs to write over, and nothing afterwards asks
+  //  which one a post came from.
+  //
+  //  It asks before replacing work, and asks only when there IS work.
+  //  "Does the box contain words" is the obvious test and it is wrong --
+  //  a template lays out words of its own, so a post that has only ever
+  //  had a template applied would answer yes and every later change
+  //  would ask to replace nothing. What is compared is whether what is
+  //  there is still one of the templates.
+  var layoutPick = form.querySelector("[data-post-layout]");
+  var LAYOUTS = {};
+  try {
+    var block = document.getElementById("cms-post-layouts");
+    LAYOUTS = JSON.parse((block && block.textContent) || "{}") || {};
+  } catch (e) {
+    LAYOUTS = {};
+  }
+
+  function writtenIn() {
+    var box = form.querySelector(".cms-richtext [contenteditable]")
+           || form.querySelector("#post-content");
+    return box;
+  }
+
+  //  GAPS is built rather than typed. An escape written into this file
+  //  has been eaten in transit twice now, and what came out was a real
+  //  tab and a real newline inside a regular expression -- which is a
+  //  syntax error, and an invisible one.
+  var GAPS = new RegExp('[' + String.fromCharCode(32, 9, 10, 13) + ']+', 'g');
+
+  function squeezed(html) {
+    return (html || '').replace(GAPS, ' ').trim();
+  }
+
+  function isUntouched(html) {
+    var now = squeezed(html);
+    if (!now) return true;
+    return Object.keys(LAYOUTS).some(function (key) {
+      return squeezed(LAYOUTS[key]) === now;
+    });
+  }
+
+  if (layoutPick) {
+    layoutPick.addEventListener("change", async function () {
+      var key = layoutPick.value;
+      if (!key || !LAYOUTS[key]) return;
+      var box = writtenIn();
+      if (!box) return;
+      var current = box.innerHTML !== undefined ? box.innerHTML : box.value;
+      if (!isUntouched(current)) {
+        var ok = window.cmsModal
+          ? await window.cmsModal({
+              title: "Replace what you have written?",
+              body: "Starting from a template lays this post out again. "
+                  + "What is written here now would be replaced.",
+              confirmText: "Replace it",
+              cancelText: "Leave it as it is",
+              danger: true,
+            })
+          : window.confirm("Replace what you have written?");
+        if (!(ok && ok.confirmed !== false)) {
+          layoutPick.value = "";
+          return;
+        }
+      }
+      if (box.innerHTML !== undefined) {
+        box.innerHTML = LAYOUTS[key];
+        box.dispatchEvent(new Event("input", { bubbles: true }));
+      } else {
+        box.value = LAYOUTS[key];
+      }
+      var store = form.querySelector("#post-content");
+      if (store && store !== box) store.value = LAYOUTS[key];
+    });
+  }
+
   //  A post with no title cannot be published: the list is a list of
   //  titles, and "Untitled" twice is two rows nobody can tell apart.
   //  Asked here rather than only at the server so the answer arrives
