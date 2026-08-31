@@ -46,7 +46,7 @@
             times and the addresses sit in the tooltips so the row stays
             readable on a phone, and all of it is in the download. #}
         <tr {{ 'style=opacity:.55' | safe if p.unsubscribed_at }}>
-          <td>{{ p.email }}
+          <td title="{{ p.email }}">{{ p.email }}
             {%- if not p.unsubscribed_at and not p.confirmed_at %}
             <span class="badge" title="Sent a confirmation email{{ ' on ' ~ p.confirm_sent_at[:16] if p.confirm_sent_at }} and has not followed the link yet. Nothing further is sent to this address.">waiting to confirm</span>
             {%- endif %}</td>
@@ -58,7 +58,7 @@
               somebody's word. The orders win the label; the flag is a
               star you can press. #}
           {% set bought = orders.get(p.email) %}
-          <td>
+          <td class="col-tag">
             {% if bought %}
             <span class="badge" title="Has paid for {{ bought[0] }} order{{ 's' if bought[0] != 1 }}, most recently {{ bought[1][:10] }}. Worked out from your orders — nothing to keep up to date.">customer · {{ bought[0] }}</span>
             {% elif p.is_customer %}

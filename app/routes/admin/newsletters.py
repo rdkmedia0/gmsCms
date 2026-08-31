@@ -974,7 +974,16 @@ def newsletter_issue_copy(newsletter_id):
         return redirect(url_for("admin.newsletters"))
     db.commit()
     flash("Copied. This is the copy — the original is untouched.", "success")
-    return redirect(url_for("admin.newsletter_issue_edit", newsletter_id=new_id))
+    #  Back to the list, with the copy loaded into the tool at the top of
+    #  it. Edit already worked this way and copy did not, so the two
+    #  actions on one row went to two different places -- and the screen's
+    #  own note says "edit or copy in the list below loads that newsletter
+    #  straight into it".
+    #
+    #  The page IS the tool. Making a copy and being thrown onto another
+    #  screen to write it is the move between "which one" and "writing it"
+    #  that this screen exists to remove.
+    return redirect(url_for("admin.newsletters", issue=new_id) + "#cms-tool")
 
 
 @bp.route("/newsletters/issue/<int:newsletter_id>/send-now", methods=["POST"])
