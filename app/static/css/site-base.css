@@ -2688,6 +2688,15 @@ body.cms-logged-in .cms-basket-link.cms-basket-align-float-top { top: 60px; }
    too, and giving those a band's padding put 96px above and below the
    menu — a 350px empty header on a site whose composition happened to be
    a generous one. A zone is furniture; the bands are the page. */
+/*  A PLAIN section pays half.
+    -------------------------
+    Every section paying a full band's padding means two plain sections
+    meeting leave two of them -- 160px where the design says 80. A band
+    that carries a colour still pays the full amount, because that
+    padding is the air INSIDE the band and it is what makes it a band;
+    a plain section is only spacing, and spacing is shared with its
+    neighbour. Measured before this: six different boundaries on one
+    page, 28px to 153px. */
 .site-content .cms-section > .block {
   /*  EVERY section, whether or not it carries a background.
       -------------------------------------------------------
@@ -2940,11 +2949,28 @@ body.cms-logged-in .cms-basket-link.cms-basket-align-float-top { top: 60px; }
 
     Keyed on the section carrying a background, because that is exactly
     the condition that makes it a band. Nothing else changes. */
-.site-content .cms-section[style*="background-color"] > .block {
+/*  Keyed on FULL WIDTH as well as on carrying a colour. A band reaching
+    the window edges has nothing outside it to curve away from, so a
+    radius there draws four notches of the page's ground into its
+    corners -- measured at 22px on the call-to-action band, which
+    carries its colour on the block rather than on the section and so
+    slipped past the first version of this rule. */
+.site-content .cms-section[style*="background-color"] > .block,
+.site-content .cms-section[data-layout-width="full"] > .block,
+/*  DESCENDANTS, not just children. A block tool wraps its own surface a
+    level or two down -- `.block > .cms-html-preview > .cms-block-cta >
+    .cms-cta` -- so a child selector squared the wrapper and left the
+    thing you can actually see still curved, which is why the
+    call-to-action band kept its 22px corners after the first fix. */
+.site-content .cms-section[style*="background-color"] > .block *,
+.site-content .cms-section[data-layout-width="full"] > .block * {
   border-radius: 0;
 }
-.site-content .cms-section[style*="background-color"] > .block > * {
-  border-radius: 0;
+/*  ...except the controls inside it: a button in a band still wears the
+    site's corner, because a button is a small object and not a band. */
+.site-content .cms-section > .block .cms-btn,
+.site-content .cms-section > .block .cms-cta-btn {
+  border-radius: var(--site-radius, 8px);
 }
 
 /*  The testimonial's quote glyph sat halfway down the sentence, reading
@@ -3022,3 +3048,26 @@ body.cms-logged-in .cms-basket-link.cms-basket-align-float-top { top: 60px; }
 .cms-stat-label { color: var(--site-ink, inherit); opacity: .72; }
 .cms-stat-value { color: var(--site-accent-text, var(--primary-700, currentColor)); }
 .cms-cta-btn, .cms-block .cms-btn { border-radius: var(--site-radius, 8px); }
+
+
+/*  A plain section is spacing; a coloured band is a room. See the note
+    above the band-padding rule: this comes last so it wins by order,
+    which is what keeps two plain sections from stacking 160px between
+    them. */
+.site-content .cms-section:not([style*="background-color"]) > .block {
+  padding-block: calc(var(--site-band-pad, 0) / 2);
+}
+.site-content .cms-section > .block-banner { padding-block: 0; }
+
+/*  A heading is the page's ink. It was picking up the theme's own link
+    colour on a dark ground and rendering pale blue -- the coldest thing
+    on a page sampled from a warm photograph, on its largest type. */
+.cms-wysiwyg-body h1, .cms-wysiwyg-body h2, .cms-wysiwyg-body h3,
+.cms-block h2, .cms-block h3, .cms-card h3 { color: var(--site-ink, inherit); }
+
+/*  A finger is 44px. Both hero buttons measured 33px on a phone, and
+    both were full width, so there was no primary either. */
+@media (max-width: 640px) {
+  .cms-btn { padding: 14px 24px; }
+  .cms-hero-actions .cms-btn { flex: 0 1 auto; }
+}

@@ -82,7 +82,6 @@ _SCHEMAS = {
         '"card_link": "two or three words, the same for every card, like Read more", '
         '"stats": [{"value": "a number or short figure", "label": "what it counts"}, '
         '{"value": "...", "label": "..."}, {"value": "...", "label": "..."}], '
-        '"quote": "one sentence a real customer might say", '
         '"cta_headline": "...", "cta_subtext": "...", "cta_button": "two or three words"}'
     ),
     "about": (
@@ -1077,8 +1076,13 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
         features = _rows(copy.get("features") if fill else None, ("title", "body"), 3,
                          [{"title": "Feature %d" % (i + 1),
                            "body": "Describe this feature."} for i in range(3)])
-        for card in features:
-            card.setdefault("link_label", val("card_link", "Read more"))
+        #  A card links only if the run gave a label for it. Three
+        #  identical "Read more" arrows under three identical cards is
+        #  what a page looks like when nobody decided; no link is
+        #  quieter, and truer.
+        if fill and (copy.get("card_link") or "").strip():
+            for card in features:
+                card.setdefault("link_label", copy["card_link"].strip())
         chunks.append(_piece(_cards_chunk(features[:6]),
                              {"layout_width": "auto",
                               "shadow_style": kit.get("shadow") or "subtle"}))
@@ -1094,7 +1098,12 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
         #  An unattributed quote reads as a specimen, which is what it
         #  is, and the owner fills in a real name.
         chunks.append(_block_piece("testimonial", {
-            "quote": val("quote", "Something a customer said about you."),
+            #  A prompt, never a compliment. An invented one -- "Your
+            #  saxophone playing is amazing!" -- ships to a live site as
+            #  somebody's testimony about a business that has not opened
+            #  yet, which is the same misattribution the invented NAME
+            #  was, one layer in.
+            "quote": "Add something a customer said about you.",
             "name": "", "role": "", "photo": "",
             "style": "large",
         }, {"layout_width": "full", "bg_color": tint}))
@@ -1112,21 +1121,20 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
             "link": "/contact",
             "tone": "solid",
         }, {"layout_width": "full"}))
-        #  And it ENDS.
+        #  NO footer band here.
         #
-        #  The page stopped after the closing call and left 144px of
-        #  empty ground below it -- 306px on a phone. A site with no
-        #  name, no way to contact it and no legal link under the fold
-        #  is not a finished page, and a visitor reads the emptiness as
-        #  something failing to load.
-        #  On the tint, not the ink: a section paints a background but
-        #  cannot set a text colour, so a dark footer band would carry
-        #  the page's dark ink on it and read as an empty black band.
-        #  The tint changes the ground, which is what a footer needs, and
-        #  the words stay readable without anything having to know what
-        #  colour they are.
-        chunks.append(_piece(_footer_chunk(kit, val("eyebrow", "")),
-                             {"layout_width": "full", "bg_color": tint}))
+        #  There was one, and it was wrong twice over. The site already
+        #  HAS a footer -- the template's manifest turns it on
+        #  (`footer_layout`), it is built from the owner's own details,
+        #  and it carries the business name, which a page-level band
+        #  never could, because the generator carries no identity. So
+        #  the band was a second footer sitting above the real one.
+        #
+        #  What it contained was worse: three cells of instructions to
+        #  the OWNER -- "Add your email address and telephone number
+        #  here." -- rendered as live copy to visitors. Placeholder text
+        #  that reads as an instruction is not thin content; it is a
+        #  page telling the public what its owner has not done yet.
     elif layout_key == "about":
         chunks.append(_piece(_hero_chunk(val("hero_headline", "Our story"),
                                          val("hero_subtext", "A short supporting line."),
@@ -1151,29 +1159,6 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
                                          val("body_text", "Write something here.")),
                              {"layout_width": "auto"}))
     return chunks
-
-
-def _footer_chunk(kit, eyebrow=""):
-    """The band that ends the page: who this is, and how to reach them.
-
-    Three columns of a real Columns tool, so every line of it is
-    editable in place afterwards. It carries no invented identity -- the
-    site's own name is written in by `_apply_pack_identity` on install
-    if the site has none, and the contact lines are visibly blank
-    prompts rather than a plausible-looking address nobody can use.
-    """
-    columns = (
-        ("Get in touch", "Add your email address and telephone number here."),
-        ("Where to find me", "Add your address, or the area you work in."),
-        ("Follow", "Add links to wherever people already follow you."),
-    )
-    #  Plain cells, not cards. A footer is not three objects sitting on
-    #  a surface; it is the surface. Boxed cells on a coloured band read
-    #  as three panels that failed to load their contents.
-    cells = "".join(
-        '<div><h3>%s</h3><p>%s</p></div>' % (escape(title), escape(body))
-        for title, body in columns)
-    return '<div class="cms-columns">%s</div>' % cells
 
 
 def _piece(html, style=None):

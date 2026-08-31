@@ -457,8 +457,11 @@ def _dark_page(palette, ground):
     ink = _mix("#f4f4f4", primary, 0.06)
     #  A band on a dark page is LIGHTER than the ground, not darker --
     #  the direction of the step is what makes it read as a band at all.
-    tint = _mix(ground, "#ffffff", 0.07)
-    line = _mix(ground, "#ffffff", 0.16)
+    #  Far enough from the ground to READ as a band. At 7% a band on
+    #  black measured 1.09:1 against the page -- a smudge rather than a
+    #  change of surface, and three of them alternating meant nothing.
+    tint = _mix(ground, "#ffffff", 0.13)
+    line = _mix(ground, "#ffffff", 0.22)
     card = _mix(ground, "#ffffff", 0.05)
     accent_ink = ink if contrast(ink, accent) >= contrast("#111111", accent) else "#111111"
     #  The accent has to carry as TEXT on a dark ground, which usually

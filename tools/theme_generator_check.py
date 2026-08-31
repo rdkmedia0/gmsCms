@@ -240,13 +240,21 @@ with app.app_context():
         check("a specimen quote is attributed to nobody",
               not (values.get("name") or "").strip()
               and not (values.get("role") or "").strip(), str(values)[:120])
+        check("...and does not invent a compliment either",
+              (values.get("quote") or "").lower().startswith("add "),
+              (values.get("quote") or "")[:60])
     #  And the page ends somewhere: a site with no name, no contact and
     #  no link under the fold is not a finished page.
-    #  A Columns of cards is stored as JSON, so the footer is looked for
-    #  by its words rather than by its wrapper.
-    check("the page ends with a footer band",
-          any("Where to find me" in (sec[2] or "") for sec in data["sections"][-2:]),
-          " / ".join(sec[0] for sec in data["sections"][-2:]))
+    #  The site's own footer is built from the owner's details by the
+    #  template's footer_layout. The band that used to sit above it was
+    #  a second footer, and it shipped instructions to the OWNER as copy
+    #  for visitors.
+    every = " ".join(sec[2] or "" for sec in data["sections"])
+    check("no instruction text is shipped as public copy",
+          "Add your email address" not in every
+          and "Add your address, or the area" not in every)
+    check("...and the run does not build a second footer",
+          "Where to find me" not in every)
     check("a front page is not all prose",
           any(block_tools.parse_block(s[2] or "")[0] for s in data["sections"]),
           ", ".join(kinds))
