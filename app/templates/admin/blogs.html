@@ -176,7 +176,11 @@
   {% endif %}
 </div>
 
-{% include "partials/schedules.html" %}
+{#  The schedules card lives on its own screen now (Dashboard >
+    Schedules). A schedule is a time this site acts at, not a property
+    of this one -- it was defined here and on the Blog screen, one list
+    with two homes, while Backups could pick one and not make one. The
+    picker stays, because that is where the decision is made. #}
 
 {% from "partials/icon_picker.html" import icon_picker_grid with context %}
 {{ icon_picker_grid(include_none=false) }}

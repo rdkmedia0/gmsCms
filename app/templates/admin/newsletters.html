@@ -114,7 +114,11 @@
     next one goes, and does not re-send the same newsletter forever --
     identical words to the same list every month is a thing nobody can
     take back. #}
-{% include "partials/schedules.html" %}
+{#  The schedules card lives on its own screen now (Dashboard >
+    Schedules). A schedule is a time this site acts at, not a property
+    of this one -- it was defined here and on the Blog screen, one list
+    with two homes, while Backups could pick one and not make one. The
+    picker stays, because that is where the decision is made. #}
 
 {#  Two sections stood here and both are gone.
 

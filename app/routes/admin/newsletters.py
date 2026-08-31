@@ -1020,42 +1020,13 @@ def newsletter_issue_send_now(newsletter_id):
                     blocks=newsletter.composed_blocks(row))
 
 
-@bp.route("/newsletters/schedules/save", methods=["POST"])
-@login_required
-def newsletter_schedule_template_save():
-    """Name a time, so it is defined once and assigned rather than
-    retyped into a date box every month."""
-    db = get_db()
-    ok_, error = scheduling.save_template(
-        db, request.form.get("name"), request.form.get("repeat_kind"),
-        request.form.get("hour"), request.form.get("minute"),
-        request.form.get("weekday") or None,
-        request.form.get("monthday") or None,
-        when=request.form.get("when") or None,
-        #  The clock the hour was typed on. Without it "9am" is 9am UTC.
-        tz_offset=request.form.get("tz_offset") or 0,
-        #  The zone, not just the offset: only a zone knows when the
-        #  clocks change, and an offset captured in summer is wrong all
-        #  winter.
-        tz_name=request.form.get("tz_name"),
-        month_day=request.form.get("month_day") or "first")
-    if error:
-        flash(error, "error")
-    else:
-        db.commit()
-        flash("Saved. You can pick it when you schedule a newsletter.", "success")
-    return redirect(url_for("admin.newsletters"))
-
-
-@bp.route("/newsletters/schedules/delete", methods=["POST"])
-@login_required
-def newsletter_schedule_template_delete():
-    db = get_db()
-    gone = scheduling.delete_template(db, request.form.get("name"))
-    db.commit()
-    flash("Removed." if gone else "That schedule no longer exists.",
-          "success" if gone else "error")
-    return redirect(url_for("admin.newsletters"))
+#  The schedule routes moved to routes/admin/schedules.py.
+#
+#  A schedule is not a property of a newsletter: it is a time this site
+#  acts at, and a backup runs on one too. They were named
+#  `newsletter_schedule_template_save` and lived here, which was true
+#  when a newsletter was the only thing that had one and became a lie the
+#  day a backup ran on it.
 
 
 @bp.route("/newsletters/layouts/save", methods=["POST"])

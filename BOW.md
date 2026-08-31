@@ -7726,3 +7726,36 @@ sweep of `app/` for control characters is the net under this, and it is
 green — but the lesson is the same one BOW.md already records: build the
 pattern (`String.fromCharCode`, an explicit `RegExp`) rather than typing
 an escape into a file that is being written by a tool.
+
+### One list, two homes, and a third screen that could only look at it
+
+Schedules were created on the Newsletters screen and again on the Blog
+screen — the same card, included twice — and picked on a third, Backups,
+which could offer only what the other two happened to have made. Landing
+on Backups first, you could see the picker and had no way to fill it.
+
+That asymmetry is the argument, not the count. Three features inherit a
+schedule now, so the list has a screen of its own and the other screens
+keep only their pickers, because that is where the decision is made.
+
+The routes moved with it and were renamed. They were
+`newsletter_schedule_template_save`, which was true when a newsletter was
+the only thing that had a schedule and became a lie the day a backup ran
+on one.
+
+### Two files wrote one field with opposite signs
+
+The new screen's checker asked whether the browser's clock reaches the
+server, and found that `admin/local-time.js` writes
+`getTimezoneOffset()` raw while `admin/blog-editor.js` wrote it negated
+— into the same `tz_offset` field, read by the same `scheduling.to_utc`,
+whose own docstring says "minutes to ADD to local to reach UTC".
+
+So a post scheduled for 14:00 in Zurich in summer was booked for 12:00
+UTC instead of 16:00. Four hours early, silently, and only on the path
+that used the wrong file.
+
+The blog checker had a field for this already and it passed the whole
+time, because it asserted the value was *not empty* rather than what the
+value was. A check that a field is filled is not a check that it is
+right — and the wrong sign is exactly the kind of thing that fills it.

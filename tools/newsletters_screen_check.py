@@ -73,7 +73,7 @@ if not found:
 made.append(found.group(1))
 #  A schedule now says how often it repeats -- the options a mail
 #  scheduler offers -- so the old post is refused for saying nothing.
-post("/admin/newsletters/schedules/save",
+post("/admin/schedules/save",
      {"name": SCHEDULE, "repeat_kind": "weekly", "weekday": "0",
       "hour": "9", "minute": "0"})
 
@@ -100,11 +100,14 @@ try:
         order = page.evaluate(
             """() => { const t = document.querySelector('.cms-issue-form');
                  const l = document.querySelector('.cms-newsletter-table');
-                 const s = document.querySelector('.cms-schedule-form');
-                 if (!t || !l || !s) return null;
-                 return [t, l, s].map(e => Math.round(e.getBoundingClientRect().top)); }""")
+                 if (!t || !l) return null;
+                 return [t, l].map(e => Math.round(e.getBoundingClientRect().top)); }""")
         check("the creation tool is on the page", order is not None, str(order))
-        check("...above the list, which is above the schedules",
+        #  The schedules card used to be third on this screen. It has a
+        #  screen of its own now -- it was defined here AND on the Blog
+        #  screen, one list with two homes, while Backups could pick one
+        #  and not make one.
+        check("...above the list of newsletters",
               order is not None and order == sorted(order), str(order))
         check("...and it is a real editor, with its scripts",
               page.evaluate("() => typeof window.cmsLocalTime") == "object")
@@ -213,19 +216,14 @@ try:
               after == before + 1, "%d -> %d" % (before, after))
 
         print()
-        print("A schedule is a name you assign, not a date you retype")
-        print("-" * 66)
-        #  A table now, with what each means in words and when it last
-        #  put something on the clock.
-        named = page.evaluate(
-            """() => Array.from(document.querySelectorAll(
-                 '.cms-schedule-table tbody tr'))
-                 .map(r => r.cells[0].innerText.trim() + ' | '
-                        + r.cells[1].innerText.trim())""")
-        mine = [n for n in named if n.startswith(SCHEDULE)]
-        check("a named schedule is kept", bool(mine), str(named))
-        check("...and says what it means in words",
-              bool(mine) and "Every Monday at 09:00" in mine[0], str(mine))
+        #  Naming a schedule, and what a named one means in words, is
+        #  checked on the screen that owns them now: see
+        #  tools/schedules_screen_check.py.
+
+        #  Naming a schedule, and what a named one means in words, is
+        #  checked on the screen that owns them now -- see
+        #  tools/schedules_screen_check.py. This screen keeps only the
+        #  picker, which is where the decision is made.
 
         print()
         print("Saving from this page saves")
@@ -250,37 +248,6 @@ try:
               page.url)
 
         print()
-        print("A schedule removes what does not apply")
-        print("-" * 66)
-        #  `hidden` loses to a rule that gives the element a display: the
-        #  labels are inline-flex, so every "hide what does not apply"
-        #  set an attribute the CSS then overruled, and the fields sat
-        #  there greyed instead of gone. Checked as "is it actually not
-        #  displayed", not as "is the attribute set".
-        def gone(sel):
-            return page.evaluate(
-                """(s) => { const e = document.querySelector(s);
-                     if (!e) return true;
-                     const l = e.closest('[data-when]') || e;
-                     return l.hidden && getComputedStyle(l).display === 'none'; }""",
-                sel)
-
-        page.select_option("#sched-repeat", "monthly")
-        page.wait_for_timeout(250)
-        check("monthly: the weekday is gone, not greyed", gone("#sched-weekday"))
-        check("...and the day-of-month choice is there",
-              not gone("#sched-monthday-kind"))
-        page.select_option("#sched-repeat", "weekly")
-        page.wait_for_timeout(250)
-        check("weekly: the weekday is there", not gone("#sched-weekday"))
-        check("...and the day of the month is gone", gone("#sched-monthday-kind"))
-        page.select_option("#sched-repeat", "once")
-        page.wait_for_timeout(250)
-        check("once: a date and a time, and nothing else",
-              not gone("#sched-when") and gone("#sched-hour")
-              and gone("#sched-weekday"))
-
-        print()
         print("A blog is content, not a section of this screen")
         print("-" * 66)
         #  It was listed here per blog so each post could be sent as an
@@ -294,7 +261,7 @@ try:
 finally:
     for issue in made:
         post("/admin/newsletters/issue/%s/delete" % issue, {})
-    post("/admin/newsletters/schedules/delete", {"name": SCHEDULE})
+    post("/admin/schedules/delete", {"name": SCHEDULE})
 
 print()
 print("  %d ok, %d failed" % (ok, bad))

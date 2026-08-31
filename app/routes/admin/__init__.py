@@ -1050,6 +1050,7 @@ def _list_tools(db):
 # just appends to the same Blueprint); kept alphabetical for readability.
 from . import assistant_routes  # noqa: E402,F401
 from . import backups  # noqa: E402,F401
+from . import schedules  # noqa: E402,F401
 from . import legal_routes  # noqa: E402,F401
 from . import newsletters  # noqa: E402,F401
 from . import dashboard  # noqa: E402,F401

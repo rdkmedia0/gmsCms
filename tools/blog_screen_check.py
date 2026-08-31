@@ -85,12 +85,17 @@ with sync_playwright() as pw:
     #  times. A post belongs to a blog, and the picker at the top of the
     #  writing tool is a list of them -- so the screen says what the site
     #  HAS before it starts asking what to add to it.
-    check("blogs, the tool, what is written, then the schedules",
+    #  The schedules card moved to a screen of its own -- it was defined
+    #  here AND on the Newsletters screen, one list with two homes, while
+    #  Backups could pick one and not make one. What is left here is the
+    #  picker, on the post being written, which is where the decision is.
+    check("blogs, then the tool, then what is written",
           order[:2] == ["Blog", "Your blogs"]
-          and "Your posts" in order and "Your schedules" in order
-          and order.index("Your blogs") < order.index("Your posts")
-          < order.index("Your schedules"),
+          and "Your posts" in order
+          and order.index("Your blogs") < order.index("Your posts"),
           " | ".join(order))
+    check("...and the schedules list is not on this screen",
+          "Your schedules" not in order, " | ".join(order))
     check("...and the writing tool is above the list",
           page.evaluate("""() => {
             const tool = document.getElementById('cms-post-tool');
@@ -119,12 +124,19 @@ with sync_playwright() as pw:
                         "('cms-post-schedule-dates')"))
     check("...and the shared picker is what drives it",
           page.evaluate("() => typeof window.cmsSchedulePicker === 'function'"))
-    check("the clock the time is typed on is sent with it",
+    #  The same sign the server reads, and the same one the schedules
+    #  form writes. This checked only that the field was non-empty, so it
+    #  passed happily while the value was negated -- and a post set for
+    #  14:00 in Zurich in summer was booked four hours early.
+    check("the clock the time is typed on is sent with it, correctly signed",
           page.evaluate("""() => {
             const f = document.querySelector('#cms-post-tool [data-tz-offset]');
-            return !!f && f.value !== '' && f.value !== '0'
-                   || new Date().getTimezoneOffset() === 0;
-          }"""))
+            return !!f && f.value === String(new Date().getTimezoneOffset());
+          }"""),
+          page.evaluate("""() => { const f = document.querySelector(
+            '#cms-post-tool [data-tz-offset]');
+            return (f ? f.value : 'missing') + ' vs '
+                   + String(new Date().getTimezoneOffset()); }"""))
     #  Every control carries a sentence: the label is often a glyph, and
     #  then the title is the only text there is.
     #

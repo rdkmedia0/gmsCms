@@ -25,8 +25,16 @@
   //  is read as UTC, which is an hour or two out for most of the world
   //  and wrong in a way nobody notices until it publishes at the wrong
   //  time of day.
+  //
+  //  RAW, not negated. `scheduling.to_utc` says it plainly --
+  //  "getTimezoneOffset() is minutes to ADD to local to reach UTC" --
+  //  and this file negated it while admin/local-time.js, which fills the
+  //  same field on the schedules form, did not. Two files writing one
+  //  field with opposite signs: a post set for 14:00 in Zurich in summer
+  //  was booked for 12:00 UTC instead of 16:00, four hours early, and
+  //  nothing said so. Found by a checker asserting the two agree.
   var offset = form.querySelector("[data-tz-offset]");
-  if (offset) offset.value = String(-new Date().getTimezoneOffset());
+  if (offset) offset.value = String(new Date().getTimezoneOffset());
 
   //  Starting from a template.
   //

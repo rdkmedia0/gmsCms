@@ -1,7 +1,10 @@
 {#  Your schedules: times you send or publish at, named once and picked
     afterwards.
 
-    ONE partial, included by the Newsletters screen and the Blogs screen.
+    ONE partial, on the Schedules screen -- which is the only place the
+    list lives now. It used to be included by the Newsletters screen AND
+    the Blogs screen, which is one list with two homes, while a third
+    screen that PICKS one could not make one.
     A schedule is not a property of either -- it is a time this site does
     things at, and "the first Monday" means the same thing whether what
     goes out is an email or a post. Pasted into both screens is exactly
@@ -24,7 +27,7 @@
           <td>{{ t.says }}</td>
           <td class="cms-col-when">{% if t.row.last_used_at %}{{ t.row.last_used_at[:10] }}{% else %}&mdash;{% endif %}</td>
           <td class="cms-col-actions">
-            <form method="post" action="{{ url_for('admin.newsletter_schedule_template_delete') }}"
+            <form method="post" action="{{ url_for('admin.schedule_delete') }}"
                   class="cms-delete-form"
                   data-confirm="Remove this schedule? Anything already waiting on it keeps the time it was given.">
               <input type="hidden" name="name" value="{{ t.row.name }}">
@@ -42,7 +45,7 @@
     instead of typing a date.</p>
   {% endif %}
 
-  <form method="post" action="{{ url_for('admin.newsletter_schedule_template_save') }}"
+  <form method="post" action="{{ url_for('admin.schedule_save') }}"
         class="cms-schedule-form" data-schedule-form>
     {#  The clock the hour below was typed on, filled by the local-time
         script. Without it "9am" is 9am UTC, which is 11am in Zurich in summer --
