@@ -971,6 +971,14 @@ with app.app_context():
                     ".cms-stat { color:", ".cms-card-link { color:"):
         check("a surface says its own ink: %s" % surface.split(" {")[0][:34],
               surface in css_now)
+    #  One surface for everything that sits ON the page. A card was
+    #  white, a stat box painted --primary-50 (a LIGHT step whatever the
+    #  page is) and a quote took a tint -- three near-identical greys on
+    #  a light page, and on a dark one a pale box that reads as the
+    #  inversion having failed.
+    check("every enclosed component reads one surface",
+          "--site-surface" in css_now
+          and ".cms-stat, .cms-quote" in css_now)
     check("a wide surface takes the safe radius, not the shape",
           ".cms-stat, .cms-cta, .cms-quote" in css_now
           and "var(--site-radius-safe" in css_now)

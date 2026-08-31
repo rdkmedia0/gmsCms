@@ -59,6 +59,14 @@
   --site-block-pad: 0;
   --site-card-pad: 24px;
   --site-card-align: inherit;
+  /*  ONE surface for everything that sits ON the page: a card, a stat
+      box, a quote, a panel inside a block. They each had their own
+      answer -- a card was white, a stat box was --primary-50, a quote
+      was a tint -- which is three near-identical greys on a light page
+      and, on a dark one, a pale box that looks like the inversion
+      failed. --site-card-bg stays as the name a preset already knows;
+      --site-surface is what everything reads. */
+  --site-surface: var(--site-card-bg, #fff);
   --site-card-bg: var(--site-ground, #fff);
   --site-hero-place: center;   /* where the hero's words sit vertically */
   --site-hero-pad: 0;
@@ -2995,3 +3003,22 @@ body.cms-logged-in .cms-basket-link.cms-basket-align-float-top { top: 60px; }
     lightened) to pass on this page's ground -- not the raw brand
     colour, which is chosen to be a background. */
 .cms-card-link { color: var(--site-accent-text, var(--primary, currentColor)); }
+
+
+/*  Every enclosed component on one surface and one geometry.
+    -------------------------------------------------------
+    Measured on a dark render: the stats boxes came out pale (they paint
+    --primary-50, which is a LIGHT step whatever the page is), the cards
+    were near-black, the CTA button was a 999px pill and the hero's
+    buttons were nearly square. Four components, four answers.
+
+    A big surface takes the safe radius, because --site-radius may be a
+    lens or a pill; a small control takes the real one. That is the only
+    distinction left, and it is the documented one. */
+.cms-stat, .cms-quote, .cms-quote-large, .cms-block > .cms-card-shape {
+  background: var(--site-surface, #fff);
+  color: var(--site-ink, inherit);
+}
+.cms-stat-label { color: var(--site-ink, inherit); opacity: .72; }
+.cms-stat-value { color: var(--site-accent-text, var(--primary-700, currentColor)); }
+.cms-cta-btn, .cms-block .cms-btn { border-radius: var(--site-radius, 8px); }
