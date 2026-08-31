@@ -1,6 +1,142 @@
 {% extends "admin/base.html" %}
 {% block title %}Blog — My Site Admin{% endblock %}
 {% block content %}
-{% include "partials/dash/blogs.html" %}
+<h1>Blog</h1>
+
+{#  The same three things, in the same order, as the Newsletters screen:
+    the tool that makes one, everything that has been made, and the times
+    this site publishes at. An owner who has written a newsletter has
+    already learnt this page. #}
+
+{% if post %}
+<div class="card cms-tool-card">
+  <div class="cms-tool-head">
+    <h2>{% if post.title %}{{ post.title }}{% else %}New post{% endif %}</h2>
+    <span class="hint">Write it here. It is a draft until you say otherwise.</span>
+  </div>
+  {% include "partials/blog_post_editor.html" %}
+</div>
+{% else %}
+<div class="card">
+  <h2>Start a blog first</h2>
+  <p class="hint">A blog is a set of posts with an address of its own. Make one below and the
+    writing tool appears here.</p>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="integration-head">
+    <h2>Your posts</h2>
+    <span class="hint">Everything written, in every blog. Newest first.</span>
+  </div>
+  {% if post_rows %}
+  <div class="table-scroll">
+    <table class="simple-table cms-people-table">
+      <thead>
+        <tr><th>Title</th><th>Blog</th><th>State</th><th>Date</th><th class="cms-col-actions"></th></tr>
+      </thead>
+      <tbody>
+        {% for item in post_rows %}
+        <tr {% if post and item.row.id == post.id %}class="is-open"{% endif %}>
+          <td>
+            <a href="{{ url_for('admin.blogs_screen', post=item.row.id) }}"
+               title="Open this post in the writing tool at the top of this page.">
+              {{ item.row.title or 'Untitled' }}</a>
+          </td>
+          <td>{{ item.row.blog_name }}</td>
+          <td>
+            {%- if item.state == 'published' %}<span class="pill pill-good" title="Anybody can read this.">Published</span>
+            {%- elif item.state == 'waiting' %}<span class="pill" title="This publishes itself at the time shown, without you being here.">Publishing
+              <time data-utc="{{ item.job.send_at }}">{{ item.job.send_at[:16] }}</time></span>
+            {%- else %}<span class="pill pill-quiet" title="Written, but only you can see it while you are logged in.">Draft</span>
+            {%- endif %}
+          </td>
+          <td class="cms-col-when">{{ item.row.published_at[:10] if item.row.published_at else '&mdash;' | safe }}</td>
+          <td class="cms-col-actions">
+            {% if item.row.published_at %}
+            <a class="icon-btn" target="_blank" rel="noopener"
+               href="{{ url_for('public.blog_post', slug=item.row.blog_slug, post_slug=item.row.slug) }}"
+               title="Open this post on the site, in its own tab.">&#8599;</a>
+            {% endif %}
+            <a class="icon-btn" href="{{ url_for('admin.blogs_screen', post=item.row.id) }}"
+               title="Open this post in the writing tool above.">&#9998;</a>
+            <form method="post" class="cms-delete-form"
+                  action="{{ url_for('admin.blog_post_delete', blog_id=item.row.blog_id, post_id=item.row.id) }}">
+              <button type="submit" class="icon-btn icon-btn-danger"
+                      data-confirm="You are about to delete the post &quot;{{ item.row.title or 'Untitled' }}&quot;. This cannot be undone."
+                      data-confirm-danger="1"
+                      title="Delete this post for good.">&times;</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="hint">Nothing written yet. The tool above starts the first one.</p>
+  {% endif %}
+</div>
+
+{% include "partials/schedules.html" %}
+
+{#  Making and removing the blogs themselves. Below the writing, because
+    it is done once and the writing is done every week -- the old screen
+    put the file manager first and the writing nowhere. #}
+<div class="card">
+  <div class="integration-head">
+    <h2>Your blogs</h2>
+    <span class="hint">A set of posts with an address of its own. Show one anywhere with the
+      <strong>Blog</strong> tool.</span>
+  </div>
+  {% if blogs %}
+  <div class="table-scroll">
+    <table class="simple-table cms-people-table">
+      <thead><tr><th>Name</th><th>Address</th><th>Posts</th><th class="cms-col-actions"></th></tr></thead>
+      <tbody>
+        {% for b in blogs %}
+        <tr>
+          <td>
+            <form method="post" action="{{ url_for('admin.blog_rename', blog_id=b.id) }}"
+                  class="inline-form cms-rename-form">
+              <input type="text" name="name" value="{{ b.name }}" aria-label="Blog name"
+                     title="What this blog is called. Its web address does not change, so links to its posts keep working.">
+              <button type="submit" class="icon-btn"
+                      title="Save this blog's new name. Its web address does not change, so links to its posts keep working.">&#128190;</button>
+            </form>
+          </td>
+          <td><code class="blog-address"
+                    title="Where posts in this blog live. Renaming does not change it.">/blog/{{ b.slug }}/&hellip;</code></td>
+          <td>{{ b.posts }}</td>
+          <td class="cms-col-actions">
+            <form method="post" action="{{ url_for('admin.blog_delete', blog_id=b.id) }}">
+              <button type="submit" class="icon-btn icon-btn-danger"
+                      data-confirm="You are about to delete the blog &quot;{{ b.name }}&quot; and its {{ b.posts }} post{{ 's' if b.posts != 1 }}. A blog is a set of posts, so the posts go with it. This cannot be undone."
+                      data-confirm-danger="1"
+                      title="Delete this blog and every post in it.">&times;</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+  <form method="post" action="{{ url_for('admin.blog_new') }}" class="inline-form">
+    <input type="text" name="name" placeholder="Journal, News, Recipes&hellip;"
+           title="What to call the new blog. Its web address is made from this.">
+    <button type="submit" class="btn btn-small" title="Start a new blog">+ Add a blog</button>
+  </form>
+</div>
+
+{% from "partials/icon_picker.html" import icon_picker_grid with context %}
+{{ icon_picker_grid(include_none=false) }}
 <script src="{{ static_url('js/admin/dashboard.js') }}"></script>
+<script src="{{ static_url('js/admin/local-time.js') }}"></script>
+<script src="{{ static_url('js/admin/image-picker.js') }}"></script>
+<script src="{{ static_url('js/wysiwyg-commands.js') }}"></script>
+<script src="{{ static_url('js/admin/rich-text.js') }}"></script>
+<script src="{{ static_url('js/admin/icon-picker-textarea.js') }}"></script>
+<script src="{{ static_url('js/admin/schedule-picker.js') }}"></script>
+<script src="{{ static_url('js/admin/blog-editor.js') }}"></script>
 {% endblock %}

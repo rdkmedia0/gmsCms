@@ -328,6 +328,14 @@ def blog_post_edit(blog_id, post_id):
         return redirect(url_for("admin.dashboard"))
     if request.method == "POST":
         title = request.form.get("title", "").strip() or post["title"]
+        #  Which blog it belongs to is a control on the tool now, so a
+        #  post written in the wrong one is a dropdown rather than a
+        #  rewrite. The address follows the blog, and blog_service.move
+        #  is what keeps it free there.
+        wanted = request.form.get("blog_id", type=int)
+        if wanted and wanted != blog_id and blog_service.move(db, post_id, wanted):
+            blog_id = wanted
+            blog = blog_service.get_blog(db, blog_id)
         db.execute(
             #  The post's picture comes from the writing toolbar now (the
             #  Image button sets it and shows it where it will appear), so
@@ -361,8 +369,24 @@ def blog_post_edit(blog_id, post_id):
         legal_service.settings_for(db), (get_site_settings(db) or {}).get("site_title"))
     counts = subscriber_service.counts(db)
     email_ready = mailer_module.is_configured(get_email_settings(db))
+    #  The same tool the Blogs screen carries, so this screen needs what
+    #  that tool reads: the post with its blog on it, every blog to move
+    #  it to, and the schedules it can be published on.
+    from ...services import scheduling as scheduling_service
+    waiting = {row["target_id"]: row
+               for row in scheduling_service.recent(db, limit=200)
+               if row["kind"] == "publish" and not row["claimed_at"]}
     return render_template(
-        "admin/blog_post_edit.html", blog=blog, post=post,
+        "admin/blog_post_edit.html", blog=blog,
+        post=blog_service.post_with_blog(db, post_id),
+        blogs=blog_service.list_blogs(db),
+        post_scheduled=waiting.get(post_id),
+        schedule_choices=[
+            {"name": t["name"], "says": scheduling_service.describe_template(t),
+             "dates": [{"utc": d.strftime("%Y-%m-%d %H:%M:%S")}
+                       for d in scheduling_service.upcoming(
+                           t, scheduling_service.utcnow(), 8)]}
+            for t in scheduling_service.templates(db)],
         next_url=_post_return_url(""),
         audiences=subscriber_service.AUDIENCES,
         audience_counts={key: subscriber_service.audience_count(db, key)

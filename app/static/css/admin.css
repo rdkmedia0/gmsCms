@@ -566,6 +566,13 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--c
 
 .inline-form { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
 .inline-form input, .inline-form select { width: auto; flex: 1; min-width: 180px; }
+/*  A rename lives in a table cell, and a cell is not the page. The
+    shared rule gives every field a 180px floor and lets the row wrap,
+    which in a column that width puts the save button on a line of its
+    own underneath -- the same spill the email list had. Here the field
+    gives way and the button never leaves the row. */
+.cms-rename-form { flex-wrap: nowrap; margin-top: 0; gap: 6px; }
+.cms-rename-form input { min-width: 0; flex: 1 1 auto; }
 
 .color-picker-form { display: flex; flex-wrap: wrap; gap: 12px 20px; margin: 12px 0; }
 .color-picker-item { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; }

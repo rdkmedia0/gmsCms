@@ -1,0 +1,107 @@
+{#  Your schedules: times you send or publish at, named once and picked
+    afterwards.
+
+    ONE partial, included by the Newsletters screen and the Blogs screen.
+    A schedule is not a property of either -- it is a time this site does
+    things at, and "the first Monday" means the same thing whether what
+    goes out is an email or a post. Pasted into both screens is exactly
+    how the two come to offer different repeats, or how a third screen
+    ends up without the local-clock field and quietly schedules
+    everything in UTC. #}
+<div class="card">
+  <div class="integration-head">
+    <h2>Your schedules</h2>
+    <span class="hint">Times you send or publish at, named once and picked when you schedule.</span>
+  </div>
+  {% if schedule_templates %}
+  <div class="table-scroll">
+    <table class="simple-table cms-schedule-table">
+      <thead><tr><th>Name</th><th>When</th><th>Last used</th><th class="cms-col-actions"></th></tr></thead>
+      <tbody>
+        {% for t in schedule_templates %}
+        <tr>
+          <td><strong>{{ t.row.name }}</strong></td>
+          <td>{{ t.says }}</td>
+          <td class="cms-col-when">{% if t.row.last_used_at %}{{ t.row.last_used_at[:10] }}{% else %}&mdash;{% endif %}</td>
+          <td class="cms-col-actions">
+            <form method="post" action="{{ url_for('admin.newsletter_schedule_template_delete') }}"
+                  class="cms-delete-form"
+                  data-confirm="Remove this schedule? Anything already waiting on it keeps the time it was given.">
+              <input type="hidden" name="name" value="{{ t.row.name }}">
+              <button type="submit" class="icon-btn"
+                      title="Remove this schedule. Anything already waiting keeps the time it was given.">&times;</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="hint">None yet. Add one and you can pick it when you schedule something,
+    instead of typing a date.</p>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('admin.newsletter_schedule_template_save') }}"
+        class="cms-schedule-form" data-schedule-form>
+    {#  The clock the hour below was typed on, filled by the local-time
+        script. Without it "9am" is 9am UTC, which is 11am in Zurich in summer --
+        and nobody notices until the newsletter arrives two hours late. #}
+    <input type="hidden" name="tz_offset" data-tz-offset value="0">
+    <input type="hidden" name="tz_name" data-tz-name value="">
+    <label for="sched-name" title="What you will call this when you pick it. A name you chose is one you will recognise six weeks later.">Name
+      <input type="text" id="sched-name" name="name" maxlength="60" required
+             placeholder="Monthly newsletter"
+             title="What you will call this when you pick it, e.g. Monthly newsletter."></label>
+
+    <label for="sched-repeat" title="How often it comes round.">Repeats
+      <select id="sched-repeat" name="repeat_kind" data-repeat
+              title="How often it comes round. Assigning it sets the next time — it does not send or publish the same thing again and again.">
+        {% for value, label in repeats %}
+        <option value="{{ value }}" {% if value == 'monthly' %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select></label>
+
+    <label for="sched-weekday" data-when="weekly" hidden
+           title="Which day of the week.">on
+      <select id="sched-weekday" name="weekday" title="Which day of the week it goes.">
+        {% for value, label in weekdays %}
+        <option value="{{ value }}">{{ label }}</option>
+        {% endfor %}
+      </select></label>
+
+    {#  First, last, or a day you choose. It was a number capped at 28,
+        which is February wearing an assumption -- and "the last day" is
+        what people mean by the end of the month, which no fixed number
+        can say. #}
+    <label for="sched-monthday-kind" data-when="monthly"
+           title="Which day of the month it goes out.">on
+      <select id="sched-monthday-kind" name="month_day" data-monthday-kind
+              title="The 1st, the last day of the month, or a day you choose.">
+        {% for value, label in month_days %}
+        <option value="{{ value }}">{{ label }}</option>
+        {% endfor %}
+      </select></label>
+    <label for="sched-monthday" data-when="monthly" data-monthday-number hidden
+           title="Which day. A month that does not have it uses its last day, so nothing is skipped.">day
+      <input type="number" id="sched-monthday" name="monthday" min="1" max="31" value="1"
+             title="Which day of the month. A month that does not have it — the 31st in February — uses that month's last day, so nothing is skipped."></label>
+
+    <label for="sched-hour" data-when="daily weekly monthly"
+           title="The hour it goes out, on your own clock.">at
+      <input type="number" id="sched-hour" name="hour" min="0" max="23" value="9"
+             title="The hour it goes out, on your own clock."></label>
+    <label for="sched-minute" data-when="daily weekly monthly"
+           title="Minutes past the hour.">:
+      <input type="number" id="sched-minute" name="minute" min="0" max="59" value="0"
+             title="Minutes past the hour."></label>
+
+    <label for="sched-when" data-when="once" hidden
+           title="The one moment this schedule means.">on
+      <input type="datetime-local" id="sched-when" name="when"
+             title="The one date and time this schedule means."></label>
+
+    <button type="submit" class="btn"
+            title="Save this schedule so you can pick it when scheduling a newsletter or a post.">Add schedule</button>
+  </form>
+</div>

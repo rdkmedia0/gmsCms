@@ -2,85 +2,14 @@
 {% block title %}{{ 'Edit Post' if post else 'New Post' }} — My Site Admin{% endblock %}
 {% block content %}
 {% from "partials/wysiwyg_toolbar.html" import wysiwyg_toolbar with context %}
-<div class="page-edit-header">
-  <h1>{{ 'Editing: ' ~ post.title if post else 'New Post' }}</h1>
-  {% if post %}
-  <a href="{{ url_for('public.blog_post', slug=blog.slug, post_slug=post.slug) }}" target="_blank" class="btn">Preview Post ↗</a>
-  {% endif %}
-</div>
+<h1>{{ post.title or 'New post' }}</h1>
 
-<div class="card">
-  <form method="post">
-    {# Where to go when this is saved. Writing a post usually starts from
-       the page the blog is shown on, and that is where it should end —
-       being dropped in the admin area afterwards loses your place. #}
-    <input type="hidden" name="next" value="{{ next_url or '' }}">
-    <label for="title">Title</label>
-    <input type="text" id="title" name="title" value="{{ post.title if post else '' }}" required autofocus>
-
-    <label for="excerpt">Excerpt (shown on the blog card)</label>
-    <input type="text" id="excerpt" name="excerpt" value="{{ post.excerpt if post else '' }}" placeholder="A short one or two sentence summary">
-
-    <label for="published_at">Date shown on the post</label>
-    <input type="text" id="published_at" name="published_at" value="{{ post.published_at if post else '' }}"
-           placeholder="Leave blank for today's date"
-           title="The date readers see. Leave blank and today's date is used when you publish.">
-
-    <label for="content">Content</label>
-    {#  The same toolbar the live page uses -- one macro, both places
-        (partials/wysiwyg_toolbar.html), including the Image button --
-        it uploads to /admin/upload-image and inserts at the caret, which
-        works here exactly as it does on the page. Without the toolbar's
-        icon button only: this form already has its own, below. #}
-    <div class="cms-blog-content-tools">
-      <button type="button" class="btn cms-insert-icon-textarea-btn" data-target="content" title="Insert an icon at the cursor">{{ icon_svg(icon_choices[0][0] if icon_choices else '') | safe }} Insert Icon</button>
-    </div>
-    <div class="cms-richtext" data-for="content">
-      {{ wysiwyg_toolbar(include_image=true, include_icon=false) }}
-      {#  The post's own picture, where it will be in the post: at the
-          top, above the words. The Image button in the toolbar above sets
-          it, so there is one place to add a picture rather than a button
-          here and a separate form at the bottom of the page. #}
-      <figure class="cms-featured-slot" data-featured-slot
-              data-empty-note="No picture yet — use 🖼️ Image above to add one. It appears at the top of the post."
-              {{ 'hidden' if not (post and post.featured_image) }}>
-        <img src="{{ post.featured_image if post and post.featured_image }}" alt="">
-        <button type="button" class="btn btn-small cms-featured-remove"
-                title="Take this picture off the post. The file stays in your Media Library.">Remove picture</button>
-      </figure>
-      <input type="hidden" name="featured_image" data-featured-store
-             value="{{ post.featured_image if post and post.featured_image else '' }}">
-    </div>
-    {#  data-richtext: admin/rich-text.js puts the editable surface inside
-        the box above and keeps this field in step, so the form, the route
-        and everything downstream see exactly what they always did. #}
-    <textarea id="content" name="content" rows="14" data-richtext
-              title="Write your post here. Use the buttons above for headings, lists and links."
-              placeholder="Write your post.">{{ post.content if post else '' }}</textarea>
-
-    {# Saving and publishing are two halves of one decision — "is this
-       ready" is answered at the moment you put the work down, not three
-       fields further up the form. #}
-    <div class="cms-post-save-bar">
-      <button type="submit" class="btn btn-primary">{{ 'Save Post' if post else 'Create Post' }}</button>
-      <label class="cms-inline-label" title="Ticked, this post is public. Unticked, only you can see it.">
-        <input type="checkbox" id="publish" name="publish" value="1"
-               {{ 'checked' if post and post.published_at }}>
-        Published
-      </label>
-      <a href="{{ next_url or url_for('admin.blog_manage', blog_id=blog.id) }}" class="btn"
-         title="Go back without saving">Cancel</a>
-      {% if post %}
-      <form method="post" action="{{ url_for('admin.blog_post_delete', blog_id=blog.id, post_id=post.id) }}"
-            class="inline-form cms-post-delete"
-            data-confirm="You are about to delete this post. This cannot be undone."
-                data-confirm-danger="1">
-        <button type="submit" class="btn btn-danger btn-small" title="Delete this post for good">Delete post</button>
-      </form>
-      {% endif %}
-    </div>
-    <p class="hint">A draft is visible only to you while you are logged in.</p>
-  </form>
+{#  The same creation tool the Blogs screen carries -- ONE partial. This
+    screen was a form of its own with the same fields in a different
+    order, which is how the two came to disagree about what a post has:
+    the tool grew a blog picker and a Publish later, and this did not. #}
+<div class="card cms-tool-card">
+  {% include "partials/blog_post_editor.html" %}
 </div>
 
 {% if post and newsletter_ready %}

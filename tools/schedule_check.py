@@ -309,6 +309,60 @@ with app.app_context():
           scheduling.pending_for(db, "newsletter", nid5)["send_at"]
           == scheduling._stamp(second_at))
 
+    print()
+    print("Publishing on a clock is not sending on one")
+    print("-" * 70)
+    #  A post can be put on a schedule to go PUBLIC, with no email at
+    #  all. It is the same table, the same claim and the same poller --
+    #  the same act with a different verb at the end of it -- so the
+    #  thing worth proving is that it does not accidentally become a
+    #  send, and that none of the email refusals can block it.
+    from app.services import blog as blog_service                     # noqa: E402
+    from app.routes.admin.newsletters import _run_scheduled           # noqa: E402
+    bid = blog_service.create_blog(db, "Notes")
+    pid = blog_service.create_post(db, bid, "Later", content="<p>Words.</p>",
+                                   published_at="")
+    scheduling.schedule(db, "publish", pid, "Later", "all",
+                        scheduling.utcnow() - datetime.timedelta(minutes=1))
+    db.commit()
+    check("it is a draft to start with",
+          not db.execute("SELECT published_at FROM blog_posts WHERE id = ?",
+                         (pid,)).fetchone()["published_at"])
+    before = len(SENT)
+    job = [row for row in scheduling.due(db) if row["kind"] == "publish"]
+    check("the publish job comes due", len(job) == 1, str(len(job)))
+    scheduling.claim(db, job[0]["id"])
+    db.commit()
+    _run_scheduled(app, job[0])
+    db3 = get_db()
+    check("the post is public afterwards",
+          bool(db3.execute("SELECT published_at FROM blog_posts WHERE id = ?",
+                           (pid,)).fetchone()["published_at"]))
+    check("...and nobody was emailed", len(SENT) == before,
+          "%d new" % (len(SENT) - before))
+    done = db3.execute("SELECT * FROM newsletter_schedule WHERE id = ?",
+                       (job[0]["id"],)).fetchone()
+    check("...and the job is finished, not left claimed",
+          bool(done["done_at"]) and not done["error"],
+          "%s / %s" % (done["done_at"], done["error"]))
+
+    #  A post deleted between scheduling and firing is a written-down
+    #  failure, not a crash and not a silent nothing.
+    gone = blog_service.create_post(db3, bid, "Vanishing", published_at="")
+    scheduling.schedule(db3, "publish", gone, "Vanishing", "all",
+                        scheduling.utcnow() - datetime.timedelta(minutes=1))
+    db3.commit()
+    db3.execute("DELETE FROM blog_posts WHERE id = ?", (gone,))
+    db3.commit()
+    job = [row for row in scheduling.due(db3) if row["target_id"] == gone]
+    scheduling.claim(db3, job[0]["id"])
+    db3.commit()
+    _run_scheduled(app, job[0])
+    said = get_db().execute("SELECT error FROM newsletter_schedule WHERE id = ?",
+                            (job[0]["id"],)).fetchone()["error"]
+    check("a post that has been deleted is written down, not retried",
+          bool(said), repr(said))
+
 shutil.rmtree(DATA_DIR, ignore_errors=True)
 print()
 print("%d checks, %d failed" % (passed + len(failures), len(failures)))

@@ -124,6 +124,42 @@ def create_post(db, blog_id, title, content="", excerpt="", published_at=None):
          published_at, blog_id)).lastrowid
 
 
+def publish(db, post_id, when=None):
+    """Makes a post public. True if there was one to publish.
+
+    Keeps whatever date the post already had, so re-publishing something
+    does not silently re-date it -- the same rule the Publish button on
+    the list follows. A post with no date at all gets today's.
+    """
+    import datetime
+    row = db.execute("SELECT * FROM blog_posts WHERE id = ?", (post_id,)).fetchone()
+    if not row:
+        return False
+    stamp = row["published_at"] or (
+        when or datetime.datetime.utcnow()).strftime("%Y-%m-%d")
+    db.execute("UPDATE blog_posts SET published_at = ? WHERE id = ?", (stamp, post_id))
+    return True
+
+
+def move(db, post_id, blog_id):
+    """Puts a post in a different blog, with an address that is free there.
+
+    A post's address is built from its blog's, so moving it changes where
+    it lives -- and the slug it arrived with may already be taken in the
+    blog it is going to. Checked rather than assumed: two posts in one
+    blog sharing an address means one of them is unreachable.
+    """
+    row = db.execute("SELECT * FROM blog_posts WHERE id = ?", (post_id,)).fetchone()
+    if not row or row["blog_id"] == blog_id or not get_blog(db, blog_id):
+        return False
+    clash = db.execute("SELECT 1 FROM blog_posts WHERE blog_id = ? AND slug = ?",
+                       (blog_id, row["slug"])).fetchone()
+    slug = unique_slug(db, blog_id, row["title"]) if clash else row["slug"]
+    db.execute("UPDATE blog_posts SET blog_id = ?, slug = ? WHERE id = ?",
+               (blog_id, slug, post_id))
+    return True
+
+
 def posts_for(db, blog_id, published_only=True, limit=0):
     """A blog's posts, newest first.
 
@@ -141,6 +177,48 @@ def posts_for(db, blog_id, published_only=True, limit=0):
 
 
 # ----------------------------------------------------------- the tool
+
+
+def post_with_blog(db, post_id):
+    """One post, carrying its blog's name and address.
+
+    A post's web address is built from its blog's slug, so almost nothing
+    can do anything useful with a post row on its own -- and every caller
+    fetching the blog separately is a join waiting to be forgotten.
+    """
+    return db.execute(
+        "SELECT p.*, b.name AS blog_name, b.slug AS blog_slug "
+        "FROM blog_posts p JOIN blogs b ON b.id = p.blog_id WHERE p.id = ?",
+        (post_id,)).fetchone()
+
+
+def everything(db, waiting=None):
+    """Every post on this site, newest first, with what state it is in.
+
+    One table across every blog. It was one list per blog, which reads as
+    several small screens and hides the only question anybody asks of
+    that page: what have I written, and what is still a draft.
+
+    `waiting` is the scheduled-publish jobs keyed by post id; a post can
+    be a draft that is going to publish itself, which is neither of the
+    other two states and is exactly the one somebody would otherwise
+    publish by hand a second time.
+    """
+    waiting = waiting or {}
+    rows = db.execute(
+        "SELECT p.*, b.name AS blog_name, b.slug AS blog_slug "
+        "FROM blog_posts p JOIN blogs b ON b.id = p.blog_id "
+        "ORDER BY COALESCE(NULLIF(p.published_at, ''), '9999') DESC, p.id DESC").fetchall()
+    out = []
+    for row in rows:
+        job = waiting.get(row["id"])
+        out.append({
+            "row": row,
+            "job": job,
+            "state": ("published" if row["published_at"]
+                      else "waiting" if job else "draft"),
+        })
+    return out
 
 
 def post_html(content):

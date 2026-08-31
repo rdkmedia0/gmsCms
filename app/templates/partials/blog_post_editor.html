@@ -1,0 +1,157 @@
+{#  The creation tool for a blog post.
+
+    ONE partial, used by the Blogs screen (where the tool IS the top of
+    the page) and by the post's own screen (reached from the live site,
+    or from a row in the table). Two copies is how the two come to offer
+    different controls -- which is exactly what had happened to the
+    newsletter editor before it became a partial.
+
+    It follows the newsletter editor deliberately, and not for tidiness:
+    an owner who has written one has learnt this screen. The header says
+    what this is and what happens to it, the writing is in the middle at
+    the width it will be read at, and what to do with it is underneath.
+    A post and a newsletter are the same act -- write something, decide
+    when people see it -- and they should not need two different screens
+    learning.
+
+    Wants: `post` (a row, always -- the tool is never empty), `blogs`,
+    `schedule_choices`, `next_url`. #}
+{% from "partials/wysiwyg_toolbar.html" import wysiwyg_toolbar with context %}
+
+<form method="post" class="cms-compose cms-post-compose" id="cms-post-tool"
+      action="{{ url_for('admin.blog_post_edit', blog_id=post.blog_id, post_id=post.id) }}">
+  <input type="hidden" name="next" value="{{ next_url or request.full_path }}">
+
+  {#  ---- the header: which blog, what it is called, who can read it ---- #}
+  <div class="cms-compose-header">
+    <div class="cms-compose-row">
+      <label for="post-blog" title="Which blog this post belongs to. Its web address is built from the blog's, so moving it changes where it lives.">Blog</label>
+      <select id="post-blog" name="blog_id"
+              title="Which blog this post belongs to. Moving it changes the post's web address, because the address is built from the blog's.">
+        {% for b in blogs %}
+        <option value="{{ b.id }}" {% if b.id == post.blog_id %}selected{% endif %}>{{ b.name }}</option>
+        {% endfor %}
+      </select>
+      <span class="cms-compose-note">Its address is built from this.</span>
+    </div>
+
+    <div class="cms-compose-row">
+      <label for="post-title" title="What this post is called. It is the heading readers see and the name in the list below.">Title</label>
+      <input type="text" id="post-title" name="title" maxlength="200" value="{{ post.title }}"
+             placeholder="What this one is about"
+             title="What this post is called: the heading readers see, and the name it is listed under here.">
+      <span class="cms-compose-note">Also the heading.</span>
+    </div>
+
+    <div class="cms-compose-row">
+      <label for="post-excerpt" title="One or two sentences, shown on the card that links to this post.">Summary</label>
+      <input type="text" id="post-excerpt" name="excerpt" value="{{ post.excerpt or '' }}"
+             placeholder="A sentence or two, shown on the card that links here"
+             title="Shown on the card that links to this post. Leave it empty and the card shows the start of the post.">
+      <span class="cms-compose-note">Optional.</span>
+    </div>
+
+    <div class="cms-compose-row cms-compose-keep">
+      <label for="post-publish" class="cms-check"
+             title="Ticked, anybody can read this post. Unticked, it is a draft only you can see while you are logged in.">
+        <input type="checkbox" id="post-publish" name="publish" value="1"
+               {{ 'checked' if post.published_at }}>
+        Published
+      </label>
+      <input type="text" name="published_at" value="{{ post.published_at or '' }}"
+             placeholder="Today's date"
+             title="The date readers see on the post. Leave it empty and today's date is used when you publish.">
+      <span class="cms-compose-note">A draft is visible only to you.</span>
+    </div>
+  </div>
+
+  {#  ---- the writing ----
+      The one rich-text toolbar this app has, the same one the live page
+      and the newsletter use. The picture button puts the post's own
+      picture where it will actually be: at the top, above the words. #}
+  <div class="cms-post-tools">
+    <button type="button" class="btn cms-insert-icon-textarea-btn" data-target="post-content"
+            title="Insert an icon at the cursor">{{ icon_svg(icon_choices[0][0] if icon_choices else '') | safe }} Insert Icon</button>
+  </div>
+  <div class="cms-richtext" data-for="post-content">
+    {{ wysiwyg_toolbar(include_image=true, include_icon=false) }}
+    <figure class="cms-featured-slot" data-featured-slot
+            data-empty-note="No picture yet — use 🖼️ Image above to add one. It appears at the top of the post."
+            {{ 'hidden' if not post.featured_image }}>
+      <img src="{{ post.featured_image or '' }}" alt="">
+      <button type="button" class="btn btn-small cms-featured-remove"
+              title="Take this picture off the post. The file stays in your Media Library.">Remove picture</button>
+    </figure>
+    <input type="hidden" name="featured_image" data-featured-store
+           value="{{ post.featured_image or '' }}">
+  </div>
+  {#  data-richtext: admin/rich-text.js puts the editable surface inside
+      the box above and keeps this field in step, so the form, the route
+      and everything downstream see exactly what they always did. #}
+  <textarea id="post-content" name="content" rows="14" data-richtext
+            title="Write your post here. Use the buttons above for headings, lists, pictures and links."
+            placeholder="Write your post.">{{ post.content or '' }}</textarea>
+
+  {#  Each schedule's next dates, so choosing one fills the date list
+      without a round trip. Times are UTC; the browser draws them in the
+      reader's own clock, which is the clock the owner typed them in. #}
+  <script type="application/json" id="cms-post-schedule-dates">{{ schedule_choices | tojson }}</script>
+
+  {#  ---- what to do with it ----
+      The same order the newsletter's bar has: the thing that happens
+      now, the thing that happens later, then keeping and looking, then
+      the one that cannot be undone. #}
+  <div class="cms-compose-actions">
+    <button type="submit" class="btn btn-primary"
+            title="Keep this post with the settings above. Ticking Published makes it public.">Save</button>
+
+    <span class="cms-compose-schedule">
+      <button type="submit" class="btn"
+              formaction="{{ url_for('admin.blog_post_schedule', blog_id=post.blog_id, post_id=post.id) }}"
+              title="Publish it automatically at the time beside this. You do not have to be here.">Publish later</button>
+      {#  The schedules that have been named, not a date to retype -- and
+          the dates that schedule produces, to choose between. See
+          admin/schedule-picker.js. #}
+      <select name="schedule_name" data-schedule-pick
+              title="Which of your schedules to publish it on. You then choose which of its dates.">
+        {% for s in schedule_choices %}
+        <option value="{{ s.name }}" title="{{ s.says }}">{{ s.name }}</option>
+        {% endfor %}
+        <option value="">A time I choose</option>
+      </select>
+      <select name="schedule_date" data-schedule-date
+              title="Which of that schedule's dates to publish on. It happens once, at that time."></select>
+      <input type="datetime-local" name="send_at" data-send-at
+             data-scheduled-utc="{{ post_scheduled.send_at if post_scheduled else '' }}"
+             {% if schedule_choices %}hidden{% endif %}
+             title="When to publish it. This is your own clock — the time you see here is the time it goes live.">
+      <input type="hidden" name="tz_offset" data-tz-offset value="0">
+    </span>
+
+    <span class="cms-compose-spacer"></span>
+
+    {% if post.published_at %}
+    <a class="btn" target="_blank" rel="noopener"
+       href="{{ url_for('public.blog_post', slug=post.blog_slug, post_slug=post.slug) }}"
+       title="Open this post on the site, in its own tab.">View &#8599;</a>
+    {% endif %}
+
+    <span class="cms-compose-danger">
+      <button type="submit" class="btn"
+              formaction="{{ url_for('admin.blog_post_delete', blog_id=post.blog_id, post_id=post.id) }}"
+              data-confirm="You are about to delete the post &quot;{{ post.title }}&quot;. This cannot be undone."
+              data-confirm-danger="1"
+              title="Delete this post for good.">&times; Delete</button>
+    </span>
+  </div>
+
+  {% if post_scheduled %}
+  <p class="hint cms-post-waiting" title="This post goes public by itself at the time shown.">
+    Waiting to be published
+    <time data-utc="{{ post_scheduled.send_at }}">{{ post_scheduled.send_at[:16] }}</time>.
+    <button type="submit" class="btn btn-small"
+            formaction="{{ url_for('admin.blog_post_schedule_cancel', blog_id=post.blog_id, post_id=post.id) }}"
+            title="Take this off the schedule. The post stays as it is.">Take it off</button>
+  </p>
+  {% endif %}
+</form>

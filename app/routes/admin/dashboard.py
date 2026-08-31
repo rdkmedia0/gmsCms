@@ -109,10 +109,75 @@ def dashboard():
 @bp.route("/blogs")
 @login_required
 def blogs_screen():
-    """Your blogs and their posts. A list of things you write is not a
-    setting, so it is not on the Settings row -- it has a button of its
-    own."""
-    return render_template("admin/blogs.html", **_screen_context(get_db()))
+    """Writing a post, everything written, and the times you publish at.
+
+    The same three things in the same order as the Newsletters screen,
+    and deliberately: an owner who has written a newsletter has learnt
+    this screen. It was a tree of blogs with a pencil beside each post,
+    which is a file manager -- it told you what existed and gave you
+    nowhere to write.
+
+    A post and a newsletter are the same act with a different ending, so
+    they get the same shape: the tool at the top, what has been made in
+    the middle, and the schedules underneath.
+    """
+    db = get_db()
+    from ...services import blog as blogs, scheduling
+    context = _screen_context(db)
+    post = _tool_post(db, request.args.get("post", type=int))
+    waiting = {row["target_id"]: row for row in scheduling.recent(db, limit=200)
+               if row["kind"] == "publish" and not row["claimed_at"]}
+    context.update(
+        post=post,
+        #  Every post, from every blog, in one table. They were one list
+        #  per blog, which reads as several small screens and hides the
+        #  only question anybody asks of this page: what have I written,
+        #  and what is still a draft.
+        post_rows=blogs.everything(db, waiting),
+        post_scheduled=waiting.get(post["id"]) if post else None,
+        schedule_choices=[
+            {"name": t["name"], "says": scheduling.describe_template(t),
+             "dates": [{"utc": d.strftime("%Y-%m-%d %H:%M:%S")}
+                       for d in scheduling.upcoming(t, scheduling.utcnow(), 8)]}
+            for t in scheduling.templates(db)],
+        schedule_templates=[
+            {"row": t, "says": scheduling.describe_template(t)}
+            for t in scheduling.templates(db)],
+        weekdays=scheduling.WEEKDAYS,
+        repeats=scheduling.REPEATS,
+        month_days=scheduling.MONTH_DAYS,
+    )
+    return render_template("admin/blogs.html", **context)
+
+
+def _tool_post(db, wanted=None):
+    """Which post the creation tool is holding.
+
+    The one asked for, or the newest draft, or a fresh one. The same
+    shape `_tool_newsletter` has, for the same reason: the page IS the
+    tool, so it always has something in it -- and a site with no drafts
+    gets exactly one blank, which is the tool being ready rather than
+    litter.
+
+    None only when there is no blog to write in, which the screen says
+    rather than working around.
+    """
+    from ...services import blog as blogs
+    every = blogs.list_blogs(db)
+    if not every:
+        return None
+    if wanted:
+        row = blogs.post_with_blog(db, wanted)
+        if row:
+            return row
+    draft = db.execute(
+        "SELECT id FROM blog_posts WHERE published_at IS NULL OR published_at = '' "
+        "ORDER BY id DESC LIMIT 1").fetchone()
+    if draft:
+        return blogs.post_with_blog(db, draft["id"])
+    made = blogs.create_post(db, every[0]["id"], "", published_at="")
+    db.commit()
+    return blogs.post_with_blog(db, made)
 
 
 @bp.route("/design/pages")

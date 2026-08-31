@@ -836,74 +836,11 @@
     });
   }
 
-  //  "A time I choose" is the one-off, and only then is a date box any
-  //  use. Hiding it the rest of the time is the whole point of having
-  //  named the schedules.
-  var schedulePick = form.querySelector("[data-schedule-pick]");
-  var sendAt = form.querySelector("[data-send-at]");
-  var scheduleDate = form.querySelector("[data-schedule-date]");
-
-  //  Each schedule's next dates. Offered rather than decided: booking
-  //  the next occurrence silently was the app choosing the date, and
-  //  "the first Monday" might be tomorrow.
-  var SCHEDULE_DATES = {};
-  try {
-    var sd = document.getElementById("cms-schedule-dates");
-    (JSON.parse((sd && sd.textContent) || "[]") || []).forEach(function (s) {
-      SCHEDULE_DATES[s.name] = s.dates || [];
-    });
-  } catch (e) {
-    SCHEDULE_DATES = {};
-  }
-
-  //  Drawn in the reader's own clock, which is the clock the owner typed
-  //  the schedule in. A UTC timestamp in a list of dates somebody is
-  //  choosing between is a sum they should not have to do.
-  function readable(utc) {
-    var when = new Date(utc.replace(" ", "T") + "Z");
-    if (isNaN(when.getTime())) return utc;
-    return when.toLocaleString(undefined, {
-      weekday: "short", day: "numeric", month: "short",
-      hour: "2-digit", minute: "2-digit",
-    });
-  }
-
-  function fillDates(name) {
-    if (!scheduleDate) return;
-    var dates = SCHEDULE_DATES[name] || [];
-    scheduleDate.innerHTML = "";
-    dates.forEach(function (d) {
-      var o = document.createElement("option");
-      o.value = d.utc;
-      o.textContent = readable(d.utc);
-      scheduleDate.appendChild(o);
-    });
-    scheduleDate.hidden = !dates.length;
-    scheduleDate.disabled = !dates.length;
-  }
-
-  if (schedulePick && sendAt) {
-    var showWhen = function () {
-      //  Shown, never REQUIRED. This is one form with six buttons on it
-      //  -- Send, Schedule, Save, Preview, Delete, and every structural
-      //  action in the editor -- so a required field here refuses all of
-      //  them until a date is typed, for actions that have nothing to do
-      //  with scheduling. Adding a block simply stopped working.
-      //
-      //  The server already refuses a schedule with no time, and says
-      //  which of the two is missing. That is the right place for it:
-      //  the rule belongs to the action, not to the form.
-      var custom = schedulePick.value === "";
-      sendAt.hidden = !custom;
-      if (scheduleDate) {
-        scheduleDate.hidden = custom;
-        scheduleDate.disabled = custom;
-        if (!custom) fillDates(schedulePick.value);
-      }
-    };
-    schedulePick.addEventListener("change", showWhen);
-    showWhen();
-  }
+  //  Choosing when, from the schedules that have been named. Shared
+  //  with the blog post editor -- see admin/schedule-picker.js for why
+  //  the dates are offered rather than booked, and why the date box is
+  //  never required.
+  if (window.cmsSchedulePicker) window.cmsSchedulePicker(form, "cms-schedule-dates");
 
   //  Write with AI: ask for the brief, then post it. A dialog rather
   //  than a box open in the ribbon, which cost a row of chrome above

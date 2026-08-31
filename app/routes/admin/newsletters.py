@@ -600,6 +600,17 @@ def _run_scheduled(app, row):
     with app.test_request_context(base_url=base):
         db = get_db()
         try:
+            #  Publishing is not sending, and it is the only due job that
+            #  needs no email at all: no list, no postal address, no
+            #  wrapper. Answered first, so none of the checks below --
+            #  every one of which is about an inbox -- can refuse a post
+            #  going public for a reason that has nothing to do with it.
+            if row["kind"] == "publish":
+                made = blog_service.publish(db, row["target_id"])
+                scheduling.finish(db, row["id"], 0, 0,
+                                  None if made else "That post no longer exists.")
+                db.commit()
+                return
             sections, subject, view_url = _sections_for_schedule(db, row)
             if not sections:
                 scheduling.finish(db, row["id"], 0, 0,
@@ -676,6 +687,44 @@ def newsletter_post_schedule(post_id):
     return _put_on_clock(db, "post", post_id, subject, sections, back)
 
 
+def _when_from_form(db):
+    """The moment a form is asking for: (when, schedule name, refusal).
+
+    One reader, because there are two things that can be put on a clock
+    now -- a newsletter to send, and a post to publish -- and a second
+    copy of this is how the two would come to disagree about what "the
+    first Monday" means, or about whether a date in the past is allowed.
+
+    A named schedule, or a moment somebody typed. The named one is the
+    point of having them: it says WHEN in words the owner chose, and the
+    next occurrence is worked out rather than retyped.
+    """
+    picked = (request.form.get("schedule_name") or "").strip()
+    template = scheduling.template(db, picked) if picked else None
+    if picked and not template:
+        return None, None, "That schedule no longer exists."
+    if template is not None:
+        #  The date they chose from that schedule's own list -- checked
+        #  against it, so a stale page cannot book a time the schedule
+        #  does not produce. It happens ONCE, at that moment: a schedule
+        #  says when the next one goes, it does not keep going.
+        offered = scheduling.upcoming(template, scheduling.utcnow(), 8)
+        wanted = (request.form.get("schedule_date") or "").strip()
+        allowed = {d.strftime("%Y-%m-%d %H:%M:%S"): d for d in offered}
+        when = allowed.get(wanted) or (offered[0] if offered else None)
+        if not when:
+            return None, None, "That schedule has no next date in it."
+    else:
+        when = scheduling.to_utc(request.form.get("send_at"),
+                                 request.form.get("tz_offset"))
+    if not when:
+        return None, None, "Choose a schedule, or a date and time."
+    if when <= scheduling.utcnow():
+        return None, None, ("That time has already passed — pick one in the "
+                            "future, or do it now.")
+    return when, picked or None, None
+
+
 def _put_on_clock(db, kind, target_id, subject, sections, back):
     """The refusals a schedule makes, and the booking if it makes none.
 
@@ -684,35 +733,9 @@ def _put_on_clock(db, kind, target_id, subject, sections, back):
     was always going to fail is worse than a refusal, because it looks
     like it worked.
     """
-    #  A named schedule, or a moment somebody typed. The named one is
-    #  the point of having them: it says WHEN in words the owner chose,
-    #  and the next occurrence is worked out rather than retyped.
-    picked = (request.form.get("schedule_name") or "").strip()
-    template = scheduling.template(db, picked) if picked else None
-    if picked and not template:
-        flash("That schedule no longer exists.", "error")
-        return redirect(back)
-    if template is not None:
-        #  The date they chose from that schedule's own list -- checked
-        #  against it, so a stale page cannot book a time the schedule
-        #  does not produce. It sends ONCE, at that moment: a schedule
-        #  says when the next one goes, it does not keep sending.
-        offered = scheduling.upcoming(template, scheduling.utcnow(), 8)
-        wanted = (request.form.get("schedule_date") or "").strip()
-        allowed = {d.strftime("%Y-%m-%d %H:%M:%S"): d for d in offered}
-        when = allowed.get(wanted) or (offered[0] if offered else None)
-        if not when:
-            flash("That schedule has no next date in it.", "error")
-            return redirect(back)
-    else:
-        when = scheduling.to_utc(request.form.get("send_at"),
-                                 request.form.get("tz_offset"))
-    if not when:
-        flash("Choose a schedule, or a date and time to send it.", "error")
-        return redirect(back)
-    if when <= scheduling.utcnow():
-        flash("That time has already passed — pick one in the future, or press Send now.",
-              "error")
+    when, named, refusal = _when_from_form(db)
+    if refusal:
+        flash(refusal, "error")
         return redirect(back)
     if not subject:
         flash("Give it a subject first — that is the line people decide on.", "error")
@@ -732,9 +755,9 @@ def _put_on_clock(db, kind, target_id, subject, sections, back):
         return redirect(url_for("admin.settings_email"))
 
     scheduling.schedule(db, kind, target_id, subject, audience, when,
-                        template_name=picked or None)
-    if picked:
-        scheduling.mark_used(db, picked, scheduling.utcnow())
+                        template_name=named)
+    if named:
+        scheduling.mark_used(db, named, scheduling.utcnow())
     db.commit()
     arm_scheduler(current_app._get_current_object())
     flash("Scheduled. It goes out on its own — you do not have to be here.", "success")
@@ -1209,3 +1232,56 @@ def _back_to(page=None):
     if where.startswith("/") and not where.startswith("//"):
         return where
     return url_for("admin.newsletters")
+
+
+@bp.route("/blogs/<int:blog_id>/posts/<int:post_id>/schedule", methods=["POST"])
+@login_required
+def blog_post_schedule(blog_id, post_id):
+    """Publish this post by itself, later.
+
+    The same machinery a scheduled send uses -- the same table, the same
+    claim, the same poller -- because it is the same act with a different
+    verb at the end of it. What differs is only what happens when it
+    becomes due, and that is one branch in `_run_scheduled`.
+
+    A post scheduled this way is NOT emailed. Publishing and sending are
+    two decisions and were one control for as long as a post could only
+    be put on a clock by being sent; an owner who writes weekly and mails
+    monthly could not say so.
+    """
+    db = get_db()
+    post = db.execute("SELECT * FROM blog_posts WHERE id = ? AND blog_id = ?",
+                      (post_id, blog_id)).fetchone()
+    back = (request.form.get("next") or "").strip()
+    back = back if back.startswith("/admin/") else url_for("admin.blogs_screen")
+    if not post:
+        flash("That post no longer exists.", "error")
+        return redirect(back)
+
+    when, named, refusal = _when_from_form(db)
+    if refusal:
+        flash(refusal, "error")
+        return redirect(back)
+    scheduling.schedule(db, "publish", post_id, post["title"] or "", "all", when,
+                        template_name=named)
+    if named:
+        scheduling.mark_used(db, named, scheduling.utcnow())
+    db.commit()
+    flash("It will be published by itself at the time you chose.", "success")
+    return redirect(back)
+
+
+@bp.route("/blogs/<int:blog_id>/posts/<int:post_id>/schedule/cancel", methods=["POST"])
+@login_required
+def blog_post_schedule_cancel(blog_id, post_id):
+    db = get_db()
+    back = (request.form.get("next") or "").strip()
+    back = back if back.startswith("/admin/") else url_for("admin.blogs_screen")
+    if scheduling.cancel(db, "publish", post_id):
+        db.commit()
+        flash("Taken off the schedule. The post is as you left it.", "success")
+    else:
+        #  Not an error: a claimed job is already going out and cannot be
+        #  recalled, and saying otherwise would be a lie.
+        flash("That one is already on its way, so it cannot be taken back.", "warning")
+    return redirect(back)
