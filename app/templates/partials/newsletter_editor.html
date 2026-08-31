@@ -253,6 +253,41 @@
              title="What this newsletter is called, and the subject line people see. Say the thing, don't tease it.">
       <span class="cms-compose-note">Also the subject line.</span>
     </div>
+
+    {#  Kept as well as sent.
+
+        A newsletter is written once and read once, in an inbox, by the
+        people who were on the list that day. Anybody who joins next week
+        will never see it, and neither will anybody who finds the site
+        through a search. Ticking this keeps the same words on the site
+        as a blog entry, published the moment the email goes -- so a
+        schedule that sends on the first Monday also posts on the first
+        Monday, without a second thing to remember.
+
+        The opening and the sign-off are left out, because they are
+        addressed to somebody who has just been written to. See
+        `newsletter.page_html`. #}
+    <div class="cms-compose-row cms-compose-keep">
+      <label for="keep-as-post" class="cms-check"
+             title="Also publish this as a blog entry when the email goes out, using the same words.">
+        <input type="checkbox" id="keep-as-post" data-keep-toggle
+               {% if item.blog_id %}checked{% endif %}
+               {% if not blogs_for_blocks %}disabled{% endif %}
+               title="Also publish this as a blog entry when the email goes out, using the same words.">
+        Keep it on the site
+      </label>
+      <select id="blog_id" name="blog_id" data-keep-blog
+              {% if not item.blog_id %}disabled{% endif %}
+              title="Which blog the entry is added to. It is published on the day the email is sent.">
+        {% for b in blogs_for_blocks %}
+        <option value="{{ b.id }}" {% if item.blog_id == b.id %}selected{% endif %}>{{ b.name }}</option>
+        {% endfor %}
+      </select>
+      <span class="cms-compose-note">
+        {% if blogs_for_blocks %}Published when the email is, without the opening and sign-off.
+        {% else %}Start a blog first, on the Blogs screen.{% endif %}
+      </span>
+    </div>
   </div>
 
   {#  ---- anything standing between this and a send ---- #}

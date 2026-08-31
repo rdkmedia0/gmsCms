@@ -413,10 +413,18 @@ with sync_playwright() as p:
           all(f["w"] <= 470 for f in fields), str(fields))
     check("...and are one row each, not a form field each",
           all(f["h"] <= 34 for f in fields), str(fields))
+    #  Per ROW, not as a total. The header holds a third line now -- what
+    #  happens to the message afterwards -- and a total cap would have
+    #  read that addition as the regression it was written to catch. The
+    #  claim was never "two rows"; it is that each of these is a line,
+    #  not a form field.
     header = page.evaluate(
-        """() => Math.round(document.querySelector(
-             '.cms-compose-header').getBoundingClientRect().height)""")
-    check("...so the two of them together are one strip", header <= 100, str(header))
+        """() => {
+             const h = document.querySelector('.cms-compose-header');
+             return { tall: Math.round(h.getBoundingClientRect().height),
+                      rows: h.querySelectorAll('.cms-compose-row').length }; }""")
+    check("...so the header is a strip of lines, not a stack of fields",
+          header["rows"] and header["tall"] / header["rows"] <= 50, str(header))
 
     #  3. Schedule and its time are one control, drawn as one. They were
     #     a button and a 240px date box with a gap between them and no

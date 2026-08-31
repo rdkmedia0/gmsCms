@@ -549,6 +549,20 @@
   }
 
   var BLOCK_NAMES = {};
+  //  Kept on the site as well as sent.
+  //
+  //  The tick has no name and the SELECT carries the whole answer: which
+  //  blog, or nothing at all. A disabled select is not submitted, so
+  //  unticking genuinely turns it off rather than leaving the old blog
+  //  in the form for the save to read back.
+  var keepTick = form.querySelector("[data-keep-toggle]");
+  var keepBlog = form.querySelector("[data-keep-blog]");
+  if (keepTick && keepBlog) {
+    keepTick.addEventListener("change", function () {
+      keepBlog.disabled = !keepTick.checked;
+    });
+  }
+
   if (toolbar) {
     toolbar.querySelectorAll("[data-add-block]").forEach(function (btn) {
       //  The plain name, not the button's own text: that starts with the

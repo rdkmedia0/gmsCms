@@ -475,11 +475,17 @@ def newsletter_issue_edit(newsletter_id):
     if not row:
         return redirect(url_for("admin.newsletters"))
     if request.method == "POST":
+        #  Which blog keeps a copy. Empty is the answer as well as the
+        #  absence of one -- unticking the box has to be able to turn it
+        #  OFF, so this is always passed and never conditional on the
+        #  field being present.
+        keep = (request.form.get("blog_id") or "").strip()
         newsletter.save_blocks(
             db, newsletter_id,
             (request.form.get("subject") or "").strip(),
             _blocks_from_form(request.form),
-            layout=(request.form.get("layout") or "").strip() or None)
+            layout=(request.form.get("layout") or "").strip() or None,
+            blog_id=int(keep) if keep.isdigit() else None)
         db.commit()
         flash("Saved.", "success")
         #  Back where it was pressed. The tool is on two pages, and
@@ -621,6 +627,11 @@ def _run_scheduled(app, row):
                 _look(db), intro, outro, row["audience"], row["kind"], row["target_id"],
                 lambda token: site.absolute(db, url_for("public.unsubscribe", token=token)))
             scheduling.finish(db, row["id"], sent, failed)
+            #  The same act as the button's, through the same function --
+            #  "on the same schedule the email is published" is exactly
+            #  what this is for, so the entry is dated the day it went.
+            if sent:
+                _keep_a_copy(db, row["kind"], row["target_id"])
             db.commit()
         except Exception as e:                      # noqa: BLE001
             app.logger.exception("scheduled send %s failed", row["id"])
@@ -957,6 +968,30 @@ def newsletter_issue_delete(newsletter_id):
     return redirect(url_for("admin.newsletters"))
 
 
+def _keep_a_copy(db, kind, target_id, blocks=None, when=None):
+    """A sent newsletter, kept as a blog entry if it asked to be.
+
+    One function, called by the button's path and by the scheduler,
+    because "and also publish it" existing twice is how one of the two
+    comes to be forgotten. Returns a sentence to show, or None -- and
+    None is the ordinary answer, since most newsletters are only ever
+    email.
+
+    A page or a post being sent is already on the site; there is nothing
+    to keep.
+    """
+    if kind != "newsletter":
+        return None
+    row = newsletter.get_composed(db, target_id)
+    if not row:
+        return None
+    post_id = newsletter.keep_as_post(db, blog_service, row, blocks, when)
+    if not post_id:
+        return None
+    blog = blog_service.get_blog(db, row["blog_id"])
+    return "Also saved to %s as a blog entry." % (blog["name"] if blog else "the blog")
+
+
 def _send_it(db, kind, target_id, sections, subject, view_url, back, blocks=None):
     """Everything a send has to be sure of, once, for a page or a post.
 
@@ -988,6 +1023,7 @@ def _send_it(db, kind, target_id, sections, subject, view_url, back, blocks=None
         _look(db), intro, outro, audience, kind, target_id,
         lambda token: site.absolute(db, url_for("public.unsubscribe", token=token),
                                     request.host_url))
+    kept = _keep_a_copy(db, kind, target_id, blocks) if sent else None
     db.commit()
 
     who = "customers" if audience == "customers" else "the list"
@@ -996,6 +1032,8 @@ def _send_it(db, kind, target_id, sections, subject, view_url, back, blocks=None
               "longer exists.", "warning")
     else:
         flash(f"Sent to {sent} {'person' if sent == 1 else 'people'} on {who}.", "success")
+    if kept:
+        flash(kept, "success")
     return redirect(back)
 
 

@@ -733,6 +733,14 @@ def _migrate(db):
     #  already happened once today, on orders.invoice_ref.
     _add_column(db, "newsletter_schedule", "template_name", "TEXT")
 
+    #  A newsletter can be kept, as well as sent: the same words become a
+    #  blog entry when it goes out. Which blog is the whole of the
+    #  setting -- empty means it is only ever an email -- so there is no
+    #  second "save as blog" flag that could disagree with it.
+    #
+    #  After the CREATE, for the reason above it.
+    _add_column(db, "newsletters", "blog_id", "INTEGER")
+
     #  Who asked to hear from you, and what they agreed to when they
     #  did. See services/subscribers.py.
     db.execute("""

@@ -551,13 +551,23 @@ LINK_SCHEMES = ("http://", "https://", "mailto:", "tel:", "/", "#")
 _LINK_STYLE = ["color:#1a5fd0;text-decoration:underline;"]
 
 
+def _style(value):
+    """` style="..."`, or nothing at all when there is nothing to say.
+
+    An empty `style=""` is not harmless: it is a style attribute, and an
+    element carrying one is an element a page's own stylesheet can lose
+    to. See rich(plain=True).
+    """
+    return ' style="%s"' % value if value else ""
+
+
 def _spans(escaped):
     """What happens inside a line: bold, italic, a link."""
     def link(match):
         label, href = match.group(1), match.group(2).strip()
         if not href.startswith(LINK_SCHEMES):
             return match.group(0)   # left as the literal text it was
-        return '<a href="%s" style="%s">%s</a>' % (href, _LINK_STYLE[0], label)
+        return '<a href="%s"%s>%s</a>' % (href, _style(_LINK_STYLE[0]), label)
 
     out = re.sub(r"\[([^\]]+)\]\(([^)\s]+)\)", link, escaped)
     out = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", out)
@@ -621,15 +631,26 @@ def cell_style(style):
     return "".join(bits)
 
 
-def rich(text, look, size=16, style=None):
+def rich(text, look, size=16, style=None, plain=False):
     """One text block as finished, inline-styled email blocks.
 
     Every style is written onto the tag itself, because most clients
     strip a stylesheet -- which is also why this returns whole blocks
     rather than text for a macro to wrap: a heading and a bullet are not
     paragraphs and cannot be styled as though they were.
+
+    `plain` drops every style attribute and leaves the tags. That is what
+    a PAGE wants: a newsletter saved as a blog entry is the same words on
+    a surface that has its own fonts and colours, and an email's inline
+    styles carried onto it would be one paragraph in Arial 16px in the
+    middle of the site's own type. It is a flag here rather than a second
+    converter because the vocabulary -- `## `, `**bold**`, `- ` -- has to
+    be read the same way by both, and two parsers is how they come to
+    disagree about what somebody wrote.
     """
     st = block_styles(look, size, style)
+    if plain:
+        st = {k: "" for k in st}
     _LINK_STYLE[0] = st["a"]
     para, item = st["p"], st["li"]
     head = {2: st["h2"], 3: st["h3"]}
@@ -639,8 +660,8 @@ def rich(text, look, size=16, style=None):
     def flush_list():
         if bullets:
             blocks.append(
-                '<ul style="' + st["ul"] + '">'
-                + "".join('<li style="%s">%s</li>' % (item, b) for b in bullets)
+                "<ul%s>" % _style(st["ul"])
+                + "".join("<li%s>%s</li>" % (_style(item), b) for b in bullets)
                 + "</ul>")
             del bullets[:]
 
@@ -651,7 +672,7 @@ def rich(text, look, size=16, style=None):
         #  lines of ONE paragraph, and turning each into its own would
         #  put 14px between every line of it.
         if para_lines:
-            blocks.append('<p style="%s">%s</p>' % (para, "<br>".join(para_lines)))
+            blocks.append("<p%s>%s</p>" % (_style(para), "<br>".join(para_lines)))
             del para_lines[:]
 
     def flush():
@@ -672,10 +693,10 @@ def rich(text, look, size=16, style=None):
             #  Deepest marker first: "### " also starts with "## ".
             if escaped.startswith("### "):
                 flush_para()
-                blocks.append('<h3 style="%s">%s</h3>' % (head[3], _spans(escaped[4:].strip())))
+                blocks.append("<h3%s>%s</h3>" % (_style(head[3]), _spans(escaped[4:].strip())))
             elif escaped.startswith("## "):
                 flush_para()
-                blocks.append('<h2 style="%s">%s</h2>' % (head[2], _spans(escaped[3:].strip())))
+                blocks.append("<h2%s>%s</h2>" % (_style(head[2]), _spans(escaped[3:].strip())))
             else:
                 para_lines.append(_spans(escaped))
         #  A blank line in the source ends whatever was being built.

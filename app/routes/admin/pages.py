@@ -300,30 +300,17 @@ def blog_post_new(blog_id):
         if not title:
             flash("Please enter a post title.", "error")
             return redirect(url_for("admin.blog_post_new", blog_id=blog_id))
-        base_slug = slugify(title)
-        slug, i = base_slug, 2
-        while db.execute(
-            "SELECT 1 FROM blog_posts WHERE blog_id = ? AND slug = ?", (blog_id, slug)
-        ).fetchone():
-            slug = f"{base_slug}-{i}"
-            i += 1
-        cur = db.execute(
-            "INSERT INTO blog_posts (blog_id, title, slug, excerpt, content, published_at, position) "
-            "VALUES (?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(position), 0) + 1 FROM blog_posts WHERE blog_id = ?))",
-            (
-                blog_id,
-                title,
-                slug,
-                request.form.get("excerpt", "").strip(),
-                request.form.get("content", "").strip(),
-                _published_date(request.form),
-                blog_id,
-            ),
-        )
+        #  One creator, in the service: a post arrives three ways now and
+        #  the unique-address rule has to be the same for all of them.
+        post_id = blog_service.create_post(
+            db, blog_id, title,
+            content=request.form.get("content", "").strip(),
+            excerpt=request.form.get("excerpt", "").strip(),
+            published_at=_published_date(request.form))
         db.commit()
         flash("Post created.", "success")
         return redirect(_post_return_url(
-            url_for("admin.blog_post_edit", blog_id=blog_id, post_id=cur.lastrowid)))
+            url_for("admin.blog_post_edit", blog_id=blog_id, post_id=post_id)))
     return render_template("admin/blog_post_edit.html", blog=blog, post=None,
                            next_url=_post_return_url(""))
 
@@ -401,18 +388,10 @@ def blog_post_draft(blog_id):
     if not blog_service.get_blog(db, blog_id):
         flash("That blog no longer exists.", "error")
         return redirect(url_for("admin.dashboard"))
-    base_slug, slug, i = "new-post", "new-post", 2
-    while db.execute("SELECT 1 FROM blog_posts WHERE blog_id = ? AND slug = ?", (blog_id, slug)).fetchone():
-        slug = f"{base_slug}-{i}"
-        i += 1
     #  No published date: a new post is a draft until its author says
     #  otherwise, so nothing half-written is ever public for a moment.
-    db.execute(
-        "INSERT INTO blog_posts (blog_id, title, slug, excerpt, content, published_at, position) "
-        "VALUES (?, 'New post', ?, '', '', '', "
-        "(SELECT COALESCE(MAX(position), 0) + 1 FROM blog_posts WHERE blog_id = ?))",
-        (blog_id, slug, blog_id),
-    )
+    slug = blog_service.unique_slug(db, blog_id, "New post")
+    blog_service.create_post(db, blog_id, "New post", published_at="")
     db.commit()
     blog = blog_service.get_blog(db, blog_id)
     return redirect(url_for("public.blog_post", slug=blog["slug"], post_slug=slug))

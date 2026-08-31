@@ -96,6 +96,34 @@ def rename_blog(db, blog_id, name):
     db.execute("UPDATE blogs SET name = ? WHERE id = ?", ((name or "").strip() or "Blog", blog_id))
 
 
+def unique_slug(db, blog_id, title):
+    """An address for a post that no other post in this blog has."""
+    base = slugify(title) or "post"
+    slug, i = base, 2
+    while db.execute("SELECT 1 FROM blog_posts WHERE blog_id = ? AND slug = ?",
+                     (blog_id, slug)).fetchone():
+        slug = "%s-%d" % (base, i)
+        i += 1
+    return slug
+
+
+def create_post(db, blog_id, title, content="", excerpt="", published_at=None):
+    """Writes one post and returns its id.
+
+    Here rather than in a route because there are three ways a post
+    arrives now -- typed into the editor, saved as a draft, and a
+    newsletter keeping a copy of itself when it goes out -- and the
+    unique-address rule has to be the same for all of them. Two of them
+    were already separate copies of the same six lines.
+    """
+    return db.execute(
+        "INSERT INTO blog_posts (blog_id, title, slug, excerpt, content, published_at, "
+        "position) VALUES (?, ?, ?, ?, ?, ?, "
+        "(SELECT COALESCE(MAX(position), 0) + 1 FROM blog_posts WHERE blog_id = ?))",
+        (blog_id, title, unique_slug(db, blog_id, title), excerpt or "", content or "",
+         published_at, blog_id)).lastrowid
+
+
 def posts_for(db, blog_id, published_only=True, limit=0):
     """A blog's posts, newest first.
 

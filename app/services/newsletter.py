@@ -329,12 +329,21 @@ def composed_blocks(row):
     return email_layouts.from_named_slots(stored if isinstance(stored, dict) else {})
 
 
-def save_blocks(db, newsletter_id, subject, blocks, layout=None):
+_UNSET = object()
+
+
+def save_blocks(db, newsletter_id, subject, blocks, layout=None, blog_id=_UNSET):
     """Blocks are the whole of what a newsletter is now."""
     from app.services import email_layouts
     stored = {"blocks": email_layouts.normalise(blocks)}
     if layout:
         db.execute("UPDATE newsletters SET layout = ? WHERE id = ?", (layout, newsletter_id))
+    if blog_id is not _UNSET:
+        #  A column, not a key in values_json: it is read by the SCHEDULER
+        #  when the newsletter is nowhere near a form, and a setting
+        #  buried in a blob is one nothing else can ask about.
+        db.execute("UPDATE newsletters SET blog_id = ? WHERE id = ?",
+                   (blog_id or None, newsletter_id))
     save_composed(db, newsletter_id, subject, stored)
 
 
@@ -841,3 +850,111 @@ def blocks_of(db, newsletter_id):
     """One newsletter's blocks, by id -- for starting another from it."""
     row = get_composed(db, newsletter_id)
     return composed_blocks(row) if row else []
+
+
+# --------------------------------------------------- the same words, on the site
+
+
+def page_html(blocks, look=None):
+    """A newsletter's body as writing for a PAGE, not an inbox.
+
+    The opening and the sign-off are left out. They are addressed to a
+    reader who has just been written to -- "Hello," at the top and
+    "Thanks for reading." at the bottom -- and a blog entry has no such
+    reader: it is found weeks later by somebody who was never sent
+    anything. That is the whole reason this is not simply the email
+    again.
+
+    Everything else survives. Words, headings, pictures, a button and a
+    rule are all things a page can show, and they come out as ordinary
+    tags with no inline styles, so the site's own fonts, colours and
+    shape reach them (see `email_layouts.rich(plain=True)`). An email is
+    inline-styled because a mail client strips a stylesheet; a page has
+    the stylesheet, and carrying the email's styles onto it would pin one
+    paragraph to 16px Arial in the middle of the site's own type.
+
+    A `posts` block is dropped: it is a marker resolved against the blog
+    at send time, and a blog entry made of a list of that same blog's
+    entries is a mirror pointing at itself.
+    """
+    from html import escape
+    from . import email_layouts
+    out = []
+    for block in email_layouts.normalise(blocks):
+        if block.get("role") in email_layouts.ROLES:
+            continue
+        kind = block["type"]
+        if kind == "heading":
+            level = 3 if str(block.get("level")) == "3" else 2
+            words = email_layouts.rich(block.get("text") or "", look, plain=True)
+            #  A heading is one line, so its own text is taken rather than
+            #  whatever `rich` decided to wrap it in -- otherwise "## Sale"
+            #  typed INTO a heading would arrive as a heading inside a
+            #  heading.
+            text = escape((block.get("text") or "").strip())
+            if text:
+                out.append("<h%d>%s</h%d>" % (level, _inline(text), level))
+            elif words:
+                out.extend(words)
+        elif kind == "text":
+            out.extend(email_layouts.rich(block.get("text") or "", look, plain=True))
+        elif kind == "image":
+            src = (block.get("src") or "").strip()
+            if src:
+                img = '<img src="%s" alt="%s">' % (escape(src), escape(block.get("alt") or ""))
+                url = (block.get("url") or "").strip()
+                if url.startswith(email_layouts.LINK_SCHEMES):
+                    img = '<a href="%s">%s</a>' % (escape(url), img)
+                out.append("<p>%s</p>" % img)
+        elif kind == "button":
+            label = (block.get("label") or "").strip()
+            url = (block.get("url") or "").strip()
+            if label and url.startswith(email_layouts.LINK_SCHEMES):
+                out.append('<p><a class="btn" href="%s">%s</a></p>'
+                           % (escape(url), escape(label)))
+            elif label:
+                out.append("<p>%s</p>" % escape(label))
+        elif kind == "divider":
+            out.append("<hr>")
+    return "\n".join(out)
+
+
+def _inline(escaped):
+    """Bold, italic and a link inside one already-escaped line."""
+    from . import email_layouts
+    email_layouts._LINK_STYLE[0] = ""
+    return email_layouts._spans(escaped)
+
+
+def keep_as_post(db, blogs, row, blocks=None, when=None):
+    """The newsletter that just went out, kept as a blog entry.
+
+    Called from BOTH send paths -- the button and the scheduler -- for
+    the reason the guards are: two copies of "and also publish it" is how
+    one of them comes to be forgotten when something changes. It is the
+    last thing either does, and only if the send itself succeeded: an
+    entry announcing a letter nobody received is worse than no entry.
+
+    Returns the post's id, or None when this newsletter is not kept --
+    which is the ordinary case, and not a failure.
+
+    The date is the date it was SENT, because that is the day it is about.
+    A subject is required and stands as the title: an untitled entry in a
+    list of entries is unfindable, and the subject is already the name the
+    newsletter is known by.
+    """
+    blog_id = None
+    try:
+        blog_id = row["blog_id"]
+    except (IndexError, KeyError):
+        blog_id = None
+    if not blog_id or not blogs.get_blog(db, blog_id):
+        return None
+    title = (row["subject"] or "").strip()
+    if not title:
+        return None
+    html = page_html(composed_blocks(row) if blocks is None else blocks)
+    if not html:
+        return None
+    stamp = (when or datetime.datetime.utcnow()).strftime("%Y-%m-%d")
+    return blogs.create_post(db, blog_id, title, content=html, published_at=stamp)
