@@ -7236,3 +7236,35 @@ Checked with the provider stubbed, so it runs anywhere and costs
 nothing: what is being checked is this app's handling of an answer, not
 the answer. One real generation was run to prove the whole path, and it
 produced a subject, two headings, two paragraphs and a button.
+
+### An empty table is not a small version of a full one (2026-08-28)
+
+The Newsletters screen 500'd on the owner's site the first time they
+opened it after pulling. `overview()` read `send["kind"]` where the
+column is `send["target_kind"]`, and `sqlite3.Row` raises `IndexError:
+No item with that key` rather than returning None.
+
+It passed everything here. Twenty checks against that screen, a browser
+driving it, and a full suite -- all green, because a fresh checker
+database has **no send history**, so the loop that line is in never ran
+once. The bug was not hidden by a subtle interaction; it was hidden by
+an empty table.
+
+This is the second time in one change that a column name was got wrong
+in exactly this way -- `sent_composed` joined on `s.kind` too, and there
+the failure mode was worse: a JOIN that matches nothing raises nothing,
+so the feature simply appeared not to exist. Both were written in the
+same hour, against the same table, from memory of a name.
+
+Two things follow.
+
+**Seed the state the bug needs.** `newsletter_check.py` now builds a site
+that has actually sent things -- a newsletter written and sent, a page
+send, a post send, and a draft -- before asking `overview()` anything.
+Run against the unfixed code it produces exactly the traceback the owner
+saw, which is the only real proof a check is worth having.
+
+**Read the schema, do not remember it.** `newsletter_sends` uses
+`target_kind` and `target_id`; `newsletter_schedule` uses `kind` and
+`target_id`. Two tables about the same thing, named differently, and the
+one I typed was the one I had been reading five minutes earlier.

@@ -720,10 +720,15 @@ def overview(db, scheduling, audiences):
     #  it was sent from, so two sends of one post are two rows -- they
     #  were two emails.
     for send in history(db, limit=200):
-        if send["kind"] == "newsletter":
+        #  `target_kind`, not `kind`. sqlite3.Row raises on a missing
+        #  key, so this 500s the moment the site has ANY send history --
+        #  and an install with none never reaches the loop body, which is
+        #  exactly why it passed every check here and failed on the
+        #  owner's site the first time they opened the screen.
+        if send["target_kind"] == "newsletter":
             continue
         rows.append({
-            "kind": send["kind"],
+            "kind": send["target_kind"],
             "id": send["target_id"],
             "subject": send["subject"] or send["title"] or "(no subject)",
             "created": None,

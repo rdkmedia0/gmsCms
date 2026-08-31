@@ -377,6 +377,59 @@ recoloured = client.get("/admin/newsletters/%d/preview?parts=all" % page_id).get
 check("an owner's own colour override wins",
       "color:#0f5132" in recoloured and "#8a1b3d" not in recoloured)
 
+#  The one table, on a site that has actually sent things.
+#
+#  This is the bug that reached an owner: overview() read send["kind"]
+#  where the column is send["target_kind"], sqlite3.Row raises on a
+#  missing key, and the screen 500'd. It passed everything here because a
+#  fresh checker database has NO send history, so the loop body it is in
+#  never ran. An empty table is not a small version of a full one.
+with app.app_context():
+    db = get_db()
+    #  A newsletter written and sent, a page send and a post send -- the
+    #  three kinds of row the table has to carry at once.
+    written = newsletter.create_composed(db, "letter", "Written and sent")
+    newsletter.save_blocks(db, written, "Written and sent",
+                           email_layouts.starting_blocks("letter", db))
+    newsletter.record_send(db, "newsletter", written, "Written and sent", 11, 0, "all")
+    newsletter.record_send(db, "page", 4242, "A page that went", 7, 1, "customers")
+    newsletter.record_send(db, "post", 777, "A post that went", 3, 0, "all")
+    drafted = newsletter.create_composed(db, "letter", "Still a draft")
+    db.commit()
+
+    rows = newsletter.overview(db, scheduling, subscribers.AUDIENCES)
+    subjects = [r["subject"] for r in rows]
+    check("a sent newsletter is in the table", "Written and sent" in subjects, str(subjects))
+    check("...and so is a draft that has not gone", "Still a draft" in subjects, str(subjects))
+    check("...and a page send", "A page that went" in subjects, str(subjects))
+    check("...and a post send", "A post that went" in subjects, str(subjects))
+
+    sent_row = next(r for r in rows if r["subject"] == "Written and sent")
+    check("a sent one says when it went", bool(sent_row["sent"]), str(sent_row))
+    check("...and who it went to", sent_row["audience"] == "Everyone on the list",
+          str(sent_row["audience"]))
+    check("...and can still be edited", sent_row["editable"])
+    draft_row = next(r for r in rows if r["subject"] == "Still a draft")
+    check("a draft says when it was written", bool(draft_row["created"]))
+    check("...and has not been sent", draft_row["sent"] is None, str(draft_row["sent"]))
+
+    page_row = next(r for r in rows if r["subject"] == "A page that went")
+    check("a page send is not editable as a newsletter", not page_row["editable"])
+    check("...but carries the send it can be removed by",
+          bool(page_row["send_id"]), str(page_row))
+    check("...and says which audience", page_row["audience"] == "Customers only",
+          str(page_row["audience"]))
+
+    #  Newest activity first: what somebody is looking for is almost
+    #  always the thing that moved most recently.
+    check("the newest thing is first",
+          rows[0]["sent"] or rows[0]["created"], str(rows[0]))
+
+    db.execute("DELETE FROM newsletter_sends WHERE target_id IN (?, 4242, 777)", (written,))
+    newsletter.delete_composed(db, written)
+    newsletter.delete_composed(db, drafted)
+    db.commit()
+
 #  An opening and a sign-off belong to the NEWSLETTER, not to the site.
 #
 #  They were two settings applied invisibly to every send -- so the one
