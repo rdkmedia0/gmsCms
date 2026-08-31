@@ -1584,3 +1584,9 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
     five and the counts on them are the answer to "is anything wrong". */
 .cms-state-filter { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
 .cms-form-subhead { font-size: 14px; margin: 18px 0 6px; }
+/*  The exact controls, for somebody who already knows what they want.
+    Folded away, because the whole point of the questions above them is
+    that most people do not. */
+.cms-fine-print { margin: 4px 0 14px; }
+.cms-fine-print > summary { cursor: pointer; font-size: 13px; color: #5c6b65; }
+.cms-fine-print[open] > summary { margin-bottom: 8px; }

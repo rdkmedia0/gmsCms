@@ -3,10 +3,11 @@
 {% block content %}
 {% include "partials/design_tabs.html" %}
 <h1>AI Theme Generator</h1>
-<p class="hint">Answer three questions — what to call it, where the words come from, and how it should
-  look — and this writes a <strong>template</strong>: real, editable sections built the same way you
-  would build them by hand. It appears in your template list and nothing on your site changes until
-  you use it, so you can try as many as you like and keep the one you want.</p>
+<p class="hint">Describe your site and this works out how it should look — the colours, the
+  typefaces, the shapes of the pages — and writes a <strong>template</strong> of real, editable
+  sections, built the same way you would build them by hand. You see the look, and what it will
+  cost, before a word is written. It appears in your template list and nothing on your site changes
+  until you use it, so try as many as you like and keep the one you want.</p>
 
 {% if not ai_configured %}
 <div class="card"><p class="hint">⚠️ No AI provider is configured yet —
@@ -27,12 +28,12 @@
   </div>
   <dl class="cms-plan">
     <dt>Called</dt><dd>{{ plan.name }}</dd>
-    <dt>Layout</dt><dd>{{ plan.layout }}</dd>
     <dt>Pages</dt>
     <dd>
       <ul class="cms-plan-pages">
         {% for page in plan.pages %}
-        <li><strong>{{ page.title }}</strong> — {{ page.sections | join(', ') | lower }}</li>
+        <li><strong>{{ page.title }}</strong>{% if page.shape %} <span class="hint">({{ page.shape }})</span>{% endif %}
+          — {{ page.sections | join(', ') | lower }}</li>
         {% endfor %}
       </ul>
       <span class="hint">{{ plan.sections }} sections in total.</span>
@@ -45,6 +46,21 @@
     <dt>Pictures</dt>
     <dd>{% if plan.pictures %}{{ plan.pictures }} generated; anything else uses a placeholder you can
       replace from your Media Library.{% else %}None — placeholders you can replace.{% endif %}</dd>
+    {% if plan.look and plan.look.asked %}
+    <dt>The look</dt>
+    <dd>
+      {#  Decided from the description, from this app's own controls --
+          never CSS, never a font it does not have. Shown before a word
+          of content is written, because a look you cannot see is a look
+          you cannot correct. #}
+      {% for colour in plan.look.colours %}<span class="cms-swatch"
+        style="background: {{ colour }}" title="{{ colour }}"></span>{% endfor %}
+      {% if plan.look.fonts %}<span class="hint">{{ font_pairings[plan.look.fonts].name }}.</span>{% endif %}
+      {% if plan.look.shape %}<span class="hint">{{ plan.look.shape|title }} corners,
+        {{ plan.look.shadow or 'no' }} shadow.</span>{% endif %}
+      {% if plan.look.why %}<br><span class="hint">{{ plan.look.why }}</span>{% endif %}
+    </dd>
+    {% endif %}
     {% if signals %}
     <dt>Feel taken from</dt>
     <dd>{{ signals.source }}<br>
@@ -61,9 +77,20 @@
       {% if not plan.calls %}Nothing at all.{% endif %}</dd>
   </dl>
   <form method="post" action="{{ url_for('admin.theme_generator') }}" class="inline-form">
-    {% for key, value in form.items() %}{% if key != 'preview' %}
+    {% for key, value in form.items() %}{% if key != 'preview' and not key.startswith('look_') %}
     <input type="hidden" name="{{ key }}" value="{{ value }}">
     {% endif %}{% endfor %}
+    {#  Carried, not worked out again: asking twice costs a second
+        request and can come back different, and then "Make it" would
+        make something other than what was shown. #}
+    {% if looked %}
+    {% for colour in looked.colours %}<input type="hidden" name="look_colour" value="{{ colour }}">{% endfor %}
+    {% for shape in looked.pages %}<input type="hidden" name="look_page" value="{{ shape }}">{% endfor %}
+    <input type="hidden" name="look_fonts" value="{{ looked.fonts }}">
+    <input type="hidden" name="look_shape" value="{{ looked.shape }}">
+    <input type="hidden" name="look_shadow" value="{{ looked.shadow }}">
+    <input type="hidden" name="look_why" value="{{ looked.why }}">
+    {% endif %}
     <button type="submit" class="btn btn-primary"
             title="Make this template. Nothing on your site changes — it is added to your template list.">Make it</button>
     <a class="btn" href="{{ url_for('admin.theme_generator') }}"
@@ -128,21 +155,11 @@
       called Home.</p>
   </div>
 
-  <div class="form-row" data-needs="layout">
-    <label>Front page shape</label>
-    <div class="tg-layout-choices">
-      {% for key, layout in layouts.items() %}
-      <label class="tg-layout-choice">
-        <input type="radio" name="layout" value="{{ key }}"
-               {{ 'checked' if (form and form.layout == key) or (not form and loop.first) }}>
-        <span class="tg-layout-name">{{ layout.label }}</span>
-        <span class="hint">{{ layout.description }}</span>
-      </label>
-      {% endfor %}
-    </div>
-    <p class="hint">The shape of the first page. Any others get one chosen from their name — an About
-      page gets the story shape, a Contact page the small one.</p>
-  </div>
+  {#  There were three radio buttons here -- Landing, About/Story,
+      Simple -- asking an owner to pick a page skeleton by name. That is
+      this app's vocabulary, not theirs, and it is decided from the
+      description now: the plan says which shape each page will get
+      before anything is made. #}
 
   {#  Only when somebody is writing. Four controls about voice are four
       controls doing nothing when the answer above is "keep my words". #}
@@ -184,77 +201,105 @@
   </div>
 
   <h2 class="cms-form-heading">3 &middot; How it should look</h2>
-  <p class="hint cms-form-note">Every one of these is a value your own controls already carry, so what
-    comes out can go on being edited by hand. Nothing here writes CSS.</p>
+  <p class="hint cms-form-note">The colours, the typefaces and the shapes are worked out from your
+    description — this app picks from its own controls, so everything it chooses is something you can
+    change afterwards by hand. These are preferences, not requirements: anything you set here wins.</p>
 
   <div class="form-row">
-    <label for="tg-reference">Copy the feel from</label>
+    <label for="tg-colour-note">Colour preferences</label>
+    <input type="text" id="tg-colour-note" name="colour_note" maxlength="120"
+           value="{{ form.colour_note if form else '' }}"
+           placeholder="e.g. warm and earthy, or our green #1d6b58, or nothing corporate"
+           title="In your own words. &quot;Something warm&quot;, &quot;our green&quot;, a hex value, or nothing at all — the exact colours are worked out from this and your description, and shown to you before anything is made.">
+    <p class="hint">In your own words, or leave it and the description decides.</p>
+  </div>
+
+  <div class="form-row">
+    <label for="tg-reference">A site you like</label>
     <input type="url" id="tg-reference" name="reference_url"
            value="{{ form.reference_url if form else '' }}"
            placeholder="https://a-site-you-like.example"
            title="A page whose look you like. Its colours, typefaces, corners and depth are read as starting values — never its words, its pictures or its layout.">
     <p class="hint">Colours, typefaces, corners and depth only. None of that page's words, pictures or
-      layout are read or kept — and everything read is shown to you, and editable, before anything is made.</p>
+      layout are read or kept, and everything read is shown to you before anything is made.</p>
   </div>
 
-  <div class="form-row">
-    <label for="tg-colors">Colours</label>
-    <select id="tg-colors" name="color_preset" title="A colour scheme for this template. It travels with the template — your current site's colours are not touched. The standard colours are this app's own, and you can change them in the Colours panel afterwards.">
-      <option value="">The standard colours</option>
-      {% for key, scheme in color_presets.items() %}
-      <option value="{{ key }}" {{ 'selected' if form and form.color_preset == key }}>{{ scheme.name or key|title }}</option>
-      {% endfor %}
-    </select>
-  </div>
+  {#  The specific controls, for somebody who already knows what they
+      want. Folded away, because the whole point of the questions above
+      is that most people do not. #}
+  <details class="cms-fine-print">
+    <summary title="Pick exact colours, fonts, corners and depth yourself, instead of having them worked out.">Choose these myself</summary>
 
-  <div class="form-row">
-    <label for="tg-fonts">Fonts</label>
-    <select id="tg-fonts" name="fonts" title="A typeface pairing. Every font this app offers is bundled with it — nothing is fetched from Google at page load.">
-      <option value="">The standard fonts</option>
-      {% for key, pairing in font_pairings.items() %}
-      <option value="{{ key }}" {{ 'selected' if form and form.fonts == key }}>{{ pairing.name }}</option>
-      {% endfor %}
-    </select>
-  </div>
+    <div class="form-row">
+      <label for="tg-colors">Colours</label>
+      <select id="tg-colors" name="color_preset" title="An exact colour scheme, instead of one worked out from your description. It travels with the template — your current site's colours are not touched.">
+        <option value="">Work them out from my description</option>
+        {% for key, scheme in color_presets.items() %}
+        <option value="{{ key }}" {{ 'selected' if form and form.color_preset == key }}>{{ scheme.name or key|title }}</option>
+        {% endfor %}
+      </select>
+    </div>
 
-  <div class="form-row">
-    <label for="tg-shape">Corners</label>
-    <select id="tg-shape" name="shape" title="How sharp or round the corners are on cards, buttons and pictures.">
-      <option value="">The standard corners</option>
-      {% for key, preset in shapes.items() %}
-      <option value="{{ key }}" {{ 'selected' if form and form.shape == key }}>{{ preset.name or key|title }}</option>
-      {% endfor %}
-    </select>
-  </div>
+    <div class="form-row">
+      <label for="tg-fonts">Fonts</label>
+      <select id="tg-fonts" name="fonts" title="An exact typeface pairing. Every font this app offers is bundled with it — nothing is fetched from Google at page load.">
+        <option value="">Work them out from my description</option>
+        {% for key, pairing in font_pairings.items() %}
+        <option value="{{ key }}" {{ 'selected' if form and form.fonts == key }}>{{ pairing.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
 
-  <div class="form-row">
-    <label for="tg-shadow">Depth</label>
-    <select id="tg-shadow" name="shadow" title="How much shadow sits under cards and banners.">
-      <option value="">The standard depth</option>
-      {% for key, preset in shadows.items() %}
-      <option value="{{ key }}" {{ 'selected' if form and form.shadow == key }}>{{ preset.name or key|title }}</option>
-      {% endfor %}
-    </select>
-  </div>
+    <div class="form-row">
+      <label for="tg-shape">Corners</label>
+      <select id="tg-shape" name="shape" title="How sharp or round the corners are on cards, buttons and pictures.">
+        <option value="">Work it out from my description</option>
+        {% for key, preset in shapes.items() %}
+        <option value="{{ key }}" {{ 'selected' if form and form.shape == key }}>{{ preset.name or key|title }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-row">
+      <label for="tg-shadow">Depth</label>
+      <select id="tg-shadow" name="shadow" title="How much shadow sits under cards and banners.">
+        <option value="">Work it out from my description</option>
+        {% for key, preset in shadows.items() %}
+        <option value="{{ key }}" {{ 'selected' if form and form.shadow == key }}>{{ preset.name or key|title }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </details>
+
+  <h2 class="cms-form-heading">4 &middot; Pictures</h2>
 
   <div class="form-row">
     <label for="tg-images">Pictures</label>
     {% if image_gen_configured %}
-    <select id="tg-images" name="image_budget" title="How many pictures to generate. Each one is a request to your provider and a wait; anything not generated uses a placeholder you can replace from your Media Library.">
+    <select id="tg-images" name="image_budget" title="Whether to generate pictures at all. Anything not generated uses a placeholder you can replace from your Media Library.">
       {% for value, label in image_budgets %}
       <option value="{{ value }}" {{ 'selected' if form and form.image_budget == value }}>{{ label }}</option>
       {% endfor %}
     </select>
     <input type="hidden" name="use_ai_images" value="1">
     {% else %}
-    {#  A provider that CANNOT make pictures is not the same as one that
-        is not configured, and the two need different words. Said before
-        somebody meets it, with the way round -- see
-        ai_image.unavailable_reason(). #}
     <p class="hint">{{ image_gen_reason }} Placeholders are used instead, and you can replace them
       from your Media Library afterwards.</p>
     {% endif %}
   </div>
+
+  {% if image_gen_configured %}
+  <div class="form-row cms-compose-keep" data-needs="pages">
+    <label for="tg-banners" class="cms-check"
+           title="A banner for every page, in the same style, instead of one for the front page. Each one is a request and a wait.">
+      <input type="checkbox" id="tg-banners" name="banner_per_page" value="1"
+             {{ 'checked' if form and form.banner_per_page }}>
+      A banner for every page
+    </label>
+    <span class="cms-compose-note">One for the front page otherwise. Each costs a request and a wait,
+      and they share one direction so they look like one shoot.</span>
+  </div>
+  {% endif %}
 
   <div class="cms-compose-actions">
     <button type="submit" name="preview" value="1" class="btn btn-primary"

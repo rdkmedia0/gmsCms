@@ -122,7 +122,8 @@ IMAGE_BUDGETS = (
 
 def brand_kit(brief="", tone="warm", voice="we", reading="normal",
               language="English", palette=None, fonts="", shape="", shadow="",
-              image_budget="1", ref_colours=None):
+              image_budget="1", ref_colours=None, colour_note="",
+              banner_per_page=False):
     """One kit, resolved once, read by every prompt and every picture.
 
     Returns plain data -- no db, no request -- so a checker, a script and
@@ -153,6 +154,15 @@ def brand_kit(brief="", tone="warm", voice="we", reading="normal",
         "shape": shape if shape in SHAPE_PRESETS else "",
         "shadow": shadow if shadow in SHADOW_PRESETS else "",
         "image_budget": budget,
+        #  What they SAID about colour, in their own words -- "something
+        #  warm", "our green", "nothing corporate". A free field because
+        #  it is an answer to a question a person can answer; the exact
+        #  hexes are worked out from it.
+        "colour_note": (colour_note or "").strip(),
+        #  A banner for every page rather than one for the run. It costs
+        #  a request and a wait per page, which is why it is a question
+        #  and not a default.
+        "banner_per_page": bool(banner_per_page),
         #  One direction for every picture in a run. Generating each from
         #  its own section's words is why AI sites look assembled out of
         #  stock: five photographs by five photographers.
@@ -209,8 +219,8 @@ MODES = (
 MODE_NEEDS = {
     "reskin": (),
     "rewrite": ("voice",),
-    "scratch": ("brief", "pages", "layout", "voice"),
-    "blank": ("pages", "layout"),
+    "scratch": ("brief", "pages", "voice"),
+    "blank": ("pages",),
 }
 
 
@@ -329,6 +339,88 @@ def _replace_lines(html, old_lines, new_lines):
     return out
 
 
+# ------------------------------------------------- deciding the look
+#
+#  The screen used to ask an owner to pick a "front page shape" from
+#  three named skeletons, and colours from a list whose first entry was
+#  "the standard colours". Both are internal vocabulary, and neither is a
+#  question somebody opening this for the first time can answer. What
+#  they CAN describe is their business.
+#
+#  So the look is derived from the description, from this app's own
+#  vocabularies -- and every answer is validated against those same lists
+#  here, because a model naming a font this app does not have would be a
+#  look that silently falls back to nothing.
+
+DESIGN_SCHEMA = (
+    '{"primary": "#RRGGBB", "secondary": "#RRGGBB", "accent": "#RRGGBB", '
+    '"fonts": "a key from the list", "shape": "a key from the list", '
+    '"shadow": "a key from the list", '
+    '"pages": [{"title": "...", "shape": "landing|about|simple"}], '
+    '"why": "one sentence"}'
+)
+
+_HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
+def design(db, kit, pages):
+    """What this site should look like, decided from the description.
+
+    Returns a dict of values this app already has controls for, every one
+    of them checked against the list it came from. Anything the model
+    invents is dropped and the sensible default stands -- a look that
+    quietly falls back is better than one that refuses, and the owner
+    sees all of it in the plan before anything is made.
+    """
+    from .design import FONT_PAIRINGS, SHAPE_PRESETS, SHADOW_PRESETS
+    wanted = list(pages) or ["Home"]
+    chosen = {}
+    if kit["brief"]:
+        try:
+            chosen = _ai_json(db, _prompt_file(
+                "prompts/theme_generator_design.j2",
+                kit=kit, pages=wanted, schema=DESIGN_SCHEMA,
+                fonts=[(k, v["name"]) for k, v in FONT_PAIRINGS.items()],
+                shapes=list(SHAPE_PRESETS), shadows=list(SHADOW_PRESETS),
+                layouts=list(LAYOUTS)))
+        except ThemeGenError:
+            #  A look nobody could decide is not a reason to refuse the
+            #  whole run: the shapes fall back to what the page names
+            #  suggest, and the palette to the app's own.
+            chosen = {}
+
+    colours = [chosen.get(role) for role in ("primary", "secondary", "accent")]
+    colours = [c for c in colours if isinstance(c, str) and _HEX.match(c.strip())]
+
+    shapes = {}
+    for entry in (chosen.get("pages") or []):
+        if isinstance(entry, dict) and entry.get("shape") in LAYOUTS:
+            shapes[str(entry.get("title", "")).strip().lower()] = entry["shape"]
+
+    return {
+        "colours": [c.lower() for c in colours][:3],
+        "fonts": chosen.get("fonts") if chosen.get("fonts") in FONT_PAIRINGS else "",
+        "shape": chosen.get("shape") if chosen.get("shape") in SHAPE_PRESETS else "",
+        "shadow": chosen.get("shadow") if chosen.get("shadow") in SHADOW_PRESETS else "",
+        #  Per page, by title, falling back to what the name suggests.
+        "pages": [shapes.get(title.strip().lower()) or layout_for(title, i)
+                  for i, title in enumerate(wanted)],
+        "why": (chosen.get("why") or "").strip(),
+        "asked": bool(chosen),
+    }
+
+
+def with_design(kit, look):
+    """The kit, with anything the owner did not choose filled in by the
+    design. What somebody picked themselves always wins."""
+    made = dict(kit)
+    if not made.get("palette") and look.get("colours"):
+        made["palette"] = _palette_from(look["colours"])
+    for key in ("fonts", "shape", "shadow"):
+        made[key] = made.get(key) or look.get(key) or ""
+    return made
+
+
 # ---------------------------------------------------------- the plan
 #
 #  What a run WILL do, worked out before it does any of it. A generator
@@ -345,8 +437,8 @@ SECTION_NAMES = {
 }
 
 
-def plan(db, kit, name, mode="scratch", pages_wanted=None, layout_key=None,
-         page_title="Home", use_ai_images=True, fill_scope="all"):
+def plan(db, kit, name, mode="scratch", pages_wanted=None, looked=None,
+         use_ai_images=True, fill_scope="all"):
     """(what it will make, what it will cost) without asking anybody.
 
     Takes the same answers the run takes, including whether pictures are
@@ -379,17 +471,22 @@ def plan(db, kit, name, mode="scratch", pages_wanted=None, layout_key=None,
             "tone": kit["tone_label"],
         }
 
-    wanted = pages_wanted or ([page_title] if page_title else ["Home"])
-    #  Same rule as the run: the choice is the front page's, and the
-    #  plan has to say what the run will do, not what it might.
-    keys = [(layout_key or "landing") if i == 0 else layout_for(title, i)
-            for i, title in enumerate(wanted)]
-    if any(k not in LAYOUTS for k in keys):
-        raise ThemeGenError("Unknown layout.")
+    wanted = pages_wanted or ["Home"]
+    #  The look is decided HERE, not when the run starts, so what the
+    #  plan shows is what gets made -- and so the owner can look at the
+    #  colours and the shapes before anything is written. `looked` is
+    #  handed back to `generate` for exactly that reason.
+    keys = [k for k in (looked or {}).get("pages") or []]
+    if len(keys) != len(wanted):
+        keys = [layout_for(title, i) for i, title in enumerate(wanted)]
 
     writes = bool(kit["brief"]) and fill_scope != "none"
-    pictures = 1 if (use_ai_images and kit["image_budget"] > 0) else 0
-    pages = [{"title": title, "sections": SECTION_NAMES[key]}
+    per_page = kit.get("banner_per_page", False)
+    pictures = 0
+    if use_ai_images and kit["image_budget"] > 0:
+        pictures = len(wanted) if per_page else 1
+    pages = [{"title": title, "sections": SECTION_NAMES[key],
+              "shape": LAYOUTS[key]["label"]}
              for title, key in zip(wanted, keys)]
     banners = sum(len([x for x in p["sections"] if "banner" in x]) for p in pages)
     return {
@@ -718,8 +815,7 @@ def page_list(raw):
 
 
 def generate(db, static_folder, name, kit, fill_scope, use_ai_images,
-             mode="scratch", pages_wanted=None, layout_key=None,
-             page_title=None):
+             mode="scratch", pages_wanted=None, looked=None):
     """Generate a look, install it as a template, and say which one.
 
     Installed, NOT activated. That is the whole difference from what this
@@ -749,24 +845,24 @@ def generate(db, static_folder, name, kit, fill_scope, use_ai_images,
         if mode == "rewrite":
             pages = rewrite_pages(db, kit, pages)
     else:
-        wanted = pages_wanted or ([page_title] if page_title else ["Home"])
+        wanted = pages_wanted or ["Home"]
+        #  What each page should BE, decided from the description rather
+        #  than picked by the owner from three named skeletons. `looked`
+        #  is passed in when the plan has already worked it out, so the
+        #  run does not ask twice and cannot get a different answer than
+        #  the one that was shown.
+        chosen = (looked or {}).get("pages") or design(db, kit, wanted)["pages"]
         pages = []
         for i, title in enumerate(wanted):
-            #  The chosen layout is the FRONT PAGE's, always. It used to
-            #  apply only when exactly one page was asked for, so adding
-            #  a second page to the list silently turned the Layout
-            #  control off -- it was still there, still set, and no
-            #  longer doing anything. Every later page is guessed from
-            #  its name, and the plan says which before it runs.
-            key = (layout_key or "landing") if i == 0 else layout_for(title, i)
-            chunks = layout_chunks(db, key, kit, fill_scope, use_ai_images,
-                                   #  One picture for the run, at the top
-                                   #  of the first page. Every later page
-                                   #  takes the placeholder: five hero
-                                   #  photographs is five waits and five
-                                   #  charges for a look nobody has
-                                   #  approved yet.
-                                   want_image=(i == 0))
+            key = chosen[i] if i < len(chosen) else layout_for(title, i)
+            #  One picture for the run, at the top of the first page --
+            #  five hero photographs is five waits and five charges for a
+            #  look nobody has approved yet. Unless they asked for one
+            #  per page, which is a question on the form and not a
+            #  default.
+            chunks = layout_chunks(
+                db, key, kit, fill_scope, use_ai_images,
+                want_image=(i == 0 or kit.get("banner_per_page", False)))
             pages.append({"title": title, "slug_suffix": "",
                           "sections": sections_for(chunks)})
 

@@ -90,7 +90,7 @@ with app.app_context():
         "SELECT value FROM settings WHERE key = 'site_title'").fetchone()
 
     slug = tg.generate(db, static_folder, name="A Checker Look",
-                       layout_key="landing", page_title="Home", kit=tg.brand_kit(brief=""), fill_scope="none",
+                       kit=tg.brand_kit(brief=""), fill_scope="none",
                        use_ai_images=False)
     db.commit()
 
@@ -164,7 +164,7 @@ with app.app_context():
     print("Two runs are two templates")
     print("-" * 70)
     second = tg.generate(db, static_folder, name="A Checker Look",
-                         layout_key="simple", page_title="Home", kit=tg.brand_kit(brief=""), fill_scope="none",
+                         kit=tg.brand_kit(brief=""), fill_scope="none",
                          use_ai_images=False)
     db.commit()
     check("the same name twice does not collide", second != slug,
@@ -178,7 +178,7 @@ with app.app_context():
     print("-" * 70)
     REPLIES["content"] = json.dumps(ANSWER)
     written = tg.generate(db, static_folder, name="Bakery Look",
-                          layout_key="landing", page_title="Home", kit=tg.brand_kit(brief="a corner bakery"), fill_scope="all", use_ai_images=False)
+                          kit=tg.brand_kit(brief="a corner bakery"), fill_scope="all", use_ai_images=False)
     db.commit()
     wdir = os.path.join(static_folder, "themes", written, "pages")
     wdata = json.load(io.open(
@@ -190,7 +190,7 @@ with app.app_context():
     #  Words are words. A stray "<" in a headline is a headline.
     REPLIES["content"] = json.dumps(dict(ANSWER, hero_headline="Bread & <b>butter</b>"))
     escaped = tg.generate(db, static_folder, name="Escaped Look",
-                          layout_key="simple", page_title="Home", kit=tg.brand_kit(brief="x"), fill_scope="all",
+                          kit=tg.brand_kit(brief="x"), fill_scope="all",
                           use_ai_images=False)
     db.commit()
     edir = os.path.join(static_folder, "themes", escaped, "pages")
@@ -207,7 +207,7 @@ with app.app_context():
     #  doing nothing.
     REPLIES["content"] = ""
     try:
-        tg.generate(db, static_folder, name="Nope", layout_key="simple",
+        tg.generate(db, static_folder, name="Nope",
                     kit=tg.brand_kit(brief="something"), fill_scope="all", use_ai_images=False)
         check("an empty reply is refused", False, "it went through")
     except tg.ThemeGenError as e:
@@ -219,7 +219,7 @@ with app.app_context():
 
     REPLIES["content"] = "I'm afraid I can't do that."
     try:
-        tg.generate(db, static_folder, name="Nope", layout_key="simple",
+        tg.generate(db, static_folder, name="Nope",
                     kit=tg.brand_kit(brief="something"), fill_scope="all", use_ai_images=False)
         check("prose instead of content is refused", False, "it went through")
     except tg.ThemeGenError as e:
@@ -228,19 +228,16 @@ with app.app_context():
               str(e))
 
     try:
-        tg.generate(db, static_folder, name="Nope", layout_key="simple",
+        tg.generate(db, static_folder, name="Nope",
                     kit=tg.brand_kit(brief=""), fill_scope="all", use_ai_images=False)
         check("no brief is refused before anything is spent", False, "it went through")
     except tg.ThemeGenError as e:
         check("no brief is refused before anything is spent",
               "describe" in str(e).lower(), str(e))
 
-    try:
-        tg.generate(db, static_folder, name="Nope", layout_key="nonsense",
-                    kit=tg.brand_kit(brief="x"), fill_scope="none", use_ai_images=False)
-        check("an unknown layout is refused", False, "it went through")
-    except tg.ThemeGenError:
-        check("an unknown layout is refused", True)
+    #  There is no "unknown layout" to refuse any more: nobody picks
+    #  one. A shape the model invents is dropped in design() and the page
+    #  name decides instead -- checked above.
 
     print()
     print("One kit, read by everything in the run")
@@ -275,7 +272,7 @@ with app.app_context():
     print()
     print("The look travels with the template, not over the site")
     print("-" * 70)
-    looked = tg.generate(db, static_folder, name="Looked", layout_key="simple",
+    looked = tg.generate(db, static_folder, name="Looked",
                          kit=kit, fill_scope="all", use_ai_images=False)
     db.commit()
     man = json.load(io.open(os.path.join(
@@ -297,7 +294,7 @@ with app.app_context():
     real = assistant._call_provider
     assistant._call_provider = lambda db, m, t: (asked.__setitem__("n", asked["n"] + 1),
                                                  {"content": REPLIES["content"]})[1]
-    shown = tg.plan(db, kit, "A plan", pages_wanted=["Home"], layout_key="landing")
+    shown = tg.plan(db, kit, "A plan", pages_wanted=["Home"])
     assistant._call_provider = real
     check("the plan asks the provider nothing", asked["n"] == 0, str(asked["n"]))
     check("...and says how many sections", shown["sections"] == 4, str(shown))
@@ -306,14 +303,14 @@ with app.app_context():
     check("...in the language it will write",
           shown["language"] == "German", str(shown["language"]))
     blank = tg.plan(db, tg.brand_kit(brief="", image_budget="0"), "Nothing",
-                    pages_wanted=["Home"], layout_key="simple", use_ai_images=False)
+                    pages_wanted=["Home"], use_ai_images=False)
     check("a run that asks nobody says so", blank["calls"] == 0 and not blank["writes"],
           str(blank))
     #  The flaw this check found: the plan promised a picture without
     #  knowing whether the run could make one. It reads the same answers
     #  the run does now.
     no_pics = tg.plan(db, kit, "No pictures", pages_wanted=["Home"],
-                      layout_key="landing", use_ai_images=False)
+                      use_ai_images=False)
     check("...and a plan promises no picture the run will not make",
           no_pics["pictures"] == 0 and no_pics["placeholders"] >= 1, str(no_pics))
     check("...counting only the words as its cost", no_pics["calls"] == 1, str(no_pics))
@@ -480,11 +477,116 @@ with app.app_context():
           tg.MODE_NEEDS["reskin"] == ())
     check("...a rewrite needs the voice and nothing else",
           tg.MODE_NEEDS["rewrite"] == ("voice",))
-    check("...and writing new needs all four",
-          set(tg.MODE_NEEDS["scratch"]) == {"brief", "pages", "layout", "voice"})
-    for needed in ("brief", "pages", "layout", "voice"):
+    #  Three, not four: the page shape is no longer a row anybody fills
+    #  in -- it is decided from the description and shown in the plan.
+    check("...and writing new needs the description, the pages and the voice",
+          set(tg.MODE_NEEDS["scratch"]) == {"brief", "pages", "voice"},
+          str(tg.MODE_NEEDS["scratch"]))
+    for needed in ("brief", "pages", "voice"):
         check("the form has a row for %s" % needed,
               'data-needs="%s"' % needed in screen)
+
+    print()
+    print("The look is decided from the description, not picked from a list")
+    print("-" * 70)
+    #  The screen used to ask an owner to pick a "front page shape" from
+    #  three named skeletons, and colours from a list whose first entry
+    #  was "the standard colours". Both are this app's vocabulary, and
+    #  neither is a question somebody opening this for the first time can
+    #  answer. What they CAN describe is their business.
+    from app.services.design import FONT_PAIRINGS, SHAPE_PRESETS, SHADOW_PRESETS
+
+    REPLIES["content"] = json.dumps({
+        "primary": "#1d6b58", "secondary": "#16403a", "accent": "#d94f2b",
+        "fonts": "cormorant-jost", "shape": "soft", "shadow": "subtle",
+        "pages": [{"title": "Home", "shape": "landing"},
+                  {"title": "Our story", "shape": "about"},
+                  {"title": "Contact", "shape": "simple"}],
+        "why": "Warm and unfussy, like a corner bakery.",
+    })
+    look = tg.design(db, tg.brand_kit(brief="a corner bakery"),
+                     ["Home", "Our story", "Contact"])
+    check("it chooses colours", look["colours"] == ["#1d6b58", "#16403a", "#d94f2b"],
+          str(look["colours"]))
+    check("...a typeface pairing this app actually has",
+          look["fonts"] in FONT_PAIRINGS, look["fonts"])
+    check("...corners and depth it actually has",
+          look["shape"] in SHAPE_PRESETS and look["shadow"] in SHADOW_PRESETS,
+          "%s / %s" % (look["shape"], look["shadow"]))
+    check("...a shape for every page",
+          look["pages"] == ["landing", "about", "simple"], str(look["pages"]))
+    check("...and says why, for the owner to read", bool(look["why"]), look["why"])
+
+    #  The important half: a model naming something this app does not
+    #  have would otherwise be a look that silently falls back to
+    #  nothing, or worse, a font that does not load.
+    REPLIES["content"] = json.dumps({
+        "primary": "not a colour", "secondary": "#GGGGGG", "accent": "#1d6b58",
+        "fonts": "helvetica-neue-ultra", "shape": "bouncy", "shadow": "enormous",
+        "pages": [{"title": "Home", "shape": "cinematic"}],
+        "why": "",
+    })
+    junk = tg.design(db, tg.brand_kit(brief="a bakery"), ["Home"])
+    check("a colour that is not a colour is dropped",
+          junk["colours"] == ["#1d6b58"], str(junk["colours"]))
+    check("...a font this app does not have is dropped", junk["fonts"] == "",
+          junk["fonts"])
+    check("...a shape and a depth it does not have too",
+          junk["shape"] == "" and junk["shadow"] == "",
+          "%s / %s" % (junk["shape"], junk["shadow"]))
+    check("...and a page shape it does not have falls back to the name",
+          junk["pages"] == ["landing"], str(junk["pages"]))
+
+    #  What somebody picked themselves always wins over what was worked
+    #  out for them.
+    mine = tg.with_design(
+        tg.brand_kit(brief="x", fonts="grotesk-inter"),
+        {"colours": ["#1d6b58"], "fonts": "cormorant-jost", "shape": "pill",
+         "shadow": "floating"})
+    check("a font picked by hand beats one that was chosen",
+          mine["fonts"] == "grotesk-inter", mine["fonts"])
+    check("...and the rest is filled in", mine["shape"] == "pill"
+          and bool(mine["palette"]), str(mine["shape"]))
+
+    print()
+    print("Every page asked for is a page made")
+    print("-" * 70)
+    REPLIES["content"] = json.dumps(ANSWER)
+    five = tg.generate(db, static_folder, name="Five Pager",
+                       kit=tg.brand_kit(brief="a corner bakery"),
+                       fill_scope="all", use_ai_images=False,
+                       pages_wanted=["Home", "Our story", "What we bake",
+                                     "Find us", "Contact"],
+                       looked={"pages": ["landing", "about", "simple",
+                                         "simple", "simple"], "asked": True})
+    db.commit()
+    made = sorted(os.listdir(os.path.join(static_folder, "themes", five, "pages")))
+    check("five asked for, five made", len(made) == 5, ", ".join(made))
+    check("...in the order they were asked for",
+          made[0].startswith("00-home") and made[4].startswith("04-contact"),
+          ", ".join(made))
+    #  The shape each page was given is the one the design chose, not the
+    #  one its name would have suggested.
+    story = json.load(io.open(os.path.join(
+        static_folder, "themes", five, "pages", made[1]), encoding="utf-8"))
+    check("...and each is the shape it was given",
+          len(story["sections"]) == 3, str(len(story["sections"])))
+
+    print()
+    print("A banner for every page, when that is asked for")
+    print("-" * 70)
+    per_page = tg.plan(db, tg.brand_kit(brief="a bakery", banner_per_page=True),
+                       "Banners", pages_wanted=["Home", "About", "Contact"],
+                       looked={"pages": ["landing", "about", "simple"], "asked": True})
+    check("three pages, three pictures", per_page["pictures"] == 3, str(per_page))
+    one = tg.plan(db, tg.brand_kit(brief="a bakery"), "One",
+                  pages_wanted=["Home", "About", "Contact"],
+                  looked={"pages": ["landing", "about", "simple"], "asked": True})
+    check("...and one otherwise, at the top of the front page",
+          one["pictures"] == 1, str(one["pictures"]))
+    check("...which is said in what it costs",
+          per_page["calls"] > one["calls"],
+          "%d vs %d" % (per_page["calls"], one["calls"]))
 
 print()
 print("  %d ok, %d failed" % (passed, len(failures)))

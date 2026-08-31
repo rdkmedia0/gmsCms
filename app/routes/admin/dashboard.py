@@ -242,23 +242,23 @@ def help():
 @bp.route("/theme-generator", methods=["GET", "POST"])
 @login_required
 def theme_generator():
-    """Generate a look, and hand it back as a template to look at.
+    """Describe the business; the look is worked out from that.
 
-    Two steps on purpose. "Show me the plan" costs nothing and spends
-    nothing: it says which sections will be made, how many pictures, and
-    how many calls to the provider. Only the second press runs it. A
-    generator that spends real money and minutes on a misunderstanding,
-    and says so afterwards, gets used once.
+    It used to ask an owner to pick a "front page shape" from three named
+    skeletons and colours from a list beginning "the standard colours" --
+    internal vocabulary, and neither a question somebody opening this for
+    the first time can answer. What they CAN describe is their business,
+    so that is what it asks, and the design is derived from it.
 
-    Thin, like every route here: parse the request, call one service
-    function, say what happened.
+    Two steps, still. "Show me the plan" works out the LOOK -- one
+    request -- and shows the colours, the typefaces, the shapes and why,
+    before a word of content is written. Only the second press writes
+    anything.
     """
     db = get_db()
     if request.method == "POST":
-        #  A page somebody likes the look of. STYLE only -- colours,
-        #  typefaces, corners, depth. Never its words, its pictures or
-        #  its markup: see services/style_extract.py, which cannot
-        #  return prose at all.
+        #  A page somebody likes the look of. STYLE only -- see
+        #  services/style_extract.py, which cannot return prose at all.
         signals, ref_note = None, None
         reference = (request.form.get("reference_url") or "").strip()
         if reference:
@@ -267,7 +267,7 @@ def theme_generator():
             except style_extract.RefusedError as e:
                 ref_note = str(e)
             except Exception:                                 # noqa: BLE001
-                ref_note = "That page could not be read — check the address."
+                ref_note = "That page could not be read \u2014 check the address."
 
         kit = theme_generator_mod.brand_kit(
             brief=(request.form.get("brief") or "").strip(),
@@ -275,14 +275,12 @@ def theme_generator():
             voice=request.form.get("voice", "we"),
             reading=request.form.get("reading", "normal"),
             language=request.form.get("language", "English"),
-            palette=_preset_palette(request.form.get("color_preset", "")),
+            colour_note=(request.form.get("colour_note") or "").strip(),
+            banner_per_page=request.form.get("banner_per_page") == "1",
             fonts=request.form.get("fonts", ""),
             shape=request.form.get("shape", ""),
             shadow=request.form.get("shadow", ""),
             image_budget=request.form.get("image_budget", "1"),
-            #  What was read from the reference is a STARTING value: a
-            #  colour picked by hand always wins over one guessed from a
-            #  URL, and every one of them is shown before anything runs.
             ref_colours=(signals or {}).get("colours"),
         )
         if signals:
@@ -290,23 +288,25 @@ def theme_generator():
             kit["shadow"] = kit["shadow"] or signals["shadow"]
         if ref_note:
             flash(ref_note, "warning")
+
         name = (request.form.get("name") or "").strip()
-        layout_key = request.form.get("layout", "landing")
         mode = request.form.get("mode", "scratch")
         if mode not in dict(theme_generator_mod.MODES):
             mode = "scratch"
-        #  The Pages list is the only place pages are named. There was a
-        #  second field holding one name, from when this made one page,
-        #  and it sat under a list of three saying the page was called
-        #  Home -- two controls for one answer, one of them lying.
         wanted = theme_generator_mod.page_list(request.form.get("pages", "")) or ["Home"]
 
-        #  Looking is free. Everything below this line costs something.
+        #  The look, decided once. Carried across the two presses in the
+        #  form, so the run cannot come out different from the plan --
+        #  and so it is not paid for twice.
+        looked = _carried_look(request.form)
+        if looked is None and mode == "scratch":
+            looked = theme_generator_mod.design(db, kit, wanted)
+        kit = theme_generator_mod.with_design(kit, looked or {})
+
         if request.form.get("preview"):
             try:
                 shown = theme_generator_mod.plan(
-                    db, kit, name, mode=mode, pages_wanted=wanted,
-                    layout_key=layout_key,
+                    db, kit, name, mode=mode, pages_wanted=wanted, looked=looked,
                     use_ai_images=request.form.get("use_ai_images") == "1",
                     fill_scope=theme_generator_mod.fill_scope_for(mode))
             except theme_generator_mod.ThemeGenError as e:
@@ -314,30 +314,49 @@ def theme_generator():
                 return redirect(url_for("admin.theme_generator"))
             return render_template("admin/theme_generator.html",
                                    plan=shown, form=request.form,
-                                   signals=signals, kit=kit,
+                                   signals=signals, kit=kit, looked=looked,
                                    **_theme_generator_context(db))
 
         try:
             slug = theme_generator_mod.generate(
                 db, current_app.static_folder, name=name, kit=kit,
-                #  Derived from the mode, like the plan's. There is no
-                #  fill_scope control any more -- it was a second field
-                #  asking the same question as Words.
                 fill_scope=theme_generator_mod.fill_scope_for(mode),
                 use_ai_images=request.form.get("use_ai_images") == "1",
-                mode=mode, pages_wanted=wanted, layout_key=layout_key)
+                mode=mode, pages_wanted=wanted, looked=looked)
         except theme_generator_mod.ThemeGenError as e:
             flash(str(e), "error")
             return redirect(url_for("admin.theme_generator"))
         db.commit()
         made = db.execute("SELECT name FROM templates WHERE slug = ?", (slug,)).fetchone()
-        flash("Made “%s”. Nothing on your site has changed — look at "
+        flash("Made \u201c%s\u201d. Nothing on your site has changed \u2014 look at "
               "it first, and use it when you are ready."
               % (made["name"] if made else slug), "success")
         return redirect(url_for("admin.templates_screen"))
 
     return render_template("admin/theme_generator.html",
                            **_theme_generator_context(db))
+
+
+def _carried_look(form):
+    """The design worked out for the plan, carried to the run.
+
+    Passed through the form as hidden fields rather than worked out
+    again: asking twice costs a second request and can come back
+    different, and "Make it" would then make something other than what
+    was shown.
+    """
+    shapes = [s for s in form.getlist("look_page") if s]
+    if not shapes:
+        return None
+    return {
+        "colours": [c for c in form.getlist("look_colour") if c],
+        "fonts": form.get("look_fonts", ""),
+        "shape": form.get("look_shape", ""),
+        "shadow": form.get("look_shadow", ""),
+        "pages": shapes,
+        "why": form.get("look_why", ""),
+        "asked": True,
+    }
 
 
 def _preset_palette(preset):

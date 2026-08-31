@@ -1,0 +1,57 @@
+{#  The LOOK, decided from the description.
+
+    The screen used to ask an owner to pick a "front page shape" from
+    three named skeletons and colours from a list including "the standard
+    colours" -- internal vocabulary, and a question a person opening this
+    for the first time has no way to answer. What they can describe is
+    their business.
+
+    So the model chooses, from THIS APP'S OWN vocabularies, which are
+    listed below and are the only permitted answers. It is picking values
+    the existing controls already carry -- never writing CSS, never
+    inventing a font, never naming a shape this app does not have. The
+    caller validates every one against the same lists and falls back
+    rather than trusting; this prompt is the polite half of that. #}
+You are choosing the visual identity for a small business website, from a
+fixed set of options. You may not invent options.
+
+The site:
+{{ kit.brief }}
+
+{% if kit.colour_note %}What they said about colour: {{ kit.colour_note }}
+{% endif %}
+{% if kit.tone_label %}How it should come across: {{ kit.tone_label|lower }}.
+{% endif %}
+
+The pages they want, in order — the first is the front page:
+{% for title in pages %}{{ loop.index }}. {{ title }}
+{% endfor %}
+
+Choose:
+
+1. Three colours as hex values — a primary, a secondary that sits with it, and
+   an accent that genuinely contrasts. They must work as a set on a light page,
+   and dark enough that white text on the primary is readable.
+   {% if kit.colour_note %}Honour what they said about colour above.{% endif %}
+
+2. A typeface pairing, by key, from exactly this list:
+{% for key, name in fonts %}   - {{ key }} — {{ name }}
+{% endfor %}
+
+3. A corner style, by key, from exactly this list: {{ shapes|join(', ') }}.
+   Sharp for formal or corporate, soft or rounded for friendly, pill only for
+   something deliberately playful.
+
+4. A shadow depth, by key, from exactly this list: {{ shadows|join(', ') }}.
+
+5. For each page, a shape from exactly this list: {{ layouts|join(', ') }}.
+   "landing" is a banner, an intro, three cards and a closing banner — right for
+   a front page. "about" is a banner, a longer story and a closing banner.
+   "simple" is a banner and one block of writing — right for contact, terms, or
+   anything short.
+
+6. One sentence saying why this look suits this business. It is shown to the
+   owner before anything is made, so write it for them, not for a designer.
+
+Respond with ONLY a JSON object matching exactly this shape — no markdown fences, no commentary:
+{{ schema }}
