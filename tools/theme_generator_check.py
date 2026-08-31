@@ -404,77 +404,137 @@ with app.app_context():
           and "Only one line" not in dbody, dbody[:140])
 
     print()
-    print("A reference gives style, and only style")
+    print("A picture gives style, and only style")
     print("-" * 70)
-    from app.services import style_extract as sx                  # noqa: E402
-    for bad, why in (("file:///etc/passwd", "not http"),
-                     ("http://127.0.0.1/", "loopback"),
-                     ("http://10.0.0.1/", "private"),
-                     ("nonsense", "not a url")):
+    import base64                                                   # noqa: E402
+    from app.services import look_from_picture as lp                # noqa: E402
+    js = io.open("/app/app/static/js/admin/theme-generator.js", encoding="utf-8").read()
+    screen = io.open("/app/app/templates/admin/theme_generator.html",
+                     encoding="utf-8").read()
+
+    #  There WAS a "paste a link" field that fetched the page and read
+    #  its CSS. It went for reasons an install's owner cares about more
+    #  than we do -- a server reaching out to third-party pages
+    #  repeatedly, from one address, is what a scraper looks like, and
+    #  being taken for one costs THEM their reachability -- and because
+    #  it was refused by exactly the sites people most want to point at:
+    #  a bot check answers with a challenge page, and a challenge page
+    #  HAS colours, so the reader "succeeded" and returned the wrong
+    #  ones.
+    check("nothing is fetched from anywhere any more",
+          not os.path.exists("/app/app/services/style_extract.py"))
+    route = io.open("/app/app/routes/admin/dashboard.py", encoding="utf-8").read()
+    check("...and the route asks for no link",
+          "reference_url" not in route and "style_extract" not in route)
+
+    #  A picture is checked against what it IS, never what it is called:
+    #  a filename is a client-supplied string, and this one is about to
+    #  be sent to a model.
+    png = b"\x89PNG\r\n\x1a\n" + b"\0" * 40
+    check("a png is recognised by its bytes", lp._sniff(png) == "image/png")
+    check("...a jpeg too", lp._sniff(b"\xff\xd8\xff\xe0" + b"\0" * 20) == "image/jpeg")
+    check("...and a lie is not", lp._sniff(b"MZ\x90\0 this is an exe") is None)
+
+    def _as_sent(blob, kind="image/png"):
+        return "data:%s;base64,%s" % (kind, base64.b64encode(blob).decode())
+
+    got = lp.accept(_as_sent(png))
+    check("an honest picture is taken", got[0] == "image/png" and got[1] == png)
+    for blob, why in ((b"MZ\x90\0 not a picture", "not a picture"),
+                      (png + b"\0" * (lp.MAX_BYTES + 8), "too large"),
+                      (b"", "empty")):
         try:
-            sx.fetch(bad)
-            check("refused: %s" % why, False, "it was fetched")
-        except sx.RefusedError:
+            lp.accept(_as_sent(blob))
+            check("refused: %s" % why, False, "it was taken")
+        except lp.PictureError:
             check("refused: %s" % why, True)
-        except Exception as e:                                    # noqa: BLE001
-            check("refused: %s" % why, False, type(e).__name__)
+    for bad, why in (("/etc/passwd", "not a picture at all"),
+                     ("data:image/png;base64,@@@@", "not really base64")):
+        try:
+            lp.accept(bad)
+            check("refused: %s" % why, False, "it was taken")
+        except lp.PictureError:
+            check("refused: %s" % why, True)
 
-    css = ('<style>body{font-family:"Spectral",Georgia,serif;color:#16201c}'
-           '.b{background:#1d6b58;border-radius:18px;'
-           'box-shadow:0 4px 28px rgba(0,0,0,.2)}'
-           '.c{background:#d94f2b;border-radius:20px}</style>'
-           '<h1>Their headline</h1><p>Their words, which must not travel.</p>')
-    check("it reads the colours",
-          sx._interesting(sx._colours(css))[:2] == ["#1d6b58", "#d94f2b"],
-          str(sx._interesting(sx._colours(css))))
-    check("...the typefaces", sx._fonts(css) == ["Spectral"], str(sx._fonts(css)))
-    check("...the corners", sx._shape(css) == "rounded", sx._shape(css))
+    #  Measured against a real vision model: 943 KB was refused outright
+    #  and 87 KB came back EMPTY -- no error, no words, which reads
+    #  exactly like a model with nothing to say. The browser shrinks a
+    #  picture to around 40 KB; this is what stops anything else through.
+    check("a picture too big for a model to answer is refused, not sent",
+          lp.MAX_BYTES <= 512 * 1024, str(lp.MAX_BYTES))
+    check("...and the browser shrinks it before it gets that far",
+          "SEND_SIDE" in js and "toDataURL" in js)
+    #  Quality is not a size: the same 0.78 gave 47 KB on a screenshot
+    #  and 70 KB on a photograph, and 70 was over the line a model
+    #  answered at. What varies is the picture, so the number held fixed
+    #  has to be the one that matters.
+    check("...to a size, not just to a quality",
+          "SEND_MAX_KB" in js and "SEND_QUALITIES" in js)
+    check("...only when there are eyes at the other end",
+          "data-send-picture" in js and "data-send-picture" in screen)
 
-    #  Every one of these was a real page that came back with NOTHING,
-    #  silently, and looked exactly like a page that simply had no
-    #  colours.
-    #
-    #  A response is often COMPRESSED whether or not you ask -- python.org
-    #  is -- and reading a gzip stream as text gives binary noise.
-    import gzip
-    packed = gzip.compress(css.encode())
-    check("a gzipped page is read, not parsed as noise",
-          "#1d6b58" in sx._decoded(packed, "gzip"), sx._decoded(packed, "gzip")[:40])
-    check("...and an uncompressed one still is",
-          "#1d6b58" in sx._decoded(css.encode(), ""))
+    #  The boundary the link reader had, kept: what comes back is words
+    #  from THIS APP'S own lists, so a picture cannot carry somebody's
+    #  copy into a generated site.
+    from app.services.design import FONT_PAIRINGS, SHAPE_PRESETS, SHADOW_PRESETS
+    vocab = ([(k, v["name"]) for k, v in FONT_PAIRINGS.items()],
+             list(SHAPE_PRESETS), list(SHADOW_PRESETS))
 
-    #  A <link> does not have to write rel before href, and requiring it
-    #  read zero stylesheets off python.org.
-    check("a stylesheet is found whichever order the attributes are in",
-          sx._stylesheet_hrefs('<link href="/a.css" rel="stylesheet">') == ["/a.css"]
-          and sx._stylesheet_hrefs('<link rel="stylesheet" href="/b.css">') == ["/b.css"])
+    state = {"said": {}}
 
-    #  Tailwind v4 and everything built on it writes colours as oklch(),
-    #  and hsl() has been ordinary for years. A reader that knows only
-    #  hex and rgb() returns nothing from a large share of modern sites.
-    modern = sx._colours(".a{color:hsl(210 100% 40%)} .b{color:oklch(0.7 0.15 250)}")
-    check("colours written as hsl() and oklch() are read",
-          len(modern) == 2, str(modern))
+    def _pretend(db_, messages, tools_):
+        return {"content": json.dumps(state["said"])}
 
-    #  A var(--font-body) is not a typeface: it is a name for one, and
-    #  showing it as "the typeface we found" shows somebody their own
-    #  variable.
-    varred = sx._fonts(":root{--f: 'Spectral', serif} body{font-family: var(--f)}")
-    check("a font behind a variable is resolved, not shown as the variable",
-          varred == ["Spectral"], str(varred))
-    check("...and an unresolvable one is dropped",
-          sx._fonts("body{font-family: var(--nowhere)}") == [],
-          str(sx._fonts("body{font-family: var(--nowhere)}")))
-    check("...and the depth", sx._shadow(css) == "floating", sx._shadow(css))
+    from app import assistant as asst                               # noqa: E402
+    real = asst._call_provider
+    asst._call_provider = _pretend
+    try:
+        with app.test_request_context("/"):
+            state["said"] = {"fonts": list(FONT_PAIRINGS)[1], "shape": "rounded",
+                             "shadow": "soft", "feel": "warm and unfussy"}
+            read = lp.read_with_model(db, "image/png", png, vocab)
+            check("the model names a look from the app's own lists",
+                  read.get("shape") == "rounded"
+                  and read.get("fonts") == list(FONT_PAIRINGS)[1], str(read))
+            check("...and three or four words for how it feels",
+                  read.get("feel") == "warm and unfussy")
 
-    #  The boundary, asserted rather than intended: there is nothing in
-    #  what this returns that could carry somebody's words.
-    read = {"colours": sx._interesting(sx._colours(css)), "fonts": sx._fonts(css),
-            "shape": sx._shape(css), "shadow": sx._shadow(css)}
-    flat = json.dumps(read)
-    check("their words are not in what it read",
-          "Their headline" not in flat and "must not travel" not in flat, flat[:120])
-    check("...and neither is their markup", "<" not in flat and "class=" not in flat)
+            #  A model naming a font this app cannot load is a look that
+            #  silently falls back to nothing.
+            state["said"] = {"fonts": "Comic Sans MS", "shape": "brutalist",
+                             "shadow": "neon", "feel": "loud"}
+            read = lp.read_with_model(db, "image/png", png, vocab)
+            check("an answer outside the lists is dropped, not applied",
+                  read.get("fonts") == "" and read.get("shape") == ""
+                  and read.get("shadow") == "", str(read))
+
+            #  The prompt says do not read the page's words back, and a
+            #  model that ignores it must not be able to smuggle markup.
+            state["said"] = {"fonts": "", "shape": "", "shadow": "",
+                             "feel": "<b>Their headline</b>"}
+            read = lp.read_with_model(db, "image/png", png, vocab)
+            check("...and what it says about the feel is short, plain words",
+                  len(read.get("feel", "")) <= 80, str(read))
+
+            asst._call_provider = lambda *a, **k: {"content": "I cannot see images."}
+            check("a model that says nothing useful gives nothing, not junk",
+                  lp.read_with_model(db, "image/png", png, vocab) == {})
+
+            def _explodes(*a, **k):
+                raise RuntimeError("no vision on this model")
+
+            asst._call_provider = _explodes
+            check("...and a provider that refuses does not take the screen down",
+                  lp.read_with_model(db, "image/png", png, vocab) == {})
+    finally:
+        asst._call_provider = real
+
+    #  Said before somebody meets it, not after: a control that quietly
+    #  does nothing is worse than one that is missing.
+    seeing, why = lp.can_see(db)
+    check("whether a model can look at a picture is answered", isinstance(seeing, bool))
+    check("...and a no comes with the reason and the way round it",
+          seeing or ("colour" in why.lower() and len(why) > 30), why)
 
     from_ref = tg.brand_kit(ref_colours=["#1d6b58", "#d94f2b"])
     check("read colours become a palette",
@@ -640,15 +700,16 @@ with app.app_context():
     check("...and described in words", 'name="colour_note"' in screen)
 
     print()
-    print("Several things you like, a link or a picture")
+    print("Several pictures you like")
     print("-" * 70)
     check("more than one can be given",
           "data-add-reference" in screen and "data-references" in screen)
-    check("...each is a link OR a picture",
-          'name="reference_url"' in screen and "data-reference-image" in screen)
-    #  A picture has nothing to parse, and reading what is IN a photograph
-    #  needs a provider that can see -- which not every one can. So its
-    #  colours are sampled in the BROWSER and only hex values are sent.
+    check("...each of them a picture",
+          "data-reference-image" in screen and 'name="reference_url"' not in screen)
+    #  The colours are worked out in the BROWSER and sent as hex values.
+    #  That is the part that always works: arithmetic on pixels needs no
+    #  provider, so an install with no model at all still gets a palette
+    #  out of a screenshot.
     js = io.open("/app/app/static/js/admin/theme-generator.js", encoding="utf-8").read()
     check("a picture's colours are read in the browser",
           "getImageData" in js and 'name = "ref_colour"' in js)
@@ -663,16 +724,31 @@ with app.app_context():
     #  accent.
     check("...weighted by how decided a colour is", "sat * sat" in js)
     check("...and the three are actually different from each other",
-          "< 90" in js and "near" in js)
-    check("...and the picture itself is never uploaded",
+          "function distinct(" in js and "distinct(found.strong, 3, 90)" in js)
+    check("...and the colours need no provider at all",
           "FormData" not in js and "fetch(" not in js)
-    check("...and the screen says a picture gives colours only",
-          "colours only" in screen.lower())
-    route = io.open("/app/app/routes/admin/dashboard.py", encoding="utf-8").read()
-    check("the server takes several references",
-          'getlist("reference_url")' in route and 'getlist("ref_colour")' in route)
+    check("...and the screen says where the colours are read",
+          "in your browser" in screen.lower())
+    check("the server takes the sampled colours", 'getlist("ref_colour")' in route)
     check("...and checks a sampled colour is a colour",
           "[0-9a-fA-F]{6}" in route)
+    #  A file cannot travel through the second press, so what was read
+    #  from it does -- otherwise "Make it" would read the picture again,
+    #  another request, and possibly a different answer than the one on
+    #  screen.
+    #  The file itself is never submitted -- the input has no name. What
+    #  travels is what the browser MADE of it: hex colours always, and a
+    #  small jpeg copy only when something at the other end can look.
+    check("the picture file itself is never uploaded",
+          'name="reference_image"' not in screen and "reference_image" not in route)
+    check("...and what was read from it survives the second press",
+          'name="ref_feel"' in screen and 'name="ref_shape"' in screen)
+    check("...which the route reads back rather than asking again",
+          'request.form.get("ref_" + k)' in route)
+    #  A picture is a starting value for every one of these: what
+    #  somebody chose by hand always wins.
+    check("a hand-picked shape beats one read from a picture",
+          'kit["shape"] = kit["shape"] or signals' in route)
 
 print()
 print("  %d ok, %d failed" % (passed, len(failures)))

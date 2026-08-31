@@ -8,7 +8,7 @@ from ...db import get_db
 from ...services import blog as blog_service
 from ... import assistant, ai_image
 from ...services import theme_generator as theme_generator_mod
-from ...services import style_extract
+from ...services import look_from_picture
 from ...services.design import FONT_PAIRINGS, SHAPE_PRESETS, SHADOW_PRESETS
 from ...services.palette import _match_palette_roles, color_scheme_choices
 from ...services.sections import _insert_layout_chunks
@@ -257,43 +257,28 @@ def theme_generator():
     """
     db = get_db()
     if request.method == "POST":
-        #  Pages and pictures somebody likes the look of. STYLE only --
-        #  see services/style_extract.py, which cannot return prose at
-        #  all.
+        #  Pictures somebody likes the look of. STYLE only, and nothing
+        #  is fetched from anywhere.
         #
-        #  A page is READ here, by this app, with no AI involved: the
-        #  colours, the typefaces, the corners and the depth come out of
-        #  its CSS. A picture is different -- there is nothing to parse,
-        #  and reading a photograph needs a model that can see, which not
-        #  every provider has. So a picture's colours are sampled in the
-        #  BROWSER and arrive as plain hex values. That works whatever
-        #  the provider can do, and the picture never leaves the machine
-        #  it was chosen on.
-        signals, ref_notes = None, []
-        seen_colours = []
-        for reference in request.form.getlist("reference_url"):
-            reference = (reference or "").strip()
-            if not reference:
-                continue
-            try:
-                got = style_extract.signals(reference)
-            except style_extract.RefusedError as e:
-                ref_notes.append("%s \u2014 %s" % (reference, e))
-                continue
-            except Exception:                                 # noqa: BLE001
-                ref_notes.append("%s could not be read \u2014 check the address."
-                                 % reference)
-                continue
-            seen_colours.extend(got["colours"])
-            #  The first page that answered sets the shape and the type;
-            #  the rest add their colours. Merging two sites' typefaces
-            #  would be choosing neither.
-            signals = signals or got
-        #  Colours sampled from pictures, in the browser.
-        seen_colours.extend([c for c in request.form.getlist("ref_colour")
-                             if re.match(r"^#[0-9a-fA-F]{6}$", c or "")])
-        for note in ref_notes[:3]:
-            flash(note, "warning")
+        #  There WAS a "paste a link" field here that fetched the page
+        #  and read its CSS. It went for two reasons an install's owner
+        #  cares about more than we do: a small site's server reaching
+        #  out to third-party pages, repeatedly, from one address, is
+        #  what a scraper looks like -- and being taken for one costs
+        #  THEM their reachability. And it was refused by exactly the
+        #  sites people most want to point at, because a bot check
+        #  answers with a challenge page, and a challenge page has
+        #  colours, so the reader "succeeded" and returned the wrong
+        #  ones.
+        #
+        #  A screenshot has none of those problems. Its colours are
+        #  worked out in the browser and arrive as hex values; the
+        #  picture itself is sent only when the model can look at it,
+        #  and only to name the things pixels cannot: the typeface feel,
+        #  the corners, the depth.
+        seen_colours = [c for c in request.form.getlist("ref_colour")
+                        if re.match(r"^#[0-9a-fA-F]{6}$", c or "")]
+        signals = _read_pictures(db, request)
 
         kit = theme_generator_mod.brand_kit(
             brief=(request.form.get("brief") or "").strip(),
@@ -309,11 +294,14 @@ def theme_generator():
             shadow=request.form.get("shadow", ""),
             image_budget=request.form.get("image_budget", "1"),
             ref_colours=seen_colours or None,
-            ref_fonts=(signals or {}).get("fonts"),
+            ref_feel=(signals or {}).get("feel"),
         )
         if signals:
-            kit["shape"] = kit["shape"] or signals["shape"]
-            kit["shadow"] = kit["shadow"] or signals["shadow"]
+            #  Starting values, every one of them: what somebody chose by
+            #  hand always beats what was read from a picture.
+            kit["shape"] = kit["shape"] or signals.get("shape") or ""
+            kit["shadow"] = kit["shadow"] or signals.get("shadow") or ""
+            kit["fonts"] = kit["fonts"] or signals.get("fonts") or ""
 
         name = (request.form.get("name") or "").strip()
         mode = request.form.get("mode", "scratch")
@@ -385,6 +373,57 @@ def _carried_look(form):
     }
 
 
+def _read_pictures(db, request):
+    """What the pictures say about a look, beyond their colours.
+
+    The colours are already worked out, in the browser, and arrive as hex
+    values -- arithmetic does that better than a model and needs no
+    provider at all. This is the other half: the typeface feel, the
+    corner style and the depth, which pixels cannot name.
+
+    Carried across the two presses as hidden fields, because a file
+    cannot be: "Show me the plan" reads the picture, and "Make it" must
+    use what was shown rather than reading it again.
+    """
+    carried = {k: (request.form.get("ref_" + k) or "")
+               for k in ("fonts", "shape", "shadow", "feel")}
+    if any(carried.values()):
+        return carried
+
+    #  The FIRST picture only. Three screenshots do not average into a
+    #  typeface, and asking three times costs three requests for one
+    #  answer. The others still contribute their colours.
+    sent = next((p for p in request.form.getlist("ref_picture") if p), "")
+    seeing, why = look_from_picture.can_see(db)
+    if not seeing:
+        #  Said whether or not a picture was chosen: somebody who has
+        #  just uploaded one is owed the reason before they wait for a
+        #  reading that is not coming.
+        if why and request.form.getlist("ref_colour"):
+            flash(why, "warning")
+        return None
+    if not sent:
+        return None
+
+    from ...services.design import FONT_PAIRINGS, SHAPE_PRESETS, SHADOW_PRESETS
+    vocab = ([(k, v["name"]) for k, v in FONT_PAIRINGS.items()],
+             list(SHAPE_PRESETS), list(SHADOW_PRESETS))
+    try:
+        mime, data = look_from_picture.accept(sent)
+    except look_from_picture.PictureError as e:
+        flash(str(e), "warning")
+        return None
+    if not data:
+        return None
+    read = look_from_picture.read_with_model(db, mime, data, vocab)
+    if not read:
+        flash("The model could not tell me anything about that picture's style, "
+              "so its colours are used and the rest is worked out from your "
+              "description.", "warning")
+        return None
+    return read
+
+
 def _chosen_palette(form):
     """Three colours somebody picked, or nothing.
 
@@ -407,6 +446,7 @@ def _chosen_palette(form):
 def _theme_generator_context(db):
     """Everything the screen offers, in one place so the two ways in --
     first visit and coming back with a plan -- cannot drift."""
+    _sees_pictures = look_from_picture.can_see(db)
     return dict(
         layouts=theme_generator_mod.LAYOUTS,
         modes=theme_generator_mod.MODES,
@@ -428,6 +468,11 @@ def _theme_generator_context(db):
         #  A provider that cannot make pictures AT ALL is not the same as
         #  one that is not configured, and needs different words.
         image_gen_reason=ai_image.unavailable_reason(db),
+        #  Whether a picture can be read for more than its colours, said
+        #  before somebody meets it rather than after. Asked ONCE: it is
+        #  a request to the provider, and it was written as two.
+        picture_vision=_sees_pictures[0],
+        picture_vision_note=_sees_pictures[1],
     )
 
 

@@ -465,15 +465,42 @@ def _call_provider(db, messages, tools):
     raise ProviderError("No AI provider is configured.")
 
 
+def _sees(entry):
+    """Whether one Open WebUI model entry can look at a picture.
+
+    Three answers, and the third is the point: True, False, or None for
+    "it does not say". A caller that cannot tell should TRY the model
+    and let it answer, not refuse on its behalf.
+
+    Read from the backend's own capability list, which is the field that
+    means something. Open WebUI also keeps an
+    `info.meta.capabilities.vision`, and it is deliberately NOT read
+    here: measured against a real server it was `true` on all thirteen
+    models, coder models included -- it is the UI's per-model toggle
+    block, defaulted on, not a statement about the weights. **A field
+    that is true for everything answers nothing**, and believing it is
+    how "yes it can see" came to be said about a model that cannot.
+    """
+    listed = (entry.get("ollama") or {}).get("capabilities")
+    if isinstance(listed, list) and listed:
+        return "vision" in listed
+    return None
+
+
 def list_models(provider, url, api_key):
     """Live model list for the Settings page's dropdowns — takes the
     url/key straight from the (possibly-unsaved) form, not from the DB, so
     an admin can test before clicking Save. Each entry is
     {"id": str, "vision": bool} — "vision" is best-effort: Ollama exposes
-    real per-model capability data (queried below), OpenWebUI doesn't
-    expose this at all (always False — not a claim the model lacks
-    vision, just that we can't tell), and Gemini model names reliably
-    indicate it (every current Gemini chat model is multimodal).
+    real per-model capability data (queried below), Open WebUI passes
+    its backend's list through (so an Ollama-backed one is exact, and
+    anything else is None — "it does not say", which is not the same as
+    no), and Gemini model names reliably indicate it (every current
+    Gemini chat model is multimodal). This used to return False for
+    every Open WebUI model on the grounds that it "doesn't expose this";
+    it does, and the cost of that guess landed on somebody uploading a
+    screenshot to a coder model and being told afterwards that nothing
+    could be read from it.
     Raises ProviderError on any failure — the caller shows it inline."""
     if provider == "ollama":
         base = (url or "").rstrip("/")
@@ -503,7 +530,8 @@ def list_models(provider, url, api_key):
             headers["Authorization"] = f"Bearer {api_key}"
         data = _get_json(f"{base}/api/models", headers)
         items = data.get("data") if isinstance(data, dict) else data
-        return [{"id": m.get("id") or m.get("name"), "vision": False} for m in (items or []) if m.get("id") or m.get("name")]
+        return [{"id": m.get("id") or m.get("name"), "vision": _sees(m)}
+                for m in (items or []) if m.get("id") or m.get("name")]
 
     if provider == "gemini":
         if not api_key:

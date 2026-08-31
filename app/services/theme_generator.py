@@ -123,7 +123,7 @@ IMAGE_BUDGETS = (
 def brand_kit(brief="", tone="warm", voice="we", reading="normal",
               language="English", palette=None, fonts="", shape="", shadow="",
               image_budget="1", ref_colours=None, colour_note="",
-              banner_per_page=False, ref_fonts=None):
+              banner_per_page=False, ref_feel=""):
     """One kit, resolved once, read by every prompt and every picture.
 
     Returns plain data -- no db, no request -- so a checker, a script and
@@ -163,12 +163,11 @@ def brand_kit(brief="", tone="warm", voice="we", reading="normal",
         #  a request and a wait per page, which is why it is a question
         #  and not a default.
         "banner_per_page": bool(banner_per_page),
-        #  The typefaces a reference page uses. NOT applied directly --
-        #  this app ships a fixed set of bundled pairings and cannot load
-        #  somebody else's font -- but handed to the design step so it
-        #  can pick the closest one it does have. Read and then ignored
-        #  is worse than not read.
-        "ref_fonts": [f for f in (ref_fonts or []) if f][:4],
+        #  Three or four words for how a picture they showed us FEELS,
+        #  read by a model that could look at it. Handed to the design
+        #  step, because "warm, unfussy, hand-made" is worth more to the
+        #  words and the colours than any font name would be.
+        "ref_feel": (ref_feel or "").strip(),
         #  One direction for every picture in a run. Generating each from
         #  its own section's words is why AI sites look assembled out of
         #  stock: five photographs by five photographers.

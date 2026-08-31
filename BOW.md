@@ -7759,3 +7759,71 @@ The blog checker had a field for this already and it passed the whole
 time, because it asserted the value was *not empty* rather than what the
 value was. A check that a field is filled is not a check that it is
 right — and the wrong sign is exactly the kind of thing that fills it.
+
+
+## 2026-08-31 — the reader that succeeded and was wrong
+
+"A site you like" took a link. The server fetched the page and read its
+stylesheet. Twelve real sites, measured, and four separate bugs fell out
+of the first run — a gzipped response read as text, a `<link>` that wrote
+`href` before `rel`, colours written as `hsl()` or `oklch()`, and
+`var(--font-body)` reported to an owner as the name of their typeface.
+
+All four were fixed, and then the feature was deleted anyway, because
+none of them was the problem.
+
+**The problem is that it worked.** Point it at anything behind a bot
+check and it fetches the challenge page. A challenge page is HTML, it has
+colours, it parses cleanly — so the reader returns a palette, with no
+error, and the palette belongs to Cloudflare. There is no failure to
+report and nothing to log. And the same request, repeated from one
+address across a customer's installs, is what a scraper looks like: the
+cost of being taken for one lands on the owner of the small VPS, not on
+us.
+
+A screenshot has neither problem, and it reads the JavaScript-rendered
+half of the web that the CSS reader silently could not.
+
+### Two readings, because they are two different questions
+
+Colours are arithmetic. They are counted from the pixels in the browser,
+need no provider, and work on an install with no AI at all. Everything
+else — the typeface's feel, the corners, the depth — needs eyes, and is
+asked of the model only when there is a model that has them.
+
+Both halves had to be measured rather than reasoned about:
+
+* A **smoothing** downscale averages neighbouring pixels and invents
+  colours that are in no part of the picture. Hacker News orange came
+  back as three tints of peach. NEAREST fixed it.
+* Weighting by **how much** of a colour there is returns the photograph's
+  background. Weighting by saturation squared returns the decision
+  somebody made.
+* Three colours that are allowed to be similar are three shades of one,
+  and the palette has no secondary and no accent.
+
+### The silence above the ceiling
+
+The 1280x800 screenshot, sent whole, came back HTTP 400. Shrunk to
+1024px — 87 KB — it came back **empty**. No error, no words. That is
+byte-for-byte what a model with nothing to say returns, so the screen
+said "the model could not tell me anything about that picture's style"
+and the real answer was "you sent it too much". 64 KB answered in a
+sentence. The browser now shrinks to 800px before sending, and the
+service refuses anything above 512 KB rather than finding out in silence.
+
+### A field that is true for everything answers nothing
+
+`can_see()` returned an unqualified yes for Open WebUI, on the grounds
+that it does not publish capabilities. It does. Two fields, in fact, and
+one of them is a trap: `info.meta.capabilities.vision` was `true` on all
+thirteen models on this server, coder models included — it is the UI's
+per-model toggle block, defaulted on. Believing it is how you say "yes it
+can see" about a model that cannot. The backend's own capability list is
+exact, and gets `qwen3-coder-16k` right.
+
+So the refusal now names the four models on the same server that can see,
+which is the difference between a message somebody can act on and one
+they can only be annoyed by. And a model that does not say either way is
+TRIED, not refused: not being able to check is not evidence of an
+incapable model.

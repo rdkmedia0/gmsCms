@@ -1,0 +1,35 @@
+{#  What a picture says about a LOOK, in this app's own words.
+
+    The colours are worked out from the pixels and are not asked for
+    here -- arithmetic does that better and needs no provider. What a
+    model can do that pixels cannot is name the FEEL: whether the type
+    is serif or geometric, whether the corners are sharp or soft,
+    whether things sit flat on the page or float above it.
+
+    Every answer is checked against these lists on the way back, because
+    a model naming a font this app cannot load is a look that silently
+    falls back to nothing. This is the polite half of that. #}
+Look at this picture of a website and describe its STYLE, choosing only from
+the options below. You may not invent options.
+
+Do not describe what the page is about, and do not read its words back to me.
+Only how it looks.
+
+1. The typeface pairing from this list that comes CLOSEST in feel to the type in
+   the picture — serif against sans, geometric against humanist, condensed
+   against wide:
+{% for key, name in fonts %}   - {{ key }} — {{ name }}
+{% endfor %}
+
+2. The corner style, by key, from exactly this list: {{ shapes|join(', ') }}.
+   Sharp for square corners, soft for a small radius, rounded for an obvious
+   one, pill for fully round ends.
+
+3. The shadow depth, by key, from exactly this list: {{ shadows|join(', ') }}.
+   None if things sit flat on the page, floating if they lift well off it.
+
+4. Three or four words for the overall feel — for example "warm, unfussy,
+   hand-made" or "precise, corporate, confident".
+
+Respond with ONLY a JSON object matching exactly this shape — no markdown fences, no commentary:
+{{ schema }}

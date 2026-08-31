@@ -661,11 +661,49 @@ What that means for anything added to it:
   rewrite them (same facts, different voice — an answer of the wrong
   shape keeps the original, because a rewrite that drops a phone number
   is a mistake the owner may never find), or write new pages.
-- **A reference page gives style and only style** (`services/style_extract.py`):
-  colours, typefaces, corners, depth. It cannot return prose — there is
-  nothing in its output that could carry somebody's words or pictures —
-  and it refuses any address that is not a public http(s) host, re-checking
-  every redirect hop.
+- **A picture gives style and only style** (`services/look_from_picture.py`):
+  colours, typefaces, corners, depth, and three or four words for how it
+  feels. Nothing it returns could carry somebody's prose, which is the
+  boundary this has always had.
+
+  It was a LINK, fetched and parsed for its CSS, and that went for two
+  reasons an install's owner cares about more than we do. A small site's
+  server reaching out to third-party pages, repeatedly, from one address,
+  is what a scraper looks like — and being taken for one costs THEM their
+  reachability. And it was refused by exactly the sites people most want
+  to point at: a bot check answers with a challenge page, a challenge
+  page HAS colours, so the reader "succeeded" and returned the wrong ones.
+  Measured over twelve real sites it also missed anything that renders
+  itself in JavaScript, GitHub included.
+
+  **The colours are arithmetic and the style is not**, so they are read in
+  two different places. Colours come from the pixels, in the BROWSER
+  (`theme-generator.js`), which needs no provider at all — an install with
+  no AI still gets a palette out of a screenshot. Every rule in that
+  sampler is a measurement: NEAREST rather than smooth, because a
+  smoothing downscale averages neighbours and invents colours that are in
+  no part of the picture (it turned Hacker News orange into three tints of
+  peach); weighted by saturation squared, because a brand colour is a
+  decision and a photograph's average is not; and the three have to differ
+  from each other, or a gradient returns three shades of one and the
+  palette has no secondary and no accent.
+- **What is SENT is a small copy, and only when something can look at it.**
+  The file itself is never uploaded — the input has no `name`. Measured
+  against a real vision model, the full 1280x800 screenshot came back HTTP
+  400, and 87 KB at 1024px came back **empty**: no error, no words, a
+  blank reply indistinguishable from a model with nothing to say. 64 KB
+  answered. So the browser shrinks it to 800px/~40 KB before sending, and
+  `MAX_BYTES` refuses anything a model would choke on rather than
+  discovering it in silence.
+- **Whether the model can see is asked, not guessed.** Both self-hosted
+  providers publish it per model, and a no NAMES the models on the same
+  server that can — this install had a coder model selected with four
+  vision models sitting beside it. Two traps, both real: Open WebUI's
+  `info.meta.capabilities.vision` is `true` on **every** model (it is the
+  UI's own toggle block, defaulted on) so it says nothing and must not be
+  read — the honest field is the backend's capability list; and a model
+  that does not SAY is tried rather than refused, because refusing on a
+  model's behalf is the failure this replaced.
 
 Runs are synchronous. They should become claimed jobs (the discipline is
 in `services/scheduling.py`) when a run grows past what a request should

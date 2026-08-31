@@ -62,14 +62,15 @@
     </dd>
     {% endif %}
     {% if signals %}
-    <dt>Feel taken from</dt>
-    <dd>{{ signals.source }}<br>
-      <span class="hint">{{ signals.note }}</span><br>
-      {% for colour in signals.colours %}<span class="cms-swatch" style="background: {{ colour }}"
-        title="{{ colour }}"></span>{% endfor %}
-      {% if signals.fonts %}<span class="hint">Typefaces seen: {{ signals.fonts | join(', ') }}.</span>{% endif %}
-      <span class="hint">Corners: {{ signals.shape or 'not clear' }}. Depth: {{ signals.shadow }}.</span><br>
-      <span class="hint">Change any of these below before you make it — what was read is a guess.</span>
+    <dt>From your picture</dt>
+    <dd>
+      {% if signals.feel %}It reads as <strong>{{ signals.feel }}</strong>.<br>{% endif %}
+      <span class="hint">
+        {%- if signals.fonts %}Typefaces like {{ font_pairings[signals.fonts].name }}. {% endif %}
+        {%- if signals.shape %}{{ signals.shape|title }} corners. {% endif %}
+        {%- if signals.shadow %}{{ signals.shadow|title }} shadow.{% endif %}</span><br>
+      <span class="hint">Read from how it looks, never from what it says. Change any of it below
+        before you make it — what was read is a guess.</span>
     </dd>
     {% endif %}
     <dt>It will cost</dt>
@@ -77,9 +78,20 @@
       {% if not plan.calls %}Nothing at all.{% endif %}</dd>
   </dl>
   <form method="post" action="{{ url_for('admin.theme_generator') }}" class="inline-form">
-    {% for key, value in form.items() %}{% if key != 'preview' and not key.startswith('look_') %}
+    {#  `.lists()`, not `.items()`: a form is a MultiDict and `.items()`
+        yields the FIRST value for a repeated name only. The picture
+        sampler writes one `ref_colour` per colour it found, so the
+        obvious loop carried the primary and quietly dropped the rest --
+        "Make it" then built a palette out of one colour, which is not
+        the palette the plan showed.
+
+        `ref_picture` is deliberately left behind: what was READ from it
+        is carried below, so sending 40 KB of jpeg through the second
+        press would buy nothing. #}
+    {% for key, values in form.lists() %}{% if key != 'preview' and key != 'ref_picture'
+        and not key.startswith('look_') %}{% for value in values %}
     <input type="hidden" name="{{ key }}" value="{{ value }}">
-    {% endif %}{% endfor %}
+    {% endfor %}{% endif %}{% endfor %}
     {#  Carried, not worked out again: asking twice costs a second
         request and can come back different, and then "Make it" would
         make something other than what was shown. #}
@@ -90,6 +102,16 @@
     <input type="hidden" name="look_shape" value="{{ looked.shape }}">
     <input type="hidden" name="look_shadow" value="{{ looked.shadow }}">
     <input type="hidden" name="look_why" value="{{ looked.why }}">
+    {% endif %}
+    {#  A file cannot travel through the second press, so what was read
+        from it does. Otherwise "Make it" would read the picture again --
+        another request, and possibly a different answer than the one on
+        screen. #}
+    {% if signals %}
+    <input type="hidden" name="ref_fonts" value="{{ signals.fonts or '' }}">
+    <input type="hidden" name="ref_shape" value="{{ signals.shape or '' }}">
+    <input type="hidden" name="ref_shadow" value="{{ signals.shadow or '' }}">
+    <input type="hidden" name="ref_feel" value="{{ signals.feel or '' }}">
     {% endif %}
     <button type="submit" class="btn btn-primary"
             title="Make this template. Nothing on your site changes — it is added to your template list.">Make it</button>
@@ -113,7 +135,8 @@
     rule this app already follows for a schedule's irrelevant fields, and
     it came from the same complaint. #}
 <form method="post" action="{{ url_for('admin.theme_generator') }}" class="card"
-      id="theme-gen-form" data-generator-form>
+      id="theme-gen-form" data-generator-form
+      data-send-picture="{{ '1' if picture_vision else '0' }}">
 
   <h2 class="cms-form-heading cms-form-heading-first">1 &middot; What to call it</h2>
 
@@ -214,36 +237,40 @@
     <p class="hint">In your own words, or leave it and the description decides.</p>
   </div>
 
-  {#  Pages and pictures somebody likes the look of. Several of them,
-      because "what do you like" is rarely answered with exactly one.
+  {#  Pictures, not links.
 
-      A LINK is read by this app, here, with no AI involved: the colours,
-      the typefaces, the corners and the depth come out of its CSS. A
-      PICTURE has nothing to parse, and reading a photograph needs a
-      model that can see -- which not every provider has. So a picture's
-      colours are sampled in the browser and arrive as plain hex values.
-      That works whatever the provider can do, and the picture never
-      leaves the machine it was chosen on. Both facts are said on screen,
-      because "why did my picture only give colours" is otherwise a
-      mystery. #}
+      There WAS a "paste a link" field here that fetched the page and
+      read its CSS. It went for two reasons an install's owner cares
+      about more than we do: a small site's server reaching out to
+      third-party pages, repeatedly, from one address, is what a scraper
+      looks like -- and being taken for one costs THEM their
+      reachability, not us. And it was refused by exactly the sites
+      people most want to point at, because a bot check answers with a
+      challenge page, and a challenge page has colours, so the reader
+      "succeeded" and returned the wrong ones.
+
+      A screenshot has neither problem, and it works on a page that
+      renders itself in JavaScript, which the CSS reader never could. #}
   <div class="form-row">
-    <label>Sites or pictures you like</label>
+    <label>Pictures you like</label>
     <div data-references>
       <div class="cms-reference" data-reference>
-        <input type="url" name="reference_url" placeholder="https://a-site-you-like.example"
-               title="A page whose look you like. Its colours, typefaces, corners and depth are read here — never its words, its pictures or its layout.">
-        <span class="hint">or</span>
+        {#  No `name`: the file itself is never submitted. What the form
+            carries is what the browser MADE of it -- the colours as hex
+            values, and (only when the model can look) one small jpeg
+            copy of it. #}
         <input type="file" accept="image/*" data-reference-image
-               title="A picture whose colours you like. It is read in this browser and never uploaded — only the colours are sent.">
+               title="A screenshot of a site you like, or any picture whose colours you want. Its colours are read in this browser; the picture itself is only sent if your AI model can look at pictures.">
         <span class="cms-reference-read" data-reference-read hidden></span>
       </div>
     </div>
     <button type="button" class="btn btn-small" data-add-reference
-            title="Add another site or picture.">+ Add another</button>
-    <p class="hint">A link gives colours, typefaces, corners and depth — read from the page itself,
-      with no AI involved. A picture gives <strong>colours only</strong>, sampled in this browser:
-      it is never uploaded, and reading what is IN a photograph needs a provider that can see.
-      None of a page's words, pictures or layout are ever read or kept.</p>
+            title="Add another picture.">+ Add another</button>
+    <p class="hint">A screenshot of a site you like, or anything whose colours you want.
+      <strong>The colours are read here, in your browser</strong> — nothing is uploaded for that, and
+      it works whatever your AI provider can do, and the file itself is never uploaded.
+      {% if picture_vision %}Your model can look at pictures too, so a small copy is sent to it
+      for the typefaces, the corners and the depth.{% else %}{{ picture_vision_note }}{% endif %}</p>
   </div>
 
   {#  The specific controls, for somebody who already knows what they
