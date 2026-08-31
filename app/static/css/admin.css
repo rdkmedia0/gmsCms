@@ -1580,3 +1580,7 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
 #theme-gen-form [data-needs][hidden] { display: none; }
 .cms-form-heading-first { margin-top: 4px; padding-top: 0; border-top: 0; }
 .cms-form-note { margin: -6px 0 10px; }
+/*  Which items to show. Buttons rather than a select, because there are
+    five and the counts on them are the answer to "is anything wrong". */
+.cms-state-filter { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+.cms-form-subhead { font-size: 14px; margin: 18px 0 6px; }

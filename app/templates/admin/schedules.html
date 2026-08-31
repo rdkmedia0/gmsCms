@@ -2,6 +2,7 @@
 {% block title %}Schedules — My Site Admin{% endblock %}
 {% block content %}
 <h1>Schedules</h1>
+{% include "partials/tabs.html" %}
 <p class="hint">Times this site does things at, named once and picked wherever they are used — sending
   a newsletter, publishing a post, taking a backup. Naming them is the point: &ldquo;First Monday&rdquo;
   is something you recognise six weeks later, and a date typed into a box every month is not.</p>
@@ -19,43 +20,10 @@
     removing. #}
 {% include "partials/schedules.html" %}
 
-<div class="card">
-  <div class="integration-head">
-    <h2>What is waiting</h2>
-    <span class="hint">Everything on the clock right now, whatever kind of thing it is.</span>
-  </div>
-  {% if waiting %}
-  <div class="table-scroll">
-    <table class="simple-table cms-people-table">
-      <thead><tr><th>What</th><th>Which</th><th class="col-when">When</th><th>Schedule</th><th>State</th></tr></thead>
-      <tbody>
-        {% for job in waiting %}
-        <tr>
-          <td class="col-tag">
-            {%- if job.kind == 'newsletter' %}Newsletter
-            {%- elif job.kind == 'post' %}Post, as an email
-            {%- elif job.kind == 'publish' %}Post, published
-            {%- elif job.kind == 'backup' %}Backup
-            {%- else %}{{ job.kind }}{% endif %}</td>
-          <td>{{ job.subject or '—' }}</td>
-          <td class="col-when"><time data-utc="{{ job.send_at }}">{{ job.send_at[:16] }}</time></td>
-          <td class="col-tag">{{ job.template_name or 'a time chosen once' }}</td>
-          <td class="col-tag">
-            {%- if job.error %}<span class="badge" title="{{ job.error }}">did not go</span>
-            {%- elif job.done_at %}<span class="badge" title="Finished {{ job.done_at }}.">done</span>
-            {%- elif job.claimed_at %}<span class="badge" title="A worker has taken this and is doing it now.">going out</span>
-            {%- else %}<span class="badge" title="Waiting for its time.">waiting</span>{% endif %}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% else %}
-  <p class="hint">Nothing is on the clock. A schedule does nothing on its own — you pick it when you
-    send a newsletter, publish a post, or set automatic backups.</p>
-  {% endif %}
-</div>
-
+{#  What is on the clock moved to its own tab. This list only grows --
+    every send, every publish and every backup leaves a row -- and it was
+    sitting under the short list of times you actually change twice a
+    year. #}
 <div class="card">
   <h2>Where you use them</h2>
   <p class="hint">A schedule is picked where the decision is made, not here.</p>

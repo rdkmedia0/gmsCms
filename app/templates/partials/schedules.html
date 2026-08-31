@@ -19,20 +19,36 @@
   {% if schedule_templates %}
   <div class="table-scroll">
     <table class="simple-table cms-schedule-table">
-      <thead><tr><th>Name</th><th>When</th><th>Last used</th><th class="cms-col-actions"></th></tr></thead>
+      <thead><tr><th>Name</th><th>When</th><th>Last used</th><th>Used by</th><th class="cms-col-actions"></th></tr></thead>
       <tbody>
         {% for t in schedule_templates %}
-        <tr>
+        <tr {% if editing and editing.name == t.row.name %}class="is-current"{% endif %}>
           <td><strong>{{ t.row.name }}</strong></td>
           <td>{{ t.says }}</td>
           <td class="cms-col-when">{% if t.row.last_used_at %}{{ t.row.last_used_at[:10] }}{% else %}&mdash;{% endif %}</td>
+          <td class="col-tag">
+            {#  What is relying on it. Said on the row, not only in the
+                confirm, because "can I delete this" is a question you
+                answer by looking. #}
+            {%- if t.uses.waiting %}<span class="badge"
+              title="{{ t.uses.waiting }} thing{{ 's' if t.uses.waiting != 1 }} already booked on this. They keep the time they were given whatever happens to the schedule.">{{ t.uses.waiting }} waiting</span>{% endif %}
+            {%- if t.uses.backups %}<span class="badge"
+              title="Automatic backups run on this schedule. Deleting it stops them after the one already booked.">backups</span>{% endif %}
+            {%- if not t.uses.waiting and not t.uses.backups %}<span class="hint" title="Nothing is relying on this one.">&mdash;</span>{% endif %}
+          </td>
           <td class="cms-col-actions">
+            {#  Editing was the gap: you could add one and delete one, so
+                changing an hour meant retyping every field under exactly
+                the same name and hoping. #}
+            <a class="icon-btn" href="{{ url_for('admin.schedules_screen', edit=t.row.name) }}#schedule-form"
+               title="Change this schedule. Anything already booked on it keeps the time it was given.">&#9998;</a>
             <form method="post" action="{{ url_for('admin.schedule_delete') }}"
                   class="cms-delete-form"
-                  data-confirm="Remove this schedule? Anything already waiting on it keeps the time it was given.">
+                  data-confirm="Remove &quot;{{ t.row.name }}&quot;?{% if t.uses.waiting %} {{ t.uses.waiting }} thing{{ 's' if t.uses.waiting != 1 }} already booked on it keep{{ '' if t.uses.waiting != 1 else 's' }} the time {{ 'they were' if t.uses.waiting != 1 else 'it was' }} given and still {{ 'go' if t.uses.waiting != 1 else 'goes' }} — removing a schedule cannot un-book what it has already booked.{% endif %}{% if t.uses.backups %} Automatic backups are set to this schedule: after the one already booked they will STOP, and you will need to pick another on the Backups screen.{% endif %}{% if not t.uses.waiting and not t.uses.backups %} Nothing is relying on it.{% endif %}"
+                  {% if t.uses.backups %}data-confirm-danger="1"{% endif %}>
               <input type="hidden" name="name" value="{{ t.row.name }}">
-              <button type="submit" class="icon-btn"
-                      title="Remove this schedule. Anything already waiting keeps the time it was given.">&times;</button>
+              <button type="submit" class="icon-btn icon-btn-danger"
+                      title="Remove this schedule. Anything already booked keeps the time it was given; automatic backups set to it would stop.">&times;</button>
             </form>
           </td>
         </tr>
@@ -45,8 +61,15 @@
     instead of typing a date.</p>
   {% endif %}
 
+  {#  One form, adding or changing. `was` carries the name it had, so a
+      rename replaces the old rather than leaving a twin -- save_template
+      replaces BY NAME, which is right for "save again" and wrong for
+      "rename" unless somebody says which happened. #}
+  <h3 class="cms-form-subhead" id="schedule-form">
+    {{ 'Change “' ~ editing.name ~ '”' if editing else 'Add a schedule' }}</h3>
   <form method="post" action="{{ url_for('admin.schedule_save') }}"
         class="cms-schedule-form" data-schedule-form>
+    {% if editing %}<input type="hidden" name="was" value="{{ editing.name }}">{% endif %}
     {#  The clock the hour below was typed on, filled by the local-time
         script. Without it "9am" is 9am UTC, which is 11am in Zurich in summer --
         and nobody notices until the newsletter arrives two hours late. #}
@@ -54,6 +77,7 @@
     <input type="hidden" name="tz_name" data-tz-name value="">
     <label for="sched-name" title="What you will call this when you pick it. A name you chose is one you will recognise six weeks later.">Name
       <input type="text" id="sched-name" name="name" maxlength="60" required
+             value="{{ editing.name if editing else '' }}"
              placeholder="Monthly newsletter"
              title="What you will call this when you pick it, e.g. Monthly newsletter."></label>
 
@@ -61,7 +85,9 @@
       <select id="sched-repeat" name="repeat_kind" data-repeat
               title="How often it comes round. Assigning it sets the next time — it does not send or publish the same thing again and again.">
         {% for value, label in repeats %}
-        <option value="{{ value }}" {% if value == 'monthly' %}selected{% endif %}>{{ label }}</option>
+        <option value="{{ value }}"
+                {% if editing %}{{ 'selected' if editing.repeat_kind == value }}
+                {%- elif value == 'monthly' %}selected{% endif %}>{{ label }}</option>
         {% endfor %}
       </select></label>
 
@@ -69,7 +95,7 @@
            title="Which day of the week.">on
       <select id="sched-weekday" name="weekday" title="Which day of the week it goes.">
         {% for value, label in weekdays %}
-        <option value="{{ value }}">{{ label }}</option>
+        <option value="{{ value }}" {% if editing and editing.weekday == value %}selected{% endif %}>{{ label }}</option>
         {% endfor %}
       </select></label>
 
@@ -87,16 +113,19 @@
       </select></label>
     <label for="sched-monthday" data-when="monthly" data-monthday-number hidden
            title="Which day. A month that does not have it uses its last day, so nothing is skipped.">day
-      <input type="number" id="sched-monthday" name="monthday" min="1" max="31" value="1"
+      <input type="number" id="sched-monthday" name="monthday" min="1" max="31"
+             value="{{ editing.monthday if editing and editing.monthday else 1 }}"
              title="Which day of the month. A month that does not have it — the 31st in February — uses that month's last day, so nothing is skipped."></label>
 
     <label for="sched-hour" data-when="daily weekly monthly"
            title="The hour it goes out, on your own clock.">at
-      <input type="number" id="sched-hour" name="hour" min="0" max="23" value="9"
+      <input type="number" id="sched-hour" name="hour" min="0" max="23"
+             value="{{ editing.hour if editing else 9 }}"
              title="The hour it goes out, on your own clock."></label>
     <label for="sched-minute" data-when="daily weekly monthly"
            title="Minutes past the hour.">:
-      <input type="number" id="sched-minute" name="minute" min="0" max="59" value="0"
+      <input type="number" id="sched-minute" name="minute" min="0" max="59"
+             value="{{ editing.minute if editing else 0 }}"
              title="Minutes past the hour."></label>
 
     <label for="sched-when" data-when="once" hidden
@@ -104,7 +133,12 @@
       <input type="datetime-local" id="sched-when" name="when"
              title="The one date and time this schedule means."></label>
 
-    <button type="submit" class="btn"
-            title="Save this schedule so you can pick it when scheduling a newsletter or a post.">Add schedule</button>
+    <button type="submit" class="btn btn-primary"
+            title="Save this schedule so you can pick it when scheduling a newsletter, a post or a backup.">
+      {{ 'Save changes' if editing else 'Add schedule' }}</button>
+    {% if editing %}
+    <a class="btn" href="{{ url_for('admin.schedules_screen') }}"
+       title="Leave this schedule as it is and go back to adding a new one.">Cancel</a>
+    {% endif %}
   </form>
 </div>

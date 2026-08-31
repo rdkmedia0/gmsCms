@@ -80,46 +80,60 @@
   {% if not backups %}
   <p class="hint">None yet.</p>
   {% else %}
-  <ul class="cms-backup-list">
-    {% for b in backups %}
-    <li>
-      <div>
-        <strong>{{ b.created_at.replace('T', ' ')[:16] }}</strong>
-        <span class="hint">
-          {{ (b.size / 1048576) | round(1) }} MB
-          {%- if b.manifest %}
-            · {{ b.manifest.counts.pages or 0 }} page{{ 's' if (b.manifest.counts.pages or 0) != 1 }},
+  {#  A table, like every other list on these screens.
+
+      It was a bulleted list with a paragraph of facts run together and
+      three full-size buttons stacked under each entry -- so five backups
+      was five bullets, fifteen buttons and a column of dates you could
+      not scan. What an owner does here is compare dates and sizes and
+      then press one thing; that is a table with an actions column. #}
+  <div class="table-scroll">
+    <table class="simple-table cms-people-table">
+      <thead>
+        <tr><th class="col-when">Taken</th><th class="col-when">Size</th>
+          <th>What is in it</th><th class="cms-col-actions"></th></tr>
+      </thead>
+      <tbody>
+        {% for b in backups %}
+        <tr>
+          <td class="col-when"><strong>{{ b.created_at.replace('T', ' ')[:16] }}</strong></td>
+          <td class="col-when">{{ (b.size / 1048576) | round(1) }} MB</td>
+          <td class="hint">
+            {%- if b.manifest %}
+            {{ b.manifest.counts.pages or 0 }} page{{ 's' if (b.manifest.counts.pages or 0) != 1 }},
             {{ b.manifest.counts.orders or 0 }} order{{ 's' if (b.manifest.counts.orders or 0) != 1 }},
             {#  Said out loud, because the email list is the one thing in
                 here that cannot be typed again if it is lost. #}
             {{ b.manifest.counts.subscribers or 0 }} on the email list
-            {%- if b.manifest.label == 'before-restore' %} · taken before a restore{% endif %}
-            {%- if b.manifest.label == 'scheduled' %} · automatic{% endif %}
-            {%- if b.manifest.includes_encryption_key %} · <strong>contains your credentials</strong>{% endif %}
-          {%- elif b.broken %} · <em>unreadable</em>{% endif %}
-        </span>
-      </div>
-      <div class="cms-backup-actions">
-        <a class="btn btn-small" href="{{ url_for('admin.backup_download', name=b.name) }}"
-           title="Download this backup to your own computer">Download</a>
-        <form method="post" action="{{ url_for('admin.backup_restore') }}" class="is-inline">
-          <input type="hidden" name="name" value="{{ b.name }}">
-          <input type="hidden" name="restore_media" value="1" title="Also restore the pictures and files from this archive, replacing what is here.">
-          <button type="submit" class="btn btn-small"
-                  data-confirm="You are about to restore the site to how it was on {{ b.created_at.replace('T', ' ')[:16] }}. Everything on the site now is replaced. A backup of the current state is taken first."
-                  data-confirm-danger="1"
-                  title="Put the site back to how it was at this point">Restore</button>
-        </form>
-        <form method="post" action="{{ url_for('admin.backup_delete', name=b.name) }}" class="is-inline">
-          <button type="submit" class="btn btn-small"
-                  data-confirm="You are about to delete this backup. It cannot be recovered."
-                  data-confirm-danger="1"
-                  title="Delete this backup file">Delete</button>
-        </form>
-      </div>
-    </li>
-    {% endfor %}
-  </ul>
+            {%- if b.manifest.label == 'before-restore' %} <span class="badge" title="Taken automatically just before a restore, so the state you were in is not lost.">before a restore</span>{% endif %}
+            {%- if b.manifest.label == 'scheduled' %} <span class="badge" title="Taken by a schedule, without anybody pressing anything.">automatic</span>{% endif %}
+            {%- if b.manifest.includes_encryption_key %} <span class="badge" title="This archive contains your encryption key, so it can spend money. Keep it somewhere you would keep a password.">contains your credentials</span>{% endif %}
+            {%- elif b.broken %}<em title="The archive is there but its manifest could not be read.">unreadable</em>
+            {%- endif %}
+          </td>
+          <td class="cms-col-actions">
+            <a class="icon-btn" href="{{ url_for('admin.backup_download', name=b.name) }}"
+               title="Download this backup to your own computer.">&#11015;</a>
+            <form method="post" action="{{ url_for('admin.backup_restore') }}">
+              <input type="hidden" name="name" value="{{ b.name }}">
+              <input type="hidden" name="restore_media" value="1">
+              <button type="submit" class="icon-btn"
+                      data-confirm="You are about to restore the site to how it was on {{ b.created_at.replace('T', ' ')[:16] }}. Everything on the site now is replaced. A backup of the current state is taken first."
+                      data-confirm-danger="1"
+                      title="Put the site back to how it was at this point. A backup of the state you are in now is taken first.">&#8634;</button>
+            </form>
+            <form method="post" action="{{ url_for('admin.backup_delete', name=b.name) }}">
+              <button type="submit" class="icon-btn icon-btn-danger"
+                      data-confirm="You are about to delete this backup. It cannot be recovered."
+                      data-confirm-danger="1"
+                      title="Delete this backup file for good.">&times;</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
   {% endif %}
 </div>
 

@@ -1,0 +1,105 @@
+{% extends "admin/base.html" %}
+{% block title %}Scheduled items — My Site Admin{% endblock %}
+{% block content %}
+<h1>Schedules</h1>
+{% include "partials/tabs.html" %}
+
+<p class="hint">Everything on the clock, and everything that has been. A schedule says <em>when</em>;
+  these are the things actually waiting on one.</p>
+
+{#  Filtered rather than paged. This list only grows -- every send, every
+    publish and every backup leaves a row, and a year of automatic
+    backups is 365 of them in front of the one thing you were looking
+    for. The question is almost always "what is waiting" or "what
+    failed", and both of those are short. #}
+<div class="card">
+  <div class="integration-head">
+    <h2>{{ dict(states)[state] }}</h2>
+    <span class="hint">
+      {%- if state == 'waiting' %}Not gone yet. These are the only ones that can be taken off.
+      {%- elif state == 'going' %}A worker has these and is doing them now, so they cannot be recalled.
+      {%- elif state == 'failed' %}These did not go, and were not retried — a failure is written down
+        and left for a person, because nothing can tell &ldquo;the mail server was briefly down&rdquo;
+        from &ldquo;twenty of them already got it&rdquo;.
+      {%- elif state == 'done' %}These happened.
+      {%- else %}Everything, newest first.{% endif %}</span>
+  </div>
+
+  <nav class="cms-state-filter" aria-label="Which items">
+    {% for key, label in states %}
+    <a href="{{ url_for('admin.scheduled_items', state=key) }}"
+       class="btn btn-small{{ ' btn-primary' if key == state }}"
+       title="Show {{ label | lower }}.">{{ label }}{% if counts.get(key) %} · {{ counts[key] }}{% endif %}</a>
+    {% endfor %}
+  </nav>
+
+  {% if items %}
+  <div class="table-scroll">
+    <table class="simple-table cms-people-table">
+      <thead>
+        <tr><th>What</th><th>Which</th><th class="col-when">When</th>
+          <th>Schedule</th><th>State</th><th class="cms-col-actions"></th></tr>
+      </thead>
+      <tbody>
+        {% for job in items %}
+        <tr>
+          <td class="col-tag">
+            {%- if job.kind == 'newsletter' %}Newsletter
+            {%- elif job.kind == 'post' %}Post, as an email
+            {%- elif job.kind == 'publish' %}Post, published
+            {%- elif job.kind == 'backup' %}Backup
+            {%- else %}{{ job.kind }}{% endif %}</td>
+          <td>{{ job.subject or '—' }}</td>
+          <td class="col-when"><time data-utc="{{ job.send_at }}">{{ job.send_at[:16] }}</time></td>
+          <td class="col-tag">{{ job.template_name or 'a time chosen once' }}</td>
+          <td class="col-tag">
+            {%- if job.error %}<span class="badge" title="{{ job.error }}">did not go</span>
+            {%- elif job.done_at %}<span class="badge" title="Finished {{ job.done_at }}.">done</span>
+            {%- elif job.claimed_at %}<span class="badge" title="A worker has taken this and is doing it now. It cannot be recalled.">going out</span>
+            {%- else %}<span class="badge" title="Waiting for its time.">waiting</span>{% endif %}</td>
+          <td class="cms-col-actions">
+            {#  Only what is actually possible. A claimed one is already
+                going out and cannot be recalled -- offering a button
+                that would refuse is worse than offering none. #}
+            {% if not job.done_at and not job.claimed_at %}
+            <form method="post"
+                  action="{{ url_for('admin.scheduled_item_cancel', row_id=job.id) }}">
+              <input type="hidden" name="state" value="{{ state }}">
+              <button type="submit" class="icon-btn icon-btn-danger"
+                      data-confirm="Take this off the clock? It will not go out. What it points at is not changed or deleted."
+                      title="Take this off the clock. Nothing is sent, and nothing is deleted.">&times;</button>
+            </form>
+            {% elif job.error %}
+            <span class="hint" title="{{ job.error }}">why?</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="hint">
+    {%- if state == 'waiting' %}Nothing is waiting. A schedule does nothing on its own — you pick one
+      when you send a newsletter, publish a post, or set automatic backups.
+    {%- elif state == 'failed' %}Nothing has failed.
+    {%- else %}Nothing here.{% endif %}</p>
+  {% endif %}
+
+  {#  Tidying away what has happened. Finished rows only: clearing
+      something that is waiting would be cancelling it under a word that
+      does not mean cancel. #}
+  {% if state in ('done', 'failed', 'all') and (counts.done or counts.failed) %}
+  <form method="post" action="{{ url_for('admin.scheduled_items_clear') }}" class="inline-form">
+    <input type="hidden" name="state" value="{{ state }}">
+    {% if state == 'failed' %}<input type="hidden" name="only" value="failed">{% endif %}
+    <button type="submit" class="btn btn-small"
+            data-confirm="Clear the finished items from this list? What was actually sent is still recorded on the Newsletters screen — this only tidies the queue."
+            title="Remove the items that have already happened. What was sent is still recorded; this only tidies the list.">Clear finished</button>
+    <span class="hint">What was actually sent is recorded separately and is not touched.</span>
+  </form>
+  {% endif %}
+</div>
+
+<script src="{{ static_url('js/admin/local-time.js') }}"></script>
+{% endblock %}

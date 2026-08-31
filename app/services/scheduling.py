@@ -115,6 +115,119 @@ def recent(db, limit=20):
         (limit,)).fetchall()
 
 
+def items(db, state="waiting", limit=200):
+    """What is on the clock, and what has been.
+
+    Filtered, because this list only grows: every send, every publish and
+    every backup leaves a row, and a year of automatic backups is 365 of
+    them in front of the one thing you were looking for.
+
+      * `waiting` -- not claimed, not finished. The only ones that can
+        still be taken off.
+      * `done`    -- finished, and did what it said.
+      * `failed`  -- finished with a reason. Kept deliberately: a failure
+                     is never retried automatically, so somebody has to
+                     see it.
+      * `all`     -- everything, newest first.
+    """
+    where = {
+        "waiting": "claimed_at IS NULL AND done_at IS NULL",
+        "going": "claimed_at IS NOT NULL AND done_at IS NULL",
+        "done": "done_at IS NOT NULL AND (error IS NULL OR error = '')",
+        "failed": "done_at IS NOT NULL AND error IS NOT NULL AND error != ''",
+    }.get(state)
+    sql = "SELECT * FROM newsletter_schedule"
+    if where:
+        sql += " WHERE " + where
+    sql += " ORDER BY send_at DESC LIMIT ?"
+    return db.execute(sql, (limit,)).fetchall()
+
+
+def counts(db):
+    """How many are in each state, so a tab can say so before you open
+    it -- and so "nothing failed" is a thing the screen can state rather
+    than something you infer from an empty list."""
+    return {
+        state: db.execute(
+            "SELECT COUNT(*) c FROM newsletter_schedule WHERE " + where).fetchone()["c"]
+        for state, where in (
+            ("waiting", "claimed_at IS NULL AND done_at IS NULL"),
+            ("going", "claimed_at IS NOT NULL AND done_at IS NULL"),
+            ("done", "done_at IS NOT NULL AND (error IS NULL OR error = '')"),
+            ("failed", "done_at IS NOT NULL AND error IS NOT NULL AND error != ''"),
+        )
+    }
+
+
+def uses_of(db, name):
+    """What is relying on this schedule, and how each is affected.
+
+    Deleting a schedule is not the same act for everything using it, and
+    the difference matters enough to say before the fact:
+
+      * anything already BOOKED keeps the moment it was given -- a
+        schedule says when the next thing goes, so removing it cannot
+        un-book what it has already booked. Those still happen.
+      * automatic BACKUPS are the exception, and the quiet one: the
+        setting stores a schedule by NAME, so deleting it means the next
+        booking cannot be worked out. The one already on the clock goes,
+        and then backups stop -- without an error, because nothing has
+        failed.
+    """
+    name = (name or "").strip()
+    if not name:
+        return {"waiting": 0, "backups": False}
+    waiting = db.execute(
+        "SELECT COUNT(*) c FROM newsletter_schedule "
+        "WHERE template_name = ? AND claimed_at IS NULL AND done_at IS NULL",
+        (name,)).fetchone()["c"]
+    row = db.execute(
+        "SELECT value FROM settings WHERE key = 'backup_schedule'").fetchone()
+    return {"waiting": waiting,
+            "backups": bool(row) and (row["value"] or "").strip() == name}
+
+
+def cancel_one(db, row_id):
+    """Take one item off the clock. (removed, why not).
+
+    By its own id, because the Scheduled items list is looking at rows
+    rather than at the things they point to -- and two newsletters can be
+    waiting on the same schedule.
+
+    A CLAIMED one cannot be recalled and this says so rather than
+    pretending: a worker has it and is sending it now. That is the same
+    honesty `cancel()` has always had, said out loud instead of returning
+    a silent zero.
+    """
+    row = db.execute("SELECT * FROM newsletter_schedule WHERE id = ?",
+                     (row_id,)).fetchone()
+    if not row:
+        return False, "That one is already gone."
+    if row["done_at"]:
+        return False, "That one has already happened."
+    if row["claimed_at"]:
+        return False, ("That one is going out now, so it cannot be taken back.")
+    db.execute("DELETE FROM newsletter_schedule WHERE id = ? AND claimed_at IS NULL",
+               (row_id,))
+    return True, None
+
+
+def clear_finished(db, failed_only=False):
+    """Tidy away what has already happened. Returns how many went.
+
+    Only FINISHED rows: nothing waiting and nothing in flight can be
+    cleared, because clearing those would be cancelling them under a word
+    that does not mean cancel.
+
+    Note what this is not: `newsletter_sends` is the record that forty
+    people were emailed, and it is untouched. This is the job queue.
+    """
+    sql = "DELETE FROM newsletter_schedule WHERE done_at IS NOT NULL"
+    if failed_only:
+        sql += " AND error IS NOT NULL AND error != ''"
+    return db.execute(sql).rowcount
+
+
 def due(db, now=None):
     return db.execute(
         "SELECT * FROM newsletter_schedule WHERE claimed_at IS NULL AND send_at <= ? "

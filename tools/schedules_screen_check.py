@@ -81,9 +81,12 @@ with sync_playwright() as pw:
     check("the screen exists", "Schedules" in page.title(), page.title())
     check("...and it makes them", page.evaluate(
         "() => !!document.querySelector('[data-schedule-form]')"))
-    check("...and lists what is waiting, whatever kind", page.evaluate(
-        """() => [...document.querySelectorAll('h2')]
-             .some(h => h.textContent.trim() === 'What is waiting')"""))
+    #  What is on the clock is the OTHER tab now: that list only grows,
+    #  and it was sitting under the short list of times you change twice
+    #  a year.
+    check("...and points at what is waiting on them", page.evaluate(
+        """() => [...document.querySelectorAll('nav.tabs a')]
+             .some(a => a.textContent.trim() === 'Scheduled items')"""))
 
     #  The Dashboard is where you find it.
     page.goto(BASE + "/admin/")
@@ -173,6 +176,97 @@ with sync_playwright() as pw:
     check("...and its zone, not just its offset", page.evaluate(
         "() => { const f = document.querySelector('[data-tz-name]'); "
         "return !!f && f.value.length > 0; }"))
+
+    print()
+    print("Two tabs, because they are two questions")
+    print("-" * 68)
+    #  "What times do I have" is a short list you change twice a year.
+    #  "What is on the clock" only ever grows: every send, every publish
+    #  and every backup leaves a row, and a year of automatic backups is
+    #  365 of them in front of the one thing you were looking for.
+    page.goto(BASE + "/admin/schedules")
+    settle(page)
+    check("the screen has tabs", page.evaluate(
+        "() => document.querySelectorAll('nav.tabs a.tab').length == 2"),
+          page.evaluate("() => [...document.querySelectorAll('nav.tabs a')]"
+                        ".map(a => a.textContent.trim()).join(' | ')"))
+    check("...and they are links, so they can be bookmarked", page.evaluate(
+        """() => [...document.querySelectorAll('nav.tabs a.tab')]
+             .every(a => (a.getAttribute('href') || '').startsWith('/admin/'))"""))
+    check("the waiting list is not on the schedules tab", page.evaluate(
+        """() => ![...document.querySelectorAll('h2')]
+             .some(h => h.textContent.trim() === 'What is waiting')"""))
+
+    page.goto(BASE + "/admin/schedules/items")
+    settle(page)
+    check("the items tab exists", "Scheduled items" in page.title(), page.title())
+    check("...and can be filtered", page.evaluate(
+        "() => document.querySelectorAll('.cms-state-filter a').length >= 4"))
+    for state in ("waiting", "failed", "done", "all"):
+        page.goto(BASE + "/admin/schedules/items?state=" + state)
+        settle(page)
+        check("...%s is a real address" % state,
+              ("state=" + state) in page.url and not page.evaluate(
+                  "() => document.body.innerText.includes('Internal Server Error')"))
+
+    print()
+    print("An item can be taken off, and only when that is true")
+    print("-" * 68)
+    #  A claimed one is already going out and cannot be recalled --
+    #  offering a button that would refuse is worse than offering none.
+    page.goto(BASE + "/admin/schedules/items?state=waiting")
+    settle(page)
+    check("a waiting item offers a way off the clock", page.evaluate(
+        """() => { const rows = [...document.querySelectorAll('tbody tr')];
+             if (!rows.length) return true;
+             return rows.every(r => !!r.querySelector('form[action*="/cancel"]')); }"""))
+    page.goto(BASE + "/admin/schedules/items?state=done")
+    settle(page)
+    check("...and a finished one does not", page.evaluate(
+        """() => [...document.querySelectorAll('tbody tr')]
+             .every(r => !r.querySelector('form[action*="/cancel"]'))"""))
+    check("...but the finished can be tidied away", page.evaluate(
+        """() => { const rows = document.querySelectorAll('tbody tr').length;
+             return !rows || !!document.querySelector('form[action*="/items/clear"]'); }"""))
+
+    print()
+    print("Deleting a schedule says what it does to what uses it")
+    print("-" * 68)
+    #  Reported: "if I delete an assigned schedule it doesn't warn of the
+    #  assigned items, how are they impacted". Two different impacts, and
+    #  the second is the quiet one -- backups store a schedule by NAME,
+    #  so deleting it stops them without an error, because nothing failed.
+    page.goto(BASE + "/admin/schedules")
+    settle(page)
+    row = page.evaluate(
+        """(n) => { const r = [...document.querySelectorAll('tbody tr')]
+             .find(x => x.innerText.indexOf(n) >= 0);
+             if (!r) return null;
+             const f = r.querySelector('form[action*="/schedules/delete"]');
+             return { confirm: f ? f.getAttribute('data-confirm') : '',
+                      uses: r.innerText,
+                      edit: !!r.querySelector('a[href*="edit="]') }; }""", NAME)
+    check("the row is there", row is not None)
+    if row:
+        check("...and says what is relying on it", "waiting" in row["uses"]
+              or "\u2014" in row["uses"] or "-" in row["uses"], row["uses"][:70])
+        check("...and the confirm names the consequence",
+              "booked" in (row["confirm"] or "") or "Nothing is relying"
+              in (row["confirm"] or ""), (row["confirm"] or "")[:110])
+        #  The gap: add and delete existed, edit did not.
+        check("...and it can be changed, not only added and removed",
+              row["edit"], "no edit action on the row")
+
+    page.goto(BASE + "/admin/schedules?edit=" + NAME.replace(" ", "+"))
+    settle(page)
+    check("editing prefills the form it is editing", page.evaluate(
+        """(n) => { const f = document.querySelector('#sched-name');
+             return !!f && f.value === n; }""", NAME))
+    check("...and says it is changing rather than adding", page.evaluate(
+        """() => [...document.querySelectorAll('button')]
+             .some(b => b.textContent.trim() === 'Save changes')"""))
+    check("...and carries the name it had, so a rename does not leave a twin",
+          page.evaluate("() => !!document.querySelector('input[name=\"was\"]')"))
 
     print()
     print("Tidying up")
