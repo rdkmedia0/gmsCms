@@ -6911,3 +6911,113 @@ has the column, from the run where the ALTER was in the right place.
 Its hand-maintained total (`23 checks`) is counted now, for the same
 reason `newsletter_check.py`'s was: it would have become a lie with the
 first line added.
+
+## Four pieces of feedback from using it, recorded before building (2026-08-28)
+
+Written down first and built after, because three of the four are
+re-shapings rather than fixes and the reasoning is the part worth
+keeping. Where I am reading something INTO the words rather than out of
+them, it says so -- those are the places to correct me.
+
+### 1. Admin screens are set too large
+
+"Overly large text and fields." Not one screen: the observation is
+general, and it matches what the newsletter compose bar turned out to be
+-- full-width boxes forty pixels tall holding an address and one line.
+An admin screen is a workbench, and a workbench that shows six controls
+where twelve would fit makes somebody scroll to see what they are
+working on.
+
+It wants measuring rather than taste: font sizes, control heights and
+field widths across every admin screen, against what the content in them
+actually needs. `screen_audit.py` already walks every screen, so the
+numbers can be collected the same way the missing tooltips were.
+
+### 2. The Newsletters screen is nine cards and should be two things
+
+Today it is: Write a newsletter / Going out on its own / Yours / "N on
+the list, M customers" / How every email opens and closes / newsletter
+pages / blog posts per blog / What has gone out. Nine cards to answer
+"what have I sent, and what am I sending".
+
+What it should be:
+
+  * **Writing one is the first thing, not a card.** The action belongs at
+    the top of the screen, immediately, not inside a section that has to
+    be read first.
+  * **One table, not three lists.** "Yours" (drafts), "Going out on its
+    own" (scheduled) and "What has gone out" (sent) are three views of
+    one thing -- a newsletter at a different point in its life. One
+    table: **date created, date sent, schedule name, subject, recipient
+    group** (customers or everyone), and **edit, copy, delete** per row.
+    Copy is new and is the obvious way to write next month's from last
+    month's.
+  * **Write with AI** as an option alongside writing one by hand.
+  * **The list counts do not belong here.** "N on the list, M customers"
+    is the Email list screen's subject, and repeating it here is the same
+    number in two places, which is how two places come to disagree.
+  * **A schedule is a named thing you assign, not a date you retype.**
+    The "monthly newsletter" idea becomes **schedule templates**: the
+    owner creates one or more named schedules ("First Monday", "Monthly,
+    9am") and assigns one to a newsletter. That is why the consolidated
+    table has a `schedule name` column rather than a timestamp -- the
+    name is what somebody recognises, and a schedule reused across twelve
+    sends should be defined once.
+  * **Blog posts are CONTENT, not a section of this screen.** The "Yard
+    Notes -- 2 most recent posts" card is the wrong shape: it lists a
+    blog's posts on the Newsletters screen so each can be sent. Instead,
+    a blog should be includable as newsletter content two ways -- as a
+    **blog template** (a starting arrangement that pulls in posts) and as
+    a **blog tool in the editor** (a block, like every other block). That
+    is this project's own rule about features being tools rather than
+    page types, applied to the newsletter editor: a capability an owner
+    drops in, not a fixed section that only exists on one screen.
+
+### 3. An intro and an exit belong to the newsletter, not to the site
+
+"How every email opens and closes" is a pair of settings applied to every
+send. It should be an **intro section and an exit section on the
+newsletter template itself**, written directly into the email like every
+other block -- and **past emails become the templates**, so reuse is
+"start from the one I sent in June" rather than "fill in two boxes in
+settings".
+
+This follows from the saved-layout work rather than contradicting it: a
+layout is a starting arrangement, and a sent newsletter is an
+arrangement somebody already approved. The step is letting a SENT one be
+used as a starting point, and moving the two fixed settings into blocks
+so there is nothing left that is written once and applied invisibly to
+everything.
+
+Note what must survive it: the sender line and the unsubscribe link are
+appended by the code and are still not fields. Those are not "how the
+email opens and closes"; they are what the law requires under it.
+
+### 4. Message wording should be one editor, and its preview should be real
+
+Four things, and the first is a defect rather than a preference:
+
+  * **The preview uses dummy data.** `{{site}}` reads "Your site" instead
+    of the site's actual name. That was deliberate -- believable sample
+    data rather than the placeholder repeated back -- and it is wrong for
+    the fields this install can actually fill. The site's name, the legal
+    business, the sender line: those are known, and showing them as
+    invented values makes the preview a worse guide than the real thing.
+    Sample data stays only where there is nothing to read from -- an
+    order that has not happened yet has no total.
+  * **Every message should have the same tools.** They differ today only
+    because the screen grew per message.
+  * **One section with a dropdown**, choosing which message to edit, into
+    a reusable editor with the variables and the text tools -- the same
+    editor the newsletter uses. Four cards stacked down a page is four
+    copies of one screen.
+  * **Preview on hover or on click**, as a popup or a real view, rather
+    than a permanent second column. The side-by-side pane was built to
+    answer "a sentence with `{{total}}` in it cannot be judged until it
+    says 42.00 CHF"; the answer stands, but it does not have to cost half
+    the width all the time.
+
+Taken together, 3 and 4 are the same move: one editor, used by
+newsletters and by the messages that send themselves, with the
+differences expressed as which blocks and which variables a given
+message offers.
