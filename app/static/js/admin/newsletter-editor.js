@@ -397,8 +397,12 @@
       c.disabled = !block;
     });
     if (!block) {
-      if (name) name.textContent = "Nothing selected";
-      if (aside) aside.hidden = true;
+      if (name) name.textContent = "No block";
+      if (aside) {
+        aside.classList.add("cms-tools-idle");
+        var noneField = aside.querySelector("[data-block-field='url']");
+        if (noneField) { noneField.disabled = true; noneField.value = ""; }
+      }
       return;
     }
     if (name) {
@@ -422,7 +426,18 @@
     //  read as a section rather than as part of the toolbar.
     if (aside) {
       var wants = block.type === "button" || block.type === "image";
-      aside.hidden = !wants;
+      //  Dimmed, never hidden. Hiding it changed the group's width by
+      //  223px the moment a button was selected, which wrapped a row --
+      //  the toolbar changing shape as it is used is the thing the other
+      //  block controls are dimmed to prevent.
+      aside.classList.toggle("cms-tools-idle", !wants);
+      var urlField = aside.querySelector("[data-block-field='url']");
+      if (urlField) urlField.disabled = !wants;
+      if (!wants) {
+        if (urlField) urlField.value = "";
+        var idleLabel = aside.querySelector("[data-aside-label]");
+        if (idleLabel) idleLabel.textContent = "Link";
+      }
       if (wants) {
         var field = aside.querySelector("[data-block-field='url']");
         var label = aside.querySelector("[data-aside-label]");

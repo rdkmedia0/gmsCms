@@ -5973,7 +5973,26 @@ are built; they are kept below with what building them turned up.
     selected block's style. Getting to two means moving that group's
     move/remove buttons onto the selected block in the canvas, which is
     arguably where they belong but is a change to how the editor is
-    USED, not a layout tweak. Left for somebody to ask for.
+    USED, not a layout tweak. ~~Left for somebody to ask for.~~
+
+    **CLOSED** (2026-08-28). Move and remove ARE on the block now -- not
+    for the row count, but because an owner reported being unable to
+    remove a block at all: the buttons were in a group that is dimmed
+    until you select something, which is a control nobody finds. It is
+    still three rows, and the prediction that it would reach two was
+    wrong, because the same change added a Link field to that group.
+
+    What the measuring found instead was worse than density and is
+    fixed: the bar was **163px with nothing selected and 122px once a
+    block was clicked** -- it got SHORTER when you selected something,
+    so it changed shape as it was used. Two causes, both width. The
+    label saying which block the controls act on swung 57px between
+    "Nothing selected" and "Words 2" (fixed width now, and "No block").
+    And the Link field was HIDDEN when it did not apply, taking the
+    group from 490px to 713px the moment a button was chosen -- so it is
+    dimmed instead, which is the rule the CSS three lines above already
+    stated for every other control in that group and for exactly this
+    reason.
 
 **Named, measured, DONE** (2026-08-28).
 

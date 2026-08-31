@@ -391,6 +391,61 @@ with sync_playwright() as p:
     check("...and delete is not in a card of its own",
           acts["strayCards"] == 0, str(acts))
 
+    #  5. The ribbon must not change SHAPE as it is used. It was 163px
+    #     with nothing selected and 122px once a block was clicked -- it
+    #     got shorter when you selected something -- because the label
+    #     saying which block the controls act on swung 57px between
+    #     "Nothing selected" and "Words 2", enough to wrap a row.
+    def ribbon():
+        #  Reports the GROUPS, not just a height. A check that says "164
+        #  and 122 differ" leaves whoever reads it to go and find out
+        #  which part grew; this one says.
+        return page.evaluate(
+            """() => { const bar = document.querySelector('.cms-issue-toolbar');
+                 const rows = [];
+                 bar.querySelectorAll('button,select,input').forEach(el => {
+                   const t = el.getBoundingClientRect().top;
+                   if (!rows.some(r => Math.abs(r - t) < 16)) rows.push(t);
+                 });
+                 const groups = [];
+                 bar.querySelectorAll('.cms-toolbar-group').forEach(g => {
+                   const r = g.getBoundingClientRect();
+                   groups.push(String(g.className).split(' ').pop()
+                     + ':' + Math.round(r.width) + 'x' + Math.round(r.height));
+                 });
+                 const kids = [];
+                 Array.from(bar.children).forEach(c => {
+                   const r = c.getBoundingClientRect();
+                   kids.push((c.className || c.tagName)
+                     + '@' + Math.round(r.top) + ':' + Math.round(r.width)
+                     + 'x' + Math.round(r.height));
+                 });
+                 const cs = getComputedStyle(bar);
+                 return { h: Math.round(bar.getBoundingClientRect().height),
+                          rows: rows.length, pad: cs.padding,
+                          kids: kids.join(' | ') }; }""")
+
+    #  Deselected by clicking the ground's own top edge, where there is
+    #  certainly no block. Clicking its centre lands ON the card and
+    #  selects whatever is there -- which measured a selected image's
+    #  Link field and called the result "idle".
+    #  Dispatched ON the canvas, which is where the handler lives. The
+    #  first attempt fired at the canvas's PARENT -- events bubble up,
+    #  not down, so nothing was deselected and the check measured a still
+    #  selected image and called it idle.
+    page.evaluate(
+        """() => { const c = document.querySelector('.cms-issue-canvas');
+             c.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); }""")
+    page.wait_for_timeout(250)
+    idle = ribbon()
+    page.click("[data-block][data-block-type='text']")
+    page.wait_for_timeout(250)
+    busy = ribbon()
+    check("the ribbon is the same height whether or not a block is chosen",
+          idle["h"] == busy["h"], "idle %s, selected %s" % (idle, busy))
+    check("...and no taller than three rows",
+          busy["rows"] <= 3, str(busy))
+
     print()
     print("The picture picker is a picker, on an admin screen too")
     print("-" * 68)
