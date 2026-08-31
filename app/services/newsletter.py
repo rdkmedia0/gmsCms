@@ -666,3 +666,93 @@ def send_to_list(db, mailer, settings, people, subject, html, text, from_name, l
             failed += 1
         time.sleep(0.4)
     return sent, failed
+
+
+def overview(db, scheduling, audiences):
+    """Every newsletter, once, whatever point of its life it is at.
+
+    The screen showed three lists -- "Yours" (written, not sent), "Going
+    out on its own" (on the clock) and "What has gone out" (sent). Those
+    are not three things. They are one thing at three moments, and
+    splitting them meant a newsletter moved between cards as it aged, so
+    "where is the one about the autumn hours" depended on remembering
+    whether it had gone yet.
+
+    One row each, carrying what the list has to answer: when it was
+    written, when it went, what it is called, who it went to, and -- when
+    it is waiting -- which named schedule it is waiting on.
+
+    Sends of a PAGE or a POST are included as rows of their own. They are
+    not composed newsletters and cannot be edited as one, but they went
+    to the list and the record of that outlives whatever it was sent
+    from -- which is the whole reason newsletter_sends carries no foreign
+    key.
+    """
+    labels = dict(audiences)
+    rows = []
+
+    pending = {}
+    for job in scheduling.recent(db, limit=200):
+        if job["kind"] == "newsletter" and not job["claimed_at"] and not job["done_at"]:
+            pending[job["target_id"]] = job
+
+    for item in list_composed(db):
+        last = last_send(db, "newsletter", item["id"])
+        job = pending.get(item["id"])
+        rows.append({
+            "kind": "newsletter",
+            "id": item["id"],
+            "subject": item["subject"] or "Untitled",
+            "created": item["created_at"],
+            "sent": last["sent_at"] if last else None,
+            "audience": labels.get(
+                (job or last or {})["audience"] if (job or last) else None, ""),
+            "schedule": (job["template_name"] if job and job["template_name"]
+                         else (job["send_at"] if job else "")),
+            "waiting": bool(job),
+            "editable": True,
+        })
+
+    #  Anything that went to the list from somewhere else. Keyed by what
+    #  it was sent from, so two sends of one post are two rows -- they
+    #  were two emails.
+    for send in history(db, limit=200):
+        if send["kind"] == "newsletter":
+            continue
+        rows.append({
+            "kind": send["kind"],
+            "id": send["target_id"],
+            "subject": send["subject"] or "(no subject)",
+            "created": None,
+            "sent": send["sent_at"],
+            "audience": labels.get(send["audience"], ""),
+            "schedule": "",
+            "waiting": False,
+            "editable": False,
+        })
+
+    #  Newest activity first: what somebody is looking for is almost
+    #  always the thing that moved most recently, sent or written.
+    rows.sort(key=lambda r: (r["sent"] or r["created"] or ""), reverse=True)
+    return rows
+
+
+def copy_composed(db, newsletter_id):
+    """Last month's, as a starting point for this month's.
+
+    The obvious way to write a newsletter is to start from the one that
+    worked, and without this the choice was retyping it or editing the
+    original -- which loses the copy that was actually sent.
+
+    The subject gains "(copy)" rather than being left identical: two rows
+    with one name in a list is a thing somebody has to open both of to
+    tell apart.
+    """
+    row = get_composed(db, newsletter_id)
+    if not row:
+        return None
+    new_id = create_composed(db, row["layout"] or "letter",
+                             ((row["subject"] or "Untitled") + " (copy)")[:200])
+    save_blocks(db, new_id, ((row["subject"] or "Untitled") + " (copy)")[:200],
+                composed_blocks(row), layout=row["layout"])
+    return new_id

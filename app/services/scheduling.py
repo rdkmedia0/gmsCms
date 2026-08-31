@@ -171,3 +171,102 @@ def start(app, run_one):
     thread = threading.Thread(target=loop, name="cms-scheduled-sends", daemon=True)
     thread.start()
     return True
+
+
+#  ---- Named schedules ---------------------------------------------------
+#
+#  A time somebody sends at, defined once and assigned, rather than a
+#  datetime retyped into a box every month. The list can then say "First
+#  Monday" where it used to say a timestamp, which is what somebody
+#  recognises.
+#
+#  Deliberately a TIME and not a recurring auto-send. A schedule that
+#  re-sent the same newsletter every month would mail the same words to
+#  the same people repeatedly, and that is not a thing you can take back.
+#  Recurrence is a separate decision and is not made here.
+WEEKDAYS = (("0", "Monday"), ("1", "Tuesday"), ("2", "Wednesday"),
+            ("3", "Thursday"), ("4", "Friday"), ("5", "Saturday"),
+            ("6", "Sunday"))
+
+
+def templates(db):
+    """Every named schedule, oldest first so the list does not shuffle."""
+    try:
+        return db.execute(
+            "SELECT * FROM schedule_templates ORDER BY id").fetchall()
+    except Exception:  # noqa: BLE001 - a missing table must not break a screen
+        return []
+
+
+def save_template(db, name, hour, minute, weekday=None, monthday=None):
+    """(saved, error). Saving the same name again replaces it."""
+    name = (name or "").strip()
+    if not name:
+        return False, "Give it a name so you can pick it out later."
+
+    def _int(value, low, high, default=None):
+        try:
+            n = int(value)
+        except (TypeError, ValueError):
+            return default
+        return n if low <= n <= high else default
+
+    hour = _int(hour, 0, 23, 9)
+    minute = _int(minute, 0, 59, 0)
+    weekday = _int(weekday, 0, 6)
+    monthday = _int(monthday, 1, 28)
+    #  28, not 31: a schedule set to the 30th silently never happens in
+    #  February, which is the kind of gap nobody notices for a year.
+    if weekday is not None and monthday is not None:
+        return False, "Choose a day of the week or a day of the month, not both."
+    db.execute(
+        "INSERT INTO schedule_templates (name, hour, minute, weekday, monthday) "
+        "VALUES (?, ?, ?, ?, ?) ON CONFLICT(name) DO UPDATE SET "
+        "hour = excluded.hour, minute = excluded.minute, "
+        "weekday = excluded.weekday, monthday = excluded.monthday",
+        (name, hour, minute, weekday, monthday))
+    return True, None
+
+
+def delete_template(db, name):
+    return db.execute("DELETE FROM schedule_templates WHERE name = ?",
+                      (name,)).rowcount > 0
+
+
+def describe_template(row):
+    """The schedule in words, which is what a list column should say."""
+    at = "%02d:%02d" % (row["hour"], row["minute"])
+    if row["weekday"] is not None:
+        day = dict(WEEKDAYS).get(str(row["weekday"]), "")
+        return "Every %s at %s" % (day, at)
+    if row["monthday"] is not None:
+        return "Day %d of the month at %s" % (row["monthday"], at)
+    return "Every day at %s" % at
+
+
+def next_occurrence(row, now):
+    """When this named schedule next comes round, from `now` (UTC-naive).
+
+    Returned rather than stored, because "the first Monday" is a rule and
+    a stored date is an answer that goes stale the moment it passes.
+    """
+    when = now.replace(hour=row["hour"], minute=row["minute"],
+                       second=0, microsecond=0)
+    if row["weekday"] is not None:
+        ahead = (row["weekday"] - when.weekday()) % 7
+        when = when + datetime.timedelta(days=ahead)
+        if when <= now:
+            when = when + datetime.timedelta(days=7)
+        return when
+    if row["monthday"] is not None:
+        if when.day > row["monthday"] or (when.day == row["monthday"] and when <= now):
+            month = when.month + 1
+            year = when.year + (1 if month > 12 else 0)
+            month = 1 if month > 12 else month
+            when = when.replace(year=year, month=month, day=row["monthday"])
+        else:
+            when = when.replace(day=row["monthday"])
+        return when
+    if when <= now:
+        when = when + datetime.timedelta(days=1)
+    return when

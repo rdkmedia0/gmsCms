@@ -545,6 +545,26 @@ def _migrate(db):
     _add_column(db, "orders", "invoice_pdf", "TEXT")
     _add_column(db, "orders", "invoice_url", "TEXT")
 
+    #  A time somebody sends at, named, so it is defined once and
+    #  assigned rather than retyped into a date box every month.
+    #
+    #  Deliberately a TIME and not a recurring auto-send. A schedule that
+    #  re-sends the same newsletter every month would mail the same words
+    #  to the same people repeatedly, which is a thing you cannot take
+    #  back; the owner asked for named schedules to assign, and this is
+    #  the reading of that which cannot surprise anybody. Recurrence is a
+    #  separate decision -- see BOW.
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS schedule_templates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            hour INTEGER NOT NULL DEFAULT 9,
+            minute INTEGER NOT NULL DEFAULT 0,
+            weekday INTEGER,
+            monthday INTEGER,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
     #  A newsletter arrangement somebody wants again.
     #
     #  A layout is "a starting arrangement, not a kind" -- the shipped
@@ -690,6 +710,15 @@ def _migrate(db):
         CREATE INDEX IF NOT EXISTS idx_schedule_due
         ON newsletter_schedule (claimed_at, send_at)
     """)
+
+    #  Which named schedule a pending send came from, so the list can say
+    #  "First Monday" rather than a timestamp somebody has to decode.
+    #
+    #  AFTER the CREATE above, not before it: _add_column tolerates a
+    #  missing table on purpose, so placed earlier it would do nothing at
+    #  all on a fresh install and the column would never exist. That has
+    #  already happened once today, on orders.invoice_ref.
+    _add_column(db, "newsletter_schedule", "template_name", "TEXT")
 
     #  Who asked to hear from you, and what they agreed to when they
     #  did. See services/subscribers.py.

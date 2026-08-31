@@ -79,6 +79,16 @@ def newsletters():
     return render_template(
         "admin/newsletters.html",
         pages=pages,
+        #  One row per newsletter, whatever point of its life it is at.
+        #  Yours / Going out on its own / What has gone out were three
+        #  views of one thing, so a newsletter moved between cards as it
+        #  aged and "where is the autumn one" depended on remembering
+        #  whether it had gone yet.
+        rows=newsletter.overview(db, scheduling, subscribers.AUDIENCES),
+        schedule_templates=[
+            {"row": t, "says": scheduling.describe_template(t)}
+            for t in scheduling.templates(db)],
+        weekdays=scheduling.WEEKDAYS,
         #  The newsletters built for the job, newest first, and the
         #  layouts one can be started from.
         #  Everything on the clock, in one place: a schedule was only
@@ -106,12 +116,17 @@ def newsletters():
         wrapper=dict(zip(WRAPPER_KEYS, _wrapper(db))),
         wrapper_sender_line=newsletter.sender_line(
             legal.settings_for(db), (get_site_settings(db) or {}).get("site_title"))[0],
-        audience_counts={key: subscribers.audience_count(db, key)
-                         for key, _label in subscribers.AUDIENCES},
         #  Each page's own send menu, so "section 3" means section 3 of
         #  THAT page rather than of some notional newsletter.
         send_choices={p["id"]: newsletter.choices_for(_page_sections(db, p["id"]))
                       for p in pages},
+        #  Still passed, because "(24)" beside "Everyone on the list" at
+        #  the moment of CHOOSING who gets it is useful. What was removed
+        #  is the card that stated the same two numbers as a heading --
+        #  the Email list screen's subject, repeated here, which is how
+        #  two places come to disagree.
+        audience_counts={key: subscribers.audience_count(db, key)
+                         for key, _label in subscribers.AUDIENCES},
         history=newsletter.history(db),
         counts=subscribers.counts(db),
         email_ready=mailer.is_configured(email_settings),
@@ -613,6 +628,50 @@ def newsletter_issue_send(newsletter_id):
         return redirect(back)
     return _send_it(db, "newsletter", newsletter_id, _composed_sections(db, row),
                     row["subject"], None, back)
+
+
+@bp.route("/newsletters/issue/<int:newsletter_id>/copy", methods=["POST"])
+@login_required
+def newsletter_issue_copy(newsletter_id):
+    """Start this month's from last month's."""
+    db = get_db()
+    new_id = newsletter.copy_composed(db, newsletter_id)
+    if not new_id:
+        flash("That newsletter no longer exists.", "error")
+        return redirect(url_for("admin.newsletters"))
+    db.commit()
+    flash("Copied. This is the copy — the original is untouched.", "success")
+    return redirect(url_for("admin.newsletter_issue_edit", newsletter_id=new_id))
+
+
+@bp.route("/newsletters/schedules/save", methods=["POST"])
+@login_required
+def newsletter_schedule_template_save():
+    """Name a time, so it is defined once and assigned rather than
+    retyped into a date box every month."""
+    db = get_db()
+    ok_, error = scheduling.save_template(
+        db, request.form.get("name"), request.form.get("hour"),
+        request.form.get("minute"),
+        request.form.get("weekday") or None,
+        request.form.get("monthday") or None)
+    if error:
+        flash(error, "error")
+    else:
+        db.commit()
+        flash("Saved. You can pick it when you schedule a newsletter.", "success")
+    return redirect(url_for("admin.newsletters"))
+
+
+@bp.route("/newsletters/schedules/delete", methods=["POST"])
+@login_required
+def newsletter_schedule_template_delete():
+    db = get_db()
+    gone = scheduling.delete_template(db, request.form.get("name"))
+    db.commit()
+    flash("Removed." if gone else "That schedule no longer exists.",
+          "success" if gone else "error")
+    return redirect(url_for("admin.newsletters"))
 
 
 @bp.route("/newsletters/layouts/save", methods=["POST"])

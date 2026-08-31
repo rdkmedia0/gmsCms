@@ -184,6 +184,10 @@ with app.app_context():
         "SELECT name FROM sqlite_master WHERE type = 'table'")}
     check("...and a table to keep a saved newsletter layout in",
           "email_layouts" in tables)
+    check("...and one for a named schedule", "schedule_templates" in tables)
+    check("...and the schedule rows can say which name they came from",
+          "template_name" in columns("newsletter_schedule"),
+          str(sorted(columns("newsletter_schedule"))))
 
     #  The four messages that send themselves ship real words, and on a
     #  brand-new install those words are the only ones there are.

@@ -10,71 +10,78 @@
 {#  A newsletter of its own comes first, because it is the one built for
     the job. Sending a page or a post still works and is below. #}
 <h1>Newsletters</h1>
-{#  One button, not a shape picker.
-
-    There WAS a picker here: four specimens to choose between before
-    writing a word. It is gone, and the reason is that the choice does
-    not belong before the work -- the editor's own Template dropdown
-    already makes it, and makes it BETTER, because changing it there lays
-    the blocks out in front of you at full size instead of asking you to
-    pick from four thumbnails and hope.
-
-    A choice offered twice is a choice somebody has to make twice, and
-    the earlier of the two is the one made with less information. #}
-<div class="card">
-  <h2>Write a newsletter</h2>
-  <p class="hint">Built for email &mdash; tables and inline styling, which is what an inbox
-    can actually draw, in your site&rsquo;s own colours and fonts as closely as email allows.
-    Pick the shape from the Template dropdown once it opens; it lays out as you choose.</p>
+{#  Writing one is the first thing on the screen, not a card to read
+    first. There is no shape picker: the editor's own Template dropdown
+    makes that choice better, at full size, with the blocks in front of
+    you -- a choice offered twice is one somebody makes twice, and the
+    earlier time is made with less information. #}
+<div class="cms-newsletter-actions">
   <form method="post" action="{{ url_for('admin.newsletter_issue_new') }}">
     <button type="submit" class="btn btn-primary"
             title="Start a new newsletter and open it. You choose its shape from the Template dropdown inside, and it lays out as you choose.">Write a newsletter</button>
   </form>
+  <span class="hint">Built for email &mdash; tables and inline styling, which is what an
+    inbox can actually draw, in your site&rsquo;s own colours and fonts as closely as
+    email allows.</span>
 </div>
 
-{% if on_the_clock %}
+{% if not email_ready %}
+<p class="flash flash-warning">Email isn&rsquo;t set up, so nothing can be sent yet.
+  <a href="{{ url_for('admin.settings_email') }}">Set it up &rarr;</a></p>
+{% endif %}
+{% if not has_address %}
+<p class="flash flash-warning">A newsletter has to carry your postal address by law, and
+  there isn&rsquo;t one yet. <a href="{{ url_for('admin.legal_pages') }}">Add it &rarr;</a></p>
+{% endif %}
+
+{#  ONE table.
+
+    It was three cards -- "Yours", "Going out on its own", "What has gone
+    out" -- which are not three things. They are one thing at three
+    moments, and splitting them meant a newsletter moved from card to
+    card as it aged, so finding the one about the autumn hours depended
+    on remembering whether it had gone yet. #}
 <div class="card">
   <div class="integration-head">
-    <h2>Going out on its own</h2>
-    <span class="hint">These send themselves. You do not have to be here.</span>
+    <h2>Newsletters</h2>
+    <span class="hint">Everything you have written, waiting or sent.</span>
   </div>
+  {% if rows %}
   <div class="table-scroll">
-    <table class="simple-table">
-      <thead><tr><th>What</th><th>When</th><th>To</th><th>State</th><th class="col-icons">Action</th></tr></thead>
+    <table class="simple-table cms-newsletter-table">
+      <thead><tr>
+        <th>Subject</th><th>Written</th><th>Sent</th>
+        <th>Schedule</th><th>To</th><th class="cms-col-actions">Action</th>
+      </tr></thead>
       <tbody>
-        {% for job in on_the_clock %}
-        <tr>
-          <td>{{ job.subject or 'Untitled' }}
-            <br><span class="hint">{{ 'newsletter' if job.kind == 'newsletter' else 'blog post' }}</span></td>
-          <td data-local-time="{{ job.send_at }}Z">{{ job.send_at }} UTC</td>
-          <td class="hint">{{ 'Customers' if job.audience == 'customers' else 'Everyone' }}</td>
+        {% for r in rows %}
+        <tr {% if r.waiting %}class="is-waiting"{% endif %}>
           <td>
-            {% if job.error %}
-            {#  A failed job is never retried by itself -- an automatic
-                retry cannot tell "the mail server was down" from "half of
-                them already got it". So it says what happened and waits
-                for a person. #}
-            <span class="integration-badge is-off" title="{{ job.error }}">Did not go</span>
-            <br><span class="hint">{{ job.error }}</span>
-            {% elif job.done_at %}
-            <span class="integration-badge is-on"
-                  title="This went out on its own.">Sent to {{ job.sent }}</span>
-            {% elif job.claimed_at %}
-            <span class="hint" title="It is going out right now, so it can no longer be recalled.">Going out now</span>
+            {% if r.editable %}
+            <a href="{{ url_for('admin.newsletter_issue_edit', newsletter_id=r.id) }}"
+               title="Open this newsletter.">{{ r.subject }}</a>
             {% else %}
-            <span class="hint">Waiting</span>
+            {{ r.subject }} <span class="hint">({{ r.kind }})</span>
             {% endif %}
           </td>
-          <td class="col-icons">
-            {% if not job.claimed_at %}
-            <form method="post" class="cms-delete-form"
-                  data-confirm="Take &quot;{{ job.subject or 'this' }}&quot; off the clock? Nothing is sent and nothing is lost."
-                  action="{{ url_for('admin.newsletter_issue_schedule', newsletter_id=job.target_id)
-                             if job.kind == 'newsletter'
-                             else url_for('admin.newsletter_post_schedule', post_id=job.target_id) }}">
-              <input type="hidden" name="cancel" value="1">
+          <td class="cms-col-when">{% if r.created %}{{ r.created[:10] }}{% else %}&mdash;{% endif %}</td>
+          <td class="cms-col-when">{% if r.sent %}{{ r.sent[:10] }}{% else %}&mdash;{% endif %}</td>
+          <td>{% if r.schedule %}<span class="cms-schedule-name"
+                title="This one is waiting to go out.">{{ r.schedule }}</span>{% endif %}</td>
+          <td>{{ r.audience }}</td>
+          <td class="cms-col-actions">
+            {% if r.editable %}
+            <a class="icon-btn" href="{{ url_for('admin.newsletter_issue_edit', newsletter_id=r.id) }}"
+               title="Open this newsletter to write or send it.">&#9998;</a>
+            <form method="post" action="{{ url_for('admin.newsletter_issue_copy', newsletter_id=r.id) }}">
               <button type="submit" class="icon-btn"
-                      title="Take this off the clock. Nothing is sent and nothing is lost.">&times;</button>
+                      title="Start a new one from this. The original is untouched.">&#128203;</button>
+            </form>
+            <form method="post" action="{{ url_for('admin.newsletter_issue_delete', newsletter_id=r.id) }}"
+                  class="cms-delete-form"
+                  data-confirm="Delete this newsletter? What was already sent stays on the record.">
+              <button type="submit" class="icon-btn"
+                      title="Delete this newsletter. What was already sent stays on the record.">&times;</button>
             </form>
             {% endif %}
           </td>
@@ -83,89 +90,66 @@
       </tbody>
     </table>
   </div>
+  {% else %}
+  <p class="hint">Nothing yet. Press &ldquo;Write a newsletter&rdquo; above to start one.</p>
+  {% endif %}
 </div>
-{% endif %}
 
-{% if composed %}
+{#  A time, named, defined once and assigned -- rather than a datetime
+    retyped into a box every month. The Schedule column above then says
+    "First Monday" instead of a timestamp somebody has to decode.
+
+    It names WHEN a newsletter goes and does not re-send it: a schedule
+    that mailed the same words to the same people every month is a thing
+    nobody can take back. #}
 <div class="card">
-  <h2>Yours</h2>
-  <ul class="cms-account-list">
-    {% for row in composed %}
+  <div class="integration-head">
+    <h2>Your schedules</h2>
+    <span class="hint">Times you send at, named once and picked when you schedule.</span>
+  </div>
+  {% if schedule_templates %}
+  <ul class="cms-schedule-list">
+    {% for t in schedule_templates %}
     <li>
-      <a href="{{ url_for('admin.newsletter_issue_edit', newsletter_id=row.id) }}"
-         title="Open this newsletter">{{ row.subject or 'Untitled' }}</a>
-      <span class="hint">&middot; {{ layout_names.get(row.layout, row.layout) }}
-        {%- if composed_sends[row.id] %} &middot; sent {{ composed_sends[row.id].sent_at[:10] }}
-          to {{ composed_sends[row.id].recipients }}{% else %} &middot; not sent{% endif %}</span>
-      {#  Deleting was only inside the newsletter, so tidying a list of
-          drafts meant opening each one, deleting, coming back, and
-          finding your place again. It is on the row now, where the
-          thing you want rid of is.
-
-          What was already SENT stays on the record either way -- that
-          is a different table, and deliberately has no foreign key, so
-          "you emailed forty people" outlives the draft it came from. #}
-      <form method="post" class="cms-delete-form is-inline"
-            action="{{ url_for('admin.newsletter_issue_delete', newsletter_id=row.id) }}"
-            data-confirm="Delete &quot;{{ row.subject or 'Untitled' }}&quot;?{% if composed_sends[row.id] %} It has already been sent to {{ composed_sends[row.id].recipients }} {{ 'person' if composed_sends[row.id].recipients == 1 else 'people' }} — that stays on the record.{% endif %}">
-        <button type="submit" class="icon-btn icon-btn-danger"
-                data-confirm-danger="1"
-                title="Delete this newsletter. Anything already sent stays on the record.">&times;</button>
+      <strong>{{ t.row.name }}</strong>
+      <span class="hint">{{ t.says }}</span>
+      <form method="post" action="{{ url_for('admin.newsletter_schedule_template_delete') }}"
+            class="cms-delete-form"
+            data-confirm="Remove this schedule? Newsletters already waiting on it keep the time they were given.">
+        <input type="hidden" name="name" value="{{ t.row.name }}">
+        <button type="submit" class="icon-btn"
+                title="Remove this schedule. Anything already waiting keeps the time it was given.">&times;</button>
       </form>
     </li>
     {% endfor %}
   </ul>
-</div>
-{% endif %}
-
-
-<p class="hint">You can also send an ordinary page to your list &mdash; useful when the thing you
-  want to send already exists on the site, and because it stays there, anyone can read it later
-  without digging through their inbox. Note that page tools built for a website
-  (a shop, a booking form, a search box) cannot travel to an inbox; a newsletter of its own,
-  above, is made of blocks that can.</p>
-
-{% if not email_ready %}
-<p class="flash flash-warning">Email isn't set up, so nothing can be sent yet. <a href="{{ url_for('admin.settings_email') }}">Set it up →</a></p>
-{% endif %}
-{% if not has_address %}
-<p class="flash flash-warning">Add your postal address on <a href="{{ url_for('admin.legal_pages') }}">Legal pages</a> before sending. An email to a list has to carry it — that's the rule in Europe, Switzerland and the US alike.</p>
-{% endif %}
-
-<div class="card">
-  <div class="integration-head">
-    <h2>{{ counts.active }} on the list, {{ counts.customers }} {{ 'customer' if counts.customers == 1 else 'customers' }}</h2>
-    <a class="btn btn-small" href="{{ url_for('admin.subscriber_list') }}" title="See who has signed up and what they agreed to">Manage the list</a>
-  </div>
-  <p class="hint">Sending goes one message at a time, each with its own unsubscribe link, so it takes a few seconds per person. Sent from: <code>{{ sender_line or 'not set yet' }}</code></p>
-</div>
-
-{#  The two pieces of writing that wrap every issue -- and, under them,
-    the two that are not the owner's to change. Showing those greyed out
-    rather than leaving them off the screen: an owner who cannot see the
-    unsubscribe line assumes it is missing, and the one who wants it gone
-    should be told plainly that it is not going. #}
-<div class="card">
-  <div class="card-header"><h2>How every email opens and closes</h2></div>
-  <p class="hint">Written once and used by every send &mdash; a page or a post. Plain writing, not code: leave a blank line to start a new paragraph. Two shortcuts you can type: <code>{{ '{{title}}' }}</code> becomes the subject line, and <code>{{ '{{link}}' }}</code> becomes the address of the online copy (nothing at all when the page is off the site).</p>
-  <form method="post" action="{{ url_for('admin.newsletter_wrapper') }}">
-    <label for="newsletter_intro">Before the letter</label>
-    <textarea id="newsletter_intro" name="newsletter_intro" rows="3"
-              placeholder="Hello — here is this month's letter."
-              title="Sits at the top of every newsletter, above whatever you are sending.">{{ wrapper.newsletter_intro }}</textarea>
-
-    <label for="newsletter_outro">After it</label>
-    <textarea id="newsletter_outro" name="newsletter_outro" rows="3"
-              placeholder="Thanks for reading. Reply to this if you want to tell us something."
-              title="Sits at the foot of every newsletter, above the address and unsubscribe line.">{{ wrapper.newsletter_outro }}</textarea>
-
-    <div class="cms-newsletter-fixed" title="Added to every message by this app. It cannot be edited or removed: an email to a list has to carry a postal address and a working unsubscribe link, and a template that could delete them would be a template that could break the law.">
-      <p class="hint"><strong>Always added, and not editable:</strong></p>
-      <p class="hint">{{ wrapper_sender_line or 'Your business name and postal address — set on the Legal pages screen' }}<br>
-      You are getting this because you asked us to. <u>Unsubscribe</u>.</p>
-    </div>
-
-    <button type="submit" class="btn btn-small btn-primary" title="Save the greeting and the sign-off">Save</button>
+  {% endif %}
+  <form method="post" action="{{ url_for('admin.newsletter_schedule_template_save') }}"
+        class="cms-schedule-form">
+    <label for="sched-name" title="What you will call this when you pick it. A name you chose is one you will recognise.">Name
+      <input type="text" id="sched-name" name="name" maxlength="60" required
+             placeholder="First Monday"
+             title="What you will call this when you pick it, e.g. First Monday."></label>
+    <label for="sched-weekday" title="Send on the same day every week. Leave blank to use a day of the month instead.">Every
+      <select id="sched-weekday" name="weekday"
+              title="Send on the same day every week. Leave blank to use a day of the month instead.">
+        <option value="">&mdash; day of week &mdash;</option>
+        {% for value, label in weekdays %}
+        <option value="{{ value }}">{{ label }}</option>
+        {% endfor %}
+      </select></label>
+    <label for="sched-monthday" title="Or the same date every month. 1 to 28, because a schedule set to the 30th never happens in February.">or day
+      <input type="number" id="sched-monthday" name="monthday" min="1" max="28"
+             placeholder="1"
+             title="Or the same date every month. 1 to 28, because the 30th never happens in February."></label>
+    <label for="sched-hour" title="The hour it goes out, on your own clock.">at
+      <input type="number" id="sched-hour" name="hour" min="0" max="23" value="9"
+             title="The hour it goes out, on your own clock."></label>
+    <label for="sched-minute" title="Minutes past the hour.">:
+      <input type="number" id="sched-minute" name="minute" min="0" max="59" value="0"
+             title="Minutes past the hour."></label>
+    <button type="submit" class="btn"
+            title="Save this schedule so you can pick it when scheduling a newsletter.">Add schedule</button>
   </form>
 </div>
 

@@ -1013,6 +1013,55 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
 .cms-toolbar-link.cms-tools-idle { opacity: .5; }
 .cms-toolbar-input { max-width: 200px; }
 
+/*  ---- the Newsletters list ----
+    
+    Writing one is an ACTION at the top, not a card to read first. It was
+    a card with a heading and a paragraph wrapped around one button. */
+.cms-newsletter-actions {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px;
+  margin: 0 0 14px;
+}
+.cms-newsletter-actions form { margin: 0; }
+.cms-newsletter-actions .hint { flex: 1 1 320px; margin: 0; }
+
+/*  One row per newsletter, whatever point of its life it is at. Dates
+    and actions are the columns that must not stretch: a date is ten
+    characters forever, and three icons are three icons. */
+.cms-newsletter-table td, .cms-newsletter-table th { vertical-align: middle; }
+.cms-newsletter-table .cms-col-when { white-space: nowrap; width: 1%; color: #55606d; }
+.cms-newsletter-table .cms-col-actions { white-space: nowrap; width: 1%; }
+.cms-newsletter-table .cms-col-actions form { display: inline; margin: 0; }
+.cms-newsletter-table tr.is-waiting { background: #fffaf0; }
+/*  The schedule's NAME, which is what somebody recognises -- the column
+    said a timestamp before, and a timestamp has to be decoded. */
+.cms-schedule-name {
+  display: inline-block; padding: 2px 8px; border-radius: 999px;
+  background: #eef2f7; font-size: 12px; white-space: nowrap;
+}
+
+/*  Times you send at, named once. A list and one row of controls, not a
+    form per schedule. */
+.cms-schedule-list { list-style: none; margin: 0 0 12px; padding: 0; }
+.cms-schedule-list li {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 0; border-bottom: 1px solid #eef0f3;
+}
+.cms-schedule-list li:last-child { border-bottom: 0; }
+.cms-schedule-list .hint { flex: 1 1 auto; margin: 0; }
+.cms-schedule-list form { margin: 0; }
+.cms-schedule-form {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px;
+}
+.cms-schedule-form label {
+  display: inline-flex; align-items: center; gap: 6px; margin: 0;
+  font-size: 13px; color: #55606d;
+}
+.cms-schedule-form input, .cms-schedule-form select {
+  width: auto; margin: 0; padding: 5px 8px; font-size: 14px; border-width: 1px;
+}
+.cms-schedule-form input[type=number] { width: 72px; }
+.cms-schedule-form input[type=text] { width: 180px; }
+
 /*  ---- the compose bar: who it is for, then the message, then what to
     do with it ----
 
