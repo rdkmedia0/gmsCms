@@ -4,7 +4,7 @@
 {% set tabs = [
   ("Newsletters", url_for('admin.newsletters'), request.endpoint in ('admin.newsletters', 'admin.newsletter_issue_edit')),
   ("Email list", url_for('admin.subscriber_list'), request.endpoint == 'admin.subscriber_list'),
-  ("Message wording", url_for('admin.site_emails'), request.endpoint == 'admin.site_emails'),
+  ("System emails", url_for('admin.site_emails'), request.endpoint == 'admin.site_emails'),
   ("Sending email", url_for('admin.settings_email'), request.endpoint == 'admin.settings_email'),
 ] %}
 {% include "partials/tabs.html" %}

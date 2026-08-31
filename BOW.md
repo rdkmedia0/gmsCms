@@ -7464,3 +7464,44 @@ in the shared dialog, the same shape "save this layout" already takes.
 of nothing above each button, right after a form field and wrong in a
 row of actions -- which is most of what made the send bar read as a pile
 rather than a row. One height, measured: 36px, and the bar 56px.
+
+### System emails, and what a real preview found (2026-08-28)
+
+Renamed from "Message wording": these are the messages the SYSTEM sends,
+and the old name described the screen rather than its subject. Save and
+"Load default" are icons in the tool's header now, beside the other
+things that act on the message being written, and the Newsletters
+signpost is gone -- a newsletter is written by hand and lives on its own
+page.
+
+**Preview opens the real thing, in its own tab.** The in-place preview
+answers "does this sentence read once `{{total}}` says 42.00 CHF"; the
+new one answers "what arrives", dressed in the same wrapper, card and
+sender line the send puts round it.
+
+It earned its place immediately. The shipped wording was given structure
+-- `## a heading`, `**Total:**` on the facts -- and the live preview
+showed **`## Thank you for your order`** and **`**Total:**`** arriving
+with the markers still in them.
+
+`to_transactional_html` converted plain text to paragraphs; the EDITOR's
+preview ran the same body through `email_layouts.rich`. So the screen
+rendered a heading and the inbox rendered two hashes, and the editor had
+been lying about what arrives for as long as both existed. They speak
+the same vocabulary now, and `site_emails_check` asserts it: a heading
+arrives as `<h2>`, bold as `<strong>`, and no marker survives.
+
+That is the shape of every worthwhile bug this week: the thing that
+shows you what will happen, and the thing that happens, disagreeing --
+and the only way to find it being to look at the second one.
+
+### The email list spilled onto a second row per person
+
+A date is ten characters and was wrapping after eight; the customer
+badge broke across two lines; and the consent wording -- a whole
+sentence, because it is evidence -- pushed every other column out.
+
+Dates and badges never wrap now, and the wording is one line with the
+rest on hover. Nothing is lost: the full text is in the spreadsheet
+download, which is what an owner would actually produce if asked to
+show consent a year later.

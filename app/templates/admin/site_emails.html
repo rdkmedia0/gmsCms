@@ -1,9 +1,9 @@
 {% extends "admin/base.html" %}
 {% from "partials/wysiwyg_toolbar.html" import wysiwyg_toolbar %}
-{% block title %}Message wording — My Site Admin{% endblock %}
+{% block title %}System emails — My Site Admin{% endblock %}
 {% block content %}
 {% include "partials/email_tabs.html" %}
-<h1>Message wording</h1>
+<h1>System emails</h1>
 <p class="hint">These four go out on their own &mdash; when somebody buys something, signs up,
   or confirms. Choose one, and write it. All of it is yours; the chips drop in things this
   site fills in for you, like the total or the invoice.</p>
@@ -46,15 +46,29 @@
     </div>
 
     <div class="cms-toolbar-group">
-      {#  Preview is a view of the same canvas, not a second column
-          beside it. The side-by-side pane answered a real question --
-          a sentence with a placeholder in it cannot be judged until the
-          placeholder says 42.00 CHF -- and it does not have to cost half
-          the width all the time to do that. #}
-      <button type="button" class="btn btn-small" data-preview-toggle
-              title="Show this message with everything filled in, as it will arrive. Press again to go back to writing.">Preview</button>
+      {#  Filled in, in place: a sentence with a placeholder in it cannot
+          be judged until the placeholder says 42.00 CHF. #}
+      <button type="button" class="icon-btn" data-preview-toggle
+              title="Show this message with everything filled in, in place. Press again to go back to writing.">&#128065;</button>
+      {#  ...and the real thing, in its own tab. The canvas shows the
+          WORDS; this shows the EMAIL -- the same wrapper, card and
+          sender line the send puts round it. A preview of something else
+          is not a preview. #}
+      <a class="icon-btn" data-live-preview target="_blank" rel="noopener"
+         href="{{ url_for('admin.site_email_preview', message=order[0]) }}"
+         title="Open this message in its own tab, exactly as it arrives in an inbox.">&#8599;</a>
       <span class="cms-toolbar-label cms-preview-source" data-preview-source
             title="{{ sample_note }}">{{ sample_note }}</span>
+    </div>
+
+    {#  Save and Load default act on the message being written, so they
+        stand with the other things that do -- rather than in a bar
+        underneath it, which is where they were. #}
+    <div class="cms-toolbar-group">
+      <button type="submit" class="icon-btn" data-save-wording
+              title="Save these words. They are used on the next message of this kind.">&#128190;</button>
+      <button type="submit" name="reset" value="1" class="icon-btn" data-reset-wording
+              title="Load the default wording for this message, replacing what is written here.">&#8634;</button>
     </div>
   </div>
 
@@ -115,23 +129,12 @@
   </div>
   {% endfor %}
 
-  <div class="cms-compose-actions">
-    <button type="submit" class="btn btn-primary" data-save-wording
-            title="Save these words. They are used on the next message of this kind.">Save</button>
-    <span class="cms-compose-spacer"></span>
-    <button type="submit" name="reset" value="1" class="btn" data-reset-wording
-            title="Put this message back to the words the site ships with.">Use the standard wording</button>
-  </div>
 </form>
 
-<div class="card">
-  <div class="integration-head">
-    <h2>Newsletters</h2>
-    <span class="hint">Sent when you press Send or Schedule.</span>
-  </div>
-  <p class="hint">A newsletter&rsquo;s own opening and closing are written into the newsletter
-    itself, on the <a href="{{ url_for('admin.newsletters') }}">Newsletters</a> screen.</p>
-</div>
+{#  There was a card here pointing at the Newsletters screen. This page
+    is about the messages that send THEMSELVES; a newsletter is written
+    by hand and lives on its own page, and a signpost to it here is one
+    more thing to read before finding what this screen is for. #}
 
 <script type="application/json" id="cms-wording-sample">{{ sample | tojson }}</script>
 <script src="{{ static_url('js/wysiwyg-commands.js') }}"></script>

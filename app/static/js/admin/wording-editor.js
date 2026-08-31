@@ -99,6 +99,13 @@
     //  The action follows the choice. One form, four possible targets --
     //  which is what stops this being four forms again.
     form.action = saveUrl.replace("MESSAGE", key);
+    //  ...and so does the "open it as it arrives" link, or it would show
+    //  whichever message happened to be first.
+    var live = document.querySelector("[data-live-preview]");
+    if (live) {
+      live.href = live.href.replace(/\/emails\/[^/]+\/preview/,
+                                    "/emails/" + key + "/preview");
+    }
     if (previewing) setPreview(true);
   }
 

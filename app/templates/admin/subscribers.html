@@ -36,8 +36,8 @@
 {% else %}
 <div class="card">
   <div class="table-scroll">
-    <table class="simple-table">
-      <thead><tr><th>Email</th><th>Signed up</th><th>Confirmed</th><th>Customer</th><th>Agreed to</th><th class="col-icons">Action</th></tr></thead>
+    <table class="simple-table cms-people-table">
+      <thead><tr><th>Email</th><th class="col-when">Signed up</th><th class="col-when">Confirmed</th><th class="col-tag">Customer</th><th class="col-said">Agreed to</th><th class="col-icons">Action</th></tr></thead>
       <tbody>
         {% for p in people %}
         {#  The whole sequence is on the row, because the sequence IS the
@@ -50,8 +50,8 @@
             {%- if not p.unsubscribed_at and not p.confirmed_at %}
             <span class="badge" title="Sent a confirmation email{{ ' on ' ~ p.confirm_sent_at[:16] if p.confirm_sent_at }} and has not followed the link yet. Nothing further is sent to this address.">waiting to confirm</span>
             {%- endif %}</td>
-          <td title="{{ p.created_at }}{{ ' from ' ~ p.ip if p.ip }}{{ ' · signed up on ' ~ p.source if p.source }}">{{ (p.created_at or '')[:10] }}</td>
-          <td title="{{ ('Confirmed ' ~ p.confirmed_at ~ (' from ' ~ p.confirm_ip if p.confirm_ip else '')) if p.confirmed_at else ('Invitation sent ' ~ p.confirm_sent_at if p.confirm_sent_at else 'No confirmation has been sent') }}">
+          <td class="col-when" title="{{ p.created_at }}{{ ' from ' ~ p.ip if p.ip }}{{ ' · signed up on ' ~ p.source if p.source }}">{{ (p.created_at or '')[:10] }}</td>
+          <td class="col-when" title="{{ ('Confirmed ' ~ p.confirmed_at ~ (' from ' ~ p.confirm_ip if p.confirm_ip else '')) if p.confirmed_at else ('Invitation sent ' ~ p.confirm_sent_at if p.confirm_sent_at else 'No confirmation has been sent') }}">
             {%- if p.confirmed_at %}{{ p.confirmed_at[:10] }}{% else %}<span class="hint">&mdash;</span>{% endif %}</td>
           {#  Two ways to be a customer and they are shown apart, because
               one is a fact the site can evidence and the other is
@@ -67,7 +67,11 @@
             <span class="hint">&mdash;</span>
             {% endif %}
           </td>
-          <td class="hint">{{ p.consent_text }}</td>
+          {#  One line, with the whole wording on hover. It is evidence
+              and it is long -- a paragraph of it in a table cell pushes
+              every other column into wrapping, which is what an owner
+              reported. The full text is in the download either way. #}
+          <td class="hint col-said" title="{{ p.consent_text }}">{{ p.consent_text }}</td>
           <td class="col-icons">
             <span class="row-actions">
               {% if p.unsubscribed_at %}<span class="hint" title="Unsubscribed {{ p.unsubscribed_at }}. The row is kept so you can show that the mail stopped.">left {{ p.unsubscribed_at[:10] }}</span>{% endif %}

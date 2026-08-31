@@ -297,6 +297,29 @@ def site_emails_screen():
     )
 
 
+@bp.route("/emails/<message>/preview")
+@login_required
+def site_email_preview(message):
+    """The message as it actually arrives, in its own tab.
+
+    Not the canvas. The canvas shows the WORDS -- which is what somebody
+    is writing -- and this shows the email: the same wrapper, the same
+    card, the same sender line the send puts round it. A preview of
+    something else is not a preview, which is the rule the newsletter
+    preview already follows.
+    """
+    db = get_db()
+    if message not in site_emails.MESSAGES:
+        return redirect(url_for("admin.site_emails"))
+    site_title = (get_site_settings(db) or {}).get("site_title") or "Our site"
+    line, _has = newsletter.sender_line(legal.settings_for(db), site_title)
+    body = site_emails.wrap(db, message, None, _wording_values(db))
+    html = newsletter.to_transactional_html(body, site_title, line, _look(db))
+    #  Served as a page rather than downloaded: it is a preview, and the
+    #  point is to look at it.
+    return html, 200, {"Content-Type": "text/html; charset=utf-8"}
+
+
 @bp.route("/emails/<message>", methods=["POST"])
 @login_required
 def site_email_save(message):

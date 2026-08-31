@@ -1102,6 +1102,26 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
 .cms-toolbar-count { width: 48px; flex: 0 0 48px; }
 .cms-toolbar-input { width: 118px; flex: 0 0 118px; }
 
+/*  The email list.
+    
+    Reported as spilling onto a second row per person, and it was: a date
+    is ten characters and was wrapping after eight, the customer badge
+    broke across two lines, and the consent wording -- which is a whole
+    sentence, because it is evidence -- pushed everything else out.
+    
+    A date never wraps, a badge never wraps, and the wording is one line
+    with the rest on hover. Nothing is lost: the full text is in the
+    download, which is what an owner would actually produce if asked to
+    show consent. */
+.cms-people-table .col-when { white-space: nowrap; width: 1%; }
+.cms-people-table .col-tag { white-space: nowrap; width: 1%; }
+.cms-people-table .col-tag .badge { white-space: nowrap; }
+.cms-people-table .col-icons { white-space: nowrap; width: 1%; }
+.cms-people-table .col-said {
+  max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cms-people-table td, .cms-people-table th { vertical-align: middle; }
+
 /*  ---- the Newsletters list ----
     
     Writing one is an ACTION at the top, not a card to read first. It was

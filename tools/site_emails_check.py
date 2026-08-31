@@ -115,8 +115,15 @@ with app.test_request_context("/"):
         site_emails.reset(db, key)
     db.commit()
     sale = site_emails.wrap(db, "sale", None, site_emails.SAMPLE)
+    #  It leads with a HEADING now -- the shipped wording has structure,
+    #  because an owner should be able to leave the default alone and
+    #  have it look like something a business sent.
     check("the sale notice leads with what happened",
-          sale.startswith("A customer made an order from your website."), sale[:60])
+          sale.startswith("## A customer made an order"), sale[:60])
+    check("...and the shipped wording has a heading and its facts labelled",
+          all(b.split(chr(10))[0].startswith("## ")
+              for b in (site_emails.MESSAGES[k]["body_default"]
+                        for k in site_emails.ORDER)))
     check("...and names the buyer", site_emails.SAMPLE["buyer"] in sale, sale)
     conf = site_emails.wrap(db, "confirm", None, site_emails.SAMPLE)
     check("the confirmation asks them to opt in",
@@ -214,6 +221,26 @@ with app.test_request_context("/"):
     db.commit()
     check("an owner who deletes it gets nothing, not the default",
           site_emails.body(db, "order") == "", repr(site_emails.body(db, "order")))
+
+    print()
+    print("What the editor shows is what the inbox gets")
+    print("-" * 70)
+    #  The screen said one thing and the inbox another. The editor's
+    #  preview runs the body through email_layouts.rich -- headings,
+    #  bold, links -- and the SENT email did not, so a message written
+    #  with any of them arrived with the markers still in it. Found by
+    #  looking at a real preview, which is why that exists.
+    from app.services import newsletter as _nl                 # noqa: E402
+    site_emails.save(db, "order", "## A heading" + NL + "and **bold** words.")
+    db.commit()
+    body = site_emails.wrap(db, "order", None, site_emails.SAMPLE)
+    sent = _nl.to_transactional_html(body, "Site", "Sender line", None)
+    check("a heading arrives as a heading", "<h2" in sent, sent[:120])
+    check("...and bold arrives as bold", "<strong>bold</strong>" in sent)
+    check("...and no marker survives into the inbox",
+          "##" not in sent and "**" not in sent, sent[:160])
+    site_emails.reset(db, "order")
+    db.commit()
 
     print()
     print("The live senders go through it")

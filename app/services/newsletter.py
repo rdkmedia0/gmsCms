@@ -228,7 +228,18 @@ def to_transactional_html(text_body, site_title, sender_line, look=None):
     styles = styles_for(look)
     look = look or {"accent": "#1a5fd0", "ground": "#f4f6f8",
                     "heading_font": DEFAULT_BODY_FONT, "body_font": DEFAULT_BODY_FONT}
-    body = wrapper_html(text_body)
+    #  The SAME small vocabulary the editor writes and its preview shows:
+    #  `##` a heading, `**bold**`, `[words](address)`, `- ` a list. It
+    #  used to be plain-text-to-paragraphs, so a message written with any
+    #  of them arrived with the markers in it -- and the editor showed it
+    #  correctly the whole time, which is the worst version: the screen
+    #  saying one thing and the inbox another.
+    #
+    #  Imported here rather than at module level: email_layouts imports
+    #  nothing from this module, and keeping it that way is what stops
+    #  the two becoming one.
+    from . import email_layouts
+    body = "".join(email_layouts.rich(text_body, look))
     #  Links are not marked up in the plain text, so make bare URLs
     #  clickable -- a receipt whose link has to be copied out by hand is a
     #  worse receipt.
