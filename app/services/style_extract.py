@@ -83,7 +83,13 @@ def fetch(url):
     while True:
         _public_or_refuse(current)
         request = urllib.request.Request(current, headers={
-            "User-Agent": AGENT, "Accept": "text/html,text/css,*/*"})
+            "User-Agent": AGENT, "Accept": "text/html,text/css,*/*",
+            #  Asked for, and then actually undone below. A great many
+            #  servers compress whether or not you ask -- python.org
+            #  does -- and reading a gzip stream as text gives binary
+            #  noise that parses as no colours and no stylesheets, which
+            #  looks exactly like a page that simply had none.
+            "Accept-Encoding": "gzip, deflate"})
         opener = urllib.request.build_opener(_NoRedirect())
         try:
             response = opener.open(request, timeout=TIMEOUT)
@@ -104,9 +110,37 @@ def fetch(url):
             #  Read incrementally rather than trusting Content-Length,
             #  which is a number the other end chose.
             body = response.read(MAX_BYTES + 1)
+            encoding = (response.headers.get("Content-Encoding") or "").lower()
         if len(body) > MAX_BYTES:
             body = body[:MAX_BYTES]
-        return current, body.decode("utf-8", "replace")
+        return current, _decoded(body, encoding)
+
+
+def _decoded(body, encoding):
+    """The response as text, whatever it arrived compressed as.
+
+    A truncated stream is normal here -- the byte cap cuts mid-block on
+    purpose -- so a decompression that fails part way keeps what it got
+    rather than throwing the lot away. Half a stylesheet still names
+    colours.
+    """
+    if "gzip" in encoding:
+        import gzip
+        import zlib
+        try:
+            body = gzip.decompress(body)
+        except Exception:                                     # noqa: BLE001
+            try:
+                body = zlib.decompressobj(16 + zlib.MAX_WBITS).decompress(body)
+            except Exception:                                 # noqa: BLE001
+                pass
+    elif "deflate" in encoding:
+        import zlib
+        try:
+            body = zlib.decompressobj().decompress(body)
+        except Exception:                                     # noqa: BLE001
+            pass
+    return body.decode("utf-8", "replace")
 
 
 class _Redirected(Exception):
@@ -127,14 +161,91 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 
 _HEX = re.compile(r"#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b")
 _RGB = re.compile(r"rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)")
+#  The two ways colours are actually written now. Without these, a site
+#  built on Tailwind v4 or anything using hsl() returns no colours at
+#  all -- and returns them silently.
+_HSL = re.compile(r"hsla?\(\s*([\d.]+)(?:deg)?[,\s]+([\d.]+)%[,\s]+([\d.]+)%", re.I)
+_OKLCH = re.compile(r"oklch\(\s*([\d.]+)%?[,\s]+([\d.]+)[,\s]+([\d.]+)", re.I)
 #  Up to the ; or } only. Quotes are part of a family name, not the
 #  end of the declaration -- stopping at one read `font-family: "Spectral",
 #  Georgia` as nothing at all.
 _FAMILY = re.compile(r"font-family\s*:\s*([^;}]+)", re.I)
 _RADIUS = re.compile(r"border-radius\s*:\s*([0-9.]+)(px|rem|em|%)", re.I)
 _SHADOW = re.compile(r"box-shadow\s*:\s*([^;}]+)", re.I)
-_LINKED_CSS = re.compile(
-    r'<link[^>]+rel=["\']?stylesheet["\']?[^>]*href=["\']([^"\']+)', re.I)
+#  Any <link> that IS a stylesheet and HAS an href, in either order.
+#  It used to require rel before href, which is an assumption about how
+#  somebody wrote their markup -- and python.org writes href first, so it
+#  read zero stylesheets from a perfectly ordinary page and returned
+#  nothing at all.
+_LINK_TAG = re.compile(r"<link\b[^>]*>", re.I)
+_HREF = re.compile(r'href\s*=\s*["\']([^"\']+)', re.I)
+
+
+def _stylesheet_hrefs(html):
+    """Every stylesheet a page links to, whatever order it wrote the
+    attributes in."""
+    out = []
+    for tag in _LINK_TAG.findall(html):
+        if "stylesheet" not in tag.lower():
+            continue
+        href = _HREF.search(tag)
+        if href:
+            out.append(href.group(1))
+    return out
+
+
+def _hex(r, g, b):
+    return "#%02x%02x%02x" % (max(0, min(255, int(round(r)))),
+                              max(0, min(255, int(round(g)))),
+                              max(0, min(255, int(round(b)))))
+
+
+def _from_hsl(h, s_, l_):
+    """hsl() as it is actually written today, degrees and percentages."""
+    h = (h % 360) / 360.0
+    s_, l_ = s_ / 100.0, l_ / 100.0
+    if s_ <= 0:
+        v = l_ * 255
+        return _hex(v, v, v)
+
+    def channel(t):
+        t = t % 1.0
+        q = l_ * (1 + s_) if l_ < 0.5 else l_ + s_ - l_ * s_
+        p = 2 * l_ - q
+        if t < 1 / 6:
+            return p + (q - p) * 6 * t
+        if t < 1 / 2:
+            return q
+        if t < 2 / 3:
+            return p + (q - p) * (2 / 3 - t) * 6
+        return p
+
+    return _hex(channel(h + 1 / 3) * 255, channel(h) * 255, channel(h - 1 / 3) * 255)
+
+
+def _from_oklch(light, chroma, hue):
+    """oklch() as sRGB.
+
+    Worth the arithmetic rather than skipping: Tailwind v4 and everything
+    built on it writes colours this way, so a reader that only knows hex
+    and rgb() returns NOTHING from a large and growing share of modern
+    sites -- silently, which is the worst way to return nothing.
+    """
+    import math
+    h = math.radians(hue)
+    a, b = chroma * math.cos(h), chroma * math.sin(h)
+    l_ = (light + 0.3963377774 * a + 0.2158037573 * b) ** 3
+    m_ = (light - 0.1055613458 * a - 0.0638541728 * b) ** 3
+    s_ = (light - 0.0894841775 * a - 1.2914855480 * b) ** 3
+    r = +4.0767416621 * l_ - 3.3077115913 * m_ + 0.2309699292 * s_
+    g = -1.2684380046 * l_ + 2.6097574011 * m_ - 0.3413193965 * s_
+    bl = -0.0041960863 * l_ - 0.7034186147 * m_ + 1.7076147010 * s_
+
+    def gamma(c):
+        c = max(0.0, min(1.0, c))
+        return 12.92 * c if c <= 0.0031308 else 1.055 * (c ** (1 / 2.4)) - 0.055
+
+    return _hex(gamma(r) * 255, gamma(g) * 255, gamma(bl) * 255)
 
 
 def _norm(colour):
@@ -154,8 +265,23 @@ def _colours(text):
         counts[key] = counts.get(key, 0) + 1
     for r, g, b in _RGB.findall(text):
         try:
-            key = "#%02x%02x%02x" % (int(r), int(g), int(b))
+            key = _hex(int(r), int(g), int(b))
         except ValueError:
+            continue
+        counts[key] = counts.get(key, 0) + 1
+    for h, sat, light in _HSL.findall(text):
+        try:
+            key = _from_hsl(float(h), float(sat), float(light))
+        except (ValueError, ZeroDivisionError):
+            continue
+        counts[key] = counts.get(key, 0) + 1
+    for light, chroma, hue in _OKLCH.findall(text):
+        try:
+            value = float(light)
+            #  oklch() takes L as 0-1 or as a percentage.
+            key = _from_oklch(value / 100 if value > 1 else value,
+                              float(chroma), float(hue))
+        except (ValueError, OverflowError):
             continue
         counts[key] = counts.get(key, 0) + 1
     return sorted(counts, key=lambda c: -counts[c])
@@ -182,11 +308,40 @@ def _interesting(colours):
     return out
 
 
+_VAR_DEF = re.compile(r"(--[\w-]+)\s*:\s*([^;}]+)")
+
+
 def _fonts(text):
-    """The families a page names, most used first, own names only."""
+    """The families a page names, most used first, own names only.
+
+    A `var(--font-body)` is not a typeface: it is a name for one, and
+    showing it to an owner as "the typeface we found" is showing them
+    somebody else's variable. Resolved where the page defines it in the
+    CSS we read, and dropped when it does not -- which is what
+    tailwindcss.com and stripe.com were coming back as.
+    """
+    variables = {}
+    for name, value in _VAR_DEF.findall(text):
+        variables.setdefault(name, value.strip())
+
+    def resolve(value, depth=0):
+        value = value.strip()
+        if depth > 3 or not value.lower().startswith("var("):
+            return value
+        inside = value[4:].split(")")[0]
+        name = inside.split(",")[0].strip()
+        if name in variables:
+            return resolve(variables[name], depth + 1)
+        #  A fallback inside the var() is still a real family.
+        if "," in inside:
+            return inside.split(",", 1)[1].strip()
+        return ""
+
     counts = {}
     for group in _FAMILY.findall(text):
-        first = group.split(",")[0].strip().strip("\"'")
+        first = resolve(group.split(",")[0]).split(",")[0].strip().strip("\"' ")
+        if first.lower().startswith("var("):
+            continue
         if not first or first.lower() in (
                 "inherit", "initial", "unset", "sans-serif", "serif",
                 "monospace", "system-ui", "-apple-system", "cursive"):
@@ -261,7 +416,7 @@ def signals(url):
     #  Stylesheets too: a modern page keeps almost nothing in its markup,
     #  so reading only the HTML reads almost nothing. Capped, and each
     #  one goes through the same address rules.
-    for href in _LINKED_CSS.findall(html)[:MAX_STYLESHEETS]:
+    for href in _stylesheet_hrefs(html)[:MAX_STYLESHEETS]:
         try:
             _, css = fetch(urljoin(final, href))
         except RefusedError:

@@ -309,6 +309,7 @@ def theme_generator():
             shadow=request.form.get("shadow", ""),
             image_budget=request.form.get("image_budget", "1"),
             ref_colours=seen_colours or None,
+            ref_fonts=(signals or {}).get("fonts"),
         )
         if signals:
             kit["shape"] = kit["shape"] or signals["shape"]

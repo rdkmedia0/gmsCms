@@ -429,6 +429,42 @@ with app.app_context():
           str(sx._interesting(sx._colours(css))))
     check("...the typefaces", sx._fonts(css) == ["Spectral"], str(sx._fonts(css)))
     check("...the corners", sx._shape(css) == "rounded", sx._shape(css))
+
+    #  Every one of these was a real page that came back with NOTHING,
+    #  silently, and looked exactly like a page that simply had no
+    #  colours.
+    #
+    #  A response is often COMPRESSED whether or not you ask -- python.org
+    #  is -- and reading a gzip stream as text gives binary noise.
+    import gzip
+    packed = gzip.compress(css.encode())
+    check("a gzipped page is read, not parsed as noise",
+          "#1d6b58" in sx._decoded(packed, "gzip"), sx._decoded(packed, "gzip")[:40])
+    check("...and an uncompressed one still is",
+          "#1d6b58" in sx._decoded(css.encode(), ""))
+
+    #  A <link> does not have to write rel before href, and requiring it
+    #  read zero stylesheets off python.org.
+    check("a stylesheet is found whichever order the attributes are in",
+          sx._stylesheet_hrefs('<link href="/a.css" rel="stylesheet">') == ["/a.css"]
+          and sx._stylesheet_hrefs('<link rel="stylesheet" href="/b.css">') == ["/b.css"])
+
+    #  Tailwind v4 and everything built on it writes colours as oklch(),
+    #  and hsl() has been ordinary for years. A reader that knows only
+    #  hex and rgb() returns nothing from a large share of modern sites.
+    modern = sx._colours(".a{color:hsl(210 100% 40%)} .b{color:oklch(0.7 0.15 250)}")
+    check("colours written as hsl() and oklch() are read",
+          len(modern) == 2, str(modern))
+
+    #  A var(--font-body) is not a typeface: it is a name for one, and
+    #  showing it as "the typeface we found" shows somebody their own
+    #  variable.
+    varred = sx._fonts(":root{--f: 'Spectral', serif} body{font-family: var(--f)}")
+    check("a font behind a variable is resolved, not shown as the variable",
+          varred == ["Spectral"], str(varred))
+    check("...and an unresolvable one is dropped",
+          sx._fonts("body{font-family: var(--nowhere)}") == [],
+          str(sx._fonts("body{font-family: var(--nowhere)}")))
     check("...and the depth", sx._shadow(css) == "floating", sx._shadow(css))
 
     #  The boundary, asserted rather than intended: there is nothing in

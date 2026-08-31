@@ -34,7 +34,11 @@ Choose:
    and dark enough that white text on the primary is readable.
    {% if kit.colour_note %}Honour what they said about colour above.{% endif %}
 
-2. A typeface pairing, by key, from exactly this list:
+{% if kit.ref_fonts %}They showed you a site using these typefaces: {{ kit.ref_fonts|join(', ') }}.
+This app cannot load those, so choose the pairing below that comes CLOSEST to them
+in feel — serif against sans, geometric against humanist, condensed against wide.
+
+{% endif %}2. A typeface pairing, by key, from exactly this list:
 {% for key, name in fonts %}   - {{ key }} — {{ name }}
 {% endfor %}
 
