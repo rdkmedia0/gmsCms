@@ -41,11 +41,22 @@
   var store = form.querySelector("[data-blocks-store]");
   var canvas = form.querySelector(".cms-issue-canvas");
   var toolbar = form.querySelector("[data-newsletter-toolbar]");
+  var canvasBody = form.querySelector("[data-canvas-body]");
+  var canvasUrl = form.dataset.canvasUrl || "";
   var blockTools = form.querySelector("[data-block-tools]");
   //  Where the block's controls live while nothing is selected. They
   //  move into the panel above the selected block and come back here
   //  afterwards, so the form never loses them.
   var toolsHome = blockTools ? blockTools.parentNode : null;
+  var writingTools = form.querySelector(".cms-toolbar-writing");
+  var writingHome = writingTools ? writingTools.parentNode : null;
+
+  //  Which blocks are made of words. A picture, a rule and a blog post
+  //  are not written into, and bold on one of them is a control acting
+  //  on nothing -- the same fault COLOUR had on a picture.
+  function wantsWriting(block) {
+    return !!block && (block.type === "text" || block.type === "heading");
+  }
   var aside = form.querySelector("[data-block-aside]");
   if (!store || !canvas) return;
 
@@ -223,29 +234,35 @@
     el.classList.toggle("cms-slot-blank", !(el.innerText || "").trim());
   }
 
-  canvas.querySelectorAll("[data-field]").forEach(function (el) {
-    placeholder(el);
-    el.addEventListener("input", function () { readField(el); });
-    el.addEventListener("blur", function () {
-      if (el.dataset.rich) normalise(el);
-      readField(el);
-    });
-    //  Return inside a heading or a button would make a second line in
-    //  something that is drawn as one.
-    if (!el.dataset.rich) {
-      el.addEventListener("keydown", function (e) {
-        if (e.key === "Enter") { e.preventDefault(); el.blur(); }
+  //  Bound to the elements that are IN the canvas, so it is called
+  //  again whenever the canvas is replaced. It was run once at load,
+  //  which was enough while every change reloaded the page.
+  function bindFields() {
+    canvas.querySelectorAll("[data-field]").forEach(function (el) {
+      placeholder(el);
+      el.addEventListener("input", function () { readField(el); });
+      el.addEventListener("blur", function () {
+        if (el.dataset.rich) normalise(el);
+        readField(el);
       });
-    }
-    //  Paste as words, not as somebody else's markup: a paragraph copied
-    //  from a web page brings its fonts and colours with it, and an email
-    //  that half matches the site looks like a mistake.
-    el.addEventListener("paste", function (e) {
-      e.preventDefault();
-      var plain = (e.clipboardData || window.clipboardData).getData("text/plain");
-      document.execCommand("insertText", false, plain);
+      //  Return inside a heading or a button would make a second line in
+      //  something that is drawn as one.
+      if (!el.dataset.rich) {
+        el.addEventListener("keydown", function (e) {
+          if (e.key === "Enter") { e.preventDefault(); el.blur(); }
+        });
+      }
+      //  Paste as words, not as somebody else's markup: a paragraph copied
+      //  from a web page brings its fonts and colours with it, and an email
+      //  that half matches the site looks like a mistake.
+      el.addEventListener("paste", function (e) {
+        e.preventDefault();
+        var plain = (e.clipboardData || window.clipboardData).getData("text/plain");
+        document.execCommand("insertText", false, plain);
+      });
     });
-  });
+  }
+
 
   //  ---- selecting a block ----
 
@@ -310,6 +327,10 @@
       if (blockTools && toolsHome && blockTools.parentNode !== toolsHome) {
         toolsHome.appendChild(blockTools);
       }
+      if (writingTools && writingHome && writingTools.parentNode !== writingHome) {
+        writingHome.appendChild(writingTools);
+      }
+      if (writingTools) writingTools.hidden = true;
       canvas.querySelectorAll("[data-block]").forEach(function (c) {
         c.style.paddingTop = "";
       });
@@ -345,6 +366,22 @@
     //  the selects carry their options from the server, and a second
     //  copy built in JavaScript is how the two come to differ.
     if (blockTools && blockTools.parentNode !== h) h.appendChild(blockTools);
+    //  ...and so do the writing tools, for the blocks made of words.
+    //
+    //  They sat in the ribbon permanently, which is the same fault the
+    //  block controls had: bold, a heading and a link act on the block
+    //  you are IN, and they were three rows above it. On a block with no
+    //  words they acted on nothing at all.
+    if (writingTools && wantsWriting(blocks[selected])) {
+      if (writingTools.parentNode !== h) h.appendChild(writingTools);
+      writingTools.hidden = false;
+    } else if (writingTools && writingHome
+               && writingTools.parentNode !== writingHome) {
+      writingHome.appendChild(writingTools);
+      writingTools.hidden = true;
+    } else if (writingTools) {
+      writingTools.hidden = !wantsWriting(blocks[selected]);
+    }
 
     //  The block makes room for its own panel.
     //
@@ -452,6 +489,35 @@
         postsControls.querySelectorAll("[data-block-field]").forEach(function (f) {
           f.disabled = !isPosts;
         });
+        //  Colour is the colour of WORDS -- and of the one thing that
+        //  is drawn like words, a rule. A picture has none, so the
+        //  control did nothing on one: it was set, stored and read by
+        //  nothing that renders a picture. A control that does nothing
+        //  on the block it is standing on is a control that lies about
+        //  what it is for, which is the same fault as one discarded on
+        //  save.
+        //
+        //  Behind is NOT gated with it: a picture narrower than the card
+        //  has a box around it, and that box is exactly what Behind
+        //  paints.
+        var words = form.querySelector("[data-set='words']");
+        if (words) {
+          var hasWords = block.type !== "image";
+          words.hidden = !hasWords;
+          words.classList.toggle("cms-tools-idle", !hasWords);
+          //  ...and it says which words. On a rule there are none, and
+          //  "the colour of the words" standing over a line is the sort
+          //  of label somebody reads twice and still mistrusts.
+          var says = block.type === "divider" ? "The colour of the line."
+            : block.type === "posts" ? "The colour of the post titles."
+            : block.type === "button" ? "The colour of the button's words."
+            : "The colour of the words in this block.";
+          words.title = says;
+          words.querySelectorAll("input, button").forEach(function (c) {
+            if (c.dataset.blockStyle === "color") c.title = says;
+          });
+        }
+
         //  A picture's size, which only a picture has.
         var scale = form.querySelector("[data-block-field='scale']");
         if (scale) {
@@ -565,7 +631,69 @@
     canvas.querySelectorAll("[data-field]").forEach(readField);
   }
 
+  //  ---- putting a change on the screen ----
+  //
+  //  The canvas is rendered by the SERVER and never rebuilt here. Two
+  //  renderers would drift, and a preview that has drifted is worse than
+  //  none. That rule is why this asks for the canvas rather than
+  //  restyling the DOM itself.
+  //
+  //  What has changed is that it no longer costs a page load. Adding,
+  //  moving or restyling a block submitted the whole form and loaded the
+  //  whole page again -- the scroll position and the selection were
+  //  carried across, so it READ as an update, but on anything slower
+  //  than a local container you watched the screen go white to change
+  //  one alignment. It fetches the same `email_layouts.render()` output
+  //  the page load returns and swaps it in.
   function reload(nextSelected) {
+    structural = true;
+    save();
+    var want = nextSelected === undefined ? selected : nextSelected;
+    if (!canvasBody || !canvasUrl || !window.fetch) return hardReload(nextSelected);
+
+    //  The panel holds the only copy of the block controls and lives in
+    //  the canvas. Park it before anything is replaced, or the swap
+    //  takes six selects out of the form with it.
+    if (blockTools && toolsHome && blockTools.parentNode !== toolsHome) {
+      toolsHome.appendChild(blockTools);
+    }
+    canvas.classList.add("cms-canvas-working");
+    window.fetch(canvasUrl, {
+      method: "POST",
+      body: new FormData(form),
+      credentials: "same-origin",
+      headers: { "X-Requested-With": "fetch" },
+    }).then(function (r) {
+      if (!r.ok) throw new Error(String(r.status));
+      return r.text();
+    }).then(function (html) {
+      canvasBody.innerHTML = html;
+      bindFields();
+      selected = null;
+      select(want === null || want === undefined ? -1 : want);
+      canvas.classList.remove("cms-canvas-working");
+      //  Placed again once the new canvas has actually laid out. The
+      //  panel is positioned from measurements, and measuring a picture
+      //  that has not loaded gives its height as zero -- so the panel
+      //  was put where the block was going to be a moment ago, and on a
+      //  canvas with a picture in it that put it over the block below.
+      window.requestAnimationFrame(showBlockHandle);
+      canvasBody.querySelectorAll("img").forEach(function (img) {
+        if (!img.complete) img.addEventListener("load", showBlockHandle, {once: true});
+      });
+    }).catch(function () {
+      //  Anything at all -- offline, a 500, a proxy eating the POST --
+      //  falls back to the way that has always worked. A change that
+      //  silently did not happen is the one failure this must not have.
+      canvas.classList.remove("cms-canvas-working");
+      hardReload(nextSelected);
+    });
+  }
+
+  //  The original: submit the form and load the page again, carrying the
+  //  scroll position and the selection across. Still here as the fallback,
+  //  and still what a form submit does on its own.
+  function hardReload(nextSelected) {
     structural = true;
     save();
     try {
@@ -646,17 +774,37 @@
   }
 
   if (blockTools) {
+    var pending = null;
+
+    function applyStyle(control) {
+      if (selected === null) return;
+      collect();
+      var key = control.dataset.blockStyle;
+      blocks[selected].style = blocks[selected].style || {};
+      if (control.value) blocks[selected].style[key] = control.value;
+      else delete blocks[selected].style[key];
+      reload();
+    }
+
     form.querySelectorAll("[data-block-style]").forEach(function (control) {
-      //  `change`, not `input`: a colour picker fires continuously while
-      //  a finger is moving, and each one of those would be a save.
+      //  `change` is the moment the picker is closed, and it used to be
+      //  the only moment anything happened -- so choosing a colour did
+      //  nothing at all until the dialog was dismissed, which reads as
+      //  the control being broken.
+      //
+      //  `input` fires continuously while a finger is moving, and every
+      //  one of those was a page load, which is why it was not listened
+      //  to. It is not a page load any more (see reload()), so it is
+      //  listened to and settled: the last colour a hand rests on is the
+      //  one that is asked for.
+      control.addEventListener("input", function () {
+        if (control.type !== "color") return;
+        window.clearTimeout(pending);
+        pending = window.setTimeout(function () { applyStyle(control); }, 280);
+      });
       control.addEventListener("change", function () {
-        if (selected === null) return;
-        collect();
-        var key = control.dataset.blockStyle;
-        blocks[selected].style = blocks[selected].style || {};
-        if (control.value) blocks[selected].style[key] = control.value;
-        else delete blocks[selected].style[key];
-        reload();
+        window.clearTimeout(pending);
+        applyStyle(control);
       });
     });
 
@@ -1034,12 +1182,18 @@
   //  both back makes it read as the page updating, which is what it is.
   (function restore() {
     var where, which;
+    //  Parked until something is selected. Without this the writing
+    //  tools are drawn in the ribbon on the first paint -- acting on
+    //  nothing, in the place they were moved out of -- until the first
+    //  click puts them where they belong.
+    if (writingTools) writingTools.hidden = true;
     try {
       where = sessionStorage.getItem(KEEP_SCROLL);
       which = sessionStorage.getItem(KEEP_SELECTED);
       sessionStorage.removeItem(KEEP_SCROLL);
       sessionStorage.removeItem(KEEP_SELECTED);
-    } catch (e) { return; }
+    } catch (e) { /* a private window: nothing to restore, but the
+                     tools above are still parked. */ }
     if (where) window.scrollTo(0, parseInt(where, 10) || 0);
     if (which !== null && which !== "") select(parseInt(which, 10));
     else showTools();

@@ -365,6 +365,10 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--c
     has the width of the canvas and nothing after it to push. */
 .cms-preview-source { margin: 0 0 10px; font-style: italic; }
 .cms-preview-source[hidden] { display: none; }
+/*  While the canvas is being asked for again. Dimmed, not blanked: what
+    is on screen is still what was there a moment ago, and hiding it
+    would be the page-load flash this change removed. */
+.cms-canvas-working { opacity: .6; transition: opacity .12s ease; }
 .cms-wording-fixed { opacity: .55; pointer-events: none; user-select: none; }
 .cms-wording-fixed * { pointer-events: none; }
 
@@ -1046,7 +1050,24 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
   flex: 0 0 auto; width: 64px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.cms-block-tools.cms-tools-idle { opacity: .5; }
+/*  With nothing selected there is nothing for these to act on, and they
+    are not in the ribbon any more -- they stand on the block. What is
+    left in the ribbon is the bay they are parked in between selections,
+    and a greyed row of controls for "no block" is a row of chrome
+    explaining that it does nothing. It is not drawn at all.
+
+    Parked rather than removed, because this row holds the only copy of
+    those selects and taking them out of the form would take them out of
+    the form. */
+.cms-block-tools.cms-tools-idle { display: none; }
+/*  The writing tools travel onto the block being written in, the same
+    way the block's own controls do. Between selections they are parked
+    in the ribbon, and a parked row is not drawn -- see above. */
+.cms-toolbar-writing[hidden] { display: none; }
+.cms-block-handle .cms-toolbar-writing {
+  border: 0; padding: 0; margin: 0;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
+}
 .cms-block-remove { color: #b42318; font-weight: 700; }
 /*  Where a block points, standing with the block's other properties.
     It was a card under the message holding one field; a link is a

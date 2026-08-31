@@ -125,8 +125,9 @@ with sync_playwright() as p:
         """() => ['heading','text','image','button','divider'].every(
              k => document.querySelector('[data-add-block=\"' + k + '\"]'))"""))
     check("the writing tools are in it too", page.evaluate(
-        """() => !!document.querySelector('.cms-issue-toolbar [data-cmd=\"bold\"]')
-             && !!document.querySelector('.cms-issue-toolbar [data-value=\"h2\"]')"""))
+        """() => !!document.querySelector('[data-cmd=\"bold\"]')
+             && !!document.querySelector('[data-value=\"h2\"]')
+             && document.querySelectorAll('.cms-toolbar-writing').length === 1"""))
     check("so are the style controls", page.evaluate(
         """() => ['align','font','color','bg'].every(
              k => document.querySelector('[data-block-style=\"' + k + '\"]'))"""))
@@ -168,20 +169,32 @@ with sync_playwright() as p:
           page.evaluate("() => !!document.querySelector('.cms-compose-header #audience')"))
     check("...and the subject is beside it",
           page.evaluate("() => !!document.querySelector('.cms-compose-header #subject')"))
-    check("all four actions are there", page.evaluate(
+    #  Send, Save, Delete. There WAS a Schedule button here, and it was
+    #  the only thing that booked anything -- so choosing a schedule and
+    #  pressing Save set a control and threw it away. Reported exactly
+    #  that way: "I added a schedule and saved, but the schedule and
+    #  recipients do not show." Save does the work now, and a control
+    #  that needs a second button pressed beside it is a control that is
+    #  discarded on save wearing a button.
+    check("the actions are the things that happen to it", page.evaluate(
         """() => {
              const bar = document.querySelector('.cms-compose-actions');
              const words = Array.from(bar.querySelectorAll('button'))
                .map(b => b.textContent.trim());
-             return ['Send','Schedule','Save','Preview'].every(w => words.includes(w));
-           }"""))
-    check("it says Preview, not a sentence about sending", page.evaluate(
-        """() => Array.from(document.querySelectorAll('.cms-compose-actions button'))
-             .some(b => b.textContent.trim() === 'Preview')"""))
+             return ['Send','Save'].every(w => words.includes(w)); }"""))
+    check("...and Schedule is not one of them any more", page.evaluate(
+        """() => !Array.from(document.querySelectorAll('.cms-compose-actions button'))
+             .some(b => b.textContent.trim() === 'Schedule')"""))
+    check("when it goes is a control, with Not scheduled as its default",
+          page.evaluate("""() => {
+             const s = document.querySelector('[data-schedule-pick]');
+             return !!s && s.options.length >= 2
+                 && s.options[0].value === 'none'
+                 && s.value === 'none'; }"""))
     check("one form, told apart by formaction", page.evaluate(
         """() => document.querySelectorAll('form.cms-issue-form').length === 1
-             && document.querySelectorAll('.cms-compose-actions button[formaction]').length >= 3"""))
-    check("Schedule has a time to send at", page.evaluate(
+             && document.querySelectorAll('[formaction]').length >= 3"""))
+    check("a time of your own is still possible", page.evaluate(
         "() => !!document.querySelector('.cms-compose-actions input[type=\"datetime-local\"]')"))
     check("the browser's own clock is what gets sent", page.evaluate(
         """() => {
@@ -298,11 +311,11 @@ with sync_playwright() as p:
     page.evaluate("() => { document.querySelector('[data-rich]').innerHTML = '<p><br></p>'; }")
     body.click()
     page.keyboard.type("Thursdays now run late")
-    page.click('.cms-issue-toolbar [data-value="h3"]')
+    page.click('[data-value="h3"]')
     page.wait_for_timeout(120)
     page.keyboard.press("Enter")
     page.keyboard.type("We are open until ")
-    page.click('.cms-issue-toolbar [data-cmd="bold"]')
+    page.click('[data-cmd="bold"]')
     page.keyboard.type("eight")
     page.wait_for_timeout(120)
     typed = next((blk["text"] for blk in stored(page) if blk["type"] == "text"), "")
@@ -366,6 +379,122 @@ with sync_playwright() as p:
            }""") == ",".join(laid))
 
     print()
+    print("Changing a block does not reload the page")
+    print("-" * 68)
+    #  Restyling submitted the whole form and loaded the whole page. The
+    #  scroll position and the selection were carried across, so it READ
+    #  as an update -- but on anything slower than a local container you
+    #  watched the screen go white to change one alignment. The canvas is
+    #  still rendered by the SERVER (two renderers would drift); it is
+    #  fetched and swapped instead of navigated to.
+    page.evaluate("() => { window.__same = 'this document'; }")
+    loads = []
+    page.on("load", lambda _: loads.append(1))
+    pick(page, "heading")
+    page.select_option("[data-block-style='align']", "center")
+    page.wait_for_timeout(900)
+    check("no page load happened", not loads, "%d loads" % len(loads))
+    check("...it is the same document", page.evaluate(
+        "() => window.__same || 'RELOADED'") == "this document")
+    check("...and the change is on the block", "center" in page.evaluate(
+        """() => { const c = document.querySelector(
+             "[data-block][data-block-type='heading']");
+             return c ? getComputedStyle(c).textAlign : ''; }"""))
+    check("...with the block still selected",
+          page.evaluate("() => !!document.querySelector('.cms-block-selected')"))
+    check("...and typing still reaching the store", page.evaluate(
+        """() => { const f = document.querySelector('[data-field]');
+             f.focus(); f.textContent = 'Typed after the swap';
+             f.dispatchEvent(new Event('input', {bubbles: true}));
+             return document.querySelector('[data-blocks-store]')
+                    .value.indexOf('Typed after the swap') >= 0; }"""))
+
+    print()
+    print("A control is offered only where it does something")
+    print("-" * 68)
+    #  COLOUR is the colour of WORDS. A picture has none, and the control
+    #  was offered on one anyway: set, stored, and read by nothing that
+    #  renders a picture. Reported as "COLOUR doesn't appear to do
+    #  anything", which is exactly what it did.
+    pick(page, "heading")
+    check("a heading is offered a colour", page.evaluate(
+        """() => { const w = document.querySelector("[data-set='words']");
+             return !!w && !w.hidden; }"""))
+    page.click("[data-add-block='image']")
+    settle(page)
+    check("a picture is not", page.evaluate(
+        """() => { const w = document.querySelector("[data-set='words']");
+             return !!w && w.hidden; }"""))
+    #  Behind is a different question: a picture narrower than the card
+    #  has a box around it, and that box is what Behind paints.
+    check("...but a picture is still offered what is behind it", page.evaluate(
+        """() => { const w = document.querySelector("[data-set='behind']");
+             return !!w && !w.hidden; }"""))
+
+    #  With nothing selected the controls have nothing to act on. They
+    #  are parked in the ribbon between selections -- that row holds the
+    #  only copy of them -- and a greyed row reading "NO BLOCK" is a row
+    #  of chrome explaining that it does nothing.
+    #  Deselecting means clicking the CANVAS somewhere that is not a
+    #  block -- clicking the page outside it does nothing, which is
+    #  correct and is what made an earlier version of this check wrong
+    #  rather than the code.
+    page.evaluate("""() => {
+      const foot = document.querySelector('.cms-issue-canvas-foot');
+      const r = foot.getBoundingClientRect();
+      foot.dispatchEvent(new MouseEvent('mousedown', {bubbles: true,
+        clientX: r.left + 5, clientY: r.top + 5}));
+    }""")
+    page.wait_for_timeout(250)
+    check("with nothing selected the parked row is not drawn", page.evaluate(
+        """() => { const t = document.querySelector('[data-block-tools]');
+             return !!t && getComputedStyle(t).display === 'none'; }"""),
+          page.evaluate("""() => { const t = document.querySelector('[data-block-tools]');
+             return t ? getComputedStyle(t).display : 'GONE'; }"""))
+
+    #  What the field is called. It is one field on purpose -- a title and
+    #  a subject that can disagree is two -- and while somebody is writing
+    #  it is the subject line, which is the job that decides whether the
+    #  message is opened.
+    check("the subject field says Subject", page.evaluate(
+        """() => { const l = document.querySelector("label[for='subject']");
+             return l ? l.textContent.trim() : 'missing'; }""") == "Subject")
+
+    print()
+    print("The writing tools stand where the writing is")
+    print("-" * 68)
+    #  Bold, a heading and a link act on the block you are IN, and they
+    #  sat in the ribbon three rows above it -- and on a block with no
+    #  words they acted on nothing at all.
+    WHERE = """() => { const w = document.querySelector('.cms-toolbar-writing');
+      if (!w) return 'MISSING';
+      if (w.hidden) return 'parked';
+      return w.closest('.cms-block-handle') ? 'on the block' : 'in the ribbon'; }"""
+    pick(page, "text")
+    check("on a block of words, they are on the block",
+          page.evaluate(WHERE) == "on the block", page.evaluate(WHERE))
+    pick(page, "heading")
+    check("...and on a heading", page.evaluate(WHERE) == "on the block",
+          page.evaluate(WHERE))
+    page.click("[data-add-block='image']")
+    settle(page)
+    check("...but not on a picture, which has no words",
+          page.evaluate(WHERE) == "parked", page.evaluate(WHERE))
+
+    #  Looking at it is a thing you do to the whole newsletter, like
+    #  saving it -- so it stands with those, in the tool's header, as an
+    #  icon. The system messages screen already puts its preview there.
+    check("preview is an icon in the tool's header", page.evaluate(
+        """() => { const b = document.querySelector("[formaction*='preview']");
+             if (!b) return 'missing';
+             return b.classList.contains('icon-btn')
+                 && !!b.closest('.cms-issue-toolbar'); }"""))
+    check("...and it still says what it does",
+          page.evaluate("""() => { const b = document.querySelector(
+              "[formaction*='preview']"); return !!b && !!(b.title || '').trim(); }"""))
+
+
+    print()
     print("The tools look like tools")
     print("-" * 68)
     #  Four things an owner reported as "messy", each measured rather
@@ -426,31 +555,33 @@ with sync_playwright() as p:
     check("...so the header is a strip of lines, not a stack of fields",
           header["rows"] and header["tall"] / header["rows"] <= 50, str(header))
 
-    #  3. Schedule and its time are one control, drawn as one. They were
-    #     a button and a 240px date box with a gap between them and no
-    #     visible relationship.
-    #  Schedule and WHICH schedule, drawn as one control. The date box
-    #  was the second half of this and is now the exception rather than
-    #  the rule: naming the schedules is what stopped a date being typed
-    #  every month, so the picker sits beside the button and the date
-    #  only appears for a one-off.
+    #  3. WHEN it goes is one control, labelled, with the date box as
+    #     the exception rather than the rule -- naming the schedules is
+    #     what stopped a date being typed every month.
+    #
+    #     There was a Schedule button attached to it, and this used to
+    #     measure the gap between the two. The button is gone: Save does
+    #     the work, because choosing a schedule and pressing Save set a
+    #     control and threw it away. So what is measured now is that the
+    #     picker is labelled, defaults to "Not scheduled", and reads as
+    #     one control with the date beside it.
     sched = page.evaluate(
         """() => { const wrap = document.querySelector('.cms-compose-schedule');
              const pick = wrap.querySelector('[data-schedule-pick]');
-             const btn = wrap.querySelector('button');
+             const label = wrap.querySelector('label');
              const p = pick.getBoundingClientRect();
-             const b = btn.getBoundingClientRect();
-             return { hasSchedules: pick.options.length > 1,
-                      joined: Math.round(p.left - b.right),
+             const l = label ? label.getBoundingClientRect() : null;
+             return { hasSchedules: pick.options.length > 2,
+                      labelled: !!label,
+                      joined: l ? Math.round(p.left - l.right) : 999,
                       bordered: getComputedStyle(wrap).borderStyle !== 'none',
+                      notScheduled: pick.value === 'none',
                       dateHidden: wrap.querySelector('[data-send-at]').hidden,
                       width: Math.round(wrap.getBoundingClientRect().width) }; }""")
-    check("Schedule and which schedule read as one control",
-          sched["bordered"] and abs(sched["joined"]) <= 2, str(sched))
-    #  Only meaningful when there IS a schedule to pick: with none
-    #  defined the picker's single option is "a time I choose", so the
-    #  date box is correctly shown. Asserting it hidden regardless was
-    #  asserting that an install with no schedules cannot schedule.
+    check("when it goes reads as one control", sched["labelled"]
+          and sched["bordered"] and sched["joined"] <= 12, str(sched))
+    check("...and nothing is on the clock until somebody says so",
+          sched["notScheduled"], str(sched))
     check("...and a date is only asked for a one-off",
           sched["hasSchedules"] == sched["dateHidden"] or not sched["hasSchedules"],
           str(sched))
@@ -463,11 +594,11 @@ with sync_playwright() as p:
              const canvas = document.querySelector('.cms-issue-canvas-ground');
              return { below: bar.getBoundingClientRect().top
                               > canvas.getBoundingClientRect().top,
-                      has: ['[data-send]', '[data-schedule]', '[data-delete-issue]']
+                      has: ['[data-send]', '[data-delete-issue]']
                              .every(sel => !!bar.querySelector(sel)),
                       strayCards: document.querySelectorAll(
                         '.card form[action*="/delete"]').length }; }""")
-    check("send, schedule, save, preview and delete are under the message",
+    check("send, save and delete are under the message",
           acts["below"] and acts["has"], str(acts))
     check("...and delete is not in a card of its own",
           acts["strayCards"] == 0, str(acts))

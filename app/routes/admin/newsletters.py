@@ -479,6 +479,75 @@ def _tool_newsletter(db, wanted=None):
     return newsletter.get_composed(db, made)
 
 
+@bp.route("/newsletters/issue/<int:newsletter_id>/canvas", methods=["POST"])
+@login_required
+def newsletter_issue_canvas(newsletter_id):
+    """Save what is on the canvas, and hand the canvas back.
+
+    Restyling a block used to submit the whole form and load the whole
+    page again: the scroll position and the selection were carried
+    across it, so it read as an update rather than a reload, but it was
+    a reload -- and on anything slower than a local container you
+    watched the screen go white to change one alignment.
+
+    The rule it was obeying stands and is the reason this exists at all:
+    **the canvas is rendered by the server, never rebuilt in
+    JavaScript**. Two renderers would drift, and a preview that has
+    drifted is worse than none. So this returns the SAME
+    `email_layouts.render()` output the page load returns -- the same
+    template that renders what is sent -- and the editor swaps it in.
+    One renderer, no page load.
+
+    It saves, because the blocks it renders are the blocks it was given,
+    and leaving them unsaved would mean a refresh showing something
+    older than the screen.
+    """
+    db = get_db()
+    row = newsletter.get_composed(db, newsletter_id)
+    if not row:
+        return ("", 404)
+    keep = (request.form.get("blog_id") or "").strip()
+    blocks = _blocks_from_form(request.form)
+    newsletter.save_blocks(
+        db, newsletter_id,
+        (request.form.get("subject") or "").strip(), blocks,
+        layout=(request.form.get("layout") or "").strip() or None,
+        blog_id=int(keep) if keep.isdigit() else None)
+    db.commit()
+    return email_layouts.render(blocks, _look(db), edit=True,
+                                posts_for=_post_resolver(db))
+
+
+def _apply_schedule_choice(db, newsletter_id, row):
+    """Put this newsletter on the clock, or take it off, as the form says.
+
+    `none` is the default and means "not scheduled": it cancels anything
+    waiting, which is how the same control that books a send also takes
+    one back. Anything else is a schedule to book -- and it books through
+    the SAME guards a Schedule button did, because the refusals are the
+    point of them: a schedule that was always going to fail is worse than
+    a refusal, since it looks like it worked.
+
+    Everything it says, it says by flashing. The caller has already saved
+    and already said so.
+    """
+    wanted = (request.form.get("schedule_name") or "none").strip()
+    waiting = scheduling.pending_for(db, "newsletter", newsletter_id)
+    if wanted == "none":
+        if waiting and scheduling.cancel(db, "newsletter", newsletter_id):
+            db.commit()
+            flash("Taken off the clock. It is a draft again.", "success")
+        return
+
+    still_missing = email_layouts.missing(newsletter.composed_blocks(row))
+    if still_missing:
+        flash("Saved, but not put on the clock: fill in %s first."
+              % ", ".join(still_missing), "warning")
+        return
+    _put_on_clock(db, "newsletter", newsletter_id, (row["subject"] or "").strip(),
+                  _composed_sections(db, row), None)
+
+
 @bp.route("/newsletters/issue/<int:newsletter_id>", methods=["GET", "POST"])
 @login_required
 def newsletter_issue_edit(newsletter_id):
@@ -500,6 +569,21 @@ def newsletter_issue_edit(newsletter_id):
             blog_id=int(keep) if keep.isdigit() else None)
         db.commit()
         flash("Saved.", "success")
+        #  ...and what it is waiting on. There was a Schedule button
+        #  beside Save and it was the only thing that booked anything, so
+        #  choosing a schedule and pressing Save set a control and threw
+        #  it away. Save does the work.
+        #
+        #  AFTER the commit above, deliberately: scheduling can refuse --
+        #  no email set up, nobody on the list, no postal address -- and
+        #  a refusal must never cost somebody the words they just wrote.
+        #  Re-read, not the row from before the save. `row` is what this
+        #  newsletter was when the request arrived, and scheduling asks
+        #  it for its subject -- so naming a newsletter and scheduling it
+        #  in one press was refused with "give it a subject first", about
+        #  the subject that had just been typed.
+        _apply_schedule_choice(db, newsletter_id,
+                               newsletter.get_composed(db, newsletter_id) or row)
         #  Back where it was pressed. The tool is on two pages, and
         #  saving from one of them should not land somebody on the other.
         back = (request.form.get("next") or "").strip()
@@ -737,6 +821,14 @@ def _when_from_form(db):
     return when, picked or None, None
 
 
+def _go(where):
+    """Redirect, or don't. A caller that is mid-request and going
+    somewhere of its own passes None and gets None: nothing here decides
+    where anybody lands except by being asked to."""
+    return redirect(where) if where else None
+
+
+
 def _put_on_clock(db, kind, target_id, subject, sections, back):
     """The refusals a schedule makes, and the booking if it makes none.
 
@@ -744,14 +836,19 @@ def _put_on_clock(db, kind, target_id, subject, sections, back):
     than in the middle of the night with nobody watching: a schedule that
     was always going to fail is worse than a refusal, because it looks
     like it worked.
+
+    `back` is where to go afterwards, or None when the caller is already
+    on its way somewhere -- Save applies the schedule and then redirects
+    itself. Everything this function has to say, it says by flashing, so
+    it is the same routine either way.
     """
     when, named, refusal = _when_from_form(db)
     if refusal:
         flash(refusal, "error")
-        return redirect(back)
+        return _go(back)
     if not subject:
         flash("Give it a subject first — that is the line people decide on.", "error")
-        return redirect(back)
+        return _go(back)
 
     site_title = (get_site_settings(db) or {}).get("site_title") or "Our newsletter"
     audience = request.form.get("audience") or "all"
@@ -760,11 +857,11 @@ def _put_on_clock(db, kind, target_id, subject, sections, back):
         get_email_settings(db), legal.settings_for(db), site_title)
     if isinstance(verdict, newsletter.Blocked):
         flash(verdict.message, "error")
-        return redirect(url_for(verdict.where) if verdict.where else back)
+        return _go(url_for(verdict.where) if verdict.where else back)
     if not site.public_base(db):
         flash("This site does not know its own web address yet, and a scheduled send needs "
               "one to build the unsubscribe link. Set it on the Sending email screen.", "error")
-        return redirect(url_for("admin.settings_email"))
+        return _go(url_for("admin.settings_email"))
 
     scheduling.schedule(db, kind, target_id, subject, audience, when,
                         template_name=named)
@@ -773,7 +870,7 @@ def _put_on_clock(db, kind, target_id, subject, sections, back):
     db.commit()
     arm_scheduler(current_app._get_current_object())
     flash("Scheduled. It goes out on its own — you do not have to be here.", "success")
-    return redirect(back)
+    return _go(back)
 
 
 @bp.route("/newsletters/issue/<int:newsletter_id>/schedule", methods=["POST"])
