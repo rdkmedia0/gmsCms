@@ -1,36 +1,42 @@
 // Writing the messages that send themselves.
 //
-// The Message wording screen was two textareas and a collapsed preview.
-// It is the message now, on the site's ground, in the card it arrives in
-// -- the whole body written into directly, with what the code appends
-// greyed and inert below it.
+// One editor, and a dropdown saying which of the four it is writing.
+// It was four cards stacked down the page -- the same canvas, the same
+// chips and the same buttons four times, differing only in which
+// message they wrote. Choosing which one you are editing is a control,
+// not a reason to render the screen again.
 //
-// Two jobs, and only two. Keep the hidden field in step with what is
-// being typed, and show the same words with their placeholders filled
-// in, beside it, as they are typed. Everything the newsletter editor
-// does beyond that -- blocks, structure, a server round trip per change
-// -- would be machinery for a problem this screen does not have.
+// Every message's canvas is in the page and one is shown, so switching
+// is instant and nothing is lost by looking at another one.
 (function () {
   "use strict";
 
-  var sampleEl = document.getElementById("cms-wording-sample");
+  var form = document.querySelector("[data-message-form]");
+  if (!form) return;
+
+  var pick = form.querySelector("[data-message-pick]");
+  var previewBtn = form.querySelector("[data-preview-toggle]");
+  var saveUrl = form.dataset.saveUrl || "";
+
   var SAMPLE = {};
   try {
-    SAMPLE = JSON.parse((sampleEl && sampleEl.textContent) || "{}");
+    var el = document.getElementById("cms-wording-sample");
+    SAMPLE = JSON.parse((el && el.textContent) || "{}");
   } catch (e) {
     SAMPLE = {};
   }
 
-  //  Which region the caret was last in, per message. A placeholder chip
-  //  has to land where somebody was typing, and pressing it takes the
-  //  focus away first -- so it is remembered rather than looked up.
-  var lastUsed = {};
+  var current = pick ? pick.value : null;
+  var previewing = false;
 
-  //  The same substitution the server does, in the same order, so what
-  //  is shown while typing is what will be sent. Kept deliberately
-  //  small: it fills what it knows and leaves what it does not, which is
-  //  exactly the rule the server follows -- a visible {{discount}} is a
-  //  mistake somebody can see and fix, and a gap is one nobody notices.
+  function panel(key) { return form.querySelector('[data-message-panel="' + key + '"]'); }
+  function region(key) { return panel(key) && panel(key).querySelector("[data-wording]"); }
+
+  //  The same substitution the server does, so what is shown while
+  //  typing is what will be sent. It fills what it knows and leaves what
+  //  it does not, which is the rule the server follows -- a visible
+  //  {{discount}} is a mistake somebody can see and fix, and a gap is
+  //  one nobody notices until a customer asks.
   function filled(text) {
     var out = text || "";
     Object.keys(SAMPLE).forEach(function (name) {
@@ -46,8 +52,6 @@
       }
       out = out.split(token).join(value);
     });
-    //  Never two blank lines in a row: dropping a line above would
-    //  otherwise leave a hole in the middle of the message.
     var kept = [];
     out.split("\n").forEach(function (line) {
       if (!line.trim() && kept.length && !kept[kept.length - 1].trim()) return;
@@ -70,71 +74,119 @@
     });
   }
 
-  document.querySelectorAll(".cms-wording-form").forEach(function (form) {
-    var key = form.dataset.message;
-    var preview = form.querySelector("[data-preview]");
+  function sync(key) {
+    var r = region(key);
+    if (!r) return;
+    var store = document.getElementById(key + "_body");
+    //  innerText, not innerHTML: what is stored is TEXT. The message is
+    //  rendered by the server from these words, and letting markup in
+    //  here would put it in somebody's inbox unescaped.
+    var text = (r.innerText || "").replace(/\u00a0/g, " ");
+    if (store) store.value = text.trim();
+    r.classList.toggle("cms-wording-blank", !text.trim());
+    var into = panel(key).querySelector("[data-preview]");
+    if (into) paragraphs(into, filled(text));
+  }
 
-    form.querySelectorAll("[data-wording]").forEach(function (region) {
-      var store = document.getElementById(region.dataset.store);
+  function show(key) {
+    current = key;
+    form.querySelectorAll("[data-message-panel]").forEach(function (p) {
+      p.hidden = p.dataset.messagePanel !== key;
+    });
+    form.querySelectorAll("[data-chips]").forEach(function (c) {
+      c.hidden = c.dataset.chips !== key;
+    });
+    //  The action follows the choice. One form, four possible targets --
+    //  which is what stops this being four forms again.
+    form.action = saveUrl.replace("MESSAGE", key);
+    if (previewing) setPreview(true);
+  }
 
-      function sync() {
-        //  innerText, not innerHTML: what is stored is TEXT. The message
-        //  is rendered by the server from these words, and letting
-        //  markup in here would put it in somebody's inbox unescaped.
-        var text = (region.innerText || "").replace(/\u00a0/g, " ");
-        if (store) store.value = text.trim();
-        region.classList.toggle("cms-wording-blank", !text.trim());
-        if (preview) paragraphs(preview, filled(text));
-      }
+  //  Preview is a VIEW of the same canvas rather than a column beside
+  //  it. The side-by-side pane answered a real question -- a sentence
+  //  with a placeholder in it cannot be judged until the placeholder
+  //  says a real amount -- and it does not have to cost half the width
+  //  all the time to answer it.
+  function setPreview(on) {
+    previewing = on;
+    form.querySelectorAll("[data-message-panel]").forEach(function (p) {
+      var write = p.querySelector("[data-wording]");
+      var read = p.querySelector("[data-preview]");
+      if (write) write.hidden = on;
+      if (read) read.hidden = !on;
+    });
+    if (previewBtn) {
+      previewBtn.textContent = on ? "Back to writing" : "Preview";
+      previewBtn.classList.toggle("btn-primary", on);
+      previewBtn.title = on
+        ? "Go back to writing this message."
+        : "Show this message with everything filled in, as it will arrive.";
+    }
+    var note = form.querySelector("[data-preview-source]");
+    if (note) note.hidden = !on;
+  }
 
-      if (!lastUsed[key]) lastUsed[key] = region;
-      region.addEventListener("focus", function () { lastUsed[key] = region; });
-      region.addEventListener("input", sync);
-      region.addEventListener("blur", sync);
+  form.querySelectorAll("[data-wording]").forEach(function (r) {
+    var key = r.closest("[data-message-panel]").dataset.messagePanel;
 
-      //  Paste as words. A message copied from somewhere else brings its
-      //  fonts and colours, and this text is rendered into an email
-      //  where none of that survives anyway.
-      region.addEventListener("paste", function (e) {
+    r.addEventListener("input", function () { sync(key); });
+    r.addEventListener("blur", function () { sync(key); });
+
+    //  Paste as words. A message copied from somewhere else brings its
+    //  fonts and colours, and this text is rendered into an email where
+    //  none of that survives anyway.
+    r.addEventListener("paste", function (e) {
+      e.preventDefault();
+      var plain = (e.clipboardData || window.clipboardData).getData("text/plain");
+      document.execCommand("insertText", false, plain);
+    });
+
+    //  Return makes a new line. It used to blur, which was right when
+    //  this held a one-line greeting and is wrong now that it holds the
+    //  whole message: nobody can write a paragraph in a box that closes
+    //  when they press Enter.
+    r.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
         e.preventDefault();
-        var plain = (e.clipboardData || window.clipboardData).getData("text/plain");
-        document.execCommand("insertText", false, plain);
-      });
-
-      //  Return makes a new line. It used to blur, which was right when
-      //  this held a one-line greeting and is wrong now that it holds
-      //  the whole message: an owner cannot write a paragraph in a box
-      //  that closes when they press Enter.
-      region.addEventListener("keydown", function (e) {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          document.execCommand("insertLineBreak");
-        }
-      });
-
-      sync();
+        document.execCommand("insertLineBreak");
+      }
     });
 
-    form.addEventListener("submit", function () {
-      form.querySelectorAll("[data-wording]").forEach(function (region) {
-        var store = document.getElementById(region.dataset.store);
-        if (store) {
-          store.value = (region.innerText || "").replace(/\u00a0/g, " ").trim();
-        }
-      });
-    });
+    sync(key);
   });
 
-  document.querySelectorAll("[data-insert]").forEach(function (btn) {
+  if (pick) {
+    pick.addEventListener("change", function () { show(pick.value); });
+    show(pick.value);
+  }
+
+  if (previewBtn) {
+    previewBtn.addEventListener("click", function () { setPreview(!previewing); });
+    setPreview(false);
+  }
+
+  form.querySelectorAll("[data-insert]").forEach(function (btn) {
     //  mousedown, not click: pressing a button blurs the region and
     //  takes the caret position with it.
     btn.addEventListener("mousedown", function (e) { e.preventDefault(); });
     btn.addEventListener("click", function () {
-      var region = lastUsed[btn.dataset.into];
-      if (!region) return;
-      region.focus();
+      var r = region(current);
+      if (!r || previewing) return;
+      r.focus();
       document.execCommand("insertText", false, btn.dataset.insert);
-      region.dispatchEvent(new Event("input"));
+      sync(current);
     });
+  });
+
+  form.addEventListener("submit", function () {
+    //  Only the message being edited is saved -- the others are in the
+    //  page so switching is instant, and posting all four would mean one
+    //  form quietly rewriting three messages nobody opened.
+    form.querySelectorAll("[data-body-for]").forEach(function (input) {
+      input.disabled = input.dataset.bodyFor !== current;
+    });
+    sync(current);
+    var mine = document.getElementById(current + "_body");
+    if (mine) mine.disabled = false;
   });
 })();

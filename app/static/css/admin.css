@@ -321,28 +321,32 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--c
     needs no label. The middle is what actually happened and what the
     reader needs in order to act; the footer is required by law. Neither
     is a field, and neither should look like one. */
-/*  Written on the left, read on the right.
+/*  ONE editor, chosen from a dropdown.
     
-    A sentence with `{{total}}` in the middle of it cannot be judged
-    until it says 42.00 CHF, and the old screen asked somebody to
-    imagine that from a collapsed preview underneath. Side by side, and
-    the right-hand copy updates as the left is typed.
-    
-    It stacks under 900px rather than shrinking: two half-width columns
-    of prose on a phone are two columns nobody can read. */
-.cms-wording-panes {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start;
+    This was two panes side by side -- written on the left, read on the
+    right -- which answered a real question: a sentence with a
+    placeholder in it cannot be judged until the placeholder says a real
+    amount. The answer stands and the cost does not; Preview is a view of
+    the same canvas now, so the width is spent on the message rather than
+    on a second copy of it that is only wanted occasionally. */
+.cms-wording-chips { margin: 8px 0 4px; }
+.cms-wording-chips .site-email-placeholders {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0;
 }
-@media (max-width: 900px) { .cms-wording-panes { grid-template-columns: 1fr; } }
-.cms-wording-pane-label {
-  font-family: var(--cms-ui-font); font-size: 12px; color: #6b7480;
-  margin: 0 0 6px; text-transform: uppercase; letter-spacing: .04em;
-}
-/*  Read-only, and said in the pointer as well as in the label: nothing
-    typed here would go anywhere. */
+.cms-wording-chips .site-email-placeholders[hidden] { display: none; }
+.cms-wording-when { margin: 0 0 6px; }
+.cms-wording-message[hidden] { display: none; }
+/*  Read-only, and said in the pointer as well as by the button that
+    turned it on: nothing typed here would go anywhere. */
 .cms-wording-preview { user-select: text; cursor: default; }
+.cms-wording-preview[hidden] { display: none; }
 .cms-wording-preview p { margin: 0 0 12px; }
 .cms-wording-preview p:last-child { margin-bottom: 0; }
+/*  Which of these values are this site's and which are an example. A
+    preview mixing the two is only trustworthy if it says so, and it is
+    only worth saying while the preview is on screen. */
+.cms-preview-source { text-transform: none; letter-spacing: 0; max-width: 320px; }
+.cms-preview-source[hidden] { display: none; }
 .cms-wording-fixed { opacity: .55; pointer-events: none; user-select: none; }
 .cms-wording-fixed * { pointer-events: none; }
 

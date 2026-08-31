@@ -249,11 +249,24 @@ with app.test_request_context("/"):
     check("...and it is said in words, not only in grey",
           "cms-wording-note" in screen
           and "cannot be changed" in screen)
-    #  Written on the left, read on the right. A sentence with a
-    #  placeholder in the middle of it cannot be judged until the
-    #  placeholder says 42.00 CHF.
-    check("the same words are shown filled in, beside them",
-          "cms-wording-panes" in screen and "data-preview" in screen)
+    #  A sentence with a placeholder in the middle of it cannot be
+    #  judged until the placeholder says 42.00 CHF. That was answered
+    #  with a second pane beside the first; it is a VIEW of the same
+    #  canvas now, so the width goes on the message rather than on a
+    #  second copy of it that is wanted occasionally.
+    check("the same words can be seen filled in",
+          "data-preview" in screen and "data-preview-toggle" in screen)
+    #  One editor with a dropdown, not four copies of one screen.
+    check("one editor, chosen from a dropdown",
+          "data-message-pick" in screen and "data-message-panel" in screen)
+    check("...carrying the app's one rich-text toolbar",
+          "wysiwyg_toolbar(" in screen)
+    #  The preview showed invented values for things this install knows.
+    route = open("/app/app/routes/admin/newsletters.py", encoding="utf-8").read()
+    check("the preview reads this install rather than inventing it",
+          "def _wording_values(" in route and "site_title" in route)
+    check("...and says which values are real",
+          "sample_note" in route and "sample_note" in screen)
     check("the sender line is shown so nobody writes it twice",
           "cms-issue-canvas-foot" in screen)
 

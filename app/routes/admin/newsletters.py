@@ -16,8 +16,9 @@ from ... import mailer
 import json
 
 from . import FONT_PAIRINGS
-from ...services import (blog as blog_service, email_layouts, legal, newsletter, palette,
-                         scheduling, site, site_emails, subscribers)
+from ...services import (blog as blog_service, commerce, email_layouts, legal,
+                         newsletter, palette, scheduling, site, site_emails,
+                         subscribers)
 
 
 #  Two settings and nothing else. The greeting and the sign-off are the
@@ -125,6 +126,81 @@ def newsletters():
 #  The endpoint is named explicitly because the FUNCTION cannot be:
 #  `site_emails` is the service this module imports, and a view of that
 #  name would shadow it for everything below.
+def _wording_values(db):
+    """What each placeholder is worth ON THIS INSTALL, for the preview.
+
+    The preview used believable INVENTED data throughout -- "Your site",
+    "Your Business GmbH", a made-up address -- on the reasoning that
+    showing `{{site}}` back to somebody tells them nothing about how the
+    sentence reads. That half is right and stands.
+
+    The other half was wrong, and an owner spotted it: this install knows
+    its own name. Showing "Your site" where the real message will say
+    "Flour & Salt" makes the preview a worse guide than the thing it is
+    previewing -- and it is exactly the field somebody checks the wording
+    against. So anything that can be READ is read, and sample data is
+    kept only for what genuinely does not exist yet: an order that has
+    not happened has no total, and there is no real access token to put
+    in a link that anybody may screenshot.
+
+    A real ORDER is used when the shop has one, because then every one of
+    those values is true as well.
+    """
+    values = dict(site_emails.SAMPLE)
+    settings = get_site_settings(db) or {}
+    legal_settings = legal.settings_for(db)
+    site_title = settings.get("site_title") or ""
+    if site_title:
+        values["site"] = site_title
+
+    #  The real host, with a sample token. The address is the half that
+    #  is knowable and the half somebody is checking; the token is not
+    #  ours to show, and a live one in a screenshot is a live one.
+    try:
+        values["link"] = site.absolute(
+            db, url_for("public.my_account", token="example-link"))
+    except Exception:  # noqa: BLE001 - a preview must not 500 the screen
+        pass
+
+    #  What the sign-up form on this site actually says, since that is
+    #  what a confirmation quotes back.
+    consent = (db.execute(
+        "SELECT consent_text FROM subscribers WHERE consent_text IS NOT NULL "
+        "AND consent_text != '' ORDER BY id DESC LIMIT 1").fetchone() or {})
+    if consent and consent["consent_text"]:
+        values["consent"] = consent["consent_text"]
+
+    #  A real order makes every commerce value true at once. The most
+    #  recent one, because it is the one whose email the owner most
+    #  likely still has open in another tab.
+    order = db.execute(
+        "SELECT * FROM orders ORDER BY id DESC LIMIT 1").fetchone()
+    if order:
+        real = commerce.order_values(
+            db, order, site_title or "your site",
+            token_url=values["link"], legal_settings=legal_settings)
+        for key, value in real.items():
+            #  Only what is actually there. An order with nothing to post
+            #  has no action, and an empty real value is worse than a
+            #  sample one for judging how a sentence reads.
+            if str(value or "").strip():
+                values[key] = value
+        buyer = db.execute("SELECT email FROM customers WHERE id = ?",
+                           (order["customer_id"],)).fetchone() if order["customer_id"] else None
+        if buyer and buyer["email"]:
+            values["buyer"] = buyer["email"]
+    elif legal_settings.get("business"):
+        #  No order to read, but the seller's own details are known and
+        #  they are half of what an invoice says.
+        values["invoice"] = values["invoice"].replace(
+            "Your Business GmbH", legal_settings["business"])
+        if legal_settings.get("address"):
+            values["invoice"] = values["invoice"].replace(
+                "1 Example Street, 8001 Zurich",
+                legal_settings["address"].replace(chr(10), ", "))
+    return values
+
+
 @bp.route("/emails", endpoint="site_emails")
 @login_required
 def site_emails_screen():
@@ -144,6 +220,13 @@ def site_emails_screen():
     look = _look(db)
     site_title = (get_site_settings(db) or {}).get("site_title") or "Your site"
     line, _has = newsletter.sender_line(legal.settings_for(db), site_title)
+    values = _wording_values(db)
+    #  Said, because a preview that mixes real and invented values is
+    #  only trustworthy if it says which is which.
+    note = ("This is your own site's details, and your most recent order."
+            if db.execute("SELECT 1 FROM orders LIMIT 1").fetchone()
+            else "Your own site's details. The order figures are an example, "
+                 "because there are no orders yet.")
     return render_template(
         "admin/site_emails.html",
         messages=site_emails.MESSAGES,
@@ -155,12 +238,14 @@ def site_emails_screen():
         #  ...and the same words with the placeholders filled in, which
         #  is the only way to see whether a sentence with `{{total}}` in
         #  the middle of it actually reads.
-        previews={key: email_layouts.rich(site_emails.preview(db, key), look)
-                  for key in site_emails.ORDER},
+        previews={key: email_layouts.rich(
+            site_emails.fill(site_emails.body(db, key), values), look)
+            for key in site_emails.ORDER},
+        sample_note=note,
         block_styles=email_layouts.block_styles(look),
         look=look,
         sender_line=line,
-        sample=site_emails.SAMPLE,
+        sample=values,
         email_ready=mailer.is_configured(get_email_settings(db)),
     )
 

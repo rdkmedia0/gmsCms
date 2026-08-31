@@ -1,121 +1,139 @@
 {% extends "admin/base.html" %}
+{% from "partials/wysiwyg_toolbar.html" import wysiwyg_toolbar %}
 {% block title %}Message wording — My Site Admin{% endblock %}
 {% block content %}
 {% include "partials/email_tabs.html" %}
 <h1>Message wording</h1>
 <p class="hint">These four go out on their own &mdash; when somebody buys something, signs up,
-  or confirms. Each one below is the message itself, and all of it is yours to write. Use the
-  chips to drop in things this site fills in for you, like the total or the invoice.</p>
+  or confirms. Choose one, and write it. All of it is yours; the chips drop in things this
+  site fills in for you, like the total or the invoice.</p>
 
 {% if not email_ready %}
 <p class="flash flash-warning">Email isn&rsquo;t set up, so none of these can be sent yet.
   <a href="{{ url_for('admin.settings_email') }}">Set it up &rarr;</a></p>
 {% endif %}
 
-{#  The same canvas as the newsletter editor, deliberately: the site's own
-    ground, the card the message arrives in, the paragraph style
-    email_layouts gives a newsletter's words. These are the same kind of
-    thing and should not need two screens learning.
+{#  ONE editor, chosen from a dropdown.
 
-    What is greyed is no longer a fixed middle -- the body is the owner's
-    now -- but only what the code adds BELOW it: the sender line, and on a
-    list message the unsubscribe link. Shown rather than described, so
-    nobody writes their own and the reader gets two. #}
-{% for key in order %}
-{% set spec = messages[key] %}
-<div class="card">
-  <div class="integration-head">
-    <h2>{{ spec.name }}</h2>
-    <span class="hint">{{ spec.when }}</span>
+    It was four cards stacked down the page, which is four copies of one
+    screen: the same canvas, the same chips, the same buttons, differing
+    only in which message they wrote. Choosing which one you are editing
+    is a control, not a reason to render the screen again.
+
+    The same shape the newsletter editor has, deliberately -- ribbon,
+    then the message -- because these are the same kind of thing and
+    should not need a second screen learning. #}
+<form method="post" class="cms-wording-form" data-message-form
+      data-save-url="{{ url_for('admin.site_email_save', message='MESSAGE') }}">
+
+  <div class="cms-issue-toolbar" data-wording-toolbar>
+    <div class="cms-toolbar-group">
+      <label class="cms-toolbar-label" for="wording-pick">Message</label>
+      <select id="wording-pick" class="cms-toolbar-select" data-message-pick
+              title="Which of the four messages you are writing. Each one goes out on its own, at the moment named beside it.">
+        {% for key in order %}
+        <option value="{{ key }}" title="{{ messages[key].when }}">{{ messages[key].name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    {#  The one rich-text toolbar this app has, the same one the
+        newsletter editor uses. `include_layout=false`: alignment and
+        colour are a BLOCK's properties in a newsletter, and these
+        messages are one block of words. #}
+    <div class="cms-toolbar-group cms-toolbar-writing">
+      {{ wysiwyg_toolbar(include_image=false, include_icon=false, include_layout=false) }}
+    </div>
+
+    <div class="cms-toolbar-group">
+      {#  Preview is a view of the same canvas, not a second column
+          beside it. The side-by-side pane answered a real question --
+          a sentence with a placeholder in it cannot be judged until the
+          placeholder says 42.00 CHF -- and it does not have to cost half
+          the width all the time to do that. #}
+      <button type="button" class="btn btn-small" data-preview-toggle
+              title="Show this message with everything filled in, as it will arrive. Press again to go back to writing.">Preview</button>
+      <span class="cms-toolbar-label cms-preview-source" data-preview-source
+            title="{{ sample_note }}">{{ sample_note }}</span>
+    </div>
   </div>
 
-  <form method="post" action="{{ url_for('admin.site_email_save', message=key) }}"
-        class="cms-wording-form" data-message="{{ key }}">
-
-    {#  Offered above the message, because that is where somebody is
-        before they start typing. Clicking one puts it where the caret
-        was: `{{ '{{ site }}' }}` with spaces does not substitute, and
-        what arrives in an inbox is then the braces. #}
-    <p class="hint">Click to drop one in &mdash; this site fills it in when the message is sent:</p>
-    <p class="site-email-placeholders">
-      {% for ph in spec.placeholders %}
+  {#  Offered above the message, because that is where somebody is before
+      they start typing. Clicking one puts it where the caret was. #}
+  <div class="cms-wording-chips">
+    {% for key in order %}
+    <p class="site-email-placeholders" data-chips="{{ key }}" {% if not loop.first %}hidden{% endif %}>
+      <span class="hint">Click to drop one in:</span>
+      {% for ph in messages[key].placeholders %}
       <button type="button" class="btn btn-small" data-insert="{{ '{{' ~ ph.name ~ '}}' }}"
-              data-into="{{ key }}"
               title="Insert {{ ph.name }} &mdash; {{ ph.means }}">{{ '{{' ~ ph.name ~ '}}' }}</button>
       {% endfor %}
     </p>
+    {% endfor %}
+  </div>
 
-    <div class="cms-wording-panes">
-      <div class="cms-wording-pane">
-        <p class="cms-wording-pane-label">Write it here</p>
-        <div class="cms-issue-canvas-ground" style="background: {{ look.ground }};">
-          <div class="cms-issue-canvas" style="font-family: {{ look.body_font }};">
-            <div class="cms-wording-mine" data-wording="body" data-store="{{ key }}_body"
-                 contenteditable="true" style="{{ block_styles.p }}outline:none;"
-                 data-placeholder="Write the message. Leave it empty to send nothing at all."
-                 title="The whole message, in your words. Use the chips above for anything this site fills in."
-            >{{ wording[key] }}</div>
+  {#  Every message's canvas is rendered; one is shown. Switching is then
+      instant and needs no round trip, and what is NOT being edited is
+      still in the form, so nothing is lost by looking at another one. #}
+  {% for key in order %}
+  <div class="cms-wording-message" data-message-panel="{{ key }}"
+       {% if not loop.first %}hidden{% endif %}>
+    <p class="hint cms-wording-when">{{ messages[key].when }}</p>
 
-            {#  Inert, and greyed so that is visible without a label.
-                Neither line is a choice: the sender line says who this
-                came from, and a message to a mailing list carries an
-                unsubscribe link by law. #}
-            <div class="cms-issue-canvas-foot cms-wording-fixed"
-                 title="Added for you and not editable &mdash; {{ appended[key] }}">
-              <hr>
-              <p>{{ sender_line }}{% if key in needs_unsubscribe %}<br>Unsubscribe: <u>a link
-                to leave the list</u>{% endif %}</p>
-            </div>
-          </div>
+    <div class="cms-issue-canvas-ground" style="background: {{ look.ground }};">
+      <div class="cms-issue-canvas" style="font-family: {{ look.body_font }};">
+        <div class="cms-wording-mine" data-wording="body" data-store="{{ key }}_body"
+             contenteditable="true" style="{{ block_styles.p }}outline:none;"
+             data-placeholder="Write the message. Leave it empty to send nothing at all."
+             title="The whole message, in your words. Use the chips above for anything this site fills in."
+        >{{ wording[key] }}</div>
+
+        {#  The same canvas, showing what will actually arrive. Hidden
+            until Preview is pressed, so it costs nothing while writing. #}
+        <div class="cms-wording-preview" data-preview="{{ key }}" hidden>
+          {% for part in previews[key] %}{{ part | safe }}{% endfor %}
         </div>
-      </div>
 
-      {#  The same words with the placeholders filled in. A sentence with
-          `{{ '{{total}}' }}` in the middle of it cannot be judged until
-          it says 42.00 CHF, and asking somebody to imagine that is what
-          the old collapsed preview did. #}
-      <div class="cms-wording-pane">
-        <p class="cms-wording-pane-label">How it will read</p>
-        <div class="cms-issue-canvas-ground" style="background: {{ look.ground }};">
-          <div class="cms-issue-canvas" style="font-family: {{ look.body_font }};">
-            <div class="cms-wording-preview" data-preview="{{ key }}">
-              {% for part in previews[key] %}{{ part | safe }}{% endfor %}
-            </div>
-            <div class="cms-issue-canvas-foot cms-wording-fixed">
-              <hr>
-              <p>{{ sender_line }}{% if key in needs_unsubscribe %}<br>Unsubscribe:
-                <u>https://your.site/u/abc123</u>{% endif %}</p>
-            </div>
-          </div>
+        {#  Inert, and greyed so that is visible without a label. Neither
+            line is a choice: the sender line says who this came from, and
+            a message to a mailing list carries an unsubscribe link by
+            law. #}
+        <div class="cms-issue-canvas-foot cms-wording-fixed"
+             title="Added for you and not editable &mdash; {{ appended[key] }}">
+          <hr>
+          <p>{{ sender_line }}{% if key in needs_unsubscribe %}<br>Unsubscribe:
+            <u>a link to leave the list</u>{% endif %}</p>
         </div>
       </div>
     </div>
 
-    <input type="hidden" name="body" id="{{ key }}_body" value="{{ wording[key] }}">
+    <input type="hidden" name="body" id="{{ key }}_body" value="{{ wording[key] }}"
+           data-body-for="{{ key }}">
 
     <p class="hint cms-wording-note">The greyed lines at the bottom are added for you and
       cannot be changed &mdash; {{ appended[key] }}</p>
+  </div>
+  {% endfor %}
 
-    <div class="cms-post-save-bar">
-      <button type="submit" class="btn btn-primary"
-              title="Save these words. They are used on the next message of this kind.">Save</button>
-      <button type="submit" name="reset" value="1" class="btn"
-              title="Put this message back to the words the site ships with.">Use the standard wording</button>
-    </div>
-  </form>
-</div>
-{% endfor %}
+  <div class="cms-compose-actions">
+    <button type="submit" class="btn btn-primary" data-save-wording
+            title="Save these words. They are used on the next message of this kind.">Save</button>
+    <span class="cms-compose-spacer"></span>
+    <button type="submit" name="reset" value="1" class="btn" data-reset-wording
+            title="Put this message back to the words the site ships with.">Use the standard wording</button>
+  </div>
+</form>
 
 <div class="card">
   <div class="integration-head">
     <h2>Newsletters</h2>
     <span class="hint">Sent when you press Send or Schedule.</span>
   </div>
-  <p class="hint">A newsletter&rsquo;s greeting and sign-off are edited on the
-    <a href="{{ url_for('admin.newsletters') }}">Newsletters</a> screen, beside the
-    newsletters themselves &mdash; that is where you are when you think about them.</p>
+  <p class="hint">A newsletter&rsquo;s own opening and closing are written into the newsletter
+    itself, on the <a href="{{ url_for('admin.newsletters') }}">Newsletters</a> screen.</p>
 </div>
 
 <script type="application/json" id="cms-wording-sample">{{ sample | tojson }}</script>
+<script src="{{ static_url('js/wysiwyg-commands.js') }}"></script>
 <script src="{{ static_url('js/admin/wording-editor.js') }}"></script>
 {% endblock %}
