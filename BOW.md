@@ -7505,3 +7505,129 @@ Dates and badges never wrap now, and the wording is one line with the
 rest on hover. Nothing is lost: the full text is in the spreadsheet
 download, which is what an owner would actually produce if asked to
 show consent a year later.
+
+## 2026-08-31 — a block's controls, a newsletter kept, and the Blogs screen
+
+### The controls for a thing were nowhere near the thing
+
+Alignment, colour, behind, where a button points: all of them lived in a
+ribbon at the top of the newsletter editor. You clicked a picture at the
+bottom of the canvas and looked up to a bar at the top to change it, and
+nothing on screen connected the two.
+
+They stand on the block now, in a panel above it — the shape the live
+page editor already has for a section's tool panel. Moved rather than
+rebuilt: the selects carry their options from the server, and a second
+copy built in JavaScript is how the two come to differ.
+
+Two things that had to be handled, and both would have been silent:
+
+  * the panel holds the only copy of those controls, so it is parked
+    back in the ribbon before the panel is removed. Taking the node out
+    with them inside it would take them out of the form.
+  * the style listeners were bound from the PANEL. Moving a control
+    unbinds it, and a select nothing listens to simply does nothing.
+    They are bound from the form.
+
+And the panel occluded its neighbour. Floating it above the selected
+block put it over the block ABOVE, which is a different block — a short
+one was covered whole, so it could not be clicked at all while its
+neighbour was selected. Found by measuring, not by looking: the
+checker's click reported `<input data-block-style="color"> ... intercepts
+pointer events`.
+
+The fix is real space. The selected cell opens padding of the panel's
+own height, the panel sits in it, and nothing else is ever underneath.
+`panel_clear_of_other_blocks` measures exactly that and goes red on the
+version it replaces.
+
+A smaller lesson from the same change: the checker clicked the middle of
+a block's cell. Once a cell opens space at its top, a short block's
+geometric centre is INSIDE that space — which is where a naive click
+lands and not where a person clicks. It clicks the words now.
+
+### A cap written as a total reads a legitimate addition as a regression
+
+The editor's header was asserted at "≤ 100px, so To and Subject are one
+strip". A third line was added — what happens to the message afterwards
+— and the check failed at 136.
+
+The claim was never "two rows". It was that each of these is a line, not
+a form field. Measured per row, it says the thing it meant, and it still
+catches the regression it was written for.
+
+### A newsletter is read once, by whoever was on the list that day
+
+Anybody who joins next week never sees it. Neither does anybody who
+finds the site through a search. So a newsletter can now be kept: tick
+it, choose a blog, and the same words are published as a blog entry the
+moment the email goes — a schedule that sends on the first Monday posts
+on the first Monday, with nothing else to remember.
+
+The opening and the sign-off are left out, and that is the whole reason
+it is not simply the email again. "Hello," and "Thanks for reading." are
+addressed to somebody who has just been written to; a blog entry has no
+such reader.
+
+Nor does it carry the email's inline styles. An email is inline-styled
+because a client strips a stylesheet; a page HAS the stylesheet, and
+those styles arriving with it pin one paragraph to 16px Arial in the
+middle of the site's own type. So `rich()` gained `plain=True` rather
+than a second converter — the vocabulary has to be read the same way by
+both, and two parsers is how they come to disagree about what somebody
+wrote.
+
+`style=""` is not the same as no attribute, which is why `_style()`
+omits it entirely: an element carrying one is an element the page's own
+stylesheet can lose to.
+
+Which blog IS the setting. There is no second "save as blog" flag that
+could disagree with it, and the tick carries no name — the picker
+carries the whole answer, and a disabled select is not submitted, so
+unticking genuinely turns it off rather than leaving the old blog in the
+form for the save to read back.
+
+Both send paths call one function, and only when the send actually went.
+An entry announcing a letter nobody received is worse than no entry. The
+checker asserts the call at the SOURCE as well as running it, because a
+path that never calls it is invisible to any test of the path that does
+— and the failure would be silent, since the email arrives either way
+and nobody is looking at the blog on a Monday morning.
+
+### The Blogs screen told you what existed and gave you nowhere to write
+
+A tree of blogs with a pencil beside each post is a file manager. To
+change a word you opened another screen; to start a post you either
+dropped a Blog tool on a page or found the + hidden in a row.
+
+It is the Newsletters screen's shape now, in the same order: the tool
+that makes one, everything that has been made, then the times this site
+publishes at. A post and a newsletter are the same act with a different
+ending, and an owner who has learnt one screen should not have to learn
+a second.
+
+Three things became shared rather than similar — the creation tool
+(`partials/blog_post_editor.html`), choosing when
+(`admin/schedule-picker.js`), and the schedules card
+(`partials/schedules.html`). Each was already two things that looked
+alike, which is the state just before they stop matching.
+
+**Publishing on a clock is not sending on one.** `kind = "publish"` is
+answered FIRST in `_run_scheduled`, before every check below it — each
+of which is about an inbox — so a post going public can never be refused
+for want of a postal address or a mailing list. The two were one control
+for as long as a post could only be put on a clock by being emailed; an
+owner who writes weekly and mails monthly could not say so.
+
+### The wrong class, from the right-sounding name
+
+The rename control in a table cell used `.cms-inline-form`. That is the
+LIVE EDITOR's chrome class; on an admin screen the class is
+`.inline-form`. The wrong one dragged the editor's toolbar styling into
+a table cell and put the save button on a line of its own underneath —
+the same spill the email list had, from a completely different cause.
+
+Two classes whose names differ by a prefix, belonging to two stylesheets
+with different jobs, is a trap that will spring again. The test is the
+one already in CLAUDE.md: could a visitor ever see it? `cms-` is the
+site's and the editor's; the admin's own styles are not.
