@@ -9,7 +9,7 @@ from ...services import blog as blog_service
 from ... import assistant, ai_image
 from ...services import theme_generator as theme_generator_mod
 from ...services import look_from_picture
-from ...services.design import FONT_PAIRINGS, SHAPE_PRESETS, SHADOW_PRESETS
+from ...services.design import COMPOSITION_PRESETS, FONT_PAIRINGS, SHAPE_PRESETS, SHADOW_PRESETS
 from ...services.palette import _match_palette_roles, color_scheme_choices
 from ...services.sections import _insert_layout_chunks
 from ...services import site
@@ -350,6 +350,12 @@ def theme_generator():
             flash(str(e), "error")
             return redirect(url_for("admin.theme_generator"))
         db.commit()
+        #  A run that half-worked says which half.
+        if kit.get("unwritten"):
+            flash("%d page%s came back without words and kept their starting text — "
+                  "open the template and write those, or make it again."
+                  % (len(kit["unwritten"]),
+                     "" if len(kit["unwritten"]) == 1 else "s"), "warning")
         made = db.execute("SELECT name FROM templates WHERE slug = ?", (slug,)).fetchone()
         flash("Made \u201c%s\u201d. Nothing on your site has changed \u2014 look at "
               "it first, and use it when you are ready."
@@ -362,7 +368,14 @@ def theme_generator():
         #  with a link -- an offer rather than a move.
         return redirect(url_for("admin.theme_generator", made=slug))
 
-    return render_template("admin/theme_generator.html",
+    #  What was just made, if anything, so the screen can show it rather
+    #  than announce it. Read back by slug from the redirect, because a
+    #  run ends in a redirect (a refresh must not make a second one).
+    made = None
+    if request.args.get("made"):
+        made = db.execute("SELECT id, name, slug FROM templates WHERE slug = ?",
+                          (request.args["made"],)).fetchone()
+    return render_template("admin/theme_generator.html", made=made,
                            **_theme_generator_context(db))
 
 
@@ -382,6 +395,12 @@ def _carried_look(form):
         "fonts": form.get("look_fonts", ""),
         "shape": form.get("look_shape", ""),
         "shadow": form.get("look_shadow", ""),
+        #  Carried like everything else in the look. It was not, and the
+        #  consequence was silent and total: the model chose a
+        #  composition, the plan was built with it, and pressing Make it
+        #  dropped it -- so what got made was the flat default, every
+        #  time, no matter what was decided.
+        "composition": form.get("look_composition", ""),
         "pages": shapes,
         "why": form.get("look_why", ""),
         "asked": True,
@@ -476,6 +495,7 @@ def _theme_generator_context(db):
         readings=theme_generator_mod.READING,
         image_budgets=theme_generator_mod.IMAGE_BUDGETS,
         font_pairings=FONT_PAIRINGS,
+        compositions=COMPOSITION_PRESETS,
         shapes=SHAPE_PRESETS,
         shadows=SHADOW_PRESETS,
         ai_configured=assistant.is_configured(db),

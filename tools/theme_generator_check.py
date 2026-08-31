@@ -28,6 +28,11 @@ Run inside the container:
     docker compose exec -T web python tools/theme_generator_check.py
 """
 import io
+
+
+def _dashboard():
+    from app.routes.admin import dashboard
+    return dashboard
 import os
 import shutil
 import sys
@@ -147,8 +152,19 @@ with app.app_context():
           ", ".join(kinds))
     check("...including a Columns of Cards, not invented markup",
           "columns" in kinds, ", ".join(kinds))
-    check("...and nothing landed as a raw Embed", "html" not in kinds,
-          ", ".join(kinds))
+    #  An html section is how this app stores a declared block, so the
+    #  test is not "no html" but "no html that is not a block": a raw
+    #  embed is the thing the rule was written against, and a Stats band
+    #  is not one. Typed as the block KEY instead, a section matches no
+    #  branch of the render chain and draws as nothing at all.
+    from app.services import blocks as _blk                          # noqa: E402
+    embeds = [s for s in data["sections"]
+              if s[0] == "html" and not _blk.parse_block(s[2] or "")[0]]
+    check("...and nothing landed as a raw Embed", not embeds,
+          str([e[2][:60] for e in embeds]))
+    check("...while its blocks are stored the way blocks are stored",
+          any(s[0] == "html" and _blk.parse_block(s[2] or "")[0]
+              for s in data["sections"]), ", ".join(kinds))
 
     body = " ".join(s[2] or "" for s in data["sections"])
     #  The classes a real tool produces. Anything else is a class this
@@ -168,7 +184,12 @@ with app.app_context():
         return {c for group in re.findall(r'class="([a-z0-9 _-]+)"', html or "")
                 for c in group.split()}
 
-    known = {"cms-banner", "cms-banner-overlay", "cms-card", "cms-columns"}
+    #  The page's own furniture, all of it defined in site-base.css and
+    #  editable in place: the small line above a heading, the two hero
+    #  buttons, and the link that ends a card.
+    known = {"cms-banner", "cms-banner-plain", "cms-banner-overlay", "cms-card",
+             "cms-columns", "cms-eyebrow", "cms-hero-actions", "cms-btn",
+             "cms-btn-ghost", "cms-card-link"}
     for key, spec in block_tools.BLOCKS.items():
         base = dict(spec.get("defaults") or {})
         known |= _classes(block_tools.build(key, base))
@@ -184,11 +205,33 @@ with app.app_context():
     stray = sorted({c for c in _classes(body)
                     if c.startswith("cms-") and c not in known})
     check("no class it invented", not stray, ", ".join(stray))
+    #  ...and every one it does use is defined in the shared stylesheet,
+    #  which is what makes "not invented" mean something.
+    css_all = io.open("/app/app/static/css/site-base.css", encoding="utf-8").read()
+    #  The generator's OWN furniture. A block tool's internal classes are
+    #  the tool's business and are styled with the tool.
+    mine = {"cms-banner", "cms-banner-plain", "cms-banner-overlay", "cms-eyebrow",
+            "cms-hero-actions", "cms-btn", "cms-btn-ghost", "cms-card",
+            "cms-card-link", "cms-columns"}
+    undefined = sorted(c for c in _classes(body)
+                       if c in mine and ("." + c) not in css_all)
+    check("...and every class it uses is one the stylesheet defines",
+          not undefined, ", ".join(undefined))
     #  And the other half of the same statement: a page that USES those
     #  tools rather than three paragraphs in a row. This is what "flat"
     #  was -- a banner, some prose, some cards, on one white ground.
+    #  A run whose picture failed still has to look deliberate: the
+    #  fallback was a grey mountain-and-sun placeholder filling the top
+    #  of the front page, which reads as broken rather than as plain.
+    from app.services import theme_generator as _tg                  # noqa: E402
+    plain = _tg._hero_chunk("A headline", "A line.", _tg.PLACEHOLDER_IMAGE,
+                            ground="#241f1f")
+    check("a hero with no picture is a colour, not a placeholder",
+          "cms-banner-plain" in plain and _tg.PLACEHOLDER_IMAGE not in plain,
+          plain[:90])
     check("a front page is not all prose",
-          any(k in block_tools.BLOCKS for k in kinds), ", ".join(kinds))
+          any(block_tools.parse_block(s[2] or "")[0] for s in data["sections"]),
+          ", ".join(kinds))
     styles = [s[3] for s in data["sections"] if isinstance(s[3], dict)]
     check("...and every section says how it should sit",
           len(styles) == len(data["sections"]), str(len(styles)))
@@ -369,8 +412,13 @@ with app.app_context():
     check("a finished run leaves you where you were",
           'url_for("admin.theme_generator", made=slug)' in route_says
           and 'return redirect(url_for("admin.templates_screen"))' not in route_says)
-    check("...and says where the new template is instead",
-          "request.args.get('made')" in screen_says)
+    #  It does not merely SAY where it went: it shows the front page it
+    #  made, in a frame, with a button to use it. A run that finishes by
+    #  emptying the form and leaving a green line says a thing happened
+    #  and nothing about what the thing is.
+    check("...and shows what it made, rather than announcing it",
+          "cms-made-frame" in screen_says
+          and "admin.template_preview" in screen_says)
     check("...and says how many sections", shown["sections"] == 4, str(shown))
     check("...how many pictures", shown["pictures"] >= 1, str(shown))
     check("...and what it will cost", shown["calls"] >= 1, str(shown))
@@ -478,6 +526,24 @@ with app.app_context():
           and "Only one line" not in dbody, dbody[:140])
 
     print()
+    print("Switching template does not leave the last one behind")
+    print("-" * 70)
+    #  `_retire_foreign_pack_pages` spares a page somebody has WRITTEN
+    #  in, and `_apply_pack_content` cleared that flag BEFORE inserting
+    #  the pack's sections -- and the trigger on `sections` sets it on
+    #  any write. So every page of every pack came out marked edited,
+    #  every one of them was spared, and the previous template's pages
+    #  stayed. Five switches, five templates' pages in one menu:
+    #  twenty-seven of them on the install where this was found.
+    admin_src = io.open("/app/app/routes/admin/__init__.py", encoding="utf-8").read()
+    body = admin_src[admin_src.index("def _apply_pack_content("):]
+    body = body[:body.index("\ndef ", 10)]
+    check("a pack's own pages do not come out marked as yours",
+          body.index("UPDATE pages SET owner_edited = 0")
+          > body.rindex("INSERT INTO sections"),
+          "the flag is cleared before the writes that set it")
+
+    print()
     print("A generated page knows which page it is")
     print("-" * 70)
     #  An empty slug is not a page with no name -- it is a page that
@@ -575,6 +641,13 @@ with app.app_context():
     check("...and nothing is invented to fill the gap",
           tg._salvage('{"primary": "#1d6b58", "shape":') == {"primary": "#1d6b58"})
     check("...while junk is still junk", tg._salvage("not json at all") is None)
+    #  Which key gets lost is decided by the order they are asked for.
+    #  The page shapes have a fallback the code can work out; the
+    #  typeface and the composition do not, so they go first.
+    order = tg.DESIGN_SCHEMA
+    check("...and the look is asked for before the part that can be lost",
+          order.index('"composition"') < order.index('"pages"')
+          and order.index('"fonts"') < order.index('"pages"'), order[:60])
 
     print()
     print("A picture gives style, and only style")
@@ -754,6 +827,73 @@ with app.app_context():
           "#1d6b58" in (shown["look"]["colours"] or [])
           and "#000080" not in (shown["look"]["colours"] or []),
           str(shown["look"]["colours"]))
+    #  What a page is SHAPED like -- the hero's height, the air in a
+    #  band, the type scale -- was a constant in the stylesheet, which
+    #  is why two templates with different palettes still read as one
+    #  design in two colours. It is chosen now, and every step it
+    #  travels through has to carry it: the design chose one, the plan
+    #  was built with it, and pressing Make it dropped it, so what got
+    #  made was the flat default no matter what had been decided.
+    from app.services.design import COMPOSITION_PRESETS               # noqa: E402
+    from werkzeug.datastructures import MultiDict                   # noqa: E402
+    carried = _dashboard()._carried_look(MultiDict([
+        ("look_page", "landing"), ("look_composition", "editorial"),
+        ("look_colour", "#1d6b58"), ("look_colour", "#d94f2b")]))
+    #  And the palette, for the same reason: `.items()` on a MultiDict
+    #  yields one value per key, so the sampled colours arrived as one.
+    check("every carried colour survives too",
+          carried.get("colours") == ["#1d6b58", "#d94f2b"], str(carried.get("colours")))
+    check("a chosen composition survives the second press",
+          carried.get("composition") == "editorial", str(carried))
+    check("...and the plan says which one it is",
+          "plan.look.composition" in io.open(
+              "/app/app/templates/admin/theme_generator.html",
+              encoding="utf-8").read())
+    #  An unanswered composition is not neutral, it is the flat one --
+    #  and the model skips the key often, being the newest thing in the
+    #  schema and the first casualty of a short reply.
+    for brief, expected in (("A busy shop with a catalogue of products", "compact"),
+                            ("A calm wellness clinic", "quiet"),
+                            ("A loud club night with a live band", "bold")):
+        got = tg.with_design(tg.brand_kit(brief=brief), {})["composition"]
+        check("a %s gets the %s composition" % (brief.split()[1], expected),
+              got == expected, got)
+    #  ...and it has to survive being INSTALLED. A freshly generated
+    #  template is always a new row, and the new-row branch of the
+    #  installer did not carry the composition at all -- so it survived
+    #  only for a template that already existed, which a generated one
+    #  never is.
+    pkgsrc = io.open("/app/app/services/packages.py", encoding="utf-8").read()
+    insert = pkgsrc[pkgsrc.index("INSERT INTO templates"):]
+    insert = insert[:insert.index("return cur.lastrowid")]
+    check("a new template row carries its composition",
+          "composition_default" in insert and 'manifest.get("composition")' in insert)
+    check("...with as many values as columns",
+          insert.count("?") - insert.count("VALUES (?") * 0 > 0
+          and insert.count(",") > 0)
+    check("...and nothing ever comes out unshaped",
+          tg.with_design(tg.brand_kit(brief="A thing."), {})["composition"] not in ("", "classic"))
+    check("...but a chosen one still wins",
+          tg.with_design(tg.brand_kit(brief="A calm clinic"),
+                         {"composition": "poster"})["composition"] == "poster")
+    check("...from a list of whole opinions, not sliders",
+          len(COMPOSITION_PRESETS) >= 4
+          and all(spec.get("blurb") for spec in COMPOSITION_PRESETS.values()))
+    #  Tokens the stylesheet already reads. A template picks among
+    #  values; it never writes a rule.
+    css_now = io.open("/app/app/static/css/site-base.css", encoding="utf-8").read()
+    #  --site-measure is the READING measure and is applied per text
+    #  block, not to the page column; --site-content-max is the page's
+    #  own axis. Conflating them made every band 62 characters wide.
+    for token in ("--site-hero-min", "--site-band-pad", "--site-lead",
+                  "--site-content-max"):
+        check("...%s is a token the stylesheet reads" % token,
+              ("var(%s" % token) in css_now and (token + ":") in css_now)
+    check("...and a template that chooses none renders as it always did",
+          all(("var(%s," % t) in css_now
+              for t in ("--site-hero-min", "--site-band-pad", "--site-lead",
+                        "--site-content-max")))
+
     check("...and the shape, and why", shown["look"]["shape"] == "sharp"
           and shown["look"]["why"].startswith("Because"), str(shown["look"]))
     screen_now = io.open("/app/app/templates/admin/theme_generator.html",

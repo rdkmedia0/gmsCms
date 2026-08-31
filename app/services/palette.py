@@ -368,3 +368,105 @@ def role_ramps(template):
     return ramps
 
 
+# ---------------------------------------------------------------------
+#  The colours a page needs that are NOT roles.
+#
+#  A palette gives three decisions: primary, secondary, accent. A page
+#  needs four more things, and every one of them was left to chance:
+#  what colour the paper is, what colour the ink is, what a hairline
+#  looks like, and what may safely be written ON the accent.
+#
+#  Left to chance means #ffffff and #000000, which is not a neutral
+#  choice -- it is the absence of one, and it is most of what makes a
+#  generated page look generated. A ground with 3% of the brand in it
+#  and an ink that is the brand darkened to near-black cost nothing and
+#  read immediately as chosen.
+#
+#  The two accent variants are not taste at all, they are arithmetic:
+#  measured, #ff4000 on white is 3.51:1, which fails AA for anything
+#  under 24px -- so an accent used as a text colour has to be darkened
+#  until it passes, and white on that same accent fails just as badly,
+#  so a band painted in it takes dark ink instead. A generator that
+#  picks a bright accent and then writes white on it has produced an
+#  inaccessible page from a correct palette.
+
+
+def _rgb(colour):
+    colour = (colour or "").strip().lstrip("#")
+    if len(colour) != 6:
+        return None
+    try:
+        return tuple(int(colour[i:i + 2], 16) for i in (0, 2, 4))
+    except ValueError:
+        return None
+
+
+def _hex(rgb):
+    return "#%02x%02x%02x" % tuple(max(0, min(255, int(round(v)))) for v in rgb)
+
+
+def _relative_luminance(rgb):
+    def channel(v):
+        v = v / 255.0
+        return v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4
+    r, g, b = (channel(v) for v in rgb)
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def contrast(one, two):
+    """The WCAG ratio between two colours, or 1.0 if either is unreadable."""
+    a, b = _rgb(one), _rgb(two)
+    if not a or not b:
+        return 1.0
+    la, lb = _relative_luminance(a), _relative_luminance(b)
+    lighter, darker = max(la, lb), min(la, lb)
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+def _mix(one, two, amount):
+    a, b = _rgb(one), _rgb(two)
+    if not a or not b:
+        return one
+    return _hex(tuple(x + (y - x) * amount for x, y in zip(a, b)))
+
+
+def page_colours(palette):
+    """Ground, ink, tint, hairline and the two safe accent variants.
+
+    Returned as a plain dict of CSS custom properties, so the caller
+    emits them beside the role colours and nothing has to know how they
+    were worked out.
+    """
+    roles = {r.get("slug"): r.get("color") for r in (palette or [])
+             if isinstance(r, dict) and r.get("color")}
+    primary = roles.get("primary") or "#333333"
+    accent = roles.get("accent") or roles.get("secondary") or primary
+    if not _rgb(primary):
+        return {}
+
+    ground = _mix("#ffffff", primary, 0.03)
+    ink = _mix(primary, "#000000", 0.55)
+    #  ...unless the brand is already so dark that darkening it further
+    #  makes an ink nobody could tell from black.
+    if contrast(ink, ground) < 7.0:
+        ink = "#241f1f"
+    tint = _mix(ground, roles.get("secondary") or accent, 0.08)
+    line = _mix(ground, ink, 0.12)
+
+    #  What may be written ON the accent: whichever of the two reads
+    #  better, rather than white because white is usual.
+    accent_ink = ink if contrast(ink, accent) >= contrast("#ffffff", accent) else "#ffffff"
+    #  ...and the accent as TEXT, darkened until it passes on the ground.
+    accent_text = accent
+    for step in range(1, 13):
+        if contrast(accent_text, ground) >= 4.5:
+            break
+        accent_text = _mix(accent, "#000000", step * 0.06)
+    return {
+        "--site-ground": ground,
+        "--site-ink": ink,
+        "--site-tint": tint,
+        "--site-line": line,
+        "--site-accent-ink": accent_ink,
+        "--site-accent-text": accent_text,
+    }

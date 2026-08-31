@@ -1,0 +1,47 @@
+{#  A template's front page, as it would look, without activating it.
+
+    Standalone on purpose: no admin chrome, no editing attributes, no
+    navigation. What it renders is the package's OWN page content with
+    that template's palette, typefaces, corners, depth and composition
+    applied -- which is exactly the set of things a look consists of, so
+    what is shown here is what the site would become.
+
+    It is not a screenshot. A picture of a page has to be taken by
+    something, and the only thing that could take one on the server is a
+    browser this app deliberately does not ship (see BOW.md on the URL
+    reader). The page itself, in a frame, needs nothing extra and is
+    live: resize it and it responds, which a picture never does. #}
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ template_name }} — preview</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/site-base.css') }}">
+{% if fonts_url %}<link rel="stylesheet" href="{{ fonts_url }}">{% endif %}
+{% if theme_css %}<link rel="stylesheet" href="{{ theme_css }}">{% endif %}
+{% if override_css %}<style>{{ override_css | safe }}</style>{% endif %}
+<style>
+  /*  The frame is the viewport here: no admin bar above it and nothing
+      to scroll past, so the page starts where the page starts. */
+  body { margin: 0; }
+  .cms-preview-note { position: fixed; inset-block-end: 0; inset-inline: 0;
+    padding: 6px 12px; font: 12px/1.4 var(--cms-ui-font, system-ui, sans-serif);
+    background: rgba(17, 17, 17, .78); color: #fff; text-align: center; }
+</style>
+</head>
+<body>
+<div class="site-content">
+  {% for s in sections %}
+  <div class="cms-section{{ ' cms-section-bg cms-bg-' ~ (s.bg_overlay or 'medium') ~ ' cms-bg-pos-' ~ (s.bg_position or 'center') if s.bg_image }}"
+       data-layout-width="{{ s.layout_width or 'auto' }}"
+       data-corner-style="{{ s.corner_style or '' }}"
+       data-shadow-style="{{ s.shadow_style or '' }}"
+       {% if s.style_attr %}style="{{ s.style_attr | safe }}"{% endif %}>
+    <div class="block block-html cms-html-preview cms-wysiwyg-body">{{ s.content | safe }}</div>
+  </div>
+  {% endfor %}
+</div>
+<p class="cms-preview-note">A preview. Nothing on your site has changed.</p>
+</body>
+</html>

@@ -531,13 +531,17 @@ def install_theme_package(db, slug, static_folder, pkg_dir_override=None, is_bui
         #  The shipped defaults are recorded on every install, override
         #  or not: they are what the package SAYS about itself, and an
         #  owner's own choice lives in the *_override columns beside them.
-        db.execute("UPDATE templates SET shape_default = ?, shadow_default = ? WHERE id = ?",
+        db.execute("UPDATE templates SET shape_default = ?, shadow_default = ?, "
+                   "composition_default = ? WHERE id = ?",
                    (manifest.get("shape_override"), manifest.get("shadow_override"),
-                    existing["id"]))
+                    manifest.get("composition"), existing["id"]))
         if adopt_manifest_overrides and manifest.get("shape_override"):
             db.execute("UPDATE templates SET shape_override = ? WHERE id = ?", (manifest["shape_override"], existing["id"]))
         if adopt_manifest_overrides and manifest.get("shadow_override"):
             db.execute("UPDATE templates SET shadow_override = ? WHERE id = ?", (manifest["shadow_override"], existing["id"]))
+        if adopt_manifest_overrides and manifest.get("composition"):
+            db.execute("UPDATE templates SET composition_override = ? WHERE id = ?",
+                       (manifest["composition"], existing["id"]))
         if adopt_manifest_overrides and manifest.get("zone_style_overrides"):
             db.execute(
                 "UPDATE templates SET zone_style_overrides = ? WHERE id = ?",
@@ -551,8 +555,14 @@ def install_theme_package(db, slug, static_folder, pkg_dir_override=None, is_bui
             "INSERT INTO templates "
             "(name, slug, css_path, is_active, is_builtin, palette_json, google_fonts_url, "
             "font_overrides, shape_override, shadow_override, zone_style_overrides, "
-            "shape_default, shadow_default) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            #  What the package SAYS about itself, and the owner's own
+            #  choice beside it -- the same pair Corners and Depth have.
+            #  Missing here for one release, which meant a template's
+            #  composition survived only if the row already existed: a
+            #  freshly generated one, which is every generated one, came
+            #  out unshaped.
+            "shape_default, shadow_default, composition_default, composition_override) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 manifest["name"], slug, css_path,
                 1 if manifest.get("default_active") else 0,
@@ -565,6 +575,8 @@ def install_theme_package(db, slug, static_folder, pkg_dir_override=None, is_bui
                 json.dumps(manifest["zone_style_overrides"]) if manifest.get("zone_style_overrides") else None,
                 manifest.get("shape_override"),
                 manifest.get("shadow_override"),
+                manifest.get("composition"),
+                manifest.get("composition"),
             ),
         )
         return cur.lastrowid

@@ -32,10 +32,12 @@ from ..services import blog as blog_service
 from ..services import (blocks, captcha, cart as cart_service, commerce, downloads,
                         integrations, legal, newsletter, ratelimit, site, site_emails,
                         subscribers)
+from ..services import palette as palette_mod
 from .admin import (
     _list_tools, get_email_settings, get_layout_settings, get_site_settings, COLOR_PRESETS,
     NAV_LAYOUTS, get_nav_layout, SIDEBAR_LAYOUT_PRESETS, FOOTER_LAYOUT_PRESETS,
     FONT_PAIRINGS, SHAPE_PRESETS, SHADOW_PRESETS, SHADE_SPREADS, GOOGLE_FONT_CHOICES,
+    COMPOSITION_PRESETS,
     SHAPE_SMALL_SCREEN_MAX,
     _google_fonts_stylesheet_url,
 )
@@ -1975,6 +1977,25 @@ def _theme_override_css(template):
     #  template ships. "Auto" is read as "this template's own look", which
     #  is what it says -- it used to mean "none at all", so choosing it
     #  silently discarded the shape the template was designed with.
+    #  What the page is SHAPED like -- the owner's choice if they have
+    #  made one, otherwise what the template shipped. Emitted as the
+    #  tokens site-base.css already reads, which is the whole point: a
+    #  template chooses among values, and no template writes a rule.
+    #  The ground, the ink, the hairline and the two accent variants --
+    #  worked out from the palette rather than left at #fff/#000. See
+    #  palette.page_colours: two of the six are contrast arithmetic, not
+    #  taste, and getting them wrong is how a correct palette produces an
+    #  inaccessible page.
+    try:
+        for name, value in palette_mod.page_colours(
+                json.loads(template["palette_json"] or "[]")).items():
+            lines.append("%s: %s;" % (name, value))
+    except (ValueError, TypeError):
+        pass
+    composition = (_column(template, "composition_override")
+                   or _column(template, "composition_default"))
+    for name, value in (COMPOSITION_PRESETS.get(composition) or {}).get("vars", {}).items():
+        lines.append("%s: %s;" % (name, value))
     shape_key = template["shape_override"] or _column(template, "shape_default")
     if shape_key:
         shape = SHAPE_PRESETS.get(shape_key)

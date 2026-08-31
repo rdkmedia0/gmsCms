@@ -77,6 +77,9 @@ _SCHEMAS = {
         '{"hero_headline": "...", "hero_subtext": "...", "intro_heading": "...", '
         '"intro_body": "...", "features": [{"title": "...", "body": "..."}, '
         '{"title": "...", "body": "..."}, {"title": "...", "body": "..."}], '
+        '"eyebrow": "two or three words above the headline, like a category", '
+        '"hero_button": "two or three words on a button, an action", '
+        '"card_link": "two or three words, the same for every card, like Read more", '
         '"stats": [{"value": "a number or short figure", "label": "what it counts"}, '
         '{"value": "...", "label": "..."}, {"value": "...", "label": "..."}], '
         '"quote": "one sentence a real customer might say", '
@@ -132,7 +135,7 @@ IMAGE_BUDGETS = (
 def brand_kit(brief="", tone="warm", voice="we", reading="normal",
               language="English", palette=None, fonts="", shape="", shadow="",
               image_budget="1", ref_colours=None, colour_note="",
-              banner_per_page=False, ref_feel=""):
+              banner_per_page=False, ref_feel="", composition=""):
     """One kit, resolved once, read by every prompt and every picture.
 
     Returns plain data -- no db, no request -- so a checker, a script and
@@ -177,11 +180,47 @@ def brand_kit(brief="", tone="warm", voice="we", reading="normal",
         #  step, because "warm, unfussy, hand-made" is worth more to the
         #  words and the colours than any font name would be.
         "ref_feel": (ref_feel or "").strip(),
+        #  The ground the picture sat on, when it is pale enough to be
+        #  one. Read from the same sampling that gave the palette, and
+        #  used for the bands -- see `_tint_of`.
+        "ground": _ground_from(ref_colours),
+        "composition": composition or "",
         #  One direction for every picture in a run. Generating each from
         #  its own section's words is why AI sites look assembled out of
         #  stock: five photographs by five photographers.
         "image_direction": _image_direction(brief, tone),
     }
+
+
+def _ground_from(colours):
+    """The FOURTH colour a picture gives: the ground it all sits on.
+
+    The sampler returns three decided colours and one ground -- the
+    quiet, unsaturated colour most of the picture is made of. The
+    palette has three roles, so the fourth was collected, shown to the
+    owner as a swatch, and then dropped.
+
+    It is the most useful one for a band. Hacker News's cream and a dark
+    site's near-black are the whole first impression of those pages, and
+    neither can be derived from the primary: `tint_shade_ramp` only ever
+    returns tints OF the brand colour, so a warm brand always gets a
+    warm-pink band whatever the site it was read from actually looked
+    like.
+
+    Taken only when it is pale enough to carry ordinary dark text.
+    Nothing here knows what colour the words on that band will be, so a
+    dark ground would be a band of black with black text on it -- and
+    the honest answer to "can I use this" is no rather than a guess at
+    the text colour.
+    """
+    for colour in reversed(list(colours or [])):
+        if not (isinstance(colour, str) and re.match(r"^#[0-9a-fA-F]{6}$", colour)):
+            continue
+        r, g, b = (int(colour[i:i + 2], 16) for i in (1, 3, 5))
+        #  Rec. 709 luma, the same weighting `readable_on` uses.
+        if (0.2126 * r + 0.7152 * g + 0.0722 * b) >= 232:
+            return colour
+    return ""
 
 
 def _palette_from(colours):
@@ -374,8 +413,17 @@ DESIGN_SCHEMA = (
     '{"primary": "#RRGGBB", "secondary": "#RRGGBB", "accent": "#RRGGBB", '
     '"fonts": "a key from the list", "shape": "a key from the list", '
     '"shadow": "a key from the list", '
-    '"pages": [{"title": "...", "shape": "landing|about|simple"}], '
-    '"why": "one sentence"}'
+    '"composition": "a key from the list", '
+    '"why": "one sentence", '
+    #  LAST, and deliberately: a model that runs out of room stops
+    #  mid-answer, and `_salvage` keeps whatever it had finished saying.
+    #  So the order of these keys is an order of PRIORITY -- the look
+    #  survives a truncated reply and the page shapes, which have a
+    #  sensible fallback in `layout_for`, are the part that can be lost.
+    #  This was the other way round, and a truncated answer cost the
+    #  typeface and the composition while carefully preserving a list of
+    #  page shapes the code can work out for itself.
+    '"pages": [{"title": "...", "shape": "landing|about|simple"}]}'
 )
 
 _HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
@@ -390,7 +438,8 @@ def design(db, kit, pages):
     quietly falls back is better than one that refuses, and the owner
     sees all of it in the plan before anything is made.
     """
-    from .design import FONT_PAIRINGS, SHAPE_PRESETS, SHADOW_PRESETS
+    from .design import (FONT_PAIRINGS, SHAPE_PRESETS, SHADOW_PRESETS,
+                         COMPOSITION_PRESETS)
     wanted = list(pages) or ["Home"]
     chosen = {}
     if kit["brief"]:
@@ -400,6 +449,7 @@ def design(db, kit, pages):
                 kit=kit, pages=wanted, schema=DESIGN_SCHEMA,
                 fonts=[(k, v["name"]) for k, v in FONT_PAIRINGS.items()],
                 shapes=list(SHAPE_PRESETS), shadows=list(SHADOW_PRESETS),
+                compositions=list(COMPOSITION_PRESETS.items()),
                 layouts=list(LAYOUTS)))
         except ThemeGenError:
             #  A look nobody could decide is not a reason to refuse the
@@ -420,6 +470,10 @@ def design(db, kit, pages):
         "fonts": chosen.get("fonts") if chosen.get("fonts") in FONT_PAIRINGS else "",
         "shape": chosen.get("shape") if chosen.get("shape") in SHAPE_PRESETS else "",
         "shadow": chosen.get("shadow") if chosen.get("shadow") in SHADOW_PRESETS else "",
+        #  What the page is shaped like. The single biggest difference
+        #  between two looks, and until now not a thing anybody chose.
+        "composition": (chosen.get("composition")
+                        if chosen.get("composition") in COMPOSITION_PRESETS else ""),
         #  Per page, by title, falling back to what the name suggests.
         "pages": [shapes.get(title.strip().lower()) or layout_for(title, i)
                   for i, title in enumerate(wanted)],
@@ -428,14 +482,56 @@ def design(db, kit, pages):
     }
 
 
+#  Which composition suits a description, when nobody chose one. Read as
+#  a set of rules somebody could argue with rather than a hash of the
+#  brief: a shop with a catalogue wants to show a lot at once, a
+#  portfolio wants to get out of the way of the work, and a place with
+#  one thing to say and a photograph to say it with wants the poster.
+_COMPOSITION_WORDS = (
+    ("bold", ("bold", "loud", "striking", "dramatic", "energetic", "vibrant",
+              "club", "band", "gig", "festival", "bar", "nightlife")),
+    ("compact", ("shop", "store", "catalogue", "catalog", "menu", "listing",
+                 "products", "stock", "range", "timetable", "schedule")),
+    ("quiet", ("calm", "quiet", "gentle", "serene", "minimal", "understated",
+               "wellness", "therapy", "clinic", "portfolio", "photography")),
+    ("editorial", ("warm", "modern", "clean", "confident", "story", "writing",
+                   "studio", "craft", "music", "jazz")),
+)
+
+
+def _composition_from(kit):
+    """A composition worked out from the words we already have."""
+    said = " ".join(str(kit.get(k) or "") for k in
+                    ("ref_feel", "brief", "tone_label")).lower()
+    for key, words in _COMPOSITION_WORDS:
+        if any(word in said for word in words):
+            return key
+    #  Anything rather than "classic": classic is the even, unshaped one,
+    #  and arriving there by default is how every generated site came to
+    #  look the same.
+    return "editorial"
+
+
 def with_design(kit, look):
     """The kit, with anything the owner did not choose filled in by the
     design. What somebody picked themselves always wins."""
     made = dict(kit)
     if not made.get("palette") and look.get("colours"):
         made["palette"] = _palette_from(look["colours"])
-    for key in ("fonts", "shape", "shadow"):
+    for key in ("fonts", "shape", "shadow", "composition"):
         made[key] = made.get(key) or look.get(key) or ""
+    #  Never left empty.
+    #
+    #  An unanswered composition is not a neutral outcome: it is the flat
+    #  one. The model skips the key often enough -- it is the newest
+    #  thing in the schema and the first casualty of a short reply -- and
+    #  every time it did, the run produced the same evenly-spaced page
+    #  this whole feature exists to stop producing.
+    #
+    #  So it is worked out from what we already know about the site,
+    #  which is a guess, and shown in the plan, which is what makes a
+    #  guess honest.
+    made["composition"] = made["composition"] or _composition_from(made)
     return made
 
 
@@ -538,6 +634,7 @@ def plan(db, kit, name, mode="scratch", pages_wanted=None, looked=None,
             "fonts": kit.get("fonts") or "",
             "shape": kit.get("shape") or "",
             "shadow": kit.get("shadow") or "",
+            "composition": kit.get("composition") or "",
             "why": (looked or {}).get("why", ""),
             "asked": bool((looked or {}).get("asked")),
         },
@@ -698,14 +795,41 @@ def _maybe_generate_image(db, prompt, use_ai_images):
 #  a class of its own, what it makes stops being editable.
 
 
-def _hero_chunk(headline, subtext, image_url):
+def _hero_chunk(headline, subtext, image_url, eyebrow="", buttons=(), ground=""):
     #  Escaped, because these are WORDS somebody (or a model) wrote, not
     #  markup. A stray "<" in a headline is a headline, not a tag.
+    #
+    #  An eyebrow and two buttons, because a hero that says "book me" and
+    #  offers nothing to press is a poster, not a front page -- and there
+    #  was not one button anywhere on a generated site. Both are ordinary
+    #  content inside the Banner tool: an owner edits them in the same
+    #  place they edit the headline, and can delete either.
+    inside = ""
+    if eyebrow:
+        inside += '<span class="cms-eyebrow">%s</span>' % escape(eyebrow)
+    inside += "<h2>%s</h2><p>%s</p>" % (escape(headline), escape(subtext))
+    if buttons:
+        inside += '<p class="cms-hero-actions">%s</p>' % "".join(
+            '<a class="cms-btn%s" href="%s">%s</a>'
+            % ("" if i == 0 else " cms-btn-ghost", escape(link, quote=True), escape(label))
+            for i, (label, link) in enumerate(buttons))
+    #  No picture? Then a band in the site's own dark, deliberately --
+    #  not the grey placeholder.
+    #
+    #  Image generation fails for ordinary reasons (a slow backend, a
+    #  provider that cannot make pictures at all) and the fallback was a
+    #  grey mountain-and-sun graphic filling the top of the front page.
+    #  That reads as broken; a solid brand-coloured hero reads as a
+    #  choice, and the owner can drop a photograph in afterwards from the
+    #  Media Library either way.
+    if not image_url or image_url == PLACEHOLDER_IMAGE:
+        return ('<div class="cms-banner cms-banner-plain" style="background-color:%s">'
+                '<div class="cms-banner-overlay">%s</div></div>'
+                % (escape(ground or "#241f1f", quote=True), inside))
     return (
         '<div class="cms-banner" style="background-image:url(' + chr(39) + '%s'
-        + chr(39) + ')">'
-        '<div class="cms-banner-overlay"><h2>%s</h2><p>%s</p></div></div>'
-    ) % (escape(image_url, quote=True), escape(headline), escape(subtext))
+        + chr(39) + ')"><div class="cms-banner-overlay">%s</div></div>'
+    ) % (escape(image_url, quote=True), inside)
 
 
 def _text_chunk(heading, body):
@@ -713,12 +837,67 @@ def _text_chunk(heading, body):
 
 
 def _cards_chunk(cards):
-    cells = "".join(
-        '<div class="cms-card"><h3>%s</h3><p>%s</p></div>'
-        % (escape(card.get("title", "")), escape(card.get("body", "")))
-        for card in cards)
+    #  Each card ends with a link, pinned to its bottom edge by the
+    #  shared stylesheet. Three cards of different lengths with ragged
+    #  bottoms and nothing to click is the most recognisable
+    #  generated-page tell there is.
+    cells = ""
+    for card in cards:
+        cells += '<div class="cms-card"><h3>%s</h3><p>%s</p>' % (
+            escape(card.get("title", "")), escape(card.get("body", "")))
+        label, link = card.get("link_label"), card.get("link")
+        if label:
+            cells += '<a class="cms-card-link" href="%s">%s &rarr;</a>' % (
+                escape(link or "#", quote=True), escape(label))
+        cells += "</div>"
     return '<div class="cms-columns">%s</div>' % cells
 
+
+
+#  Words an image model reliably DRAWS rather than depicts, and the
+#  scaffolding of a sentence, which invites it to letter the picture.
+_PROMPT_NOISE = re.compile(
+    r"(a|an|the|and|or|for|with|to|of|in|on|at|is|are|my|our|your|their|"
+    r"place|places|somewhere|website|site|page|business|company|based|"
+    r"working|browse|listen|book|booking|get|touch|dates|about|one|person)",
+    re.I)
+
+
+def _picture_prompt(brief, direction):
+    """What to ask for, as a SCENE rather than as a sentence.
+
+    The prompt used to be "A wide background photograph for the top of a
+    website about: <the whole brief>." -- a paragraph of prose, complete
+    with a colon. Measured on a real image backend, the model drew the
+    brief across the top of the picture, misspelled, over the photograph
+    it had also drawn: "A demo library for a working saxophone player:
+    place to browse and listent recordings..." The no-text instruction
+    was present and was ignored, which is what an instruction against a
+    paragraph of quotable words tends to be.
+
+    So the brief is reduced to the things a camera could point at -- the
+    nouns, in order, capped -- and the sentence around them is dropped.
+    A picture cannot letter a caption it was never given.
+    """
+    words = _PROMPT_NOISE.sub(" ", (brief or "").replace(":", " ").replace(",", " "))
+    #  Eight words, whole ones. Long enough to name the scene, short
+    #  enough that there is no sentence left to letter -- and cutting on
+    #  a word boundary rather than a character count, because "sessions
+    #  a" is exactly the kind of fragment a model renders literally.
+    subject = " ".join([w for w in words.split() if len(w) > 2][:8]).strip()
+    return ("Photograph: %s. %s. Wide, no lettering of any kind."
+            % (subject or "a small independent business", direction))
+
+
+def _note_unwritten(kit, layout_key, why):
+    """Remember that a page came back unwritten, to say so afterwards.
+
+    On the KIT, because that is the one thing every call in a run shares
+    -- and because a run that half-worked has to be able to tell the
+    owner which half. Silence here would be the worst of both: pages
+    that look finished, carrying the placeholder text nobody chose.
+    """
+    kit.setdefault("unwritten", []).append({"layout": layout_key, "why": why})
 
 
 def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
@@ -741,7 +920,25 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
             raise ThemeGenError(
                 "Describe your site or business, so the AI has something to "
                 "write about.")
-        copy = _ai_json(db, _prompt(kit, _SCHEMAS[layout_key]))
+        try:
+            copy = _ai_json(db, _prompt(kit, _SCHEMAS[layout_key]))
+        except ThemeGenError as e:
+            #  One page's words are not the run.
+            #
+            #  This raised, and the raise reached the route, and the
+            #  route flashed and redirected -- so a model that returned
+            #  nothing usable on page four threw away the look, the
+            #  picture and the three pages already written, after
+            #  several minutes and five requests. The owner saw a red
+            #  line and an empty form.
+            #
+            #  The same reasoning `design()` already applies to itself:
+            #  a page that could not be written falls back to its
+            #  starting text, which is the same text "leave the sections
+            #  empty" produces and is editable in place. What went wrong
+            #  is said once, at the end, naming the page.
+            copy = {}
+            _note_unwritten(kit, layout_key, str(e))
 
     def val(key, fallback):
         return (copy.get(key) or fallback) if fill else fallback
@@ -750,8 +947,7 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
     #  One direction for every picture in a run -- see
     #  brand_kit()["image_direction"].
     hero = _maybe_generate_image(
-        db, "A wide background photograph for the top of a website about: %s. %s"
-        % (brief or layout_key, kit["image_direction"]),
+        db, _picture_prompt(brief or layout_key, kit["image_direction"]),
         use_ai_images and want_image and kit["image_budget"] > 0)
 
     #  Every piece carries its own STYLING, and a piece may be a real
@@ -771,10 +967,13 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
     #  edit every one of them with the controls they already have.
     chunks = []
     if layout_key == "landing":
-        chunks.append(_piece(_hero_chunk(val("hero_headline", "Your headline"),
-                                         val("hero_subtext", "A short supporting line."),
-                                         hero),
-                             {"layout_width": "full", "corner_style": "sharp"}))
+        chunks.append(_piece(_hero_chunk(
+            val("hero_headline", "Your headline"),
+            val("hero_subtext", "A short supporting line."), hero,
+            eyebrow=val("eyebrow", ""),
+            buttons=((val("cta_button", "Get in touch"), "/contact"),
+                     ("Read more", "#more")), ground=_ink_of(kit)),
+            {"layout_width": "full", "corner_style": "sharp"}))
         chunks.append(_piece(_text_chunk(val("intro_heading", "Welcome"),
                                          val("intro_body", "Write an introduction here.")),
                              {"layout_width": "custom", "layout_width_pct": 62}))
@@ -782,11 +981,40 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
                       [{"value": "10", "label": "Years"},
                        {"value": "200", "label": "Happy customers"},
                        {"value": "24h", "label": "Reply time"}])
-        chunks.append(_block_piece("stats", _numbered(stats, ("value", "label")),
-                                   {"layout_width": "auto", "bg_color": tint}))
+        #  The numbers stand ON the photograph, dimmed, full width.
+        #
+        #  A section takes a background picture and an overlay -- an
+        #  existing feature of every section, and the one thing on this
+        #  page that turns a stack of bands into something with a middle.
+        #  The overlay is not optional: text over an unmodified
+        #  photograph is legible about half the time, which is why the
+        #  section tool has always insisted on one.
+        #
+        #  The same photograph the hero uses. One picture, two jobs, and
+        #  a page that looks composed rather than assembled.
+        #  On the brand's own ink, not on the hero photograph again.
+        #
+        #  It WAS the hero photograph, dimmed -- and one picture used
+        #  twice on one page is the cheapest-looking move available.
+        #  There is one picture in a run, so the honest band is a solid
+        #  one in the site's own dark, which also gives the page the
+        #  change of ground it needs in the middle.
+        chunks.append(_block_piece(
+            "stats", _numbered(stats, ("value", "label")),
+            #  On the TINT, not on the site's dark.
+            #
+            #  A Stats block draws each figure in its own pale box, so a
+            #  dark band behind it shows through the gaps as three
+            #  vertical slots -- which reads as a rendering fault rather
+            #  than a design. The band still changes the ground, which is
+            #  what it is for; it just does it in the direction the block
+            #  was built for.
+            {"layout_width": "full", "bg_color": tint}))
         features = _rows(copy.get("features") if fill else None, ("title", "body"), 3,
                          [{"title": "Feature %d" % (i + 1),
                            "body": "Describe this feature."} for i in range(3)])
+        for card in features:
+            card.setdefault("link_label", val("card_link", "Read more"))
         chunks.append(_piece(_cards_chunk(features[:6]),
                              {"layout_width": "auto",
                               "shadow_style": kit.get("shadow") or "subtle"}))
@@ -796,17 +1024,24 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
             "role": val("quote_role", ""),
             "style": "large",
         }, {"layout_width": "auto", "bg_color": tint}))
-        #  The closing call gets the run's own photograph, not a grey
-        #  placeholder: one picture used twice is a page that looks
-        #  finished, and a placeholder at the bottom is the last thing
-        #  anybody sees.
-        chunks.append(_piece(_hero_chunk(val("cta_headline", "Ready to get started?"),
-                                         val("cta_subtext", "Get in touch today."), hero),
-                             {"layout_width": "full", "corner_style": "sharp"}))
+        #  And it closes on the brand colour, not on a second photograph.
+        #
+        #  The CTA tool's "solid" tone paints the band in the site's own
+        #  primary with text chosen to be readable on it
+        #  (`--primary-on`), and puts a button on it. That is a page that
+        #  ENDS somewhere. Two hero photographs, one at each end, was the
+        #  same idea said twice and the palette still nowhere visible.
+        chunks.append(_block_piece("cta", {
+            "heading": val("cta_headline", "Ready to get started?"),
+            "body": val("cta_subtext", "Get in touch today."),
+            "button": val("cta_button", "Get in touch"),
+            "link": "/contact",
+            "tone": "solid",
+        }, {"layout_width": "full"}))
     elif layout_key == "about":
         chunks.append(_piece(_hero_chunk(val("hero_headline", "Our story"),
                                          val("hero_subtext", "A short supporting line."),
-                                         hero),
+                                         hero, ground=_ink_of(kit)),
                              {"layout_width": "full", "corner_style": "sharp"}))
         chunks.append(_piece(_text_chunk(val("story_heading", "About us"),
                                          val("story_body", "Tell your story here.")),
@@ -816,11 +1051,12 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
             "body": val("cta_subtext", "Reach out anytime."),
             "button": val("cta_button", "Get in touch"),
             "link": "/contact",
-        }, {"layout_width": "auto", "bg_color": tint}))
+            "tone": "solid",
+        }, {"layout_width": "full"}))
     else:
         chunks.append(_piece(_hero_chunk(val("hero_headline", "Your headline"),
                                          val("hero_subtext", "A short supporting line."),
-                                         hero),
+                                         hero, ground=_ink_of(kit)),
                              {"layout_width": "full", "corner_style": "sharp"}))
         chunks.append(_piece(_text_chunk(val("body_heading", "Welcome"),
                                          val("body_text", "Write something here.")),
@@ -845,7 +1081,19 @@ def _block_piece(key, values, style=None):
     from . import blocks
     made = dict(blocks.BLOCKS[key].get("defaults") or {})
     made.update({k: v for k, v in values.items() if v not in (None, "")})
-    return {"type": key, "content": blocks.build(key, made), "style": style or {}}
+    #  Type "html", which is how this app stores every declared block.
+    #
+    #  Not a raw embed, and not a guess: a block section IS an html
+    #  section whose markup carries `cms-block-<key>`, and the renderer
+    #  recognises it from that class (`is_block` in public.py) to draw it
+    #  and to give it its own editing panel. Typed as the block key
+    #  instead -- which is what this did -- the section matched no branch
+    #  of the render chain at all, so the Stats band, the quote and the
+    #  closing call were stored perfectly and drawn as nothing. An empty
+    #  dark band where the numbers should be is exactly what that looks
+    #  like from the outside.
+    return {"type": "html", "content": blocks.build(key, made),
+            "style": style or {}}
 
 
 def _rows(given, keys, least, fallback):
@@ -918,6 +1166,12 @@ def sections_for(chunks):
     return out
 
 
+def _ink_of(kit):
+    """The site's own dark, as a real colour a section can be painted in."""
+    from .palette import page_colours
+    return page_colours(kit.get("palette") or []).get("--site-ink") or "#241f1f"
+
+
 def _tint_of(kit):
     """The palest step of the palette's primary, as a real colour.
 
@@ -927,6 +1181,17 @@ def _tint_of(kit):
     most of what reads as "designed" on a page of bands, and one
     attribute per section.
     """
+    #  The ground the picture actually had, if it gave us one that can
+    #  carry dark text. It beats a tint of the brand colour, which is
+    #  only ever a paler version of the same hue -- so a site read from a
+    #  cream page got a pink band, and the one colour that would have
+    #  made it look like the thing it was read from was thrown away.
+    if kit.get("ground"):
+        return kit["ground"]
+    from .palette import page_colours
+    derived = page_colours(kit.get("palette") or []).get("--site-tint")
+    if derived:
+        return derived
     from .palette import tint_shade_ramp
     primary = ""
     for role in (kit.get("palette") or []):
@@ -940,7 +1205,7 @@ def _tint_of(kit):
 
 def build_package(db, name, pages, palette=None, google_fonts_url=None,
                   shape=None, shadow=None, work_dir=None,
-                  nav_layout=None, footer_layout=None):
+                  nav_layout=None, footer_layout=None, composition=None):
     """Writes a package directory and returns (its path, its slug).
 
     `pages` is a list of {title, slug_suffix, sections}. A package with
@@ -990,6 +1255,8 @@ def build_package(db, name, pages, palette=None, google_fonts_url=None,
         manifest["shape_override"] = shape
     if shadow:
         manifest["shadow_override"] = shadow
+    if composition:
+        manifest["composition"] = composition
     with open(os.path.join(pkg_dir, "manifest.json"), "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2, ensure_ascii=False)
 
@@ -1162,11 +1429,23 @@ def generate(db, static_folder, name, kit, fill_scope, use_ai_images,
             pages.append({"title": title, "slug_suffix": "",
                           "sections": sections_for(chunks)})
 
+    #  A page that could not be written keeps its starting text and the
+    #  owner is told. A run where NOTHING could be written is a different
+    #  claim: the AI contributed nothing at all, and handing back a
+    #  template full of placeholder prose as though it had worked is the
+    #  "absence is not an explanation" failure this app has a rule
+    #  about. So the per-page fallback stands, and the whole-run silence
+    #  still refuses, in the provider's own words.
+    if fill_scope != "none" and pages and len(kit.get("unwritten") or []) >= len(pages):
+        raise ThemeGenError((kit["unwritten"][0]["why"] if kit.get("unwritten") else "")
+                            or "The AI returned nothing at all.")
+
     pkg_dir, slug = build_package(
         db, name, pages,
         palette=kit.get("palette"),
         google_fonts_url=_fonts_url(kit.get("fonts")),
-        shape=kit.get("shape"), shadow=kit.get("shadow"))
+        shape=kit.get("shape"), shadow=kit.get("shadow"),
+        composition=kit.get("composition"))
     try:
         packages.install_theme_package(
             db, slug, static_folder, pkg_dir_override=pkg_dir, is_builtin=False)

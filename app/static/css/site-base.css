@@ -31,10 +31,89 @@
   --site-h1-size: 42px;
   --site-h2-size: 32px;
   --site-h3-size: 24px;
+
+  /* ---------- Composition ----------
+     What a page is SHAPED like, as against what colour it is.
+
+     Two templates with different palettes and the same numbers here are
+     two versions of one design. Every one of these was a constant in
+     this file, so a generated look could only ever differ in hue --
+     which is exactly what "it has no character" was.
+
+     These are TOKENS, consumed by the rules below and set per template
+     from COMPOSITION_PRESETS. Nothing writes CSS: a template chooses
+     among these the way it already chooses corners and depth, and an
+     owner can change the choice afterwards.
+
+     Defaults are the values these rules had before the tokens existed,
+     so a template that chooses nothing renders exactly as it did. */
+  --site-hero-min: 280px;      /* how tall a banner stands */
+  --site-band-pad: 40px;       /* the air above and below a band */
+  --site-band-pad-tight: var(--site-band-pad, 40px);  /* for a dense band */
+  --site-heading-track: 0;     /* letter-spacing on headings */
+  --site-heading-case: none;   /* headings in their own case, or shouted */
+  --site-lead: 1.6;            /* how far apart the lines of text sit */
+  --site-lead-size: 19px;      /* the standfirst under a heading */
+  --site-measure: 66ch;        /* how wide a column of READING text gets */
+  --site-content-max: 1000px;  /* how wide the PAGE's own column is */
+
+  /*  Leading, per level. A heading is not body text with a bigger font:
+      at 90px, 1.4 line-height is a gap you could park a car in, and it
+      is the single loudest "nobody set this" signal on a page. */
+  --site-h1-line: 1.15;
+  --site-h2-line: 1.2;
+  --site-h3-line: 1.3;
+
+  /*  The ground and the ink.
+
+      Pure #fff with #000 text is not neutral, it is unchosen -- and it
+      is what a template with no stylesheet of its own has always
+      rendered as. Both default to exactly that, so nothing shipped
+      changes; a template that sets them gets a ground and an ink mixed
+      from its own palette instead. */
+  --site-ground: #ffffff;
+  --site-ink: inherit;
+  --site-tint: transparent;    /* the alternate band ground */
+  --site-line: #e2e2e2;        /* one hairline colour, everywhere */
+
+  /*  The scrim over a hero picture. A LAYER, not a box -- see
+      .cms-banner-overlay below for what this replaced and why. */
+  --site-scrim: 0.45;
+
+  /*  Where the hero's words sit, and how wide they get. Centred text in
+      an 80%-wide box is the arrangement a page falls into when nobody
+      chooses one -- and a 6rem headline centred across 1100px reads as a
+      title card rather than an opening. */
+  --site-hero-align: center;
+  /*  Two different widths, because they are two different jobs.
+      The BLOCK is how wide the hero's column of content is; the
+      HEADLINE gets its own, tighter measure so it breaks into two or
+      three strong lines instead of one long one. Setting the headline's
+      measure on the block instead squeezed the standfirst into a 30ch
+      ribbon and stacked the buttons one above the other. */
+  --site-hero-block: min(64ch, 92%);
+  --site-hero-text: 22ch;
+
+  /*  A button. There were no tokens for one because there were no
+      buttons: a generated page could describe a booking and offer
+      nothing to press. */
+  --site-btn-pad: 12px 18px;
+  --site-btn-size: 16px;
+  --site-btn-weight: 600;
+  --site-btn-track: 0;
+  --site-btn-case: none;
+
+  /*  The small line above a heading -- 12px, spaced, upper case. The
+      cheapest premium signal there is, and this app had no level for it
+      at all. */
+  --site-eyebrow-size: 12px;
+  --site-eyebrow-track: 0.14em;
+  --site-eyebrow-weight: 600;
 }
 
 * { box-sizing: border-box; }
-body { margin: 0; font-family: var(--site-font-family); line-height: 1.6; border: var(--site-body-border, none); }
+body { margin: 0; font-family: var(--site-font-family); line-height: var(--site-lead, 1.6);
+  background: var(--site-ground, #fff); color: var(--site-ink, inherit); border: var(--site-body-border, none); }
 /* Optional, independent of Body — unset (the default) means the footer
    just inherits Body through normal cascade, exactly as it always has;
    only set once an admin explicitly picks a distinct footer font (see
@@ -62,7 +141,11 @@ img { max-width: 100%; height: auto; }
 }
 .site-header-zone .cms-menu, .site-sidebar-zone .cms-menu { margin: 0; }
 
-.site-content { max-width: 1000px; margin: 0 auto; padding: 24px; }
+/*  The page's axis, not the reading measure. Setting the reading
+    measure here made every band 62 characters wide -- a row of three
+    cards in a 620px column, wrapping to two-and-one. They are two
+    different numbers and this is the one that is about the page. */
+.site-content { max-width: var(--site-content-max, 1000px); margin: 0 auto; padding: 24px; }
 
 /* ---------- Header arrangement (settings.nav_layout) ----------
    This governs the header's own content ARRANGEMENT ONLY — never its
@@ -465,7 +548,7 @@ body.has-sidebar-right > .site-sidebar.site-sidebar-right.site-sidebar-empty { f
   height: calc(var(--cms-width-pct, 100) * 1vh);
   min-height: calc(var(--cms-width-pct, 100) * 1vh);
 }
-.block { margin-bottom: 40px; }
+.block { margin-bottom: var(--site-band-pad, 40px); }
 .block-header { text-align: center; padding: var(--site-radius-pad, var(--pad-hero, 40px 20px)); }
 .block-header h1 {
   font-family: var(--site-heading-font-family);
@@ -617,7 +700,7 @@ body.has-sidebar-right > .site-sidebar.site-sidebar-right.site-sidebar-empty { f
 
 .cms-banner {
   position: relative; background-size: cover; background-position: center;
-  min-height: 280px; display: flex; align-items: center; justify-content: center;
+  min-height: var(--site-hero-min, 280px); display: flex; align-items: center; justify-content: center;
   overflow: hidden;
 }
 /* The Banner tool's starter background before an admin uploads/generates
@@ -654,8 +737,20 @@ body.has-sidebar-right > .site-sidebar.site-sidebar-right.site-sidebar-empty { f
      container and a flex item with no explicit width always shrink-wraps
      to its longest line, which silently made both "Box width" and "Align"
      look broken (no actual box to resize or align text within). */
-  background: rgba(0, 0, 0, 0.45); color: #fff; padding: 24px 32px;
-  border-radius: var(--site-radius, 8px); text-align: center; width: 80%; box-sizing: border-box;
+  /*  NO BACKGROUND OF ITS OWN.
+
+      This was a translucent box 80% of the banner's width, sitting on
+      the photograph with two hard vertical edges -- and on a narrow
+      screen it ran off the side, because a percentage width inside a
+      centred flex row is not a layout. Measured on a real render: a
+      1140x140 grey slab floating in the middle of the hero.
+
+      The dimming belongs to the SECTION, as a gradient across the whole
+      picture (see .cms-banner::after), which cannot have an edge and
+      cannot be the wrong width. What is left here is the text. */
+  color: #fff; padding: 24px 32px; position: relative; z-index: 1;
+  text-align: var(--site-hero-align, center);
+  width: var(--site-hero-block, min(64ch, 92%)); box-sizing: border-box;
 }
 .cms-banner-overlay h2 { margin: 0 0 8px; }
 .cms-banner-overlay p { margin: 0; }
@@ -2554,3 +2649,137 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
     under it would sit on top of the bar. */
 body.cms-logged-in .cms-basket-link.cms-basket-align-float-top { top: 60px; }
 
+
+
+/* ---------- Composition, applied ----------
+   The tokens above, reaching the elements they describe. Kept in one
+   place and expressed only through var(), so a template that sets none
+   of them is byte-for-byte the page it was before this existed. */
+.cms-wysiwyg-body h1, .cms-wysiwyg-body h2, .cms-wysiwyg-body h3,
+.cms-banner-overlay h1, .cms-banner-overlay h2, .cms-banner-overlay h3,
+.block-header h1, .block-header h2 {
+  letter-spacing: var(--site-heading-track, 0);
+  text-transform: var(--site-heading-case, none);
+}
+/* A band's own air. A section is a band: the space above and below it is
+   most of what separates "a designed page" from "a stack of boxes", and
+   it was one number for every template this app has ever shipped. */
+/* THE PAGE ONLY. A header, a footer and a sidebar are made of sections
+   too, and giving those a band's padding put 96px above and below the
+   menu — a 350px empty header on a site whose composition happened to be
+   a generous one. A zone is furniture; the bands are the page. */
+.site-content .cms-section > .block {
+  padding-block: var(--site-band-pad, 0);
+  /*  ...and nothing else. `.block` carries a bottom margin of its own,
+      which is what separated bands before there was band padding --
+      leaving both in place stacked 112 + 112 + 112 between two bands
+      and left the page reading as a series of islands with 340px of
+      nothing between them. The padding is inside the band, so it also
+      colours correctly; the margin never could. */
+  margin-bottom: 0;
+}
+/* ...except a full-bleed banner, which brings its own height and would
+   otherwise sit in a box of padding the colour of the band behind it. */
+.site-content .cms-section[data-layout-width="full"] > .block { padding-block: 0; }
+
+
+/* ---------- The premium half: layers, leading, cards, buttons ----------
+   Everything here is driven by the tokens above and defaults to the
+   values these rules already had, so a template that sets none of them
+   renders exactly as it did before. */
+
+/*  The hero's dimming, as a layer over the whole picture. Bottom-weighted,
+    because the words sit low and the top of a photograph is usually the
+    part worth seeing. */
+.cms-banner {
+  position: relative; isolation: isolate;
+  /*  The hero's words sit on the SAME axis as the rest of the page.
+      A full-bleed banner is a flex row, so a left-aligned text block
+      still started wherever its own box happened to be centred --
+      x=470 on a 1440 page, lined up with nothing. The gutter is
+      computed from the page's own measure, so the headline, the intro
+      and the cards all begin at one edge. */
+  justify-content: var(--site-hero-justify, center);
+  padding-inline: max(24px, calc((100% - var(--site-content-max, 1000px)) / 2));
+}
+.cms-banner::after {
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: linear-gradient(to bottom,
+    rgba(0, 0, 0, calc(var(--site-scrim, .45) * .45)) 0%,
+    rgba(0, 0, 0, calc(var(--site-scrim, .45) * .8)) 55%,
+    rgba(0, 0, 0, var(--site-scrim, .45)) 100%);
+}
+.cms-banner > * { position: relative; z-index: 1; }
+/*  A banner with no picture has nothing to dim. */
+.cms-banner.cms-banner-plain::after { display: none; }
+
+/*  Leading per level, and the display sizes that need it. */
+.cms-wysiwyg-body h1, .cms-banner-overlay h1, .block-header h1 { line-height: var(--site-h1-line, 1.15); }
+.cms-wysiwyg-body h2, .cms-banner-overlay h2, .block-header h2 { line-height: var(--site-h2-line, 1.2); }
+.cms-wysiwyg-body h3, .cms-banner-overlay h3 { line-height: var(--site-h3-line, 1.3); }
+/*  A hero heading is the one place the h1 scale should actually be felt. */
+.cms-banner-overlay h2 {
+  font-size: var(--site-h1-size, 42px); font-weight: var(--site-heading-weight, 700);
+  max-width: var(--site-hero-text, 22ch);
+  margin-inline: var(--site-hero-margin, auto);
+}
+/*  A left-aligned hero's headline hugs the left edge; a centred one is
+    centred. One token decides both, so they cannot disagree. */
+.cms-banner-overlay p { max-width: min(52ch, 100%); margin-inline: var(--site-hero-margin, auto); }
+.cms-banner-overlay p { font-size: var(--site-lead-size, 19px); line-height: 1.5; opacity: .94; }
+
+/*  The small line above a heading. */
+.cms-eyebrow {
+  display: block; font-size: var(--site-eyebrow-size, 12px);
+  letter-spacing: var(--site-eyebrow-track, .14em);
+  font-weight: var(--site-eyebrow-weight, 600);
+  text-transform: uppercase; margin-bottom: 10px;
+  color: var(--primary, currentColor);
+}
+.cms-banner-overlay .cms-eyebrow { color: rgba(255, 255, 255, .82); }
+
+/*  Cards of equal height, with whatever comes last pinned to the bottom.
+    Ragged card bottoms are the most recognisable "generated" tell there
+    is, and they happen for free unless something says otherwise. */
+.cms-columns { align-items: stretch; }
+.cms-columns > * { display: flex; flex-direction: column; }
+.cms-card, .cms-card-shape { display: flex; flex-direction: column; height: 100%; }
+.cms-card > :last-child, .cms-card-shape > :last-child { margin-bottom: 0; }
+.cms-card > .cms-card-link, .cms-card-shape > .cms-card-link { margin-top: auto; padding-top: 14px; }
+.cms-card-link {
+  display: inline-block; text-decoration: none; font-weight: 600;
+  color: var(--primary, currentColor);
+}
+.cms-card-link:hover { text-decoration: underline; }
+
+/*  A button that a preset can actually shape. */
+.cms-btn {
+  padding: var(--site-btn-pad, 12px 18px);
+  font-size: var(--site-btn-size, 16px);
+  font-weight: var(--site-btn-weight, 600);
+  letter-spacing: var(--site-btn-track, 0);
+  text-transform: var(--site-btn-case, none);
+}
+/*  The second button in a pair: the same shape, none of the weight. */
+.cms-btn-ghost {
+  background: transparent; color: inherit;
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+.cms-btn-ghost:hover { background: rgba(255, 255, 255, .12); color: inherit; }
+.cms-btn + .cms-btn { margin-inline-start: 12px; }
+/*  The row a hero's buttons sit in: its own air above them, so they do
+    not hang off the standfirst. */
+.cms-hero-actions { margin: 26px 0 0; display: flex; flex-wrap: wrap; gap: 12px;
+  justify-content: var(--site-hero-justify, center); }
+/*  The buttons follow the words: left-aligned text wants left-aligned
+    buttons, and "centre the text but not the buttons" is the mismatch a
+    page falls into when the two are set in different places. */
+
+.cms-hero-actions .cms-btn + .cms-btn { margin-inline-start: 0; }
+.cms-banner-overlay .cms-btn-ghost { color: #fff; }
+
+
+/*  Hero alignment, said once. `text-align` cannot move a flex row, so
+    the button row reads its own token -- set by the same preset, beside
+    the text alignment, so the two cannot disagree. */
+:root { --site-hero-justify: center; }

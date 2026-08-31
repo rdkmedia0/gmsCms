@@ -47,6 +47,12 @@ Choose:
 
 4. A shadow depth, by key, from exactly this list: {{ shadows|join(', ') }}.
 
+4b. A COMPOSITION, by key, from exactly this list — this is what the page is
+   shaped like, and it matters more than the colours:
+{% for key, spec in compositions %}   - {{ key }} — {{ spec.blurb }}
+{% endfor %}   Choose the one that suits how this business should carry itself, not the
+   one that sounds most impressive. A shop with a lot to list is not a poster.
+
 5. For each page, a shape from exactly this list: {{ layouts|join(', ') }}.
    "landing" is a banner, an intro, three cards and a closing banner — right for
    a front page. "about" is a banner, a longer story and a closing banner.

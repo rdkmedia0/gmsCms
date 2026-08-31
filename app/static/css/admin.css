@@ -1612,3 +1612,26 @@ button[aria-busy="true"] { opacity: .75; cursor: progress; }
   font-size: 12px; color: #5c6b65;
 }
 .cms-colour-pick input[type=color] { width: 34px; height: 26px; padding: 0; }
+
+
+/*  What the theme generator just made, shown rather than announced.
+    The frame is the real page at a real width, scaled down -- a picture
+    would need a browser on the server, which this app deliberately does
+    not have. */
+.cms-made { border-left: 4px solid var(--cms-ui-accent, #2563eb); }
+.cms-made-title { margin: 0 0 4px; }
+.cms-made-frame {
+  position: relative; overflow: hidden; margin: 12px 0;
+  border: 1px solid var(--cms-ui-line, #d9e0dd);
+  border-radius: var(--cms-ui-radius-surface, 8px);
+  background: #fff; height: 460px;
+}
+/*  Rendered at a desktop width and scaled to fit, so what is shown is
+    the desktop design rather than the same page reflowed into a column.
+    The frame is the width it would really be. */
+.cms-made-frame iframe {
+  width: 1280px; height: 920px; border: 0;
+  transform: scale(.5); transform-origin: 0 0;
+}
+.cms-made-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.cms-made-actions .inline-form { margin: 0; }

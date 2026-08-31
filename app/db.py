@@ -470,6 +470,11 @@ def _migrate(db):
     #  is what an owner reads it as.
     _add_column(db, "templates", "shape_default", "TEXT")
     _add_column(db, "templates", "shadow_default", "TEXT")
+    #  What the template is SHAPED like -- see COMPOSITION_PRESETS. Two
+    #  columns for the same reason Corners and Depth have two: what the
+    #  package shipped, and what the owner chose instead.
+    _add_column(db, "templates", "composition_default", "TEXT")
+    _add_column(db, "templates", "composition_override", "TEXT")
     # Elevation, the same preset-only override as shape_override above
     # (SHADOW_PRESETS). NULL means "whatever the theme itself does".
     _add_column(db, "templates", "shadow_override", "TEXT")

@@ -46,6 +46,7 @@ RESERVED_SLUGS = {
 #  working unchanged.
 from ...services.design import (  # noqa: F401  (re-exported)
     COLOR_PRESETS, FONT_PAIRINGS, GOOGLE_FONT_CHOICES, SHAPE_PRESETS, SHADOW_PRESETS,
+    COMPOSITION_PRESETS,
     SHAPE_SMALL_SCREEN_MAX,
     SHADE_SPREADS,
     _google_fonts_stylesheet_url,
@@ -843,7 +844,6 @@ def _apply_pack_content(db, pack, page_slugs=None):
         #  trigger on `sections` has just marked it edited, and that was
         #  this code writing, not a person. Load Content putting a page
         #  back is exactly the act that un-edits it.
-        db.execute("UPDATE pages SET owner_edited = 0 WHERE id = ?", (page_id,))
         db.execute("UPDATE pages SET source_template = ? WHERE id = ?",
                    (pack.get("slug"), page_id))
         #  A page can arrive with its own backdrop — a picture behind the
@@ -869,6 +869,23 @@ def _apply_pack_content(db, pack, page_slugs=None):
                 f"INSERT INTO sections ({', '.join(cols)}) VALUES ({', '.join('?' for _ in cols)})",
                 vals,
             )
+        #  AFTER the sections, not before them.
+        #
+        #  The trigger on `sections` sets owner_edited on any write, and
+        #  the inserts above are writes -- so clearing the flag first
+        #  cleared it and then immediately set it again, on every page of
+        #  every pack. The effect was invisible here and total elsewhere:
+        #  `_retire_foreign_pack_pages` spares a page somebody has
+        #  written in, so with every page falsely marked edited it spared
+        #  ALL of them, and the previous template's pages stayed. Switch
+        #  template five times and the menu carries five templates' pages
+        #  -- twenty-seven of them on this install, which is how it was
+        #  found.
+        #
+        #  This code writing a pack's own content is not a person writing
+        #  in a page, which is exactly what the comment above the old
+        #  line said it meant. It was in the wrong place to mean it.
+        db.execute("UPDATE pages SET owner_edited = 0 WHERE id = ?", (page_id,))
         touched.append({"id": page_id, "created": created, "blog": False})
 
         #  A template's content is what the package ships, on every host.

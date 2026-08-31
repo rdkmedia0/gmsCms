@@ -3,12 +3,41 @@
 {% block content %}
 {% include "partials/design_tabs.html" %}
 <h1>AI Theme Generator</h1>
-{#  Said, not done: the run finishes on this screen and stays on it. The
-    new template is one click away for whoever wants it. #}
-{% if request.args.get('made') %}
-<p class="hint cms-made-note">Your new template is in
-  <a href="{{ url_for('admin.templates_screen') }}">Templates</a> — activate it there when you
-  want to see it on the site. Nothing has changed until you do.</p>
+{#  What it made, shown.
+
+    The run finished by emptying the form and leaving a green line at the
+    top saying it was done. After several minutes and six requests, that
+    tells you a thing happened and nothing whatever about what the thing
+    IS -- and the whole argument of this screen, at the other end, is
+    that a look you cannot see is a look you cannot judge.
+
+    So it ends the way it begins: with the thing in front of you. A live
+    frame rather than a picture, because nothing here can take a
+    screenshot (this app ships no browser, deliberately), and because a
+    frame answers a change of width and a picture does not. #}
+{% if made %}
+<div class="card cms-made" data-made>
+  <h2 class="cms-made-title">“{{ made.name }}” is ready</h2>
+  <p class="hint">This is its front page. Nothing on your site has changed — it is
+    sitting in your template list until you say so.</p>
+  <div class="cms-made-frame">
+    <iframe src="{{ url_for('admin.template_preview', template_id=made.id) }}"
+            title="The front page of {{ made.name }}" loading="lazy"></iframe>
+  </div>
+  <div class="cms-made-actions">
+    <form method="post" action="{{ url_for('admin.template_activate', template_id=made.id) }}"
+          class="inline-form">
+      <input type="hidden" name="force" value="1">
+      <button type="submit" class="btn btn-primary"
+              title="Put this look on your site now. Your pages are replaced by this template's own — save the current setup first if you want it back.">Use this theme</button>
+    </form>
+    <a class="btn" href="{{ url_for('admin.template_preview', template_id=made.id) }}"
+       target="_blank" rel="noopener"
+       title="Open the preview full size in its own tab.">See it full size ↗</a>
+    <a class="btn" href="{{ url_for('admin.templates_screen') }}"
+       title="Every template you have, including this one.">All templates</a>
+  </div>
+</div>
 {% endif %}
 <p class="hint">Describe your site and this works out how it should look — the colours, the
   typefaces, the shapes of the pages — and writes a <strong>template</strong> of real, editable
@@ -81,6 +110,9 @@
           hiding it from exactly the person who chose it. #}
       {% for colour in plan.look.colours %}<span class="cms-swatch"
         style="background: {{ colour }}" title="{{ colour }}"></span>{% endfor %}
+      {% if plan.look.composition and compositions[plan.look.composition] %}<span class="hint">
+        <strong>{{ compositions[plan.look.composition].name }}</strong> —
+        {{ compositions[plan.look.composition].blurb }}</span><br>{% endif %}
       {% if plan.look.fonts %}<span class="hint">{{ font_pairings[plan.look.fonts].name }}.</span>{% endif %}
       {% if plan.look.shape %}<span class="hint">{{ plan.look.shape|title }} corners,
         {% if plan.look.shadow in ('', 'none') %}no{% else %}{{ plan.look.shadow }}{% endif %}
@@ -139,6 +171,7 @@
     <input type="hidden" name="look_fonts" value="{{ looked.fonts }}">
     <input type="hidden" name="look_shape" value="{{ looked.shape }}">
     <input type="hidden" name="look_shadow" value="{{ looked.shadow }}">
+    <input type="hidden" name="look_composition" value="{{ looked.composition or '' }}">
     <input type="hidden" name="look_why" value="{{ looked.why }}">
     {% endif %}
     {#  A file cannot travel through the second press, so what was read
@@ -306,9 +339,10 @@
             title="Add another picture.">+ Add another</button>
     <p class="hint">A screenshot of a site you like, or anything whose colours you want.
       <strong>The colours are read here, in your browser</strong> — nothing is uploaded for that, and
-      it works whatever your AI provider can do, and the file itself is never uploaded.
-      {% if picture_vision %}Your model can look at pictures too, so a small copy is sent to it
-      for the typefaces, the corners and the depth.{% else %}{{ picture_vision_note }}{% endif %}</p>
+      so it works whatever your AI provider can do.
+      {% if picture_vision %}Your model can look at pictures as well, so a small copy of it —
+      never the file you chose — is sent to read the typefaces, the corners and the depth.
+      {% else %}{{ picture_vision_note }}{% endif %}</p>
   </div>
 
   {#  The specific controls, for somebody who already knows what they

@@ -289,3 +289,149 @@ SHADE_SPREADS = {
     "bold": {"name": "Bold", "spread": 1.20, "sat_ease": 0.02,
              "curve": 0.30, "light_spread": 0.62, "dark_curve": 0.72},
 }
+
+
+#  ---------------------------------------------------------------------
+#  COMPOSITION: what a page is SHAPED like.
+#
+#  Corners and Depth say what an EDGE looks like. This says what the page
+#  looks like from across the room -- how tall the hero stands, how much
+#  air a band gets, how big the headings are against the text, how far
+#  apart the lines sit, how wide a column of reading gets.
+#
+#  Every one of these numbers was a constant in site-base.css, which is
+#  why two templates with different palettes still read as one design
+#  wearing two colours. They are tokens now (see the Composition block in
+#  site-base.css) and this is the set of answers.
+#
+#  A preset is a whole opinion, not a slider: the values inside one are
+#  chosen against each other. A big type scale wants more air and a
+#  narrower measure or it reads as shouting; a quiet scale wants a longer
+#  line or it reads as a form.
+COMPOSITION_PRESETS = {
+    "classic": {
+        "name": "Classic",
+        "blurb": "Even, familiar, unfussy — the proportions this app has always had.",
+        "vars": {},
+    },
+    "editorial": {
+        "name": "Editorial",
+        "blurb": "Big quiet headlines, a narrow column, plenty of air. Reads like "
+                 "something written rather than something sold.",
+        "vars": {
+            "--site-h1-size": "clamp(2.75rem, 6vw, 5rem)",
+            "--site-h2-size": "clamp(2rem, 3.4vw, 3rem)",
+            "--site-h3-size": "22px",
+            "--site-h1-line": "1.05", "--site-h2-line": "1.15", "--site-h3-line": "1.3",
+            "--site-heading-weight": "500", "--site-heading-track": "-0.03em",
+            "--site-hero-min": "80vh",
+            "--site-hero-align": "left",
+            "--site-hero-block": "min(58ch, 92%)",
+            "--site-hero-text": "20ch",
+            "--site-hero-margin": "0",
+            "--site-hero-justify": "flex-start",
+            "--site-band-pad": "128px", "--site-band-pad-tight": "88px",
+            "--site-lead": "1.7", "--site-lead-size": "21px",
+            "--site-content-max": "1180px", "--site-measure": "66ch", "--site-scrim": "0.5",
+            "--site-btn-pad": "16px 34px", "--site-btn-weight": "600",
+            "--site-btn-track": "0.02em",
+            "--site-eyebrow-track": "0.16em",
+        },
+    },
+    "bold": {
+        "name": "Bold",
+        "blurb": "Enormous headlines over a tall picture, and a button you cannot "
+                 "miss. For a place with one thing to say.",
+        "vars": {
+            "--site-h1-size": "clamp(3rem, 7.5vw, 6rem)",
+            "--site-h2-size": "clamp(2.25rem, 4vw, 3.5rem)",
+            "--site-h3-size": "24px",
+            "--site-h1-line": "1.02", "--site-h2-line": "1.1", "--site-h3-line": "1.25",
+            "--site-heading-weight": "700", "--site-heading-track": "-0.035em",
+            "--site-hero-min": "78vh",
+            "--site-hero-align": "left",
+            "--site-hero-block": "min(56ch, 92%)",
+            "--site-hero-text": "20ch",
+            "--site-hero-margin": "0",
+            "--site-hero-justify": "flex-start",
+            "--site-band-pad": "112px", "--site-band-pad-tight": "80px",
+            "--site-lead": "1.6", "--site-lead-size": "20px",
+            "--site-content-max": "1240px", "--site-measure": "62ch", "--site-scrim": "0.62",
+            "--site-btn-pad": "18px 38px", "--site-btn-weight": "600",
+            "--site-btn-track": "0.08em", "--site-btn-case": "uppercase",
+            "--site-eyebrow-track": "0.14em",
+        },
+    },
+    "quiet": {
+        "name": "Quiet",
+        "blurb": "Small headings, long lines, a lot of white. For somebody whose work "
+                 "should be the loudest thing on the page.",
+        "vars": {
+            "--site-h1-size": "clamp(2.5rem, 4.5vw, 3.75rem)",
+            "--site-h2-size": "clamp(1.75rem, 2.6vw, 2.25rem)",
+            "--site-h3-size": "20px",
+            "--site-h1-line": "1.08", "--site-h2-line": "1.2", "--site-h3-line": "1.35",
+            "--site-heading-weight": "500", "--site-heading-track": "-0.015em",
+            "--site-hero-min": "68vh",
+            "--site-hero-align": "center",
+            "--site-hero-block": "min(60ch, 88%)",
+            "--site-hero-text": "24ch",
+            "--site-hero-margin": "auto",
+            "--site-hero-justify": "center",
+            "--site-band-pad": "96px", "--site-band-pad-tight": "64px",
+            "--site-lead": "1.8", "--site-lead-size": "19px",
+            "--site-content-max": "1040px", "--site-measure": "60ch", "--site-scrim": "0.35",
+            "--site-btn-pad": "14px 28px", "--site-btn-weight": "500",
+            "--site-btn-track": "0.01em",
+            "--site-eyebrow-track": "0.1em",
+        },
+    },
+    "warm": {
+        "name": "Warm",
+        "blurb": "Friendly proportions, a softer scale, and room to breathe. For a "
+                 "place people come back to.",
+        "vars": {
+            "--site-h1-size": "clamp(2.5rem, 5vw, 4rem)",
+            "--site-h2-size": "clamp(1.9rem, 3vw, 2.5rem)",
+            "--site-h3-size": "21px",
+            "--site-h1-line": "1.1", "--site-h2-line": "1.2", "--site-h3-line": "1.3",
+            "--site-heading-weight": "600", "--site-heading-track": "-0.01em",
+            "--site-hero-min": "72vh",
+            "--site-hero-align": "center",
+            "--site-hero-block": "min(58ch, 90%)",
+            "--site-hero-text": "22ch",
+            "--site-hero-margin": "auto",
+            "--site-hero-justify": "center",
+            "--site-band-pad": "104px", "--site-band-pad-tight": "72px",
+            "--site-lead": "1.7", "--site-lead-size": "19px",
+            "--site-content-max": "1120px", "--site-measure": "64ch", "--site-scrim": "0.45",
+            "--site-btn-pad": "16px 32px", "--site-btn-weight": "600",
+            "--site-btn-track": "0.02em",
+            "--site-eyebrow-track": "0.12em",
+        },
+    },
+    "compact": {
+        "name": "Compact",
+        "blurb": "Tight bands and a firm scale, so more of the page is visible at "
+                 "once. For a site with a lot to list.",
+        "vars": {
+            "--site-h1-size": "clamp(2.25rem, 3.6vw, 3rem)",
+            "--site-h2-size": "clamp(1.6rem, 2.4vw, 2rem)",
+            "--site-h3-size": "20px",
+            "--site-h1-line": "1.1", "--site-h2-line": "1.2", "--site-h3-line": "1.3",
+            "--site-heading-weight": "700", "--site-heading-track": "-0.01em",
+            "--site-hero-min": "58vh",
+            "--site-hero-align": "left",
+            "--site-hero-block": "min(62ch, 92%)",
+            "--site-hero-text": "24ch",
+            "--site-hero-margin": "0",
+            "--site-hero-justify": "flex-start",
+            "--site-band-pad": "72px", "--site-band-pad-tight": "48px",
+            "--site-lead": "1.6", "--site-lead-size": "18px",
+            "--site-content-max": "1160px", "--site-measure": "68ch", "--site-scrim": "0.5",
+            "--site-btn-pad": "13px 24px", "--site-btn-weight": "600",
+            "--site-btn-track": "0.02em",
+            "--site-eyebrow-track": "0.12em",
+        },
+    },
+}

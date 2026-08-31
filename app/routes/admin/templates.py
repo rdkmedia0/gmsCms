@@ -4,7 +4,8 @@ import json
 import shutil
 import tempfile
 import datetime
-from flask import request, flash, redirect, url_for, jsonify, current_app, send_file
+from flask import (request, flash, redirect, url_for, jsonify, current_app,
+                   send_file, render_template, abort)
 
 from . import bp
 from ..auth import login_required
@@ -596,6 +597,66 @@ def _surviving_page(db, path):
         return home
     page = db.execute("SELECT 1 FROM pages WHERE slug = ?", (slug,)).fetchone()
     return path if page else home
+
+
+@bp.route("/templates/<int:template_id>/preview")
+@login_required
+def template_preview(template_id):
+    """A template's own front page, rendered as it would look, without
+    activating it.
+
+    The generator finishes by SHOWING you what it made. Before this it
+    finished by emptying the form and leaving a green line at the top
+    saying it was done -- which tells you a thing happened and nothing
+    about what the thing is, after a wait of several minutes and six
+    requests. A look you cannot see is a look you cannot judge, which is
+    the same argument the plan already makes at the other end of the run.
+
+    A frame rather than a picture: nothing on the server can take a
+    screenshot (this app deliberately ships no browser -- see BOW.md),
+    and the page itself is better anyway, because it is live and it
+    responds to a width.
+    """
+    db = get_db()
+    tpl = db.execute("SELECT * FROM templates WHERE id = ?", (template_id,)).fetchone()
+    if not tpl:
+        abort(404)
+    pack = packages.load_template_package(current_app.static_folder, tpl["slug"],
+                                          bool(tpl["is_builtin"]))
+    pages = (pack or {}).get("pages") or []
+    if not pages:
+        abort(404)
+    front = pages[0]
+    sections = []
+    for entry in front["sections"]:
+        s_type, title, content, extra = (list(entry) + [{}])[:4]
+        extra = extra if isinstance(extra, dict) else {}
+        #  The section's own background, exactly as the page renders it.
+        parts = []
+        if extra.get("bg_color"):
+            parts.append("background-color: %s" % extra["bg_color"])
+        if extra.get("bg_image"):
+            parts.append("background-image: url('%s')" % extra["bg_image"])
+        if extra.get("layout_width") == "custom" and extra.get("layout_width_pct"):
+            parts.append("--cms-width-pct: %s" % extra["layout_width_pct"])
+        sections.append({
+            "content": content,
+            "layout_width": extra.get("layout_width") or "auto",
+            "corner_style": extra.get("corner_style") or "",
+            "shadow_style": extra.get("shadow_style") or "",
+            "bg_image": extra.get("bg_image") or "",
+            "bg_overlay": extra.get("bg_overlay") or "",
+            "bg_position": extra.get("bg_position") or "",
+            "style_attr": "; ".join(parts),
+        })
+    from ..public import _theme_override_css, _effective_google_fonts_url
+    return render_template(
+        "admin/template_preview.html",
+        template_name=tpl["name"], sections=sections,
+        override_css=_theme_override_css(tpl),
+        fonts_url=_effective_google_fonts_url(tpl),
+        theme_css=(url_for("static", filename=tpl["css_path"].lstrip("/").replace("static/", "", 1))
+                   if tpl["css_path"] and not tpl["css_path"].startswith("/") else tpl["css_path"]))
 
 
 @bp.route("/templates/<int:template_id>/activate", methods=["POST"])
