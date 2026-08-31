@@ -352,6 +352,22 @@ with app.test_request_context("/"):
     check("...and still says what it does in words",
           wording_js.count("previewBtn.title") >= 1)
 
+    #  Pressing Preview must not move the buttons. The note saying where
+    #  the figures came from was a sentence of running text IN the
+    #  ribbon, revealed on toggle -- so using the control reflowed the
+    #  toolbar and everything after it moved. A control that changes
+    #  place when you use it is one you have to find again.
+    #
+    #  Asked structurally: the note is inside the message panel, with
+    #  the values it is about, and not inside the toolbar at all.
+    ribbon = screen[screen.index("data-wording-toolbar"):]
+    ribbon = ribbon[:ribbon.index('<div class="cms-wording-chips">')]
+    check("the note is not in the row of controls",
+          "data-preview-source" not in ribbon)
+    panel = screen[screen.index('data-message-panel="{{ key }}"'):]
+    check("...it stands with the message it is about",
+          "data-preview-source" in panel)
+
 shutil.rmtree(DATA_DIR, ignore_errors=True)
 print()
 

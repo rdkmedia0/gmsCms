@@ -166,8 +166,12 @@
         ? "Back to writing this message."
         : "Show this message with everything filled in, as it will arrive.";
     }
-    var note = form.querySelector("[data-preview-source]");
-    if (note) note.hidden = !on;
+    //  One note per message, beside that message's own preview. It used
+    //  to be a single one in the ribbon, which is what made the toolbar
+    //  reflow when it appeared.
+    form.querySelectorAll("[data-preview-source]").forEach(function (note) {
+      note.hidden = !on;
+    });
   }
 
   form.querySelectorAll("[data-wording]").forEach(function (r) {

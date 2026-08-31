@@ -57,8 +57,6 @@
       <a class="icon-btn" data-live-preview target="_blank" rel="noopener"
          href="{{ url_for('admin.site_email_preview', message=order[0]) }}"
          title="Open this message in its own tab, exactly as it arrives in an inbox.">&#9993;</a>
-      <span class="cms-toolbar-label cms-preview-source" data-preview-source
-            title="{{ sample_note }}">{{ sample_note }}</span>
     </div>
 
     {#  Save and Load default act on the message being written, so they
@@ -112,6 +110,16 @@
 
         {#  The same canvas, showing what will actually arrive. Hidden
             until Preview is pressed, so it costs nothing while writing. #}
+        {#  Where these values came from, said beside the values.
+
+            It was a sentence of running text in the RIBBON, revealed
+            when Preview was pressed -- so pressing Preview reflowed the
+            toolbar and every button after it moved. A control that
+            changes place when you use it is one you have to find again,
+            and the note was never about the toolbar in the first place:
+            it is about the numbers in the message below it. #}
+        <p class="hint cms-preview-source" data-preview-source="{{ key }}" hidden
+           title="{{ sample_note }}">{{ sample_note }}</p>
         <div class="cms-wording-preview" data-preview="{{ key }}" hidden>
           {% for part in previews[key] %}{{ part | safe }}{% endfor %}
         </div>

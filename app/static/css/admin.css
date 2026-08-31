@@ -361,7 +361,9 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--c
 /*  Which of these values are this site's and which are an example. A
     preview mixing the two is only trustworthy if it says so, and it is
     only worth saying while the preview is on screen. */
-.cms-preview-source { text-transform: none; letter-spacing: 0; max-width: 320px; }
+/*  It stands above the previewed message now, not in the ribbon, so it
+    has the width of the canvas and nothing after it to push. */
+.cms-preview-source { margin: 0 0 10px; font-style: italic; }
 .cms-preview-source[hidden] { display: none; }
 .cms-wording-fixed { opacity: .55; pointer-events: none; user-select: none; }
 .cms-wording-fixed * { pointer-events: none; }
