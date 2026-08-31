@@ -250,6 +250,9 @@
     <input type="text" class="cms-caption-input" placeholder="Caption (optional)"
            value="{{ item.caption or '' }}" data-save-url="{{ save_url }}" data-field="caption"
            title="A line printed under the picture saying what it is — leave empty for no caption">
+    <button type="button" class="cms-pick-library-btn" data-library-pick
+            data-library-for="cms-image-file-input" data-library-kinds="image"
+            title="Choose a picture already in your Media Library">Choose</button>
     <button type="button" class="cms-change-image-btn" title="Upload an image from your device">⬆ Upload</button>
     <input type="file" class="cms-image-file-input" data-upload-url="{{ upload_url }}" accept="image/*" hidden>
     <button type="button" class="cms-generate-image-btn" data-generate-url="{{ generate_url }}"
@@ -334,6 +337,9 @@
     <input type="text" class="cms-youtube-input" placeholder="Paste a YouTube link"
            value="{{ item.content or '' }}" data-save-url="{{ save_url }}" data-field="content">
     {% else %}
+    <button type="button" class="cms-pick-library-btn" data-library-pick
+            data-library-for="cms-media-file-input" data-library-kinds="video,audio"
+            title="Choose a video or sound file already in your Media Library">Choose</button>
     <button type="button" class="cms-change-media-btn" title="Upload audio or video">🎬 Change Media</button>
     <input type="file" class="cms-media-file-input" data-upload-url="{{ upload_url }}" accept="video/*,audio/*" hidden>
     {% if item.media_type == 'video' %}
@@ -576,6 +582,9 @@
       {% set generate_url = url_for('admin.section_accordion_image_generate', section_id=section.id, col_index=col_index, panel_index=i) ~ row_qs if col_index is not none else url_for('admin.section_accordion_image_generate', section_id=section.id, panel_index=i) %}
       {% set apply_url = url_for('admin.section_accordion_image_apply', section_id=section.id, col_index=col_index, panel_index=i) ~ row_qs if col_index is not none else url_for('admin.section_accordion_image_apply', section_id=section.id, panel_index=i) %}
       <button type="button" class="cms-change-accordion-image-btn" data-panel-index="{{ i }}" title="Upload an image for this panel">⬆</button>
+      <button type="button" class="cms-pick-library-btn" data-library-pick
+              data-library-kinds="image"
+              title="Choose a picture already in your Media Library">Choose</button>
       <input type="file" class="cms-accordion-image-file-input"
              data-upload-url="{{ upload_url }}" accept="image/*" hidden>
       <button type="button" class="cms-generate-image-btn" data-panel-index="{{ i }}" data-kind="accordion"
@@ -651,6 +660,9 @@
              placeholder="Caption (optional)" onchange="this.form.requestSubmit()"
              title="A short caption shown across the bottom of this video">
       <button type="button" class="cms-change-gallery-clip-btn" title="Upload a video file for this clip">&#11014;</button>
+      <button type="button" class="cms-pick-library-btn" data-library-pick
+              data-library-kinds="video"
+              title="Choose a video already in your Media Library">Choose</button>
       <input type="file" class="cms-gallery-clip-file-input" data-upload-url="{{ upload_url }}" accept="video/*" hidden>
       <button type="submit" name="op" value="remove_{{ loop.index0 }}" title="Remove this video">&times;</button>
     </div>
@@ -1216,6 +1228,9 @@
       <option value="fixed" {{ 'selected' if 'cms-banner-fixed' in cell.content }}>Fixed (parallax)</option>
     </select>
     {% if image_upload_url %}
+    <button type="button" class="cms-pick-library-btn" data-library-pick
+            data-library-for="cms-banner-image-file-input" data-library-kinds="image"
+            title="Choose a picture already in your Media Library">Choose</button>
     <button type="button" class="cms-change-banner-image-btn" title="Upload a background image from your device">⬆ Upload</button>
     <input type="file" class="cms-banner-image-file-input" data-upload-url="{{ image_upload_url }}" accept="image/*" hidden>
     <button type="button" class="cms-clear-card-image-btn" data-clear-url="{{ image_clear_url }}" title="Remove the background image" {{ 'hidden' if 'background-image' not in cell.content }}>Remove image</button>
@@ -1317,6 +1332,9 @@
            onchange="this.form.requestSubmit()" title="Where the button goes: a page on this site (/contact), a full web address, an email (mailto:you@example.com) or a phone number (tel:...)"
            {{ 'hidden' if not cb.has_button }}>
     {% if image_upload_url %}
+    <button type="button" class="cms-pick-library-btn" data-library-pick
+            data-library-for="cms-card-image-file-input" data-library-kinds="image"
+            title="Choose a picture already in your Media Library">Choose</button>
     <button type="button" class="cms-change-card-image-btn" title="Upload a background image from your device">⬆ Upload</button>
     <input type="file" class="cms-card-image-file-input" data-upload-url="{{ image_upload_url }}" accept="image/*" hidden>
     {# Always in the DOM (not just when an image is already set) — the JS
@@ -1370,7 +1388,10 @@
             <option value="icon" {{ 'selected' if item.file_display == 'icon' }}>Icon only</option>
           </select>
           <button type="button" class="cms-change-file-btn" title="Change file">📎 Change File</button>
-          <input type="file" class="cms-file-file-input" data-upload-url="{{ url_for('admin.section_file_upload', section_id=section.id, col_index=col_index) }}{{ row_qs }}" hidden>
+          <button type="button" class="cms-pick-library-btn" data-library-pick
+              data-library-kinds="file"
+              title="Choose a file already in your Media Library">Choose</button>
+      <input type="file" class="cms-file-file-input" data-upload-url="{{ url_for('admin.section_file_upload', section_id=section.id, col_index=col_index) }}{{ row_qs }}" hidden>
           {%- endif %}
           {%- if item.type == 'media' -%}
           {{ media_controls(save_url, item,
@@ -2195,7 +2216,10 @@
              href="{{ url_for('admin.blog_post_edit', blog_id=blog.id, post_id=post.id, next=current_path) }}"
              title="Open the writing form — better for a long piece, and it comes back here">Write / publish</a>
           <button type="button" class="cms-change-post-image-btn" title="Upload a picture for the top of this post">&#11014; Picture</button>
-          <input type="file" class="cms-post-image-file-input" accept="image/*"
+          <button type="button" class="cms-pick-library-btn" data-library-pick
+              data-library-kinds="image"
+              title="Choose a picture already in your Media Library">Choose</button>
+      <input type="file" class="cms-post-image-file-input" accept="image/*"
                  data-upload-url="{{ url_for('admin.blog_post_image_upload', blog_id=blog.id, post_id=post.id) }}" hidden>
           <form method="post" action="{{ url_for('admin.blog_post_delete', blog_id=blog.id, post_id=post.id) }}"
                 class="cms-inline-form cms-delete-form" data-confirm="Delete this post? This cannot be undone.">

@@ -1296,6 +1296,23 @@ def apply_accordion_form(content):
 
 
 def _save_card_image_file():
+    """The picture for a Card or a Banner: uploaded, or chosen from the
+    Media Library.
+
+    A library pick is a URL, not a filename, and is never trusted as one:
+    it is checked against what is actually IN the library and the value
+    used is the library's own. That is the same rule the other upload
+    helper follows -- there are two of these, which is one more than
+    there should be, and until they are one the check has to be in both.
+    """
+    picked = (request.form.get("library_url") or "").strip()
+    if picked:
+        known = {item["url"]: item for item in _list_media(image_only=True)}
+        if picked not in known:
+            return None, ("That picture is not in your Media Library any more "
+                          "— choose another.", 400)
+        return picked, None
+
     file = request.files.get("image")
     if not file or file.filename == "":
         return None, ("Please choose an image file.", 400)

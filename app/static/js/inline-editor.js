@@ -109,9 +109,22 @@
       images.forEach((img) => {
         const b = document.createElement("button");
         b.type = "button";
-        const thumb = document.createElement("img");
-        thumb.src = img.url;
-        b.appendChild(thumb);
+        const name = img.filename || img.url.split("/").pop();
+        b.title = name;
+        //  A picture is chosen by looking at it. Everything else -- a
+        //  video, an audio file, a PDF -- has no thumbnail, and drawing
+        //  one as an <img> gives a grid of broken-image icons that all
+        //  look the same. Those are chosen by NAME, which is the only
+        //  thing that tells them apart.
+        if (img.is_image === false) {
+          b.className = "cms-picker-file";
+          b.textContent = name;
+        } else {
+          const thumb = document.createElement("img");
+          thumb.src = img.url;
+          thumb.alt = "";
+          b.appendChild(thumb);
+        }
         b.addEventListener("click", () => cleanup(img.url));
         pickerGrid.appendChild(b);
       });
@@ -661,19 +674,24 @@
     const input = btn.parentElement.querySelector(".cms-post-image-file-input");
     if (!input) return;
     btn.addEventListener("click", () => input.click());
+    //  Sending and applying, once -- the Choose button hands its Library
+    //  pick to the same function.
+    input.cmsSend = async (body) => {
+      try {
+        const res = await fetch(input.dataset.uploadUrl, { method: "POST", body });
+        if (res.ok) location.reload();
+        else toast("Couldn't set that picture");
+      } catch {
+        toast("That didn't work — check your connection");
+      }
+      input.value = "";
+    };
     input.addEventListener("change", async () => {
       const file = input.files[0];
       if (!file) return;
       const body = new FormData();
       body.append("image", file);
-      try {
-        const res = await fetch(input.dataset.uploadUrl, { method: "POST", body });
-        if (res.ok) location.reload();
-        else toast("Couldn't upload that picture");
-      } catch {
-        toast("Couldn't upload — check your connection");
-      }
-      input.value = "";
+      await input.cmsSend(body);
     });
   });
 
@@ -1288,12 +1306,11 @@
     const input = btn.nextElementSibling;
     if (!input || !input.classList.contains("cms-gallery-clip-file-input")) return;
     btn.addEventListener("click", () => input.click());
-    input.addEventListener("change", async () => {
-      if (!input.files || !input.files[0]) return;
-      const body = new FormData();
-      body.append("clip", input.files[0]);
+    //  Sending and applying, once -- a clip picked from the Library
+    //  lands the way an uploaded one does, timer and all.
+    input.cmsSend = async (body) => {
       btn.disabled = true;
-      const stopTimer = window.cmsElapsedTimer ? window.cmsElapsedTimer(btn, "Uploading") : null;
+      const stopTimer = window.cmsElapsedTimer ? window.cmsElapsedTimer(btn, "Saving") : null;
       try {
         const res = await fetch(input.dataset.uploadUrl, {
           method: "POST",
@@ -1305,13 +1322,19 @@
           location.reload();
           return;
         }
-        toast(data.error || "Couldn't upload that video");
+        toast(data.error || "Couldn't use that video");
       } catch {
-        toast("Couldn't upload — check your connection");
+        toast("That didn't work — check your connection");
       }
       if (stopTimer) stopTimer();
       btn.disabled = false;
       input.value = "";
+    };
+    input.addEventListener("change", async () => {
+      if (!input.files || !input.files[0]) return;
+      const body = new FormData();
+      body.append("clip", input.files[0]);
+      await input.cmsSend(body);
     });
   });
 
@@ -1374,11 +1397,11 @@
       : scope.querySelector(".cms-card-image-file-input, .cms-banner-image-file-input");
     const panelIndex = isPanel ? parseInt(btn.dataset.panelIndex, 10) : null;
     btn.addEventListener("click", () => fileInput.click());
-    fileInput.addEventListener("change", async () => {
-      const file = fileInput.files[0];
-      if (!file) return;
-      const formData = new FormData();
-      formData.set("image", file);
+    //  Sending and applying, once. A picture can arrive from this device
+    //  or from the Media Library, and the only difference is what goes in
+    //  the body -- so the Choose button hands its pick to the same
+    //  function rather than repeating what happens afterwards.
+    fileInput.cmsSend = async (formData) => {
       try {
         const res = await fetch(fileInput.dataset.uploadUrl, {
           method: "POST",
@@ -1390,11 +1413,18 @@
           setCardImage(scope, data.url, panelIndex);
           toast("Image updated");
         } else {
-          toast(data.error || "Upload failed");
+          toast(data.error || "That didn't work");
         }
       } catch {
-        toast("Upload failed — check your connection");
+        toast("That didn't work — check your connection");
       }
+    };
+    fileInput.addEventListener("change", async () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      const formData = new FormData();
+      formData.set("image", file);
+      await fileInput.cmsSend(formData);
     });
   });
   bindEach(".cms-clear-card-image-btn", (btn) => {
@@ -1727,15 +1757,74 @@
   // finds whichever is nearer, so a control inside a cell scopes to that
   // cell instead of accidentally grabbing the first match anywhere in the
   // (possibly multi-cell) parent section.
+  // ---------- choosing from the Media Library ----------
+  //
+  //  Every tool that takes a picture, a video or a file can take it from
+  //  the Library as well as from this device. It was upload-only nearly
+  //  everywhere -- measured, one chooser out of nine offered the Library
+  //  -- so a photograph already on the site had to be found on the
+  //  original machine and uploaded a second time, and the Library filled
+  //  up with duplicates of itself.
+  //
+  //  One binding for all of them. The button carries which kinds it can
+  //  take; the picking dialog is the one this editor already has; and
+  //  what happens AFTER a successful pick is the same code that runs
+  //  after an upload -- `fileInput.cmsSend` -- so the two can never do
+  //  different things with the same picture.
+  async function libraryList(kinds) {
+    const wanted = (kinds || "image").split(",");
+    let items = [];
+    try {
+      const res = await fetch("/admin/images?picker=" + (
+        wanted.length === 1 && wanted[0] === "image" ? "1" : "all"), {
+        headers: { "X-Inline-Edit": "1" },
+      });
+      items = (await res.json()).images || [];
+    } catch {
+      toast("Couldn't open the Library — check your connection");
+      return [];
+    }
+    if (wanted.length === 1 && wanted[0] === "image") return items;
+    //  Anything that is not a picture is offered by name: a video has no
+    //  thumbnail, and a grid of identical film icons is not a choice
+    //  anybody can make.
+    return items.filter((item) => wanted.includes("file")
+      || (wanted.includes("image") && item.is_image)
+      || (!item.is_image && !wanted.includes("image")));
+  }
+
+  bindEach("[data-library-pick]", (btn) => {
+    btn.addEventListener("click", async () => {
+      const scope = btn.closest(".cms-row-cell, .cms-column, .cms-section") || document;
+      const input = btn.dataset.libraryFor
+        ? scope.querySelector("." + btn.dataset.libraryFor)
+        : btn.nextElementSibling;
+      if (!input || !input.cmsSend) {
+        toast("Nothing to put a picture into here");
+        return;
+      }
+      const items = await libraryList(btn.dataset.libraryKinds);
+      if (!items.length) {
+        toast("Your Media Library is empty — upload one and it will be offered here");
+        return;
+      }
+      const chosen = await cmsImagePicker(items);
+      if (!chosen) return;
+      const body = new FormData();
+      body.set("library_url", chosen);
+      await input.cmsSend(body);
+    });
+  });
+
   bindEach(".cms-change-image-btn", (btn) => {
     const scope = btn.closest(".cms-row-cell, .cms-column, .cms-section");
     const fileInput = scope.querySelector(".cms-image-file-input");
     btn.addEventListener("click", () => fileInput.click());
-    fileInput.addEventListener("change", async () => {
-      const file = fileInput.files[0];
-      if (!file) return;
-      const formData = new FormData();
-      formData.set("image", file);
+    //  Sending and applying, once. A picture can arrive from this device
+    //  or from the Media Library, and the only difference is what goes in
+    //  the body -- so the Choose button hands its pick to this rather
+    //  than repeating what happens afterwards.
+    fileInput.cmsSend = async (formData) => {
       try {
         const res = await fetch(fileInput.dataset.uploadUrl, {
           method: "POST",
@@ -1755,11 +1844,18 @@
           img.src = data.url + "?t=" + Date.now();
           toast("Image updated");
         } else {
-          toast(data.error || "Upload failed");
+          toast(data.error || "That didn't work");
         }
       } catch {
-        toast("Upload failed — check your connection");
+        toast("That didn't work — check your connection");
       }
+    };
+    fileInput.addEventListener("change", async () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      const formData = new FormData();
+      formData.set("image", file);
+      await fileInput.cmsSend(formData);
     });
   });
 
@@ -2213,11 +2309,9 @@
     const scope = btn.closest(".cms-row-cell, .cms-column, .cms-section");
     const fileInput = scope.querySelector(".cms-file-file-input");
     btn.addEventListener("click", () => fileInput.click());
-    fileInput.addEventListener("change", async () => {
-      const file = fileInput.files[0];
-      if (!file) return;
-      const formData = new FormData();
-      formData.set("file", file);
+    //  Sending and applying, once -- so a file chosen from the Library
+    //  lands the same way an uploaded one does.
+    fileInput.cmsSend = async (formData) => {
       try {
         const res = await fetch(fileInput.dataset.uploadUrl, {
           method: "POST",
@@ -2226,14 +2320,21 @@
         });
         const data = await res.json();
         if (res.ok && data.url) {
-          toast("File uploaded — reloading…");
+          toast("File set — reloading…");
           location.reload();
         } else {
-          toast(data.error || "Upload failed");
+          toast(data.error || "That didn't work");
         }
       } catch {
-        toast("Upload failed — check your connection");
+        toast("That didn't work — check your connection");
       }
+    };
+    fileInput.addEventListener("change", async () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      const formData = new FormData();
+      formData.set("file", file);
+      await fileInput.cmsSend(formData);
     });
   });
 
@@ -2249,11 +2350,9 @@
     const scope = btn.closest(".cms-row-cell, .cms-column, .cms-section");
     const fileInput = scope.querySelector(".cms-media-file-input");
     btn.addEventListener("click", () => fileInput.click());
-    fileInput.addEventListener("change", async () => {
-      const file = fileInput.files[0];
-      if (!file) return;
-      const formData = new FormData();
-      formData.set("media", file);
+    //  Sending and applying, once -- so a video chosen from the Library
+    //  lands exactly the way an uploaded one does.
+    fileInput.cmsSend = async (formData) => {
       try {
         const res = await fetch(fileInput.dataset.uploadUrl, {
           method: "POST",
@@ -2262,14 +2361,21 @@
         });
         const data = await res.json();
         if (res.ok && data.url) {
-          toast("Media uploaded — reloading…");
+          toast("Media set — reloading…");
           location.reload();
         } else {
-          toast(data.error || "Upload failed");
+          toast(data.error || "That didn't work");
         }
       } catch {
-        toast("Upload failed — check your connection");
+        toast("That didn't work — check your connection");
       }
+    };
+    fileInput.addEventListener("change", async () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      const formData = new FormData();
+      formData.set("media", file);
+      await fileInput.cmsSend(formData);
     });
   });
 

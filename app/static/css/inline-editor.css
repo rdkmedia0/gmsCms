@@ -915,6 +915,12 @@ a.cms-add-section-btn:hover { color: #2563eb; text-decoration: none; }
 
 /* Image controls */
 .cms-change-image-btn { white-space: nowrap; }
+/*  "Choose" stands beside "Upload" on every tool that takes a picture, a
+    video or a file. It is chrome -- this app asking the admin a question
+    -- so it wears the editor's own clothes and takes them from the same
+    rules its neighbours do; it is only listed here so it cannot wrap
+    away from the button it belongs beside. */
+.cms-pick-library-btn { white-space: nowrap; }
 
 /* Confirm modal — see static/css/cms-modal.css (linked separately from
    partials/cms_modal.html) for its styles; kept out of this file since the
@@ -1295,3 +1301,16 @@ body.cms-preview-open { overflow: hidden; }
       scrolling and needs nobody to guess. */
 }
 
+/*  A tile for something with no thumbnail -- a video, an audio file, a
+    PDF. Chosen by name, because that is the only thing that tells two
+    of them apart; an <img> for each gives a grid of identical broken
+    icons. */
+.cms-picker-file {
+  display: flex; align-items: center; justify-content: center;
+  padding: 10px; min-height: 84px;
+  font: 500 12px/1.35 var(--cms-ui-font, system-ui, sans-serif);
+  color: var(--cms-ui-text, #1f2733);
+  text-align: center; word-break: break-word;
+  background: #f4f6f8;
+  border-radius: var(--cms-ui-radius-control, 4px);
+}

@@ -55,6 +55,30 @@ def _saved_upload(field, allowed, refusal):
     client-supplied filename on disk, so `secure_filename` plus a
     generated name, always, and an allowlist rather than a denylist.
     """
+    #  A picture can come from the Media Library instead of from this
+    #  device, and every route that takes an upload should accept one --
+    #  otherwise "choose from the library" needs a second route beside
+    #  each of the nine that already exist.
+    #
+    #  A library URL is not a filename and is never trusted as one: it is
+    #  checked against what is actually IN the library, and the value
+    #  used is the library's own, not the string that was sent. Anything
+    #  else is a path handed to us by a client, which is the one thing
+    #  CLAUDE.md's path rule is about.
+    picked = (request.form.get("library_url") or "").strip()
+    if picked:
+        known = {item["url"]: item for item in _list_media()}
+        item = known.get(picked)
+        if not item:
+            return None, None, None, ("That file is not in your Media Library any "
+                                      "more — choose another.")
+        ext = os.path.splitext(item["url"])[1].lower()
+        if ext not in allowed:
+            return None, None, None, ("That one is a %s. This needs one of: %s"
+                                      % (ext.lstrip(".") or "file",
+                                         ", ".join(sorted(allowed))))
+        return item["url"], item["filename"], ext, None
+
     file = request.files.get(field)
     if not file or file.filename == "":
         return None, None, None, refusal
@@ -968,7 +992,12 @@ def section_image_apply(section_id, col_index=None):
 @bp.route("/images")
 @login_required
 def image_library():
-    image_only = request.args.get("picker") == "1"
+    #  `picker=1` is the pictures-only chooser. `picker=all` is the same
+    #  dialog asked for everything -- a video, an audio file, a PDF -- so
+    #  the Media tool and the File tool can offer the Library too rather
+    #  than only an upload. Anything else is the Library screen itself.
+    picker = request.args.get("picker")
+    image_only = picker == "1"
     items = _list_media(image_only=image_only)
     if image_only:
         #  The same set the section-background picker offers: uploads plus
@@ -981,7 +1010,7 @@ def image_library():
             if extra["url"] not in have:
                 items.append({"filename": extra["name"], "url": extra["url"],
                               "is_image": True, "prompt": None, "source": "Template"})
-    if wants_json():
+    if wants_json() or picker:
         return jsonify({"images": items})
     return render_template("admin/image_library.html", images=items)
 
