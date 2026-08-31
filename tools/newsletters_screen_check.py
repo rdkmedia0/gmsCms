@@ -188,7 +188,17 @@ try:
             '.cms-newsletter-table tbody tr form[action*="/copy"] button').click()""")
         page.wait_for_load_state("networkidle")
         page.wait_for_timeout(600)
-        check("copying opens the copy", "/issue/" in page.url, page.url)
+        #  On the SAME screen, with the copy loaded into the tool at the
+        #  top -- not on the issue's own page. Edit already worked this
+        #  way and copy did not, so one row's two actions went to two
+        #  different places.
+        check("copying stays on this screen",
+              "/admin/newsletters" in page.url and "/issue/" not in page.url,
+              page.url)
+        check("...with the copy loaded into the tool", page.evaluate(
+            """() => { const f = document.querySelector('#subject');
+                 return !!f && f.value.indexOf('copy') >= 0; }"""),
+              page.evaluate("() => (document.querySelector('#subject') || {}).value"))
         copied = re.search(r"/issue/(\d+)", page.url)
         if copied:
             made.append(copied.group(1))
