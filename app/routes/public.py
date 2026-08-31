@@ -1825,6 +1825,44 @@ def _shade_previews(template):
     return out
 
 
+def _fonts_for(template):
+    """The families this template should actually be SET in.
+
+    An override the owner picked, if there is one. Otherwise, for a
+    template that ships no stylesheet of its own, the families belonging
+    to the pairing it names.
+
+    That second half is not a nicety. A pairing's file is only
+    `@font-face` declarations -- it makes the faces available and binds
+    nothing -- and every shipped template binds them itself, in its own
+    theme.css. A template with no theme.css therefore downloaded a
+    webfont on every page load and rendered in Segoe UI, which is
+    exactly what "it does not look like anything" is: the typeface is
+    the largest single difference between two looks, and it was inert.
+
+    Only when there is no theme.css. A template that ships one has said
+    what its families are, in the file, and this must not overrule it --
+    the emitted variables come after the stylesheet and would win.
+    """
+    if template["font_overrides"]:
+        try:
+            picked = json.loads(template["font_overrides"])
+        except (ValueError, TypeError):
+            picked = {}
+        if picked:
+            return picked
+    if _column(template, "css_path"):
+        return {}
+    named = (_column(template, "google_fonts_url") or "").strip()
+    if not named:
+        return {}
+    for pairing in FONT_PAIRINGS.values():
+        if pairing.get("google_fonts_url") == named and pairing.get("body"):
+            return {"heading_font_family": pairing.get("heading") or pairing["body"],
+                    "body_font_family": pairing["body"]}
+    return {}
+
+
 def _theme_override_css(template):
     """Inline :root override, output after the theme's own stylesheet link
     so it wins the cascade (same specificity, later in source order). Four
@@ -1925,11 +1963,8 @@ def _theme_override_css(template):
                     if role_name == "primary":
                         for step, shade in neutral_ramp(color, sat_ease).items():
                             lines.append(f"--neutral-{step}: {shade};")
-    if template["font_overrides"]:
-        try:
-            fonts = json.loads(template["font_overrides"])
-        except (ValueError, TypeError):
-            fonts = {}
+    fonts = _fonts_for(template)
+    if fonts:
         if fonts.get("heading_font_family"):
             lines.append(f"--site-heading-font-family: {fonts['heading_font_family']};")
         if fonts.get("body_font_family"):

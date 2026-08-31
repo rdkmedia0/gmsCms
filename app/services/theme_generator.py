@@ -69,11 +69,20 @@ LAYOUTS = {
 }
 
 _SCHEMAS = {
+    #  A front page is not three paragraphs. The numbers, the quote and
+    #  the closing call are asked for in the SAME request as the rest --
+    #  one call, one voice, and a page with something on it besides
+    #  prose.
     "landing": (
         '{"hero_headline": "...", "hero_subtext": "...", "intro_heading": "...", '
         '"intro_body": "...", "features": [{"title": "...", "body": "..."}, '
         '{"title": "...", "body": "..."}, {"title": "...", "body": "..."}], '
-        '"cta_headline": "...", "cta_subtext": "..."}'
+        '"stats": [{"value": "a number or short figure", "label": "what it counts"}, '
+        '{"value": "...", "label": "..."}, {"value": "...", "label": "..."}], '
+        '"quote": "one sentence a real customer might say", '
+        '"quote_name": "a plausible first name and initial", '
+        '"quote_role": "what they do, or where they are", '
+        '"cta_headline": "...", "cta_subtext": "...", "cta_button": "two or three words"}'
     ),
     "about": (
         '{"hero_headline": "...", "hero_subtext": "...", "story_heading": "...", '
@@ -268,7 +277,11 @@ def site_pages(db, page_ids=None):
             continue
         out.append({
             "title": page["title"],
-            "slug_suffix": "",
+            #  The page's OWN slug, so a rewrite lands back on the page
+            #  it was read from rather than creating a second one beside
+            #  it. The front page answers to "home", which is the name
+            #  `_apply_pack_content` looks for.
+            "slug_suffix": "home" if page["is_home"] else (page["slug"] or ""),
             "meta_description": page["meta_description"] or "",
             "sections": [[s["type"], s["title"] or "", s["content"] or "", ""]
                          for s in sections],
@@ -569,7 +582,7 @@ def _ai_json(db, prompt):
     from .. import assistant
     try:
         result = assistant._call_provider(
-            db, [{"role": "user", "content": prompt}], [])
+            db, [{"role": "user", "content": prompt}], [], want_json=True)
     except assistant.ProviderError as e:
         raise ThemeGenError("The AI provider did not answer: %s" % e)
     content = (result.get("content") or "").strip()
@@ -588,9 +601,65 @@ def _ai_json(db, prompt):
     try:
         return json.loads(content)
     except (ValueError, TypeError) as e:
+        salvaged = _salvage(content)
+        if salvaged:
+            return salvaged
         raise ThemeGenError(
             "The AI didn't return usable content (%s). Try again, or "
             "simplify the brief." % e)
+
+
+def _salvage(content):
+    """What can still be read out of an answer that stopped early.
+
+    A model that runs out of room mid-answer has usually already said
+    most of it: the colours, the typeface and the shape are decided in
+    the first few keys, and what is missing is the tail. Every caller
+    here already checks each value against the list it came from and
+    falls back when one is absent -- so the difference between a
+    truncated answer and a whole one is a couple of defaults, while the
+    difference between a truncated answer and an ERROR is the whole run.
+
+    Only closes what is open; never invents a value. If nothing parses,
+    the caller still raises.
+    """
+    start = content.find("{")
+    if start < 0:
+        return None
+    text = content[start:]
+    #  Drop a half-written trailing token, then close what is still open.
+    for cut in range(len(text), max(len(text) - 4000, 0), -1):
+        head = text[:cut].rstrip().rstrip(",")
+        opens, in_string, escaped = [], False, False
+        for ch in head:
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif ch == "\\":
+                    escaped = True
+                elif ch == '"':
+                    in_string = False
+                continue
+            if ch == '"':
+                in_string = True
+            elif ch in "[{":
+                opens.append(ch)
+            elif ch in "]}" and opens:
+                opens.pop()
+        if in_string or head.endswith(":"):
+            continue
+        try:
+            found = json.loads(head + "".join("]" if o == "[" else "}"
+                                              for o in reversed(opens)))
+        except (ValueError, TypeError):
+            continue
+        if not isinstance(found, dict) or not found:
+            return None
+        #  A key that was half-written closes as an empty husk. It is
+        #  not a value the model gave, so it does not travel.
+        return {k: ([item for item in v if item] if isinstance(v, list) else v)
+                for k, v in found.items()}
+    return None
 
 
 def _maybe_generate_image(db, prompt, use_ai_images):
@@ -677,6 +746,7 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
     def val(key, fallback):
         return (copy.get(key) or fallback) if fill else fallback
 
+    tint = _tint_of(kit)
     #  One direction for every picture in a run -- see
     #  brand_kit()["image_direction"].
     hero = _maybe_generate_image(
@@ -684,34 +754,116 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
         % (brief or layout_key, kit["image_direction"]),
         use_ai_images and want_image and kit["image_budget"] > 0)
 
+    #  Every piece carries its own STYLING, and a piece may be a real
+    #  block tool rather than markup to be classified.
+    #
+    #  What was here made three shapes -- a banner, a paragraph, a row of
+    #  cards -- laid one after another in the same width on the same
+    #  white ground, and closed with a second banner over a grey
+    #  placeholder. That is the whole reason a generated site came out
+    #  flat: not the colours, which were right, but that nothing on the
+    #  page ever used them. A page needs a change of ground, something
+    #  that is not prose, and a picture that is not a placeholder.
+    #
+    #  Numbers, a quote and a call to action are the three things every
+    #  real template on this install has and this had none of -- and
+    #  each is an existing TOOL (services/blocks.py), so the owner can
+    #  edit every one of them with the controls they already have.
     chunks = []
     if layout_key == "landing":
-        chunks.append(_hero_chunk(val("hero_headline", "Your headline"),
-                                  val("hero_subtext", "A short supporting line."), hero))
-        chunks.append(_text_chunk(val("intro_heading", "Welcome"),
-                                  val("intro_body", "Write an introduction here.")))
-        features = copy.get("features") if fill else None
-        if not features or len(features) < 3:
-            features = [{"title": "Feature %d" % (i + 1),
-                         "body": "Describe this feature."} for i in range(3)]
-        chunks.append(_cards_chunk(features[:6]))
-        chunks.append(_hero_chunk(val("cta_headline", "Ready to get started?"),
-                                  val("cta_subtext", "Get in touch today."),
-                                  PLACEHOLDER_IMAGE))
+        chunks.append(_piece(_hero_chunk(val("hero_headline", "Your headline"),
+                                         val("hero_subtext", "A short supporting line."),
+                                         hero),
+                             {"layout_width": "full", "corner_style": "sharp"}))
+        chunks.append(_piece(_text_chunk(val("intro_heading", "Welcome"),
+                                         val("intro_body", "Write an introduction here.")),
+                             {"layout_width": "custom", "layout_width_pct": 62}))
+        stats = _rows(copy.get("stats") if fill else None, ("value", "label"), 3,
+                      [{"value": "10", "label": "Years"},
+                       {"value": "200", "label": "Happy customers"},
+                       {"value": "24h", "label": "Reply time"}])
+        chunks.append(_block_piece("stats", _numbered(stats, ("value", "label")),
+                                   {"layout_width": "auto", "bg_color": tint}))
+        features = _rows(copy.get("features") if fill else None, ("title", "body"), 3,
+                         [{"title": "Feature %d" % (i + 1),
+                           "body": "Describe this feature."} for i in range(3)])
+        chunks.append(_piece(_cards_chunk(features[:6]),
+                             {"layout_width": "auto",
+                              "shadow_style": kit.get("shadow") or "subtle"}))
+        chunks.append(_block_piece("testimonial", {
+            "quote": val("quote", "They were a pleasure to work with."),
+            "name": val("quote_name", "A customer"),
+            "role": val("quote_role", ""),
+            "style": "large",
+        }, {"layout_width": "auto", "bg_color": tint}))
+        #  The closing call gets the run's own photograph, not a grey
+        #  placeholder: one picture used twice is a page that looks
+        #  finished, and a placeholder at the bottom is the last thing
+        #  anybody sees.
+        chunks.append(_piece(_hero_chunk(val("cta_headline", "Ready to get started?"),
+                                         val("cta_subtext", "Get in touch today."), hero),
+                             {"layout_width": "full", "corner_style": "sharp"}))
     elif layout_key == "about":
-        chunks.append(_hero_chunk(val("hero_headline", "Our story"),
-                                  val("hero_subtext", "A short supporting line."), hero))
-        chunks.append(_text_chunk(val("story_heading", "About us"),
-                                  val("story_body", "Tell your story here.")))
-        chunks.append(_hero_chunk(val("cta_headline", "Let's talk"),
-                                  val("cta_subtext", "Reach out anytime."),
-                                  PLACEHOLDER_IMAGE))
+        chunks.append(_piece(_hero_chunk(val("hero_headline", "Our story"),
+                                         val("hero_subtext", "A short supporting line."),
+                                         hero),
+                             {"layout_width": "full", "corner_style": "sharp"}))
+        chunks.append(_piece(_text_chunk(val("story_heading", "About us"),
+                                         val("story_body", "Tell your story here.")),
+                             {"layout_width": "custom", "layout_width_pct": 62}))
+        chunks.append(_block_piece("cta", {
+            "heading": val("cta_headline", "Let's talk"),
+            "body": val("cta_subtext", "Reach out anytime."),
+            "button": val("cta_button", "Get in touch"),
+            "link": "/contact",
+        }, {"layout_width": "auto", "bg_color": tint}))
     else:
-        chunks.append(_hero_chunk(val("hero_headline", "Your headline"),
-                                  val("hero_subtext", "A short supporting line."), hero))
-        chunks.append(_text_chunk(val("body_heading", "Welcome"),
-                                  val("body_text", "Write something here.")))
+        chunks.append(_piece(_hero_chunk(val("hero_headline", "Your headline"),
+                                         val("hero_subtext", "A short supporting line."),
+                                         hero),
+                             {"layout_width": "full", "corner_style": "sharp"}))
+        chunks.append(_piece(_text_chunk(val("body_heading", "Welcome"),
+                                         val("body_text", "Write something here.")),
+                             {"layout_width": "custom", "layout_width_pct": 62}))
     return chunks
+
+
+def _piece(html, style=None):
+    """A chunk of markup to be classified, plus how it should sit."""
+    return {"html": html, "style": style or {}}
+
+
+def _block_piece(key, values, style=None):
+    """One of the declared block tools, built by the tool itself.
+
+    Not markup this file invented: `blocks.build` is what the Stats,
+    Testimonial and CTA tools use when an admin adds one by hand, so what
+    lands on the page is a real block, editable through its own panel,
+    with its `data-field` attributes intact. A look nobody can edit
+    afterwards is not a look, it is a picture of one.
+    """
+    from . import blocks
+    made = dict(blocks.BLOCKS[key].get("defaults") or {})
+    made.update({k: v for k, v in values.items() if v not in (None, "")})
+    return {"type": key, "content": blocks.build(key, made), "style": style or {}}
+
+
+def _rows(given, keys, least, fallback):
+    """`given` if it is a usable list of dicts, otherwise the fallback."""
+    if not isinstance(given, list):
+        return fallback
+    kept = [row for row in given
+            if isinstance(row, dict) and any(str(row.get(k) or "").strip() for k in keys)]
+    return kept if len(kept) >= least else fallback
+
+
+def _numbered(rows, keys, prefix="item"):
+    """A block tool's flat, numbered field names, from a list of rows."""
+    out = {}
+    for i, row in enumerate(rows, start=1):
+        for key in keys:
+            out["%s%d_%s" % (prefix, i, key)] = str(row.get(key) or "").strip()
+    return out
 
 
 # ------------------------------------------------ writing the package
@@ -747,16 +899,48 @@ def sections_for(chunks):
     from .sections import _classify_layout_chunk
     out = []
     for chunk in chunks:
-        for section in _classify_layout_chunk(chunk):
-            #  Four entries, because that is the shape every shipped
-            #  package's page file uses: type, title, content, width.
+        #  A piece is either markup to be classified into native
+        #  sections, or a block tool that already knows what it is.
+        if isinstance(chunk, dict) and chunk.get("type"):
+            out.append([chunk["type"], "", chunk["content"], dict(chunk.get("style") or {})])
+            continue
+        html = chunk["html"] if isinstance(chunk, dict) else chunk
+        style = dict(chunk.get("style") or {}) if isinstance(chunk, dict) else {}
+        for section in _classify_layout_chunk(html):
+            #  Four entries: type, title, content, and the section's own
+            #  styling. That fourth slot was written as an empty string
+            #  for as long as this existed, which is why every generated
+            #  site came out flat: a page of unstyled bands in the
+            #  default width, on one white ground, whatever palette it
+            #  had been given.
             out.append([section["type"], section.get("title", ""),
-                        section["content"], ""])
+                        section["content"], dict(style)])
     return out
 
 
+def _tint_of(kit):
+    """The palest step of the palette's primary, as a real colour.
+
+    Not `var(--primary-50)`: a section's background is stored as a value
+    the colour control shows and an owner can change, and a variable name
+    there is neither. This is what gives a page a change of ground --
+    most of what reads as "designed" on a page of bands, and one
+    attribute per section.
+    """
+    from .palette import tint_shade_ramp
+    primary = ""
+    for role in (kit.get("palette") or []):
+        if role.get("slug") == "primary" and role.get("color"):
+            primary = role["color"]
+    if not primary:
+        return "#f6f6f6"
+    ramp = tint_shade_ramp(primary)
+    return ramp.get("lightest") or ramp.get("light") or "#f6f6f6"
+
+
 def build_package(db, name, pages, palette=None, google_fonts_url=None,
-                  shape=None, shadow=None, work_dir=None):
+                  shape=None, shadow=None, work_dir=None,
+                  nav_layout=None, footer_layout=None):
     """Writes a package directory and returns (its path, its slug).
 
     `pages` is a list of {title, slug_suffix, sections}. A package with
@@ -772,6 +956,24 @@ def build_package(db, name, pages, palette=None, google_fonts_url=None,
         "name": name,
         "slug": slug,
         "has_content": bool(pages),
+        #  A LOOK INCLUDES THE WAY ROUND IT.
+        #
+        #  These three keys are the only thing that makes a template's
+        #  header and footer get built when it is activated
+        #  (`_apply_default_layout` is the one place that happens, and it
+        #  reads exactly these). Without them a generated template
+        #  arrived with an empty header zone: five pages, no menu, no way
+        #  to reach four of them except by typing the address. Every
+        #  shipped template declares them; this one did not, and nothing
+        #  said so.
+        #
+        #  Values from the app's own preset lists, like everything else
+        #  the generator picks -- and changeable afterwards from Layout,
+        #  which is what makes a default legitimate rather than a
+        #  decision taken away.
+        "nav_layout": nav_layout or "centered",
+        "footer_layout": footer_layout or "simple",
+        "page_layout": "none",
         #  Deliberately absent: business_name, tagline, footer_blurb.
         #  A package MAY carry an identity and this one must not invent
         #  one -- the site's name is the site's, and a generator is the
@@ -794,7 +996,20 @@ def build_package(db, name, pages, palette=None, google_fonts_url=None,
     for i, page in enumerate(pages):
         data = {
             "title": page["title"],
-            "slug_suffix": page.get("slug_suffix", ""),
+            #  Every page says which page it IS, and the first one says
+            #  "home".
+            #
+            #  This was written empty, and an empty slug is not a page
+            #  with no name -- it is a page that matches nothing.
+            #  `_apply_pack_content` keys the front page off exactly the
+            #  string "home" and every other page off its slug, so a
+            #  five-page template activated into a site left four of its
+            #  pages unwritten and the fifth landing wherever an empty
+            #  slug happened to fall. What arrived was the old site with
+            #  a new palette, which is precisely "it does not look like
+            #  anything".
+            "slug_suffix": page.get("slug_suffix") or ("home" if i == 0
+                                                       else _slug(page["title"], "page")),
             "page_type": "standard",
             "meta_description": page.get("meta_description", ""),
             "sections": page["sections"],
@@ -806,7 +1021,62 @@ def build_package(db, name, pages, palette=None, google_fonts_url=None,
                             "%02d-%s.json" % (i, _slug(page["title"], "page")))
         with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
+    _carry_media(pkg_dir, slug)
     return pkg_dir, slug
+
+
+def _carry_media(pkg_dir, slug):
+    """Copy the pictures this package refers to INTO it.
+
+    A generated banner is written where every uploaded picture is
+    written, and referred to by the URL that serves it -- which is
+    correct for the site and wrong for a package, because that URL means
+    nothing anywhere else. Exported, the template arrived with a broken
+    picture; installed on another site, the same. This is the rule
+    CLAUDE.md already states for authored templates -- a template's
+    pictures belong to the template -- applied to the one path that was
+    not following it.
+
+    The same two steps `packages._build_package_dir` takes when saving a
+    live site, and deliberately the same helpers, so a generated package
+    and a saved one are the same kind of thing on disk.
+    """
+    from flask import current_app
+    from . import packages
+    pages_dir = os.path.join(pkg_dir, "pages")
+    if not os.path.isdir(pages_dir):
+        return
+    paths = [os.path.join(pages_dir, f) for f in sorted(os.listdir(pages_dir))]
+    found = {}
+    for path in paths:
+        with open(path, encoding="utf-8") as f:
+            spec = json.load(f)
+        for section in spec["sections"]:
+            for m in packages.EXPORTABLE_MEDIA.finditer(section[2] or ""):
+                #  Named after the template it belongs to, so a file that
+                #  is later copied anywhere still says whose it is.
+                found.setdefault(m.group(0),
+                                 "media/%s-%s" % (slug, os.path.basename(m.group(1))))
+    if not found:
+        return
+    media_dir = os.path.join(pkg_dir, "media")
+    os.makedirs(media_dir, exist_ok=True)
+    carried = {}
+    for url, rel in found.items():
+        src = packages._static_source_path(current_app.static_folder, url)
+        if os.path.isfile(src):
+            shutil.copyfile(src, os.path.join(media_dir, os.path.basename(rel)))
+            carried[url] = rel
+    if not carried:
+        return
+    for path in paths:
+        with open(path, encoding="utf-8") as f:
+            spec = json.load(f)
+        for section in spec["sections"]:
+            for url, rel in carried.items():
+                section[2] = (section[2] or "").replace(url, rel)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(spec, f, indent=2, ensure_ascii=False)
 
 
 def layout_for(title, index):

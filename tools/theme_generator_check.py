@@ -70,7 +70,7 @@ ANSWER = {
 }
 
 REPLIES = {"content": ""}
-assistant._call_provider = lambda db, messages, tools: {"content": REPLIES["content"]}
+assistant._call_provider = lambda db, messages, tools, **kw: {"content": REPLIES["content"]}
 assistant.is_configured = lambda db: True
 
 app = create_app()
@@ -137,8 +137,13 @@ with app.app_context():
     data = json.load(io.open(
         os.path.join(page_dir, sorted(os.listdir(page_dir))[0]), encoding="utf-8"))
     kinds = [s[0] for s in data["sections"]]
+    #  A "real type" includes the declared block tools: Stats and
+    #  Testimonial are tools an admin can add by hand, and a page built
+    #  from them is built from tools.
+    from app.services import blocks as _blocks                      # noqa: E402
     check("...whose sections are real types", kinds and all(
-        k in ("banner", "text", "columns", "card", "image", "html") for k in kinds),
+        k in ("banner", "text", "columns", "card", "image", "html")
+        or k in _blocks.BLOCKS for k in kinds),
           ", ".join(kinds))
     check("...including a Columns of Cards, not invented markup",
           "columns" in kinds, ", ".join(kinds))
@@ -149,12 +154,53 @@ with app.app_context():
     #  The classes a real tool produces. Anything else is a class this
     #  generator invented, and a look built on one cannot be edited with
     #  the controls the owner has.
-    known = ("cms-banner", "cms-banner-overlay", "cms-card", "cms-columns")
+    #
+    #  ASKED OF THE TOOLS, not written down here. The declared blocks
+    #  (Stats, Testimonial, CTA and the rest) are real tools with real
+    #  markup, and a hand-kept list of their classes would have to be
+    #  updated every time one of them changed -- at which point it stops
+    #  being a check and becomes a second, staler copy of the truth.
+    #  Building each block with its own defaults gives exactly the
+    #  classes an admin's own block would have.
     import re
-    used = set(re.findall(r'class="([a-z0-9 -]+)"', body))
-    stray = sorted({c for group in used for c in group.split()
+    from app.services import blocks as block_tools                  # noqa: E402
+    def _classes(html):
+        return {c for group in re.findall(r'class="([a-z0-9 _-]+)"', html or "")
+                for c in group.split()}
+
+    known = {"cms-banner", "cms-banner-overlay", "cms-card", "cms-columns"}
+    for key, spec in block_tools.BLOCKS.items():
+        base = dict(spec.get("defaults") or {})
+        known |= _classes(block_tools.build(key, base))
+        #  And every option of any "how it looks" select: a variant class
+        #  (cms-quote-large) belongs to the tool just as much as its
+        #  default one does, and building only the default would report
+        #  the tool's own markup as something the generator invented.
+        for name, field in block_tools.flat_fields(key):
+            if field.get("kind") == "select":
+                for value, _label in field.get("options") or []:
+                    known |= _classes(block_tools.build(
+                        key, dict(base, **{name: value})))
+    stray = sorted({c for c in _classes(body)
                     if c.startswith("cms-") and c not in known})
     check("no class it invented", not stray, ", ".join(stray))
+    #  And the other half of the same statement: a page that USES those
+    #  tools rather than three paragraphs in a row. This is what "flat"
+    #  was -- a banner, some prose, some cards, on one white ground.
+    check("a front page is not all prose",
+          any(k in block_tools.BLOCKS for k in kinds), ", ".join(kinds))
+    styles = [s[3] for s in data["sections"] if isinstance(s[3], dict)]
+    check("...and every section says how it should sit",
+          len(styles) == len(data["sections"]), str(len(styles)))
+    check("...with a change of ground under some of them",
+          any(st.get("bg_color") for st in styles), str(styles))
+    check("...and a hero that runs the full width",
+          any(st.get("layout_width") == "full" for st in styles), str(styles))
+    #  A value the width control does not offer is a control showing
+    #  nothing selected. Auto, Full, or Custom with a percentage.
+    check("...in widths the control actually offers",
+          all(st.get("layout_width") in (None, "", "auto", "full", "custom")
+              for st in styles), str([st.get("layout_width") for st in styles]))
     check("no stylesheet travels with it",
           not os.path.isfile(os.path.join(pkg, "theme.css")))
     check("...and no rule is hidden in the markup",
@@ -292,11 +338,39 @@ with app.app_context():
     #  starts calling the provider, this goes red: the stub records it.
     asked = {"n": 0}
     real = assistant._call_provider
-    assistant._call_provider = lambda db, m, t: (asked.__setitem__("n", asked["n"] + 1),
+    assistant._call_provider = lambda db, m, t, **kw: (asked.__setitem__("n", asked["n"] + 1),
                                                  {"content": REPLIES["content"]})[1]
     shown = tg.plan(db, kit, "A plan", pages_wanted=["Home"])
     assistant._call_provider = real
-    check("the plan asks the provider nothing", asked["n"] == 0, str(asked["n"]))
+    check("the plan itself asks the provider nothing", asked["n"] == 0, str(asked["n"]))
+    #  ...but the ROUTE does, before calling it: the look is decided at
+    #  plan time so the plan can show it. The screen said "nothing has
+    #  been asked of the AI yet" for as long as that was false, and this
+    #  check passed the whole time -- because it tests the function and
+    #  the sentence is on the screen.
+    #  What the screen SAYS, not what the file contains: the sentence
+    #  this replaced is quoted in a comment explaining why it went, and
+    #  a check that cannot tell those apart fails on its own footnote.
+    screen_says = re.sub(r"\{#.*?#\}", "", io.open(
+        "/app/app/templates/admin/theme_generator.html", encoding="utf-8").read(),
+        flags=re.S)
+    check("...and the screen does not claim that on the route's behalf",
+          "Nothing has been asked of the AI yet" not in screen_says)
+    check("...it says what looking actually cost",
+          "{{ spent }} request" in screen_says
+          and "spent=spent" in io.open("/app/app/routes/admin/dashboard.py",
+                                       encoding="utf-8").read())
+    check("...and still promises the site has not moved",
+          "nothing on your site has changed" in screen_says)
+    #  Finishing a job is not a request to be taken somewhere else. It
+    #  used to end on the template list, which is a page the admin did
+    #  not ask for, with the form they had filled in left behind.
+    route_says = io.open("/app/app/routes/admin/dashboard.py", encoding="utf-8").read()
+    check("a finished run leaves you where you were",
+          'url_for("admin.theme_generator", made=slug)' in route_says
+          and 'return redirect(url_for("admin.templates_screen"))' not in route_says)
+    check("...and says where the new template is instead",
+          "request.args.get('made')" in screen_says)
     check("...and says how many sections", shown["sections"] == 4, str(shown))
     check("...how many pictures", shown["pictures"] >= 1, str(shown))
     check("...and what it will cost", shown["calls"] >= 1, str(shown))
@@ -404,11 +478,111 @@ with app.app_context():
           and "Only one line" not in dbody, dbody[:140])
 
     print()
+    print("A generated page knows which page it is")
+    print("-" * 70)
+    #  An empty slug is not a page with no name -- it is a page that
+    #  matches nothing. `_apply_pack_content` keys the front page off
+    #  exactly "home" and every other page off its slug, so a five-page
+    #  template activated into a site left four pages unwritten and the
+    #  fifth landing wherever an empty slug happened to fall. What the
+    #  owner got was their old site with a new palette, which is exactly
+    #  what "it does not load any real style" looked like.
+    with app.app_context():
+        pkg_dir, _ = tg.build_package(
+            db, "Slug Check",
+            [{"title": "Home", "sections": [["text", "", "<p>One</p>", ""]]},
+             {"title": "The library", "sections": [["text", "", "<p>Two</p>", ""]]},
+             {"title": "About me", "sections": [["text", "", "<p>Three</p>", ""]]}])
+    named = [json.load(io.open(os.path.join(pkg_dir, "pages", f), encoding="utf-8"))
+             ["slug_suffix"]
+             for f in sorted(os.listdir(os.path.join(pkg_dir, "pages")))]
+    check("the front page answers to home", named[:1] == ["home"], str(named))
+    check("...and every other page to its own name",
+          named == ["home", "the-library", "about-me"], str(named))
+    check("...so not one of them is empty", all(named))
+
+    #  A template's pictures belong to the template. A generated banner
+    #  is written where every upload is written and referred to by the
+    #  URL that serves it -- which means nothing on anybody else's
+    #  install, so the template exported with a broken picture.
+    shot = os.path.join(app.static_folder, "uploads", "themegen-check.png")
+    os.makedirs(os.path.dirname(shot), exist_ok=True)
+    io.open(shot, "wb").write(b"\x89PNG\r\n\x1a\n" + b"\0" * 30)
+    banner = ("<div class=\"cms-banner\" style=\"background-image:"
+              "url('/static/uploads/themegen-check.png')\"></div>")
+    with app.app_context():
+        pkg_dir, made_slug = tg.build_package(
+            db, "Media Check", [{"title": "Home",
+                                 "sections": [["banner", "", banner, ""]]}])
+    home = json.load(io.open(os.path.join(pkg_dir, "pages", "00-home.json"),
+                             encoding="utf-8"))
+    check("a generated picture travels inside the package",
+          "media/" in home["sections"][0][2]
+          and "/static/uploads/" not in home["sections"][0][2],
+          home["sections"][0][2][:110])
+    check("...as a real file, named after the template it belongs to",
+          os.path.isfile(os.path.join(pkg_dir, "media",
+                                      "%s-themegen-check.png" % made_slug)),
+          str(os.listdir(os.path.join(pkg_dir, "media")))
+          if os.path.isdir(os.path.join(pkg_dir, "media")) else "no media dir")
+    os.remove(shot)
+
+    print()
+    print("A generated look is actually worn")
+    print("-" * 70)
+    #  A pairing's file is only @font-face -- it makes the faces
+    #  available and binds nothing. Every shipped template binds them in
+    #  its own theme.css, and a GENERATED one has no theme.css, so it
+    #  downloaded a webfont on every page load and rendered in Segoe UI.
+    #  The typeface is the largest single difference between two looks,
+    #  and it was inert: "it does not load any real style".
+    site = io.open("/app/app/routes/public.py", encoding="utf-8").read()
+    check("a template with no stylesheet is still set in its typeface",
+          "def _fonts_for(template)" in site)
+    check("...from the pairing it names",
+          'pairing.get("google_fonts_url") == named' in site)
+    #  A template that ships a stylesheet has SAID what its families
+    #  are, in the file. The emitted variables come after it and would
+    #  win, so this must not reach them.
+    check("...and never over a template that says so itself",
+          '_column(template, "css_path")' in site
+          and site.index('_column(template, "css_path")')
+              < site.index('pairing.get("google_fonts_url") == named'))
+
+    print()
+    print("An answer that stopped early is not a dead end")
+    print("-" * 70)
+    #  Measured on a real 8B thinking model: asked in PROSE for a JSON
+    #  object it thought out loud first and ran out of room mid-string,
+    #  which arrives as "Unterminated string" -- an error about a model
+    #  that was answering perfectly well.
+    brain = io.open("/app/app/assistant.py", encoding="utf-8").read()
+    check("the wire is told the answer is JSON, not just the prompt",
+          'body["response_format"] = {"type": "json_object"}' in brain
+          and 'body["format"] = "json"' in brain)
+    check("...and the generator asks for that",
+          "want_json=True" in io.open("/app/app/services/theme_generator.py",
+                                      encoding="utf-8").read())
+    #  Everything here is checked against the list it came from and
+    #  falls back when absent, so a truncated answer costs a couple of
+    #  defaults. An ERROR costs the whole run.
+    kept = tg._salvage('{"primary": "#1d6b58", "secondary": "#d94f2b", "accent": "#f0a')
+    check("what it did say is kept", kept == {"primary": "#1d6b58",
+                                              "secondary": "#d94f2b"}, str(kept))
+    kept = tg._salvage('{"fonts": "x", "pages": [{"title": "Home", "shape": "landing"}, {"tit')
+    check("...including a list it was in the middle of",
+          (kept or {}).get("pages") == [{"title": "Home", "shape": "landing"}], str(kept))
+    check("...and nothing is invented to fill the gap",
+          tg._salvage('{"primary": "#1d6b58", "shape":') == {"primary": "#1d6b58"})
+    check("...while junk is still junk", tg._salvage("not json at all") is None)
+
+    print()
     print("A picture gives style, and only style")
     print("-" * 70)
     import base64                                                   # noqa: E402
     from app.services import look_from_picture as lp                # noqa: E402
     js = io.open("/app/app/static/js/admin/theme-generator.js", encoding="utf-8").read()
+    css = io.open("/app/app/static/css/admin.css", encoding="utf-8").read()
     screen = io.open("/app/app/templates/admin/theme_generator.html",
                      encoding="utf-8").read()
 
@@ -470,6 +644,33 @@ with app.app_context():
     #  has to be the one that matters.
     check("...to a size, not just to a quality",
           "SEND_MAX_KB" in js and "SEND_QUALITIES" in js)
+    #  A run is synchronous and can take minutes. Watched on a real
+    #  machine the screen said nothing at all for ten of them, which
+    #  reads as a click that missed -- and a second press is a second
+    #  run, paid for the same as the first.
+    check("the screen says it is working while it works",
+          "cmsElapsedTimer" in js and "aria-busy" in js)
+    #  The plan is its own small form above the big one, so a listener on
+    #  "the" form covers "Show me the plan" and misses "Make it" -- the
+    #  one press that takes minutes was the one that said nothing.
+    check("...on the plan's own form too, not just the big one",
+          "form[action*='theme-generator']" in js)
+    check("...and stops every button, not the one that was pressed",
+          'querySelectorAll("button[type=submit]")' in js)
+    #  A disabled control is not submitted, so disabling the submitter
+    #  inside the submit event deletes the field that says WHICH button
+    #  was pressed -- "Show me the plan" then arrives with no `preview`,
+    #  and no preview means make it. The free look cost a full run.
+    check("...without losing which button was pressed",
+          "carried.name = button.name" in js
+          and js.index("carried.name = button.name")
+              < js.index('querySelectorAll("button[type=submit]")'))
+    check("...using the app's own counter, not a fourth setInterval",
+          "setInterval(" not in js)
+    #  A row of swatches says a picture was read. It does not say it was
+    #  the one they chose.
+    check("...and the picture they chose is shown back to them",
+          "data-reference-thumb" in js and "cms-reference-thumb" in css)
     check("...only when there are eyes at the other end",
           "data-send-picture" in js and "data-send-picture" in screen)
 
@@ -482,7 +683,7 @@ with app.app_context():
 
     state = {"said": {}}
 
-    def _pretend(db_, messages, tools_):
+    def _pretend(db_, messages, tools_, **kw):
         return {"content": json.dumps(state["said"])}
 
     from app import assistant as asst                               # noqa: E402

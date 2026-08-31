@@ -313,8 +313,17 @@ def theme_generator():
         #  form, so the run cannot come out different from the plan --
         #  and so it is not paid for twice.
         looked = _carried_look(request.form)
+        #  What showing the plan has already cost. It used to cost
+        #  nothing, and the screen still said so long after that stopped
+        #  being true: the look is decided HERE now, deliberately, so
+        #  that what the plan shows is what gets made. Reading the
+        #  picture is the other request. Neither writes a word or makes
+        #  a picture, and neither touches the site -- which is the part
+        #  worth promising, and the part that is still true.
+        spent = 1 if signals else 0
         if looked is None and mode == "scratch":
             looked = theme_generator_mod.design(db, kit, wanted)
+            spent += 1
         kit = theme_generator_mod.with_design(kit, looked or {})
 
         if request.form.get("preview"):
@@ -329,7 +338,7 @@ def theme_generator():
             return render_template("admin/theme_generator.html",
                                    plan=shown, form=request.form,
                                    signals=signals, kit=kit, looked=looked,
-                                   **_theme_generator_context(db))
+                                   spent=spent, **_theme_generator_context(db))
 
         try:
             slug = theme_generator_mod.generate(
@@ -345,7 +354,13 @@ def theme_generator():
         flash("Made \u201c%s\u201d. Nothing on your site has changed \u2014 look at "
               "it first, and use it when you are ready."
               % (made["name"] if made else slug), "success")
-        return redirect(url_for("admin.templates_screen"))
+        #  Back to the screen they were standing on, not off to the
+        #  template list. Finishing a job is not a request to be taken
+        #  somewhere else: somebody who has just made one look very
+        #  often wants to try a second, and the form they filled in is
+        #  here. Where the new template can be found is said in words,
+        #  with a link -- an offer rather than a move.
+        return redirect(url_for("admin.theme_generator", made=slug))
 
     return render_template("admin/theme_generator.html",
                            **_theme_generator_context(db))

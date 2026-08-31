@@ -164,6 +164,21 @@
     }).join("");
   }
 
+  function small_thumb(img) {
+    var side = 132;
+    var box = document.createElement("canvas");
+    var scale = Math.min(side / img.width, side / img.height);
+    box.width = Math.max(1, Math.round(img.width * scale));
+    box.height = Math.max(1, Math.round(img.height * scale));
+    box.getContext("2d").drawImage(img, 0, 0, box.width, box.height);
+    var shown = document.createElement("img");
+    shown.className = "cms-reference-thumb";
+    shown.setAttribute("data-reference-thumb", "1");
+    shown.alt = "The picture you chose";
+    shown.src = box.toDataURL("image/jpeg", 0.7);
+    return shown;
+  }
+
   function sample(file, into) {
     var reader = new FileReader();
     reader.onload = function () {
@@ -226,6 +241,14 @@
           carried.setAttribute("data-sampled", "1");
           row.appendChild(carried);
         }
+        //  The picture itself, small. Somebody who has just chosen a
+        //  file should be able to see WHICH file -- a row of swatches
+        //  says a picture was read, not that it was theirs.
+        var thumb = small_thumb(img);
+        var already = row.querySelector("[data-reference-thumb]");
+        if (already) already.remove();
+        row.insertBefore(thumb, into);
+
         into.innerHTML = top.length
           ? "Read from this picture: " + top.concat(ground).map(function (key) {
               return "<span class=\"cms-swatch\" style=\"background:" + hexOf(key)
@@ -238,6 +261,77 @@
     };
     reader.readAsDataURL(file);
   }
+
+  //  ---- saying that it is working ----
+  //
+  //  A run is synchronous and can take minutes: the design, then one
+  //  request per page, one after another. The screen said NOTHING while
+  //  that happened -- the button stayed pressable, the page sat there,
+  //  and the only honest reading of it was that the click had missed.
+  //  Watched on a real machine it was ten minutes of a still page.
+  //
+  //  The counter is the app's own (elapsed-timer.js), the same one the
+  //  Media Library and the assistant use, because a third hand-rolled
+  //  setInterval for "the thing is still going" is how they drift.
+  var WORKING = {
+    preview: ["Working out the look", "Asking your AI provider for the colours, the "
+              + "typefaces and the shape of each page. Nothing is made yet."],
+    make: ["Making it", "The look, then the words for each page — one request each, "
+           + "one after another. Leave this open; it lands in your template list."]
+  };
+
+  function saysItIsWorking(where, button, which) {
+    var said = WORKING[which];
+    var note = document.createElement("p");
+    note.className = "hint cms-working";
+    note.setAttribute("role", "status");
+    note.textContent = said[1];
+    button.parentNode.insertBefore(note, button.nextSibling);
+
+    //  The pressed button's OWN name and value, carried in a hidden
+    //  field before anything is disabled.
+    //
+    //  A disabled control is not submitted -- so disabling the submitter
+    //  inside the submit event deletes the one field that says WHICH
+    //  button was pressed. "Show me the plan" arrived at the server with
+    //  no `preview`, and the server did what a form with no preview
+    //  means: it made the whole thing. The free look silently cost a
+    //  full run, which is the exact promise this screen makes.
+    if (button.name) {
+      var carried = document.createElement("input");
+      carried.type = "hidden";
+      carried.name = button.name;
+      carried.value = button.value || "1";
+      where.appendChild(carried);
+    }
+    var label = button.textContent;
+    //  Every submit goes dead, not just this one: two presses is two
+    //  runs, and the second is paid for the same as the first.
+    where.querySelectorAll("button[type=submit]").forEach(function (other) {
+      other.disabled = true;
+      other.setAttribute("aria-busy", "true");
+    });
+    window.cmsElapsedTimer(function (seconds) {
+      button.textContent = said[0] + "… " + seconds + "s";
+    });
+    return label;
+  }
+
+  //  BOTH forms, and that is the whole point of doing it this way.
+  //
+  //  The plan is its own little form -- "Make it" and "Change
+  //  something" -- sitting above the big one. Attaching this to the
+  //  form the script was written around covered "Show me the plan" and
+  //  missed the button that starts the run that actually takes
+  //  minutes. The one press that most needs to say it is working was
+  //  the one press that said nothing.
+  document.querySelectorAll("form[action*='theme-generator']").forEach(function (each) {
+    each.addEventListener("submit", function (event) {
+      var button = event.submitter;
+      if (!button || button.type !== "submit") return;
+      saysItIsWorking(each, button, button.name === "preview" ? "preview" : "make");
+    });
+  });
 
   function watch(row) {
     var file = row.querySelector("[data-reference-image]");

@@ -317,14 +317,23 @@ def _openai_vision_messages(messages):
     return out
 
 
-def _call_open_webui(settings, messages, tools):
+def _call_open_webui(settings, messages, tools, want_json=False):
     """OpenWebUI speaks an OpenAI-style /api/chat/completions shape."""
     headers = {"Content-Type": "application/json"}
     if settings["openwebui_api_key"]:
         headers["Authorization"] = f"Bearer {settings['openwebui_api_key']}"
+    body = {"model": settings["openwebui_model"],
+            "messages": _openai_vision_messages(_openai_wire_messages(messages)),
+            "tools": tools}
+    if want_json:
+        #  Said in the protocol, not only in the prose. A model held to
+        #  this cannot spend its budget thinking out loud before the
+        #  first brace, which is how a perfectly good answer arrived
+        #  truncated mid-string.
+        body["response_format"] = {"type": "json_object"}
     data = _post_json(
         f"{settings['openwebui_url'].rstrip('/')}/api/chat/completions",
-        {"model": settings["openwebui_model"], "messages": _openai_vision_messages(_openai_wire_messages(messages)), "tools": tools},
+        body,
         headers,
     )
     choice = data["choices"][0]["message"]
@@ -374,10 +383,16 @@ def _ollama_wire_messages(messages):
     return out
 
 
-def _call_ollama(settings, messages, tools):
+def _call_ollama(settings, messages, tools, want_json=False):
     base = settings["ollama_url"].rstrip("/")
     headers = {"Content-Type": "application/json"}
-    data = _post_json(f"{base}/api/chat", {"model": settings["ollama_model"], "messages": _ollama_vision_messages(_ollama_wire_messages(messages)), "tools": tools, "stream": False}, headers)
+    body = {"model": settings["ollama_model"],
+            "messages": _ollama_vision_messages(_ollama_wire_messages(messages)),
+            "tools": tools, "stream": False}
+    if want_json:
+        #  Ollama's own name for the same thing.
+        body["format"] = "json"
+    data = _post_json(f"{base}/api/chat", body, headers)
     msg = data.get("message", {})
     tool_calls = []
     for call in (msg.get("tool_calls") or []):
@@ -453,13 +468,23 @@ def _call_gemini(settings, messages, tools):
     return {"content": "\n".join(text_parts) if text_parts else None, "tool_calls": tool_calls}
 
 
-def _call_provider(db, messages, tools):
+def _call_provider(db, messages, tools, want_json=False):
+    """One reply from whatever provider is configured.
+
+    `want_json` says the CALLER will parse the answer, and it is passed
+    down to the wire rather than only written in the prompt. Asking in
+    prose alone is what "please reply with only a JSON object" is, and a
+    small thinking model reads that, thinks out loud first, and runs out
+    of room mid-string -- which arrives as an unterminated JSON, not as
+    an error, and reads to the owner as "the AI didn't return usable
+    content" about a model that was answering fine.
+    """
     settings = get_ai_settings(db)
     provider = settings["provider"]
     if provider == "openwebui":
-        return _call_open_webui(settings, messages, tools)
+        return _call_open_webui(settings, messages, tools, want_json)
     if provider == "ollama":
-        return _call_ollama(settings, messages, tools)
+        return _call_ollama(settings, messages, tools, want_json)
     if provider == "gemini":
         return _call_gemini(settings, messages, tools)
     raise ProviderError("No AI provider is configured.")

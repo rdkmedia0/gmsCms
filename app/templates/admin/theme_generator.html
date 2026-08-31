@@ -3,6 +3,13 @@
 {% block content %}
 {% include "partials/design_tabs.html" %}
 <h1>AI Theme Generator</h1>
+{#  Said, not done: the run finishes on this screen and stays on it. The
+    new template is one click away for whoever wants it. #}
+{% if request.args.get('made') %}
+<p class="hint cms-made-note">Your new template is in
+  <a href="{{ url_for('admin.templates_screen') }}">Templates</a> — activate it there when you
+  want to see it on the site. Nothing has changed until you do.</p>
+{% endif %}
 <p class="hint">Describe your site and this works out how it should look — the colours, the
   typefaces, the shapes of the pages — and writes a <strong>template</strong> of real, editable
   sections, built the same way you would build them by hand. You see the look, and what it will
@@ -24,7 +31,21 @@
 <div class="card cms-plan-card">
   <div class="integration-head">
     <h2>Here is what I would make</h2>
-    <span class="hint">Nothing has been asked of the AI yet, and nothing on your site has changed.</span>
+    {#  Say what actually happened.
+
+        This read "Nothing has been asked of the AI yet", which was true
+        when the look was decided at the moment of making. It is decided
+        HERE now -- that is what lets the plan show you the colours and
+        the typeface before you commit -- so the sentence had become a
+        claim the screen was in a position to know was false.
+
+        What is still true, and is the part that matters, is that no
+        words have been written, no pictures made, and nothing on the
+        site has moved. #}
+    <span class="hint">
+      {%- if spent %}{{ spent }} request{{ 's' if spent != 1 }} so far — the look, and reading
+      your picture. No words written, no pictures made, and nothing on your site has changed.
+      {%- else %}Nothing has been asked of the AI, and nothing on your site has changed.{% endif %}</span>
   </div>
   <dl class="cms-plan">
     <dt>Called</dt><dd>{{ plan.name }}</dd>
