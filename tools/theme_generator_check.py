@@ -676,6 +676,13 @@ with app.app_context():
           and not tg._said_something({"hero_headline": "   "}))
     check("...and a real one does",
           tg._said_something({"hero_headline": "We open at seven"}))
+    #  And a mute FRONT page refuses the whole run. A template whose
+    #  home page reads "Your headline / Feature 1 / Describe this
+    #  feature" costs the same wait as a good one and has to be found
+    #  and thrown away by hand -- which is worse than being told.
+    src = io.open("/app/app/services/theme_generator.py", encoding="utf-8").read()
+    check("a mute front page refuses the run",
+          'u.get("layout") == "landing"' in src and "front_unwritten" in src)
     #  A model that returns nothing once very often answers properly a
     #  second later, and a six-request run should not be lost to that.
     #  Once, though: a model with nothing to say twice is telling you
@@ -987,9 +994,19 @@ with app.app_context():
     check("every enclosed component reads one surface",
           "--site-surface" in css_now
           and ".cms-stat, .cms-quote" in css_now)
+    #  `organic` is a blob and `pill` is 999px. On a control that is the
+    #  shape somebody chose; on a 1468px band or a card it draws an
+    #  ellipse with the page showing through around it. The band's own
+    #  box is the SECTION -- reaching only the block inside it left the
+    #  oval exactly where it was.
     check("a wide surface takes the safe radius, not the shape",
-          ".cms-stat, .cms-cta, .cms-quote" in css_now
+          ".cms-card, .cms-card-shape, .cms-stat" in css_now
           and "var(--site-radius-safe" in css_now)
+    check("...and the band's own box squares too",
+          '.cms-section[data-layout-width="full"] { border-radius: 0; }' in css_now
+          or '.cms-section[data-layout-width="full"] { border-radius: 0 }' in css_now
+          or ('.cms-section[style*="background-color"],' in css_now
+              and "border-radius: 0; }" in css_now))
 
     check("...and a template that chooses none renders as it always did",
           all(("var(%s," % t) in css_now

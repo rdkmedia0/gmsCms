@@ -3071,3 +3071,27 @@ body.cms-logged-in .cms-basket-link.cms-basket-align-float-top { top: 60px; }
   .cms-btn { padding: 14px 24px; }
   .cms-hero-actions .cms-btn { flex: 0 1 auto; }
 }
+
+
+/*  THE SECTION ITSELF, and every wide surface on it.
+    ------------------------------------------------
+    `organic` is `60% 40% 55% 45% / 45% 55% 40% 60%` -- a blob. On a
+    button that is the shape somebody chose; on a 1468px band, and on a
+    card, it draws an ellipse with the page showing through around it.
+    Measured on a real render: the stats band, the quote band and all
+    three cards came out as ovals.
+
+    The earlier rules reached the BLOCK inside a section and its
+    descendants; the band's own box is the SECTION, which paints the
+    background and was still wearing the blob. And a card is a wide
+    surface too -- `--site-radius-safe` is the documented answer for
+    anything that cannot wear the real shape, and it is a plain length
+    (24px for organic). */
+.site-content .cms-section[style*="background-color"],
+.site-content .cms-section[data-layout-width="full"] { border-radius: 0; }
+.cms-card, .cms-card-shape, .cms-stat, .cms-quote, .cms-quote-large,
+.cms-cta, .cms-block > * {
+  border-radius: var(--site-radius-safe, 10px);
+}
+/*  A control is small enough to wear anything. */
+.cms-btn, .cms-cta-btn { border-radius: var(--site-radius, 8px); }

@@ -1546,7 +1546,22 @@ def generate(db, static_folder, name, kit, fill_scope, use_ai_images,
     #  "absence is not an explanation" failure this app has a rule
     #  about. So the per-page fallback stands, and the whole-run silence
     #  still refuses, in the provider's own words.
-    if fill_scope != "none" and pages and len(kit.get("unwritten") or []) >= len(pages):
+    #  THE FRONT PAGE, not just "all of them".
+    #
+    #  The rule was: refuse only if nothing at all could be written. So a
+    #  run where the landing page came back mute and the three small
+    #  pages came back fine produced a template whose front page read
+    #  "Your headline / A short supporting line. / Feature 1 / Describe
+    #  this feature." -- and the owner is looking at that front page
+    #  first, in a template list, deciding whether this tool is any good.
+    #
+    #  A front page of placeholders is worse than no template: it costs
+    #  the same wait, and it has to be found and thrown away by hand.
+    front_unwritten = any(u.get("layout") == "landing"
+                          for u in (kit.get("unwritten") or []))
+    if fill_scope != "none" and pages and (
+            front_unwritten
+            or len(kit.get("unwritten") or []) >= len(pages)):
         raise ThemeGenError((kit["unwritten"][0]["why"] if kit.get("unwritten") else "")
                             or "The AI returned nothing at all.")
 
