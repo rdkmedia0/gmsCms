@@ -46,13 +46,18 @@
     <dt>Pictures</dt>
     <dd>{% if plan.pictures %}{{ plan.pictures }} generated; anything else uses a placeholder you can
       replace from your Media Library.{% else %}None — placeholders you can replace.{% endif %}</dd>
-    {% if plan.look and plan.look.asked %}
+    {% if plan.look and (plan.look.colours or plan.look.fonts or plan.look.shape) %}
     <dt>The look</dt>
     <dd>
-      {#  Decided from the description, from this app's own controls --
-          never CSS, never a font it does not have. Shown before a word
-          of content is written, because a look you cannot see is a look
-          you cannot correct. #}
+      {#  What the run will USE -- the description's design, with
+          anything picked by hand or read from a picture already on top
+          of it. From this app's own controls: never CSS, never a font it
+          does not have. Shown before a word of content is written,
+          because a look you cannot see is a look you cannot correct.
+
+          Not gated on the AI having been asked: a look chosen by hand,
+          or taken from a picture, is still the look, and hiding it is
+          hiding it from exactly the person who chose it. #}
       {% for colour in plan.look.colours %}<span class="cms-swatch"
         style="background: {{ colour }}" title="{{ colour }}"></span>{% endfor %}
       {% if plan.look.fonts %}<span class="hint">{{ font_pairings[plan.look.fonts].name }}.</span>{% endif %}

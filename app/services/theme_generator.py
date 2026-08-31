@@ -507,6 +507,27 @@ def plan(db, kit, name, mode="scratch", pages_wanted=None, looked=None,
         "keeps_words": False,
         "language": kit["language"],
         "tone": kit["tone_label"],
+        #  The look, taken from the KIT rather than from the design --
+        #  which is the whole point of showing it. By here the kit has
+        #  already had the design folded in, under anything the owner
+        #  picked by hand and anything sampled from their picture, so
+        #  this is what the run will actually use. The design's own
+        #  colours are a suggestion that may have lost.
+        #
+        #  There was a row for this and it never appeared: `plan()`
+        #  returned no "look" key at all, so the template's `if
+        #  plan.look` was dead and the docstring above -- "the owner can
+        #  look at the colours and the shapes before anything is
+        #  written" -- described something that did not happen.
+        "look": {
+            "colours": [c.get("color") for c in (kit.get("palette") or [])
+                        if c.get("color")][:4],
+            "fonts": kit.get("fonts") or "",
+            "shape": kit.get("shape") or "",
+            "shadow": kit.get("shadow") or "",
+            "why": (looked or {}).get("why", ""),
+            "asked": bool((looked or {}).get("asked")),
+        },
     }
 
 

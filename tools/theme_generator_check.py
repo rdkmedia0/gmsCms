@@ -536,6 +536,30 @@ with app.app_context():
     check("...and a no comes with the reason and the way round it",
           seeing or ("colour" in why.lower() and len(why) > 30), why)
 
+    #  The plan's whole job is that a look you cannot see is a look you
+    #  cannot correct -- and the row for it was dead code for as long as
+    #  it existed, because `plan()` returned no "look" key at all.
+    seen_kit = tg.with_design(
+        tg.brand_kit(brief="A saxophone player's demo library.",
+                     ref_colours=["#1d6b58", "#d94f2b"]),
+        {"colours": ["#000080"], "fonts": "", "shape": "sharp", "shadow": "",
+         "pages": ["landing"], "why": "Because it suits them.", "asked": True})
+    shown = tg.plan(db, seen_kit, "Demo", pages_wanted=["Home"],
+                    looked={"pages": ["landing"], "why": "Because it suits them.",
+                            "asked": True}, use_ai_images=False)
+    check("the plan says what the look will be", bool(shown.get("look")),
+          str(shown.get("look")))
+    check("...with the colours the run will actually use",
+          "#1d6b58" in (shown["look"]["colours"] or [])
+          and "#000080" not in (shown["look"]["colours"] or []),
+          str(shown["look"]["colours"]))
+    check("...and the shape, and why", shown["look"]["shape"] == "sharp"
+          and shown["look"]["why"].startswith("Because"), str(shown["look"]))
+    screen_now = io.open("/app/app/templates/admin/theme_generator.html",
+                         encoding="utf-8").read()
+    check("...and the screen shows it without waiting to be asked",
+          "plan.look and (plan.look.colours" in screen_now)
+
     from_ref = tg.brand_kit(ref_colours=["#1d6b58", "#d94f2b"])
     check("read colours become a palette",
           bool(from_ref["palette"]) and from_ref["palette"][0]["color"] == "#1d6b58",
