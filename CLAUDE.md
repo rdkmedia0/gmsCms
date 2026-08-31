@@ -1377,6 +1377,23 @@ part that constrains the CODE.
   edited. If you change the Dockerfile or anything the build copies, the
   published image is what a host gets -- so a change verified only against
   a local build is a change verified in the wrong place.
+- **Running a checker.** `tools/` is in `.dockerignore` on purpose --
+  development material, not product -- so the published image ships none
+  of them and `docker compose exec web python tools/x_check.py` fails on
+  a clean clone with "No such file or directory". Copy them in first:
+
+  ```
+  docker compose exec -T web sh -c 'rm -rf /app/tools && mkdir -p /app/tools'
+  docker cp ./tools/. <container>:/app/tools
+  ```
+
+  The `rm -rf` goes inside `sh -c`: on Windows, Git Bash rewrites a bare
+  `/app/tools` argument into a Windows path, so the delete silently
+  misses and the next `docker cp` nests into `/app/tools/tools` -- and
+  the checkers keep running, against the old copy. The browser-driven
+  ones (`shape`, `basket`, `newsletter_editor`, `newsletters_screen`,
+  `admin_density`, `image_picker`, `newsletter_layout`) run on the HOST
+  instead, against a URL, because they need a real browser.
 - **The other checkers**, each the net under one feature:
   `parity_check.py` (every tool's panel, section vs cell),
   `newsletter_check.py` and `signup_check.py` (the mail paths, with the
@@ -1413,7 +1430,16 @@ part that constrains the CODE.
   even when two workers claim it together, and refuses for the same
   reasons a live send refuses), and
   `design_conventions_check.py` (that a word means one thing across
-  tools, and that no admin form asks for raw HTML).
+  tools, and that no admin form asks for raw HTML),
+  `newsletters_screen_check.py` (that writing one comes before the list,
+  that Yours/going out/gone out are one table, and that a blog is not a
+  section of that screen),
+  `admin_density_check.py` (that no admin screen is set larger than what
+  it holds -- measured across fourteen of them, and reporting a 404
+  rather than measuring the error page's own type scale), and
+  `newsletter_ai_check.py` (that a newsletter written by the AI is a
+  draft and only ever a draft: it cannot send, it composes only from
+  blocks the editor has, and it refuses in the owner's terms).
 - **A security header written about third parties still has to be read
   as a statement about this site's own features.** `frame-ancestors` and
   `X-Frame-Options` said "nobody may frame this", and the editor's
