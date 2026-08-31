@@ -3,20 +3,36 @@
 {% block content %}
 {% include "partials/design_tabs.html" %}
 <h1>AI Theme Generator</h1>
-<p class="hint">Describe your site, pick a layout, and the AI writes on-topic starter content into real, editable sections — Banner, Text, and Card, built the same way you'd build them by hand. Nothing existing is touched; this only adds new sections to the page you pick, so it's safe to try and easy to undo (just delete the sections it adds, or edit them like anything else).</p>
+<p class="hint">Describe your site, pick a layout, and the AI writes on-topic starter content into real,
+  editable sections — Banner, Text and Card, built the same way you would build them by hand.
+  What comes out is a <strong>template</strong>: it appears in your template list, and nothing on your
+  site changes until you use it. Try as many as you like and keep the one you want.</p>
 
 {% if not ai_configured %}
 <div class="card"><p class="hint">⚠️ No AI provider is configured yet — <a href="{{ url_for('admin.settings_ai') }}">set one up</a> first, or generate with "Leave sections blank" below (layout only, no AI needed).</p></div>
 {% endif %}
 
 <form method="post" action="{{ url_for('admin.theme_generator') }}" class="card" id="theme-gen-form">
+  {#  A NAME, not a page.
+
+      It used to ask which page to append the sections to, which meant
+      generating was an edit to a live site and undoing it was deleting
+      the sections by hand, one at a time. What comes out is a template
+      now: installed, not activated, so nothing on the site changes until
+      somebody looks at it and says so. #}
   <div class="form-row">
-    <label for="tg-page">Generate into page</label>
-    <select name="page_id" id="tg-page">
-      {% for p in pages %}
-      <option value="{{ p.id }}">{{ p.title }}</option>
-      {% endfor %}
-    </select>
+    <label for="tg-name">Call it</label>
+    <input type="text" id="tg-name" name="name" maxlength="60"
+           placeholder="e.g. Bakery, warm"
+           title="What this look is called in your template list. A name you chose is one you will recognise later.">
+    <p class="hint">It is saved as a template. Nothing on your site changes until you use it.</p>
+  </div>
+
+  <div class="form-row">
+    <label for="tg-page-title">Page called</label>
+    <input type="text" id="tg-page-title" name="page_title" maxlength="60"
+           value="Home"
+           title="The page this look ships with. Loading the template's content puts this page on your site.">
   </div>
 
   <div class="form-row">

@@ -5,7 +5,8 @@ from . import bp
 from ..auth import login_required
 from ...db import get_db
 from ...services import blog as blog_service
-from ... import assistant, ai_image, theme_generator as theme_generator_mod
+from ... import assistant, ai_image
+from ...services import theme_generator as theme_generator_mod
 from ...services.palette import _match_palette_roles, color_scheme_choices
 from ...services.sections import _insert_layout_chunks
 from ...services import site
@@ -210,56 +211,61 @@ def help():
 @bp.route("/theme-generator", methods=["GET", "POST"])
 @login_required
 def theme_generator():
+    """Generate a look, and hand it back as a template to look at.
+
+    It used to append sections to whichever page you picked, which meant
+    the only way to undo it was to delete them one at a time. It writes a
+    Template Package now and installs it WITHOUT activating it: what
+    comes back is a template you can preview, activate, keep, export or
+    throw away. See services/theme_generator.py for why that one change
+    carries most of the feature.
+
+    Thin, like every route here: parse the request, call one service
+    function, say what happened.
+    """
     db = get_db()
-    pages = db.execute("SELECT * FROM pages ORDER BY nav_order, title").fetchall()
     if request.method == "POST":
-        page_id = request.form.get("page_id", type=int)
-        layout_key = request.form.get("layout", "landing")
-        fill_scope = request.form.get("fill_scope", "all")
-        use_ai_images = request.form.get("use_ai_images") == "1"
-        color_preset = request.form.get("color_preset", "")
-        brief = (request.form.get("brief") or "").strip()
-
-        page = db.execute("SELECT * FROM pages WHERE id = ?", (page_id,)).fetchone()
-        if not page:
-            flash("Pick a page to generate into.", "error")
-            return redirect(url_for("admin.theme_generator"))
-
+        palette = None
+        preset = request.form.get("color_preset", "")
+        if preset and preset in COLOR_PRESETS:
+            #  The chosen colours travel WITH the package, as its own
+            #  palette, rather than being written over whatever look
+            #  happens to be active. That was the old behaviour and it
+            #  changed the live site as a side effect of generating
+            #  something you had not looked at yet.
+            chosen = COLOR_PRESETS[preset]
+            palette = [{"slug": role, "name": role.title(), "color": value}
+                       for role, value in chosen.items() if value]
         try:
-            chunks = theme_generator_mod.generate_layout_chunks(db, layout_key, brief, fill_scope, use_ai_images)
+            slug = theme_generator_mod.generate(
+                db, current_app.static_folder,
+                name=(request.form.get("name") or "").strip(),
+                layout_key=request.form.get("layout", "landing"),
+                brief=(request.form.get("brief") or "").strip(),
+                fill_scope=request.form.get("fill_scope", "all"),
+                use_ai_images=request.form.get("use_ai_images") == "1",
+                palette=palette,
+                page_title=(request.form.get("page_title") or "Home").strip(),
+            )
         except theme_generator_mod.ThemeGenError as e:
             flash(str(e), "error")
             return redirect(url_for("admin.theme_generator"))
-
-        _insert_layout_chunks(db, page_id, chunks)
         db.commit()
-
-        color_note = ""
-        if color_preset and color_preset in COLOR_PRESETS:
-            tpl = db.execute("SELECT * FROM templates WHERE is_active = 1").fetchone()
-            if tpl and tpl["palette_json"]:
-                preset = COLOR_PRESETS[color_preset]
-                palette = json.loads(tpl["palette_json"])
-                roles = _match_palette_roles(palette)
-                overrides = json.loads(tpl["color_overrides"]) if tpl["color_overrides"] else {}
-                for role, slug in roles.items():
-                    if preset.get(role):
-                        overrides[slug] = preset[role]
-                db.execute("UPDATE templates SET color_overrides = ? WHERE id = ?", (json.dumps(overrides), tpl["id"]))
-                db.commit()
-            else:
-                color_note = " (Your active look doesn't support color presets, so colors were left as-is — try it from the 🎨 Colors panel instead.)"
-
-        flash("Generated! Review and edit anything below — nothing here is final." + color_note, "success")
-        return redirect(url_for("admin.page_edit", page_id=page_id))
+        made = db.execute("SELECT name FROM templates WHERE slug = ?", (slug,)).fetchone()
+        flash("Made “%s”. Nothing on your site has changed — look at "
+              "it first, and use it when you are ready."
+              % (made["name"] if made else slug), "success")
+        return redirect(url_for("admin.templates_screen"))
 
     return render_template(
         "admin/theme_generator.html",
-        pages=pages,
         layouts=theme_generator_mod.LAYOUTS,
         color_presets=color_scheme_choices(db),
         ai_configured=assistant.is_configured(db),
         image_gen_configured=ai_image.is_configured(db),
+        #  A provider that cannot make pictures AT ALL is not the same as
+        #  one that is not configured, and needs different words.
+        image_gen_reason=ai_image.unavailable_reason(db),
     )
 
 
