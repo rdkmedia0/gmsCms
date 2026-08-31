@@ -452,6 +452,40 @@ with app.app_context():
     check("...but a colour picked by hand wins",
           chosen["palette"][0]["color"] == "#000080", str(chosen["palette"]))
 
+    print()
+    print("One question about words, asked once")
+    print("-" * 70)
+    #  There were TWO controls both labelled Words: where the words come
+    #  from, and a second offering "write them for me" or "leave the
+    #  sections blank". The same question asked twice, with two answers
+    #  that could disagree.
+    check("leaving them empty is one of the answers",
+          "blank" in dict(tg.MODES), str([m for m, _ in tg.MODES]))
+    check("...and whether anybody writes is derived from it",
+          tg.fill_scope_for("blank") == "none"
+          and tg.fill_scope_for("scratch") == "all"
+          and tg.fill_scope_for("reskin") == "all")
+    screen = io.open("/app/app/templates/admin/theme_generator.html",
+                     encoding="utf-8").read()
+    check("...so there is no second control asking it",
+          'name="fill_scope"' not in screen)
+    check("...and only one control called Words",
+          screen.count(">Words</label>") == 1, str(screen.count(">Words</label>")))
+
+    #  A row that is not a choice is removed rather than greyed -- the
+    #  rule this app follows for a schedule's irrelevant fields.
+    check("each answer declares which rows it needs",
+          set(tg.MODE_NEEDS) == {m for m, _ in tg.MODES}, str(sorted(tg.MODE_NEEDS)))
+    check("keeping your words needs none of them",
+          tg.MODE_NEEDS["reskin"] == ())
+    check("...a rewrite needs the voice and nothing else",
+          tg.MODE_NEEDS["rewrite"] == ("voice",))
+    check("...and writing new needs all four",
+          set(tg.MODE_NEEDS["scratch"]) == {"brief", "pages", "layout", "voice"})
+    for needed in ("brief", "pages", "layout", "voice"):
+        check("the form has a row for %s" % needed,
+              'data-needs="%s"' % needed in screen)
+
 print()
 print("  %d ok, %d failed" % (passed, len(failures)))
 for name in failures:

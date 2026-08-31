@@ -3,15 +3,15 @@
 {% block content %}
 {% include "partials/design_tabs.html" %}
 <h1>AI Theme Generator</h1>
-<p class="hint">Describe your site, choose how it should sound and look, and the AI writes on-topic
-  starter content into real, editable sections — Banner, Text and Card, built the same way you would
-  build them by hand. What comes out is a <strong>template</strong>: it appears in your template list,
-  and nothing on your site changes until you use it. Try as many as you like and keep the one you want.</p>
+<p class="hint">Answer three questions — what to call it, where the words come from, and how it should
+  look — and this writes a <strong>template</strong>: real, editable sections built the same way you
+  would build them by hand. It appears in your template list and nothing on your site changes until
+  you use it, so you can try as many as you like and keep the one you want.</p>
 
 {% if not ai_configured %}
 <div class="card"><p class="hint">⚠️ No AI provider is configured yet —
-  <a href="{{ url_for('admin.settings_ai') }}">set one up</a> first, or generate with
-  &ldquo;Leave the sections blank&rdquo; below, which needs no AI at all.</p></div>
+  <a href="{{ url_for('admin.settings_ai') }}">set one up</a> first, or choose
+  &ldquo;Keep my words&rdquo; or &ldquo;Leave the sections empty&rdquo; below, which need no AI at all.</p></div>
 {% endif %}
 
 {% if plan %}
@@ -30,8 +30,6 @@
     <dt>Layout</dt><dd>{{ plan.layout }}</dd>
     <dt>Pages</dt>
     <dd>
-      {#  Every page, not just the first: a run that makes three and
-          shows one is a plan that hides two thirds of itself. #}
       <ul class="cms-plan-pages">
         {% for page in plan.pages %}
         <li><strong>{{ page.title }}</strong> — {{ page.sections | join(', ') | lower }}</li>
@@ -43,7 +41,7 @@
     <dd>
       {%- if plan.keeps_words %}Kept exactly as they read now — the AI is not asked anything.
       {%- elif plan.writes %}Written by the AI, in {{ plan.language }}, {{ plan.tone | lower }}.
-      {%- else %}Left blank for you to fill in — the AI is not asked anything.{% endif %}</dd>
+      {%- else %}Left empty for you to fill in — the AI is not asked anything.{% endif %}</dd>
     <dt>Pictures</dt>
     <dd>{% if plan.pictures %}{{ plan.pictures }} generated; anything else uses a placeholder you can
       replace from your Media Library.{% else %}None — placeholders you can replace.{% endif %}</dd>
@@ -74,47 +72,64 @@
 </div>
 {% endif %}
 
-<form method="post" action="{{ url_for('admin.theme_generator') }}" class="card" id="theme-gen-form">
+{#  Three questions, in the order they depend on each other.
+
+    It was a column of a dozen fields in no particular relation, and half
+    of them did nothing depending on an answer given elsewhere: "how it
+    should sound" applied only if the AI was writing, "pages" only if it
+    was writing new ones, and there were TWO controls both labelled
+    Words -- this one, and a second further down offering "write them for
+    me" or "leave the sections blank", which is the same question asked
+    twice with two answers that could disagree.
+
+    A row that is not a choice is REMOVED rather than greyed. That is the
+    rule this app already follows for a schedule's irrelevant fields, and
+    it came from the same complaint. #}
+<form method="post" action="{{ url_for('admin.theme_generator') }}" class="card"
+      id="theme-gen-form" data-generator-form>
+
+  <h2 class="cms-form-heading cms-form-heading-first">1 &middot; What to call it</h2>
 
   <div class="form-row">
-    <label for="tg-name">Call it</label>
+    <label for="tg-name">Name</label>
     <input type="text" id="tg-name" name="name" maxlength="60"
            value="{{ form.name if form else '' }}" placeholder="e.g. Bakery, warm"
            title="What this look is called in your template list. A name you chose is one you will recognise later.">
     <p class="hint">Saved as a template. Nothing on your site changes until you use it.</p>
   </div>
 
+  <h2 class="cms-form-heading">2 &middot; Where the words come from</h2>
+
   <div class="form-row">
-    <label for="tg-brief">Describe your site or business</label>
+    <label for="tg-mode">Words</label>
+    <select id="tg-mode" name="mode" data-generator-mode
+            title="Where the words come from. Everything below changes to match — keeping your words asks the AI nothing at all.">
+      {% for value, label in modes %}
+      <option value="{{ value }}" {{ 'selected' if (form and form.mode == value) or (not form and value == 'scratch') }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <p class="hint">Keeping your words needs no AI, and is the quickest way to try a new look on the
+      site you already have.</p>
+  </div>
+
+  <div class="form-row" data-needs="brief">
+    <label for="tg-brief">About the site</label>
     <textarea name="brief" id="tg-brief" rows="4"
               title="What this site is for and who it is for. Everything written is based on this."
               placeholder="e.g. A family-owned bakery in Portland specialising in sourdough and celebration cakes, open Tue–Sat, focused on local ingredients and made-to-order service.">{{ form.brief if form else '' }}</textarea>
   </div>
 
-  {#  Three modes, because there are three intentions -- and the middle
-      one is what most people with a site already want. #}
-  <div class="form-row">
-    <label for="tg-mode">Words</label>
-    <select id="tg-mode" name="mode" title="Whether to keep the words your site already has, say them differently, or write new ones from the description.">
-      {% for value, label in modes %}
-      <option value="{{ value }}" {{ 'selected' if (form and form.mode == value) or (not form and value == 'scratch') }}>{{ label }}</option>
-      {% endfor %}
-    </select>
-    <p class="hint">Keeping your words needs no AI at all, and is the quickest way to try a new look.</p>
-  </div>
-
-  <div class="form-row">
+  <div class="form-row" data-needs="pages">
     <label for="tg-pages">Pages</label>
     <textarea name="pages" id="tg-pages" rows="3"
-              title="The pages to make, one per line or separated by commas. The first is the front page; the rest get a layout chosen from their name, and the plan shows you which before anything runs."
+              title="The pages to make, one per line. The first is the front page; the rest get a shape chosen from their name, and the plan shows you which before anything runs."
               placeholder="Home&#10;About&#10;Contact">{{ form.pages if form else '' }}</textarea>
     <p class="hint">One per line, the first is the front page. Leave it empty and you get one page
-      called Home. Only used when writing new pages — keeping or rewriting your words uses the pages
-      you already have.</p>
+      called Home.</p>
   </div>
 
-  <div class="form-row">
-    <label>Front page layout</label>
+  <div class="form-row" data-needs="layout">
+    <label>Front page shape</label>
     <div class="tg-layout-choices">
       {% for key, layout in layouts.items() %}
       <label class="tg-layout-choice">
@@ -125,68 +140,53 @@
       </label>
       {% endfor %}
     </div>
-    <p class="hint">This is the shape of the FIRST page. Any others in the list above get a
-      shape chosen from their name — an About page gets the story one, a Contact page the small
-      one — and the plan tells you which before anything is made.</p>
+    <p class="hint">The shape of the first page. Any others get one chosen from their name — an About
+      page gets the story shape, a Contact page the small one.</p>
   </div>
 
-  {#  There was a "Page called" field here, holding one name, from when
-      this made one page. The Pages list above is the same question asked
-      properly, and two controls for one answer is one of them lying --
-      it sat under a list of three pages saying the page was called
-      "Home". #}
+  {#  Only when somebody is writing. Four controls about voice are four
+      controls doing nothing when the answer above is "keep my words". #}
+  <div data-needs="voice">
+    <div class="form-row">
+      <label for="tg-tone">Tone</label>
+      <select id="tg-tone" name="tone" title="How the writing should come across. It is applied to every word in the run, so the pages sound like one site.">
+        {% for value, label in tones %}
+        <option value="{{ value }}" {{ 'selected' if form and form.tone == value }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
 
-  {#  ---- how it should sound ----
-      Resolved once into a brand kit and passed into every call. Each
-      call used to be independent, which is exactly why independent calls
-      read like different companies. #}
-  <h2 class="cms-form-heading">How it should sound</h2>
+    <div class="form-row">
+      <label for="tg-voice">Speaking as</label>
+      <select id="tg-voice" name="voice" title="Whether the site says &quot;we&quot; or &quot;I&quot;. A one-person business saying &quot;we&quot; reads as a bigger company than it is.">
+        {% for value, label in voices %}
+        <option value="{{ value }}" {{ 'selected' if form and form.voice == value }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
 
-  <div class="form-row">
-    <label for="tg-tone">Tone</label>
-    <select id="tg-tone" name="tone" title="How the writing should come across. It is applied to every word in the run, so the pages sound like one site.">
-      {% for value, label in tones %}
-      <option value="{{ value }}" {{ 'selected' if form and form.tone == value }}>{{ label }}</option>
-      {% endfor %}
-    </select>
+    <div class="form-row">
+      <label for="tg-reading">Reading level</label>
+      <select id="tg-reading" name="reading" title="How much the writing assumes. Simple is short sentences and everyday words.">
+        {% for value, label in readings %}
+        <option value="{{ value }}" {{ 'selected' if form and form.reading == value }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-row">
+      <label for="tg-language">Language</label>
+      <input type="text" id="tg-language" name="language" maxlength="40"
+             value="{{ form.language if form else 'English' }}"
+             title="The language everything is written in. Type it in your own words — German, Deutsch, français — it is passed to the AI as you write it.">
+      <p class="hint">Typed rather than picked, because a list would be the languages somebody thought of.</p>
+    </div>
   </div>
 
-  <div class="form-row">
-    <label for="tg-voice">Speaking as</label>
-    <select id="tg-voice" name="voice" title="Whether the site says &quot;we&quot; or &quot;I&quot;. A one-person business saying &quot;we&quot; reads as a bigger company than it is.">
-      {% for value, label in voices %}
-      <option value="{{ value }}" {{ 'selected' if form and form.voice == value }}>{{ label }}</option>
-      {% endfor %}
-    </select>
-  </div>
+  <h2 class="cms-form-heading">3 &middot; How it should look</h2>
+  <p class="hint cms-form-note">Every one of these is a value your own controls already carry, so what
+    comes out can go on being edited by hand. Nothing here writes CSS.</p>
 
-  <div class="form-row">
-    <label for="tg-reading">Reading level</label>
-    <select id="tg-reading" name="reading" title="How much the writing assumes. Simple is short sentences and everyday words.">
-      {% for value, label in readings %}
-      <option value="{{ value }}" {{ 'selected' if form and form.reading == value }}>{{ label }}</option>
-      {% endfor %}
-    </select>
-  </div>
-
-  <div class="form-row">
-    <label for="tg-language">Language</label>
-    <input type="text" id="tg-language" name="language" maxlength="40"
-           value="{{ form.language if form else 'English' }}"
-           title="The language everything is written in. Type it in your own words — German, Deutsch, français — it is passed to the AI as you write it.">
-    <p class="hint">Typed rather than picked from a list, because a list would be the languages somebody
-      thought of.</p>
-  </div>
-
-  {#  ---- how it should look ----
-      Every one of these is a value the app already has a control for, so
-      a generated look is one the owner can go on editing. The generator
-      picks values; it never writes CSS. #}
-  <h2 class="cms-form-heading">How it should look</h2>
-
-  {#  A page whose look you like. STYLE only -- and said so, because
-      somebody handing over a competitor's address is entitled to know
-      exactly what was taken from it. #}
   <div class="form-row">
     <label for="tg-reference">Copy the feel from</label>
     <input type="url" id="tg-reference" name="reference_url"
@@ -201,8 +201,6 @@
     <label for="tg-colors">Colours</label>
     <select id="tg-colors" name="color_preset" title="A colour scheme for this template. It travels with the template — your current site's colours are not touched. The standard colours are this app's own, and you can change them in the Colours panel afterwards.">
       <option value="">The standard colours</option>
-      {#  color_scheme_choices() is a dict of {key: {...}} -- the eight
-          built-in schemes plus every installed template's own palette. #}
       {% for key, scheme in color_presets.items() %}
       <option value="{{ key }}" {{ 'selected' if form and form.color_preset == key }}>{{ scheme.name or key|title }}</option>
       {% endfor %}
@@ -239,17 +237,6 @@
     </select>
   </div>
 
-  {#  ---- what it costs ---- #}
-  <h2 class="cms-form-heading">Words and pictures</h2>
-
-  <div class="form-row">
-    <label for="tg-fill">Words</label>
-    <select name="fill_scope" id="tg-fill" title="Whether the AI writes the words, or the sections arrive empty for you to fill in.">
-      <option value="all" {{ 'selected' if not form or form.fill_scope == 'all' }}>Write them for me</option>
-      <option value="none" {{ 'selected' if form and form.fill_scope == 'none' }}>Leave the sections blank — no AI needed</option>
-    </select>
-  </div>
-
   <div class="form-row">
     <label for="tg-images">Pictures</label>
     {% if image_gen_configured %}
@@ -277,4 +264,7 @@
             title="Skip the plan and make it now.">Just make it</button>
   </div>
 </form>
+
+<script type="application/json" id="cms-generator-needs">{{ mode_needs | tojson }}</script>
+<script src="{{ static_url('js/admin/theme-generator.js') }}"></script>
 {% endblock %}

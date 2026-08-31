@@ -308,7 +308,7 @@ def theme_generator():
                     db, kit, name, mode=mode, pages_wanted=wanted,
                     layout_key=layout_key,
                     use_ai_images=request.form.get("use_ai_images") == "1",
-                    fill_scope=request.form.get("fill_scope", "all"))
+                    fill_scope=theme_generator_mod.fill_scope_for(mode))
             except theme_generator_mod.ThemeGenError as e:
                 flash(str(e), "error")
                 return redirect(url_for("admin.theme_generator"))
@@ -320,7 +320,10 @@ def theme_generator():
         try:
             slug = theme_generator_mod.generate(
                 db, current_app.static_folder, name=name, kit=kit,
-                fill_scope=request.form.get("fill_scope", "all"),
+                #  Derived from the mode, like the plan's. There is no
+                #  fill_scope control any more -- it was a second field
+                #  asking the same question as Words.
+                fill_scope=theme_generator_mod.fill_scope_for(mode),
                 use_ai_images=request.form.get("use_ai_images") == "1",
                 mode=mode, pages_wanted=wanted, layout_key=layout_key)
         except theme_generator_mod.ThemeGenError as e:
@@ -357,6 +360,9 @@ def _theme_generator_context(db):
     return dict(
         layouts=theme_generator_mod.LAYOUTS,
         modes=theme_generator_mod.MODES,
+        #  Which rows each answer needs, decided here and read by the
+        #  form, so the two cannot disagree about what applies.
+        mode_needs=theme_generator_mod.MODE_NEEDS,
         color_presets=color_scheme_choices(db),
         tones=theme_generator_mod.TONES,
         voices=theme_generator_mod.VOICES,

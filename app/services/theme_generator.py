@@ -188,11 +188,36 @@ def _image_direction(brief, tone):
 #  Three modes, because there are three intentions, and the middle one is
 #  what most people with a site already want.
 
+#  ONE question about words, with four answers. It was two controls both
+#  labelled "Words" -- this one, and a second further down the form
+#  offering "write them for me" or "leave the sections blank" -- which is
+#  the same question asked twice, and two answers that could disagree.
+#
+#  "Leave them empty" belongs here because it IS a way of deciding where
+#  the words come from: from nowhere.
 MODES = (
     ("reskin", "Keep my words — change only the look"),
-    ("rewrite", "Rewrite what I have, in the voice above"),
-    ("scratch", "Write something new from the description"),
+    ("rewrite", "Rewrite my words, in the voice below"),
+    ("scratch", "Write new words from a description"),
+    ("blank", "Leave the sections empty — no AI at all"),
 )
+
+#  Which answers need which questions. The form shows only the rows a
+#  mode actually uses -- removed, not greyed, which is the rule this app
+#  already follows for a schedule's irrelevant fields: a control that is
+#  not a choice is not a choice being refused.
+MODE_NEEDS = {
+    "reskin": (),
+    "rewrite": ("voice",),
+    "scratch": ("brief", "pages", "layout", "voice"),
+    "blank": ("pages", "layout"),
+}
+
+
+def fill_scope_for(mode):
+    """A mode says whether anybody is asked to write. Derived rather than
+    asked a second time."""
+    return "none" if mode == "blank" else "all"
 
 
 def _visible_text(html):

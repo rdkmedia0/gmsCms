@@ -1574,3 +1574,9 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
     rather than merely selected somewhere else: the row IS the choice. */
 .cms-people-table tr.is-current > td { background: #f5f8ff; }
 .cms-people-table tr.is-current strong { font-weight: 600; }
+/*  A row the chosen answer does not use is not drawn. `hidden` alone
+    loses to any rule that sets display -- the trap a schedule's fields
+    already fell into once. */
+#theme-gen-form [data-needs][hidden] { display: none; }
+.cms-form-heading-first { margin-top: 4px; padding-top: 0; border-top: 0; }
+.cms-form-note { margin: -6px 0 10px; }
