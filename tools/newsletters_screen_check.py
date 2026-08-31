@@ -100,6 +100,32 @@ try:
         check("it is above the list", write["y"] < write["table"], str(write))
         check("...and not inside a card", not write["inCard"], str(write))
 
+        #  Offered beside writing one by hand, because it is the same
+        #  act with a different starting point -- and only when there is
+        #  a provider to ask, since a button that cannot work is worse
+        #  than no button.
+        ai = page.evaluate(
+            """() => { const f = document.querySelector('.cms-write-with-ai');
+                 if (!f) return null;
+                 const box = f.querySelector('input[name=brief]');
+                 const hand = Array.from(document.querySelectorAll('button'))
+                   .find(x => x.textContent.trim() === 'Write a newsletter');
+                 return { sameRow: Math.abs(f.getBoundingClientRect().top
+                            - hand.getBoundingClientRect().top) < 40,
+                          asks: !!box && !!box.placeholder,
+                          says: document.body.innerText.includes(
+                            'still has to be read and sent by you') }; }""")
+        if ai is None:
+            check("writing with AI is not offered without a provider", True)
+        else:
+            check("writing with AI stands beside writing one by hand",
+                  ai["sameRow"], str(ai))
+            check("...and asks what it should be about", ai["asks"], str(ai))
+            #  It writes a draft. Saying so where the button is, because
+            #  an AI writing to somebody's mailing list over their name
+            #  is the one place a plausible mistake cannot be recalled.
+            check("...and says a person still sends it", ai["says"], str(ai))
+
         print()
         print("One table, not three lists")
         print("-" * 66)

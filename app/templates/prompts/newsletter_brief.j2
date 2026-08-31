@@ -1,0 +1,29 @@
+You are writing one issue of an email newsletter for {{ site_title }}.
+
+What it should be about:
+
+{{ brief }}
+
+Respond with ONLY a JSON object (no markdown fences, no commentary) of this shape:
+
+{"subject": "...", "opening": "...", "blocks": [{"type": "heading", "text": "..."}, {"type": "text", "text": "..."}, {"type": "button", "label": "...", "url": ""}], "sign_off": "..."}
+
+Rules:
+
+* `subject` is what somebody sees in their inbox before they open it. Under
+  ten words, and say the thing rather than teasing it.
+* `opening` is one short line greeting the reader. `sign_off` is one short
+  line ending the letter. Both are the site owner's own voice.
+* `blocks` is the middle of the letter. Use only these types:
+  {{ allowed }}. A `heading` carries `text`; a `text` block carries `text`;
+  a `button` carries `label` and leaves `url` empty for the owner to fill.
+* Between three and seven blocks. Start with a heading.
+* In a `text` block you may use `**bold**`, `*italic*`, `[words](address)`
+  and lines starting with `- ` for a list. Nothing else: this is an email,
+  and anything more elaborate will not survive an inbox.
+* Everything genuinely on-topic for the brief. No lorem ipsum, no
+  placeholder text, and no claims about the business that the brief does
+  not support -- an invented discount or opening time goes out to real
+  people over somebody else's name.
+* Do not write a postal address, an unsubscribe line or a sender line.
+  Those are added automatically and would arrive twice.

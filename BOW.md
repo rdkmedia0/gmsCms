@@ -7184,3 +7184,55 @@ second row -- so the ribbon was 194px with nothing selected and 153px
 with something. The same "changes shape as it is used" fault as the
 selected-block label, arriving by a different route. Fixed widths, not
 max-widths: a width that cannot vary cannot wrap.
+
+### Writing one with the AI, which can only ever write a draft (2026-08-28)
+
+The last of feedback item 2. A blank newsletter is the hardest one to
+write, and an owner who sends one a month spends most of that month not
+sending it. "Write with AI" takes a sentence about the issue and lays out
+a draft: a subject, an opening, the middle, a sign-off.
+
+Almost everything worth saying about it is a limit, because this is the
+one place in this app where a plausible-sounding mistake goes out to
+real people, over somebody else's name, and cannot be taken back.
+
+**It cannot send.** It creates a newsletter and opens it in the editor,
+exactly as writing one by hand does. `newsletter_ai_check.py` asserts
+that from the route's own body -- if `deliver(` or `_send_it(` ever
+appears in it, that check goes red.
+
+**It composes only from blocks the editor already has**, and not even
+all of those: no picture (it needs a file that exists in this install's
+Media Library) and no Blog-posts block (it needs a blog id). Neither is
+something a model can know, and both would arrive as an empty slot the
+owner has to notice. Everything that comes back goes through
+`normalise`, so a model that invents a `columns` block or returns raw
+HTML produces a SHORTER newsletter, never a broken one -- the same rule
+this project applies to demo content.
+
+**Its opening and sign-off are roled blocks**, so a generated newsletter
+is an ordinary one afterwards and nothing downstream asks where it came
+from.
+
+**It refuses in the owner's terms**: no provider, no brief, nothing came
+back, nothing usable came back -- each says what to do. A model returning
+nothing goes through `assistant._nothing_came_back()`, which already says
+something DIFFERENT depending on the provider, because "try a larger
+model" is useless advice to somebody on Gemini.
+
+**And it is forgiving about punctuation.** A small model wraps its answer
+in ```json constantly even when told not to, and puts a sentence in front
+of it -- refusing over that would be refusing over punctuation rather
+than over content. Both are read anyway.
+
+The prompt is in `templates/prompts/newsletter_brief.j2`, because a
+prompt is content. It names what the model may not invent: no postal
+address, no unsubscribe line, no sender line (all three are added
+automatically and would arrive twice), and no claim the brief does not
+support -- an invented discount or opening time goes out to real people
+over somebody else's name.
+
+Checked with the provider stubbed, so it runs anywhere and costs
+nothing: what is being checked is this app's handling of an answer, not
+the answer. One real generation was run to prove the whole path, and it
+produced a subject, two headings, two paragraphs and a button.

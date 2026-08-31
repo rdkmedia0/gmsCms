@@ -1081,6 +1081,11 @@ code, .hint code, pre { overflow-wrap: anywhere; word-break: break-word; }
 }
 .cms-newsletter-actions form { margin: 0; }
 .cms-newsletter-actions .hint { flex: 1 1 320px; margin: 0; }
+/*  Beside writing one by hand, not under it: the same act with a
+    different starting point. The brief is a short answer, so it is a
+    short box -- not the full column. */
+.cms-write-with-ai { display: flex; align-items: center; gap: 8px; margin: 0; }
+.cms-write-with-ai input { width: 260px; margin: 0; }
 
 /*  One row per newsletter, whatever point of its life it is at. Dates
     and actions are the columns that must not stretch: a date is ten

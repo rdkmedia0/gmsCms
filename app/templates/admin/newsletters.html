@@ -20,9 +20,26 @@
     <button type="submit" class="btn btn-primary"
             title="Start a new newsletter and open it. You choose its shape from the Template dropdown inside, and it lays out as you choose.">Write a newsletter</button>
   </form>
+  {#  The same act with a different starting point, so it stands beside
+      writing one by hand rather than in a section of its own.
+
+      Offered only when there is a provider to ask. A button that cannot
+      work is worse than no button -- and "not set up" is a different
+      thing from "cannot", which is why the hint says which. #}
+  {% if ai_ready %}
+  <form method="post" action="{{ url_for('admin.newsletter_issue_write') }}"
+        class="cms-write-with-ai">
+    <input type="text" name="brief" maxlength="400" required
+           placeholder="What is this one about?"
+           title="A sentence or two about what this issue should say. It writes a draft you can edit — nothing is sent.">
+    <button type="submit" class="btn"
+            title="Write a first draft from that. It opens in the editor for you to read and change; nothing is sent.">Write with AI</button>
+  </form>
+  {% endif %}
   <span class="hint">Built for email &mdash; tables and inline styling, which is what an
     inbox can actually draw, in your site&rsquo;s own colours and fonts as closely as
-    email allows.</span>
+    email allows.{% if ai_ready %} A draft written for you still has to be read and
+    sent by you.{% endif %}</span>
 </div>
 
 {% if not email_ready %}

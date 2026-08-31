@@ -13,12 +13,13 @@ from . import bp, get_email_settings, get_site_settings, wants_json
 from ..auth import login_required
 from ...db import get_db
 from ... import mailer
+from ... import assistant
 import json
 
 from . import FONT_PAIRINGS
 from ...services import (blog as blog_service, commerce, email_layouts, legal,
-                         newsletter, palette, scheduling, site, site_emails,
-                         subscribers)
+                         newsletter, newsletter_ai, palette, scheduling, site,
+                         site_emails, subscribers)
 
 
 #  Two settings and nothing else. The greeting and the sign-off are the
@@ -102,6 +103,7 @@ def newsletters():
             {"row": t, "says": scheduling.describe_template(t)}
             for t in scheduling.templates(db)],
         weekdays=scheduling.WEEKDAYS,
+        ai_ready=assistant.is_configured(db),
         #  The newsletters built for the job, newest first, and the
         #  layouts one can be started from.
         #  Everything on the clock, in one place: a schedule was only
@@ -674,6 +676,33 @@ def newsletter_issue_send(newsletter_id):
     return _send_it(db, "newsletter", newsletter_id, _composed_sections(db, row),
                     row["subject"], None, back,
                     blocks=newsletter.composed_blocks(row))
+
+
+@bp.route("/newsletters/issue/write", methods=["POST"])
+@login_required
+def newsletter_issue_write():
+    """A first draft from a sentence about what the issue is for.
+
+    It creates a newsletter and opens it, exactly as writing one by hand
+    does. Nothing here sends anything: an AI writing to somebody else's
+    mailing list over their name is the one place in this app where a
+    plausible-sounding mistake reaches real people and cannot be taken
+    back, so a person reads it and presses Send.
+    """
+    db = get_db()
+    site_title = (get_site_settings(db) or {}).get("site_title") or ""
+    try:
+        subject, blocks = newsletter_ai.draft(
+            db, request.form.get("brief"), site_title)
+    except newsletter_ai.Refused as why:
+        flash(str(why), "error")
+        return redirect(url_for("admin.newsletters"))
+    new_id = newsletter.create_composed(db, "letter", subject)
+    newsletter.save_blocks(db, new_id, subject, blocks, layout="letter")
+    db.commit()
+    flash("Here is a first draft. Read it before you send it — nothing has "
+          "gone anywhere yet.", "success")
+    return redirect(url_for("admin.newsletter_issue_edit", newsletter_id=new_id))
 
 
 @bp.route("/newsletters/issue/<int:newsletter_id>/copy", methods=["POST"])
