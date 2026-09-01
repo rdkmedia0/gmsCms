@@ -2035,15 +2035,30 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); align-items: stretch; }
 .cms-price-tier { display: flex; flex-direction: column; gap: 12px; padding: var(--site-radius-pad, 26px 22px);
   border: 1px solid var(--primary-200, rgba(128,128,128,.28));
-  border-radius: var(--site-radius, 10px); background: var(--primary-50, #fff); }
+  border-radius: var(--site-radius, 10px);
+  /*  --primary-50 is the palest step of the brand and it is that on
+      EVERY page, so on a dark site this card came out near-white with
+      the page's near-white ink on it: 1.05:1, and the tier names and
+      the whole feature list invisible. A card takes the page's own
+      card surface, and states its ink like any other painted surface. */
+  background: var(--site-card-bg, var(--primary-50, #fff));
+  color: var(--site-ink, inherit); }
 .cms-price-tier.is-featured { border-color: var(--primary, #2563eb); border-width: 2px;
   box-shadow: 0 12px 32px -18px var(--primary-700, rgba(0,0,0,.4)); }
+/*  Both of these took a STEP OF THE BRAND -- --primary-700 and
+    --primary-900 -- which is a fixed lightness whatever the page is. On
+    a dark site the card is dark and --primary-900 is darker still: the
+    price itself measured 1.25:1, the least readable thing on a card
+    whose whole job is to state a price. The accent is the brand colour
+    already walked until it passes on this page's surfaces; the ink is
+    the ink. */
 .cms-price-name { margin: 0; font-size: 1.05rem; letter-spacing: .04em; text-transform: uppercase;
-  color: var(--primary-700, #1d4ed8); }
+  color: var(--site-accent-text, var(--primary-700, #1d4ed8)); }
 .cms-price-amount { margin: 0; font-size: 2.4rem; font-weight: 700; line-height: 1;
-  color: var(--primary-900, #111); font-variant-numeric: tabular-nums; }
+  color: var(--site-ink, var(--primary-900, #111)); font-variant-numeric: tabular-nums; }
 .cms-price-amount small { display: block; margin-top: 6px; font-size: .85rem; font-weight: 500;
   letter-spacing: .02em; color: var(--site-ink-soft, #5b6472); }
+.cms-price-features li { color: var(--site-ink, inherit); }
 .cms-price-features { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: .95rem; }
 .cms-price-features li { padding-left: 22px; position: relative; }
 .cms-price-features li::before { content: ""; position: absolute; left: 0; top: .45em;

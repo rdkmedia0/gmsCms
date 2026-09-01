@@ -149,7 +149,12 @@
   text-transform: uppercase; margin-bottom: 10px;
   color: var(--primary, currentColor);
 }
-.cms-banner-overlay .cms-eyebrow { color: rgba(255, 255, 255, .82); }
+/*  A translucent white is a colour that only works over something
+    dark. The overlay IS dark over a photograph, and is the page's own
+    band when there is no photograph -- which on a cream site is cream,
+    and 1.01:1. `currentColor` follows whatever the band said its ink
+    was, faded the same amount, so it works over both. */
+.cms-banner-overlay .cms-eyebrow { color: currentColor; opacity: .82; }
 
 /*  Cards of equal height, with whatever comes last pinned to the bottom.
     Ragged card bottoms are the most recognisable "generated" tell there

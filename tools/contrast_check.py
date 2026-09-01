@@ -14,7 +14,7 @@ can see it happen.
 
 Run it on the HOST, against a URL -- it needs a real browser.
 
-  python tools/contrast_check.py http://localhost:5000 [template-slug ...]
+  python tools/contrast_check.py http://localhost:5000 [template-id ...]
 
 Thresholds are WCAG AA: 4.5:1 for body text, 3:1 for large text (24px,
 or 18.66px when bold), which is the same arithmetic services/palette.py
@@ -132,10 +132,29 @@ def main():
         gp = guest.new_page()
 
         total = 0
+        matched = []
         for row in rows:
-            slug = row["url"].rstrip("/").split("/")[-2]
-            if wanted and slug not in wanted and row["name"] not in wanted:
+            #  The activate URL is /admin/templates/<id>/activate, so the
+            #  second-from-last part is the ID, not the slug. Filtering by
+            #  slug therefore matched NOTHING and the run reported "0
+            #  failing" having checked nothing at all -- the same silent
+            #  no-op this tool exists to catch, in the tool itself.
+            #
+            #  So a name that matches nothing is an ERROR, not an empty
+            #  pass. A checker that can quietly check zero things is
+            #  worse than no checker.
+            #  The activate URL is /admin/templates/<id>/activate, so the
+            #  second-from-last part is the template's ID. That is what
+            #  this filters on -- the screen carries no name attribute,
+            #  and guessing one from the surrounding markup is how the
+            #  filter came to match NOTHING while reporting "0 failing".
+            #  A checker that can quietly check zero things is worse than
+            #  no checker, so an empty match is an error below.
+            ident = row["url"].rstrip("/").split("/")[-2]
+            label = ident
+            if wanted and ident not in wanted:
                 continue
+            matched.append(label)
             ap.evaluate("""async (u) => fetch(u, {method: 'POST',
                 headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                 body: 'force=1'})""", row["url"])
@@ -158,7 +177,7 @@ def main():
                 for one in gp.evaluate(WALK):
                     one["words"] = href + "  " + one["words"]
                     bad.append(one)
-            label = row["name"] or slug
+
             if not bad:
                 print("  %-26s ok" % label)
                 continue
@@ -169,6 +188,17 @@ def main():
                       % (f["got"], f["need"], f["sel"][:30], f["alpha"], f["words"]))
         b.close()
     print()
+    missed = [w for w in wanted if w not in matched]
+    if missed:
+        #  The ACTIVE template has no Activate button, so it never
+        #  appears in this list -- and asking for it produced a clean
+        #  run that had silently skipped it. Anything asked for and not
+        #  reached is a failure: a checker that can quietly check fewer
+        #  things than it was told to is worse than no checker.
+        print("  NOT CHECKED: %s" % ", ".join(missed))
+        print("  (the active template has no Activate control -- activate")
+        print("   something else first, then run this again)")
+        return 1
     print("  %d failing" % total)
     return 1 if total else 0
 
