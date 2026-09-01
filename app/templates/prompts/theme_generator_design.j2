@@ -53,11 +53,18 @@ Choose:
 {% endfor %}   Choose the one that suits how this business should carry itself, not the
    one that sounds most impressive. A shop with a lot to list is not a poster.
 
-5. For each page, a shape from exactly this list: {{ layouts|join(', ') }}.
-   "landing" is a banner, an intro, three cards and a closing banner — right for
-   a front page. "about" is a banner, a longer story and a closing banner.
-   "simple" is a banner and one block of writing — right for contact, terms, or
-   anything short.
+5. For each page, a shape, by key, from exactly this list:
+{% for key, blurb in layouts %}   - {{ key }} — {{ blurb }}
+{% endfor %}
+   THE FRONT PAGE IS A REAL CHOICE. Four of these can open a site and they
+   suit different businesses: one that sells packages should show what they
+   cost; one whose work is booked in advance should show how it goes; one
+   whose voice is the product should open on words, not a photograph. Pick
+   the one this business actually needs. Do not default to "landing" — it
+   is one of four, not the normal one.
+
+   The pages after it are usually quieter: "simple" for contact or terms,
+   "story" for an about page, "showcase" for anything you look at.
 
 6. One sentence saying why this look suits this business. It is shown to the
    owner before anything is made, so write it for them, not for a designer.

@@ -557,7 +557,7 @@ def design(db, kit, pages):
                 fonts=[(k, v["name"]) for k, v in FONT_PAIRINGS.items()],
                 shapes=list(SHAPE_PRESETS), shadows=list(SHADOW_PRESETS),
                 compositions=list(COMPOSITION_PRESETS.items()),
-                layouts=list(LAYOUTS)))
+                layouts=[(k, v["description"]) for k, v in LAYOUTS.items()]))
         except ThemeGenError:
             #  A look nobody could decide is not a reason to refuse the
             #  whole run: the shapes fall back to what the page names
