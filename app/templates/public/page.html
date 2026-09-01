@@ -10,6 +10,14 @@
   {% if google_fonts_url %}
   <link rel="stylesheet" href="{{ google_fonts_url }}" data-cms-theme-asset="fonts">
   {% endif %}
+  {#  The composition this template wears, if it wears one. The LINK is
+      the gate: a template that has chosen none never loads the file, so
+      not one of its rules exists for that page. That is why nothing in
+      composition.css carries a scoping selector -- see its own header. #}
+  {% if composition %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/composition.css') }}"
+        data-cms-theme-asset="composition">
+  {% endif %}
   {% if template and template.css_path %}
   <link rel="stylesheet" href="{{ url_for('static', filename=template.css_path) }}" data-cms-theme-asset="theme">
   {% endif %}
@@ -49,18 +57,13 @@
 {% endif %}
 {% if body_sidebar_width_px %}{% set _ = body_style_parts.append('--cms-sidebar-width:' ~ body_sidebar_width_px ~ 'px') %}{% endif %}
 {% if body_sidebar_right_width_px %}{% set _ = body_style_parts.append('--cms-sidebar-right-width:' ~ body_sidebar_right_width_px ~ 'px') %}{% endif %}
-{#  A template with no stylesheet of its own renders under
-    `cms-plain-theme`, and the composition rules in site-base.css are
-    scoped to it.
-
-    They must be. A shipped template's theme.css IS its design: it
-    decides what colour a hero heading is, what a card looks like, how
-    much air a band gets. Applying the generator's own composition on
-    top of that overrules a design somebody made -- measured on the
-    bakery: its white hero headline turned dark brown on the
-    photograph, unreadable, because a rule meant for templates with no
-    opinion reached one that had one. #}
-<body class="{{ '' if (template and template.css_path) else 'cms-plain-theme' }} {{ 'cms-page-bg cms-page-veil-' ~ (page.bg_overlay or 'none') ~ ' cms-page-surface-' ~ (page.bg_surface or 'plain') if page.bg_image }} {{ 'cms-logged-in' if logged_in }} {{ 'cms-editing' if editing }} nav-layout-{{ nav_layout }} {{ 'has-sidebar' if editing or sidebar_sections }} {{ 'has-sidebar-right' if editing or sidebar_right_sections }} {{ 'sidebar-reach-full' if sidebar_sections and sidebar_sections[0].layout_width == 'full' }} {{ 'sidebar-right-reach-full' if sidebar_right_sections and sidebar_right_sections[0].layout_width == 'full' }}" {% if editing %}data-save-template-url="{{ url_for('admin.template_save_current') }}"{% endif %} {{ ('style="' ~ body_style_parts | join('; ') ~ ';"') | safe if body_style_parts }}>
+{#  `data-composition` is what turns composition.css on, and it is set
+    only when this template has chosen a composition -- from the control
+    in the Colors panel, or by the generator picking one from the same
+    list. A template that has chosen none is untouched by that
+    stylesheet, which is how the sixteen shipped templates keep the
+    design they were authored with. #}
+<body {% if composition %}data-composition="{{ composition }}"{% endif %} class="{{ 'cms-page-bg cms-page-veil-' ~ (page.bg_overlay or 'none') ~ ' cms-page-surface-' ~ (page.bg_surface or 'plain') if page.bg_image }} {{ 'cms-logged-in' if logged_in }} {{ 'cms-editing' if editing }} nav-layout-{{ nav_layout }} {{ 'has-sidebar' if editing or sidebar_sections }} {{ 'has-sidebar-right' if editing or sidebar_right_sections }} {{ 'sidebar-reach-full' if sidebar_sections and sidebar_sections[0].layout_width == 'full' }} {{ 'sidebar-right-reach-full' if sidebar_right_sections and sidebar_right_sections[0].layout_width == 'full' }}" {% if editing %}data-save-template-url="{{ url_for('admin.template_save_current') }}"{% endif %} {{ ('style="' ~ body_style_parts | join('; ') ~ ';"') | safe if body_style_parts }}>
   {% if logged_in %}
   <div class="cms-admin-bar">
     <span>{{ '✏️ Editing your site' if editing else '👁 Viewing as a visitor' }}</span>

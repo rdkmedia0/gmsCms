@@ -568,7 +568,7 @@ body.has-sidebar-right > .site-sidebar.site-sidebar-right.site-sidebar-empty { f
   height: calc(var(--cms-width-pct, 100) * 1vh);
   min-height: calc(var(--cms-width-pct, 100) * 1vh);
 }
-.block { margin-bottom: var(--site-band-pad, 40px); }
+.block { margin-bottom: 40px; }
 .block-header { text-align: center; padding: var(--site-radius-pad, var(--pad-hero, 40px 20px)); }
 .block-header h1 {
   font-family: var(--site-heading-font-family);
@@ -2612,7 +2612,7 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
     took the basket with it and it vanished for every visitor while
     still being there while editing. Contents removes the box and keeps
     the child. */
-body.cms-plain-theme .cms-section:has(.cms-basket-align-float-top),
+.cms-section:has(.cms-basket-align-float-top),
 .cms-section:has(.cms-basket-align-float-bottom) { display: contents; }
 /*  ...and the block box INSIDE it, which is a separate box and survived
     the section being taken out of the flow. Measured on a live page: a
@@ -2631,7 +2631,7 @@ body.cms-plain-theme .cms-section:has(.cms-basket-align-float-top),
     `contents` and not `none`, for the third time on this element: the
     fixed link is INSIDE this box, and a fixed child of a display:none
     parent is not rendered at all. */
-body.cms-plain-theme .block-html:has(.cms-basket-align-float-top),
+.block-html:has(.cms-basket-align-float-top),
 .block-html:has(.cms-basket-align-float-bottom) { display: contents; }
 /*  While editing, its CONTROLS have to stay reachable -- but only its
     controls.
@@ -2645,22 +2645,22 @@ body.cms-plain-theme .block-html:has(.cms-basket-align-float-top),
     unexplained empty band in the middle of the page, which is what an
     owner reported as a placeholder still showing.
         So: the strip stays, carrying the panel, and says what it is. */
-body.cms-plain-theme .cms-editing .cms-section:has(.cms-basket-align-float-top),
-body.cms-plain-theme .cms-editing .cms-section:has(.cms-basket-align-float-bottom) {
+.cms-editing .cms-section:has(.cms-basket-align-float-top),
+.cms-editing .cms-section:has(.cms-basket-align-float-bottom) {
   display: block; min-height: 0; padding: 0; margin: 6px 0;
 }
 /*  A handle for dragging a height onto something that has no height. The
     basket is `position: fixed`: its size is its own, and this box is not
     it. */
-body.cms-plain-theme .cms-editing .cms-section:has(.cms-basket-align-float-top) .cms-resize-handle,
-body.cms-plain-theme .cms-editing .cms-section:has(.cms-basket-align-float-bottom) .cms-resize-handle {
+.cms-editing .cms-section:has(.cms-basket-align-float-top) .cms-resize-handle,
+.cms-editing .cms-section:has(.cms-basket-align-float-bottom) .cms-resize-handle {
   display: none;
 }
 /*  Said, because a bare row of controls in the middle of a page with
     nothing visibly attached to them is the same puzzle as the empty box
     was. Chrome, so it wears the editor's own clothes. */
-body.cms-plain-theme .cms-editing .cms-section:has(.cms-basket-align-float-top) .cms-tool-panel::before,
-body.cms-plain-theme .cms-editing .cms-section:has(.cms-basket-align-float-bottom) .cms-tool-panel::before {
+.cms-editing .cms-section:has(.cms-basket-align-float-top) .cms-tool-panel::before,
+.cms-editing .cms-section:has(.cms-basket-align-float-bottom) .cms-tool-panel::before {
   content: "This basket floats — look for it in the corner of the screen, not here.";
   font-family: var(--cms-ui-font); font-size: 12px; color: #6b7480;
   margin-right: 10px; white-space: nowrap;
@@ -2675,14 +2675,9 @@ body.cms-logged-in .cms-basket-link.cms-basket-align-float-top { top: 60px; }
    The tokens above, reaching the elements they describe. Kept in one
    place and expressed only through var(), so a template that sets none
    of them is byte-for-byte the page it was before this existed. */
-body.cms-plain-theme .cms-wysiwyg-body h1,
-body.cms-plain-theme .cms-wysiwyg-body h2,
-body.cms-plain-theme .cms-wysiwyg-body h3,
-body.cms-plain-theme .cms-banner-overlay h1,
-body.cms-plain-theme .cms-banner-overlay h2,
-body.cms-plain-theme .cms-banner-overlay h3,
-body.cms-plain-theme .block-header h1,
-body.cms-plain-theme .block-header h2 {
+.cms-wysiwyg-body h1, .cms-wysiwyg-body h2, .cms-wysiwyg-body h3,
+.cms-banner-overlay h1, .cms-banner-overlay h2, .cms-banner-overlay h3,
+.block-header h1, .block-header h2 {
   letter-spacing: var(--site-heading-track, 0);
   text-transform: var(--site-heading-case, none);
 }
@@ -2693,50 +2688,12 @@ body.cms-plain-theme .block-header h2 {
    too, and giving those a band's padding put 96px above and below the
    menu — a 350px empty header on a site whose composition happened to be
    a generous one. A zone is furniture; the bands are the page. */
-/*  A PLAIN section pays half.
-    -------------------------
-    Every section paying a full band's padding means two plain sections
-    meeting leave two of them -- 160px where the design says 80. A band
-    that carries a colour still pays the full amount, because that
-    padding is the air INSIDE the band and it is what makes it a band;
-    a plain section is only spacing, and spacing is shared with its
-    neighbour. Measured before this: six different boundaries on one
-    page, 28px to 153px. */
-body.cms-plain-theme .site-content .cms-section > .block {
-  /*  EVERY section, whether or not it carries a background.
-      -------------------------------------------------------
-      This was written to skip full-bleed sections, on the grounds that
-body.cms-plain-theme a full-bleed banner brings its own height. The consequence,
-      measured across one page: gaps of 141, 152, 124, 246 and 9px. The
-      9px was a tinted band meeting a coloured band -- neither paying
-      any padding, so they read as one two-tone block -- and the 124px
-      was a stats band with no air of its own at all, reading as a
-      divider strip.
 
-      A band's padding is what makes it a band: it is inside the
-      section, so it takes the section's colour, which a margin never
-      could. Two plain bands meeting therefore leave 2x the padding, and
-      that is correct -- it is the same distance either way.
-
-      `.block`'s own bottom margin is dropped here because it was doing
-      this job before there was padding, and both together stacked 340px
-      of nothing between bands. */
-  padding-block: var(--site-band-pad, 0);
-  margin-bottom: 0;
-}
-/*  A banner is the exception, and the only one: it brings its own
-    height and its picture must reach the edges of its band. */
-.site-content .cms-section > .block-banner { padding-block: 0; }
-
-/*  A block sitting INSIDE a section has its own, smaller air. The band's
-    128px belongs outside the coloured box; using it inside as well made
-    a testimonial 442px tall to hold 90px of words. */
-body.cms-plain-theme .cms-block { padding-block: var(--site-block-pad, 0); }
 
 /*  A full-bleed band has no corner to curve away from: it runs to the
     edge of the window, so a radius there shows a sliver of the ground
     behind it at each end. */
-body.cms-plain-theme .site-content .cms-section[data-layout-width="full"] > .block > * {
+.site-content .cms-section[data-layout-width="full"] > .block > * {
   border-radius: 0;
 }
 /*  ...and its CONTENTS still sit on the page's axis. The band reaches
@@ -2744,425 +2701,15 @@ body.cms-plain-theme .site-content .cms-section[data-layout-width="full"] > .blo
     the whole point of having an axis. Without this a full-bleed footer
     ran its three columns from window edge to window edge while the
     cards above them stopped at 1180. */
-body.cms-plain-theme .site-content .cms-section[data-layout-width="full"] > .block {
+.site-content .cms-section[data-layout-width="full"] > .block {
   padding-inline: max(24px, calc((100% - var(--site-content-max, 1000px)) / 2));
 }
 /*  A banner is the exception here too: its PICTURE is the band, so it
     reaches the window edges and does its own gutter inside itself. With
     the inset applied it came out as a photograph floating in a white
     frame -- a full-bleed hero that was not full bleed. */
-body.cms-plain-theme .site-content .cms-section[data-layout-width="full"] > .block-banner {
+.site-content .cms-section[data-layout-width="full"] > .block-banner {
   padding-inline: 0;
 }
 
 
-/* ---------- The premium half: layers, leading, cards, buttons ----------
-   Everything here is driven by the tokens above and defaults to the
-   values these rules already had, so a template that sets none of them
-   renders exactly as it did before. */
-
-/*  The hero's dimming, as a layer over the whole picture. Bottom-weighted,
-    because the words sit low and the top of a photograph is usually the
-    part worth seeing. */
-body.cms-plain-theme .cms-banner {
-  position: relative; isolation: isolate;
-  /*  The hero's words sit on the SAME axis as the rest of the page.
-      A full-bleed banner is a flex row, so a left-aligned text block
-      still started wherever its own box happened to be centred --
-      x=470 on a 1440 page, lined up with nothing. The gutter is
-      computed from the page's own measure, so the headline, the intro
-      and the cards all begin at one edge. */
-  justify-content: var(--site-hero-justify, center);
-  align-items: var(--site-hero-place, center);
-  padding-inline: max(24px, calc((100% - var(--site-content-max, 1000px)) / 2));
-  padding-block: var(--site-hero-pad, 0);
-}
-body.cms-plain-theme .cms-banner::after {
-  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
-  background: linear-gradient(to bottom,
-body.cms-plain-theme rgba(0,
-body.cms-plain-theme 0,
-body.cms-plain-theme 0,
-body.cms-plain-theme calc(var(--site-scrim,
-body.cms-plain-theme .45) * .45)) 0%,
-body.cms-plain-theme rgba(0,
-body.cms-plain-theme 0,
-body.cms-plain-theme 0,
-body.cms-plain-theme calc(var(--site-scrim,
-body.cms-plain-theme .45) * .8)) 55%,
-    rgba(0, 0, 0, var(--site-scrim, .45)) 100%);
-}
-body.cms-plain-theme .cms-banner > * { position: relative; z-index: 1; },
-/*  A banner with no picture has nothing to dim. */
-body.cms-plain-theme .cms-banner.cms-banner-plain::after { display: none; },
-
-/*  THE SIZES, not only the leading.
-    -------------------------------
-    The tokens existed and reached exactly one element -- the hero's
-    headline -- so a preset with a 5rem h1 still rendered every heading
-    below the fold at the stylesheet's own 32px. Measured: h1 80px
-    against an h2 of 26px, with nothing in between, which is why
-    everything under the hero read as flat whatever preset was chosen. */
-body.cms-plain-theme .cms-wysiwyg-body h1,
-body.cms-plain-theme .block-header h1 { font-size: var(--site-h1-size,
-body.cms-plain-theme 42px); },
-body.cms-plain-theme .cms-wysiwyg-body h2,
-body.cms-plain-theme .block-header h2,
-body.cms-plain-theme .cms-block h2 { font-size: var(--site-h2-size,
-body.cms-plain-theme 32px); },
-body.cms-plain-theme .cms-wysiwyg-body h3,
-body.cms-plain-theme .cms-block h3,
-body.cms-plain-theme .cms-card h3 { font-size: var(--site-h3-size,
-body.cms-plain-theme 24px); },
-body.cms-plain-theme .cms-wysiwyg-body h1,
-body.cms-plain-theme .cms-wysiwyg-body h2,
-body.cms-plain-theme .cms-wysiwyg-body h3,
-body.cms-plain-theme .cms-block h2,
-body.cms-plain-theme .cms-block h3,
-body.cms-plain-theme .cms-card h3 {
-  font-weight: var(--site-heading-weight, 700);
-  letter-spacing: var(--site-heading-track, 0);
-}
-
-/*  Leading per level, and the display sizes that need it. */
-body.cms-plain-theme .cms-wysiwyg-body h1,
-body.cms-plain-theme .cms-banner-overlay h1,
-body.cms-plain-theme .block-header h1 { line-height: var(--site-h1-line,
-body.cms-plain-theme 1.15); },
-body.cms-plain-theme .cms-wysiwyg-body h2,
-body.cms-plain-theme .cms-banner-overlay h2,
-body.cms-plain-theme .block-header h2 { line-height: var(--site-h2-line,
-body.cms-plain-theme 1.2); },
-body.cms-plain-theme .cms-wysiwyg-body h3,
-body.cms-plain-theme .cms-banner-overlay h3 { line-height: var(--site-h3-line,
-body.cms-plain-theme 1.3); },
-/*  A hero heading is the one place the h1 scale should actually be felt. */
-body.cms-plain-theme .cms-banner-overlay h2 {
-  font-size: var(--site-h1-size, 42px); font-weight: var(--site-heading-weight, 700);
-  max-width: var(--site-hero-text, 22ch);
-  margin-inline: var(--site-hero-margin, auto);
-  /*  Measured at 16px and 7px: headline, standfirst and buttons read as
-      one lump. A hero is three things, and they have to look like
-      three. */
-  margin-block: 0 28px;
-}
-/*  A left-aligned hero's headline hugs the left edge; a centred one is
-    centred. One token decides both, so they cannot disagree. */
-body.cms-plain-theme .cms-banner-overlay p {
-  max-width: min(52ch, 100%); margin-inline: var(--site-hero-margin, auto);
-  margin-block: 0 36px;
-}
-body.cms-plain-theme .cms-banner-overlay p { font-size: var(--site-lead-size,
-body.cms-plain-theme 19px); line-height: 1.5; opacity: .94; },
-
-/*  The small line above a heading. */
-body.cms-plain-theme .cms-eyebrow {
-  display: block; font-size: var(--site-eyebrow-size, 12px);
-  letter-spacing: var(--site-eyebrow-track, .14em);
-  font-weight: var(--site-eyebrow-weight, 600);
-  text-transform: uppercase; margin-bottom: 10px;
-  color: var(--primary, currentColor);
-}
-body.cms-plain-theme .cms-banner-overlay .cms-eyebrow { color: rgba(255,
-body.cms-plain-theme 255,
-body.cms-plain-theme 255,
-body.cms-plain-theme .82); },
-
-/*  Cards of equal height, with whatever comes last pinned to the bottom.
-    Ragged card bottoms are the most recognisable "generated" tell there
-    is, and they happen for free unless something says otherwise. */
-body.cms-plain-theme .cms-columns { align-items: stretch; },
-body.cms-plain-theme .cms-columns > * { display: flex; flex-direction: column; },
-body.cms-plain-theme .cms-card,
-body.cms-plain-theme .cms-card-shape { display: flex; flex-direction: column; height: 100%; },
-body.cms-plain-theme .cms-card > :last-child,
-body.cms-plain-theme .cms-card-shape > :last-child { margin-bottom: 0; },
-body.cms-plain-theme .cms-card > .cms-card-link,
-body.cms-plain-theme .cms-card-shape > .cms-card-link { margin-top: auto; padding-top: 14px; },
-body.cms-plain-theme .cms-card-link {
-  display: inline-block; text-decoration: none; font-weight: 600;
-  color: var(--primary, currentColor);
-}
-body.cms-plain-theme .cms-card-link:hover { text-decoration: underline; },
-
-/*  A button that a preset can actually shape. */
-body.cms-plain-theme .cms-btn {
-  /*  ONE geometry.
-      -----------
-      The nav was a 999px pill, the cards were rounded, and the buttons
-      were square -- three different answers to the same question on one
-      page, which reads as components stitched together rather than a
-      design. A button takes the site's own corner, like everything
-      else. */
-  border-radius: var(--site-radius, 8px);
-  padding: var(--site-btn-pad, 12px 18px);
-  font-size: var(--site-btn-size, 16px);
-  font-weight: var(--site-btn-weight, 600);
-  letter-spacing: var(--site-btn-track, 0);
-  text-transform: var(--site-btn-case, none);
-}
-/*  The second button in a pair: the same shape, none of the weight. */
-/*  The border is INSIDE the box on both, or the two buttons in a pair
-    come out 47px and 49px tall -- 2px, which is exactly enough to read
-    as a misprint. */
-body.cms-plain-theme .cms-btn { border: 1px solid transparent; },
-body.cms-plain-theme .cms-btn-ghost {
-  background: transparent; color: inherit;
-  border-color: currentColor; box-shadow: none;
-}
-body.cms-plain-theme .cms-btn-ghost:hover { background: rgba(255,
-body.cms-plain-theme 255,
-body.cms-plain-theme 255,
-body.cms-plain-theme .12); color: inherit; },
-body.cms-plain-theme .cms-btn + .cms-btn { margin-inline-start: 12px; },
-/*  The row a hero's buttons sit in: its own air above them, so they do
-    not hang off the standfirst. */
-body.cms-plain-theme .cms-hero-actions { margin: 26px 0 0; display: flex; flex-wrap: wrap; gap: 12px;,
-  justify-content: var(--site-hero-justify, center); }
-/*  The buttons follow the words: left-aligned text wants left-aligned
-    buttons, and "centre the text but not the buttons" is the mismatch a
-    page falls into when the two are set in different places. */
-
-body.cms-plain-theme .cms-hero-actions .cms-btn + .cms-btn { margin-inline-start: 0; },
-body.cms-plain-theme .cms-banner-overlay .cms-btn-ghost { color: #fff; },
-body.cms-plain-theme .cms-banner-overlay .cms-btn:not(.cms-btn-ghost) {
-  background: #fff; color: var(--site-ink, #1b1b1b);
-}
-body.cms-plain-theme .cms-banner-overlay .cms-btn:not(.cms-btn-ghost):hover {
-  background: rgba(255, 255, 255, .88); color: var(--site-ink, #1b1b1b);
-}
-
-
-/*  Hero alignment, said once. `text-align` cannot move a flex row, so
-    the button row reads its own token -- set by the same preset, beside
-    the text alignment, so the two cannot disagree. */
-:root { --site-hero-justify: center; }
-
-
-/*  A column of reading text is narrow, and it begins where every other
-    band begins.
-
-    The intro was a section set to 62% of the window, which centres --
-    putting its left edge at (1440 - 893) / 2 = 272px, a fourth axis on
-    a page that already had three. The measure belongs to the TEXT, not
-    to the section: the section stays the page's own width and the words
-    stop at --site-measure. */
-body.cms-plain-theme .site-content .block-text > .cms-wysiwyg-body { max-width: var(--site-measure,
-body.cms-plain-theme 66ch); },
-
-/*  What a card is made of. Left-aligned, on the page's own ground with
-    one hairline -- the grey fill was the only grey object on the page
-    and read as the default it was. */
-body.cms-plain-theme .cms-card {
-  /*  White on a warm off-white ground, so a card reads as an object
-      sitting on the page. Card and ground the same colour, separated by
-      a faint line, is the "dirty" look -- three near-identical surfaces
-      (ground, card, tint) that nobody chose. */
-  background: var(--site-card-bg, #fff);
-  border: 1px solid var(--site-line, #e2e2e2);
-  padding: var(--site-card-pad, 28px);
-  text-align: var(--site-card-align, inherit);
-}
-body.cms-plain-theme .cms-card h3 { margin-top: 0; },
-
-/*  Mobile. Every number here was measured on a 390px render: a stats
-    row with three items in two columns leaves one alone beside a 182px
-    hole; a 129px gap between 167px cards reads as three unrelated
-    fragments; and a 9px gutter is edge-to-edge. */
-@media (max-width: 640px) {
-body.cms-plain-theme .cms-stat-row { grid-template-columns: 1fr; },
-body.cms-plain-theme .cms-columns { gap: 24px; },
-body.cms-plain-theme .site-content { padding-inline: 20px; },
-body.cms-plain-theme .cms-banner { padding-inline: 20px; },
-body.cms-plain-theme .cms-hero-actions .cms-btn { flex: 1 1 auto; text-align: center; },
-body.cms-plain-theme .site-content .cms-section > .block {
-    padding-block: var(--site-band-pad-mobile, var(--site-band-pad-tight, 64px));
-  }
-}
-
-
-/*  A BAND, not an island.
-    ---------------------
-    A section carrying a background colour is a band across the page. Set
-    to the content width with a radius on it, it floats as a rounded
-    island with the page's ground trapped down both sides -- four of
-    them in a row, which is what made the page read as blocks stacked up
-    rather than a page. A coloured section reaches the edges and squares
-    its corners; its CONTENTS still sit on the page's axis (see the
-    full-bleed inset rule above).
-
-    Keyed on the section carrying a background, because that is exactly
-    the condition that makes it a band. Nothing else changes. */
-/*  Keyed on FULL WIDTH as well as on carrying a colour. A band reaching
-    the window edges has nothing outside it to curve away from, so a
-    radius there draws four notches of the page's ground into its
-    corners -- measured at 22px on the call-to-action band, which
-    carries its colour on the block rather than on the section and so
-    slipped past the first version of this rule. */
-body.cms-plain-theme .site-content .cms-section[style*="background-color"] > .block,
-body.cms-plain-theme .site-content .cms-section[data-layout-width="full"] > .block,
-/*  DESCENDANTS, not just children. A block tool wraps its own surface a
-    level or two down -- `.block > .cms-html-preview > .cms-block-cta >
-    .cms-cta` -- so a child selector squared the wrapper and left the
-    thing you can actually see still curved, which is why the
-    call-to-action band kept its 22px corners after the first fix. */
-body.cms-plain-theme .site-content .cms-section[style*="background-color"] > .block *,
-body.cms-plain-theme .site-content .cms-section[data-layout-width="full"] > .block * {
-  border-radius: 0;
-}
-/*  ...except the controls inside it: a button in a band still wears the
-    site's corner, because a button is a small object and not a band. */
-body.cms-plain-theme .site-content .cms-section > .block .cms-btn,
-body.cms-plain-theme .site-content .cms-section > .block .cms-cta-btn {
-  border-radius: var(--site-radius, 8px);
-}
-
-/*  The testimonial's quote glyph sat halfway down the sentence, reading
-    as a double slash. It belongs on the first line, at cap height. */
-body.cms-plain-theme .cms-quote-large .cms-quote-mark,
-body.cms-plain-theme .cms-quote .cms-quote-mark,
-body.cms-plain-theme .cms-block-testimonial .cms-quote-mark { vertical-align: top; line-height: 1; },
-
-/*  A phone stacks the footer's columns, and the row gap between them was
-    inheriting the space meant to separate BANDS. Three headings with
-    100px of nothing between them is not a footer. */
-@media (max-width: 640px) {
-body.cms-plain-theme .cms-columns { row-gap: 28px; },
-}
-
-
-/*  A BAND CANNOT WEAR A LENS.
-    -------------------------
-    `--site-radius` may be `50% / 30%` (organic) or a 999px pill. On a
-    button or a small card that is the shape the owner chose; on a
-    full-width band, a stats row or a call-to-action it turns the band
-    into an ellipse with the page showing through four corners --
-body.cms-plain-theme measured on a real render: three stat boxes as ovals inside an oval,
-    and a CTA drawn as a blue lozenge.
-
-    CLAUDE.md already names the rule and the variable: anything that
-    cannot wear the real shape takes `--site-radius-safe`, which is
-    always a plain length. These are those things -- the wide, tall
-    surfaces a page is made of, as against the small objects on it. */
-body.cms-plain-theme .cms-stat,
-body.cms-plain-theme .cms-cta,
-body.cms-plain-theme .cms-quote,
-body.cms-plain-theme .cms-quote-large,
-body.cms-plain-theme .cms-block > .cms-card-shape {
-  border-radius: var(--site-radius-safe, 10px);
-}
-
-
-/*  A SURFACE STATES ITS OWN INK.
-    ----------------------------
-    CLAUDE.md says this about the editor's chrome and it is just as true
-    of the page: anything that paints a background of its own must say
-    what colour text on it is, and never let the site's colour reach it
-    by inheritance. On a light site nobody notices, because the
-    inherited ink happens to be dark. On a DARK site -- which a dark
-    reference picture now produces -- every one of these turned white on
-    white:
-
-      * the hero's filled button (white fill, and the page's near-white
-body.cms-plain-theme ink),
-      * the stats boxes (a pale --primary-50 fill, near-white labels),
-      * a card's trailing link (--primary, a dark brown, on a dark card).
-
-    Each one is a surface that knew its own background and not its own
-    foreground. */
-body.cms-plain-theme .cms-banner-overlay .cms-btn:not(.cms-btn-ghost) { color: #14100f; },
-body.cms-plain-theme .cms-banner-overlay .cms-btn:not(.cms-btn-ghost):hover { color: #14100f; },
-body.cms-plain-theme .cms-stat { color: #14100f; },
-body.cms-plain-theme .cms-stat-label { color: #14100f; opacity: .72; },
-/*  A link inside a card takes the accent that was DARKENED (or
-    lightened) to pass on this page's ground -- not the raw brand
-    colour, which is chosen to be a background. */
-body.cms-plain-theme .cms-card-link { color: var(--site-accent-text,
-body.cms-plain-theme var(--primary,
-body.cms-plain-theme currentColor)); },
-
-
-/*  Every enclosed component on one surface and one geometry.
-    -------------------------------------------------------
-    Measured on a dark render: the stats boxes came out pale (they paint
-    --primary-50, which is a LIGHT step whatever the page is), the cards
-    were near-black, the CTA button was a 999px pill and the hero's
-    buttons were nearly square. Four components, four answers.
-
-    A big surface takes the safe radius, because --site-radius may be a
-    lens or a pill; a small control takes the real one. That is the only
-    distinction left, and it is the documented one. */
-body.cms-plain-theme .cms-stat,
-body.cms-plain-theme .cms-quote,
-body.cms-plain-theme .cms-quote-large,
-body.cms-plain-theme .cms-block > .cms-card-shape {
-  background: var(--site-surface, #fff);
-  color: var(--site-ink, inherit);
-}
-body.cms-plain-theme .cms-stat-label { color: var(--site-ink,
-body.cms-plain-theme inherit); opacity: .72; },
-body.cms-plain-theme .cms-stat-value { color: var(--site-accent-text,
-body.cms-plain-theme var(--primary-700,
-body.cms-plain-theme currentColor)); },
-body.cms-plain-theme .cms-cta-btn,
-body.cms-plain-theme .cms-block .cms-btn { border-radius: var(--site-radius,
-body.cms-plain-theme 8px); },
-
-
-/*  A plain section is spacing; a coloured band is a room. See the note
-body.cms-plain-theme above the band-padding rule: this comes last so it wins by order,
-    which is what keeps two plain sections from stacking 160px between
-    them. */
-body.cms-plain-theme .site-content .cms-section:not([style*="background-color"]) > .block {
-  padding-block: calc(var(--site-band-pad, 0) / 2);
-}
-body.cms-plain-theme .site-content .cms-section > .block-banner { padding-block: 0; },
-
-/*  A heading is the page's ink. It was picking up the theme's own link
-    colour on a dark ground and rendering pale blue -- the coldest thing
-    on a page sampled from a warm photograph, on its largest type. */
-body.cms-plain-theme .cms-wysiwyg-body h1,
-body.cms-plain-theme .cms-wysiwyg-body h2,
-body.cms-plain-theme .cms-wysiwyg-body h3,
-body.cms-plain-theme .cms-block h2,
-body.cms-plain-theme .cms-block h3,
-body.cms-plain-theme .cms-card h3 { color: var(--site-ink,
-body.cms-plain-theme inherit); },
-
-/*  A finger is 44px. Both hero buttons measured 33px on a phone, and
-    both were full width, so there was no primary either. */
-@media (max-width: 640px) {
-body.cms-plain-theme .cms-btn { padding: 14px 24px; },
-body.cms-plain-theme .cms-hero-actions .cms-btn { flex: 0 1 auto; },
-}
-
-
-/*  THE SECTION ITSELF, and every wide surface on it.
-    ------------------------------------------------
-    `organic` is `60% 40% 55% 45% / 45% 55% 40% 60%` -- a blob. On a
-    button that is the shape somebody chose; on a 1468px band, and on a
-    card, it draws an ellipse with the page showing through around it.
-    Measured on a real render: the stats band, the quote band and all
-    three cards came out as ovals.
-
-    The earlier rules reached the BLOCK inside a section and its
-    descendants; the band's own box is the SECTION, which paints the
-    background and was still wearing the blob. And a card is a wide
-    surface too -- `--site-radius-safe` is the documented answer for
-    anything that cannot wear the real shape, and it is a plain length
-    (24px for organic). */
-body.cms-plain-theme .site-content .cms-section[style*="background-color"],
-body.cms-plain-theme .site-content .cms-section[data-layout-width="full"] { border-radius: 0; },
-body.cms-plain-theme .cms-card,
-body.cms-plain-theme .cms-card-shape,
-body.cms-plain-theme .cms-stat,
-body.cms-plain-theme .cms-quote,
-body.cms-plain-theme .cms-quote-large,
-body.cms-plain-theme .cms-cta,
-body.cms-plain-theme .cms-block > * {
-  border-radius: var(--site-radius-safe, 10px);
-}
-/*  A control is small enough to wear anything. */
-body.cms-plain-theme .cms-btn,
-body.cms-plain-theme .cms-cta-btn { border-radius: var(--site-radius,
-body.cms-plain-theme 8px); },

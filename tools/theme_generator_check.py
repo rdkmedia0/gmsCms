@@ -207,7 +207,8 @@ with app.app_context():
     check("no class it invented", not stray, ", ".join(stray))
     #  ...and every one it does use is defined in the shared stylesheet,
     #  which is what makes "not invented" mean something.
-    css_all = io.open("/app/app/static/css/site-base.css", encoding="utf-8").read()
+    css_all = (io.open("/app/app/static/css/site-base.css", encoding="utf-8").read()
+               + io.open("/app/app/static/css/composition.css", encoding="utf-8").read())
     #  The generator's OWN furniture. A block tool's internal classes are
     #  the tool's business and are styled with the tool.
     mine = {"cms-banner", "cms-banner-plain", "cms-banner-overlay", "cms-eyebrow",
@@ -992,6 +993,9 @@ with app.app_context():
     #  Tokens the stylesheet already reads. A template picks among
     #  values; it never writes a rule.
     css_now = io.open("/app/app/static/css/site-base.css", encoding="utf-8").read()
+    #  The composition rules moved out of the shared stylesheet and into
+    #  a look a template can choose; the assertions about them follow.
+    css_now += io.open("/app/app/static/css/composition.css", encoding="utf-8").read()
     #  --site-measure is the READING measure and is applied per text
     #  block, not to the page column; --site-content-max is the page's
     #  own axis. Conflating them made every band 62 characters wide.
@@ -1034,19 +1038,45 @@ with app.app_context():
     #  inversion having failed.
     check("every enclosed component reads one surface",
           "--site-surface" in css_now and "cms-stat" in css_now)
-    #  ...and every one of those rules is scoped to a template with no
-    #  stylesheet of its own. A shipped template's theme.css IS its
-    #  design: applying the generator's composition on top overrules a
-    #  design somebody made. Measured on the bakery before this was
-    #  scoped: its white hero headline turned dark brown on the
-    #  photograph, unreadable, and the page grew 288px.
-    tail = css_now[css_now.index("The premium half"):]
-    loose = [l.strip() for l in tail.splitlines()
-             if l.strip().endswith("{")
-             and not l.strip().startswith(("/*", "@", "--", "}"))
-             and "body.cms-plain-theme" not in l and ":root" not in l]
-    check("...and none of it reaches a template with its own stylesheet",
-          not loose, "; ".join(loose[:3]))
+    #  A COMPOSITION IS A LOOK A TEMPLATE WEARS, not a rulebook that
+    #  certain pages get. These rules began in the shared stylesheet,
+    #  written for generated templates and scoped away from the shipped
+    #  ones -- which worked, and was still design living in code: a
+    #  second rulebook only machine-made pages could have, that no owner
+    #  could opt into and no hand-made template could use.
+    comp = io.open("/app/app/static/css/composition.css", encoding="utf-8").read()
+    check("a composition is a stylesheet, like any other look",
+          len(comp) > 4000 and "--site-band-pad" in comp)
+    #  Nothing of it left in the shared sheet, and every rule in it
+    #  gated on a template having CHOSEN one.
+    base_only = io.open("/app/app/static/css/site-base.css", encoding="utf-8").read()
+    check("...and none of it is left in site-base",
+          "The premium half" not in base_only and "cms-plain-theme" not in base_only)
+    #  The gate is the LINK, not a selector on every rule.
+    #
+    #  The first version scoped all hundred-odd selectors with a prefix.
+    #  A mechanical prefixer destroys any rule whose declaration wraps
+    #  across a line and mangles every comment it passes -- it did both,
+    #  and the corruption was committed before anyone looked. A file
+    #  that is either loaded or not needs no scoping at all, and cannot
+    #  be corrupted by adding it.
+    page_src = io.open("/app/app/templates/public/page.html", encoding="utf-8").read()
+    check("...loaded only when a template has chosen one",
+          "{% if composition %}" in page_src and "css/composition.css" in page_src)
+    check("...and it carries no scoping selector of its own",
+          "cms-plain-theme" not in comp and "[data-composition]" not in comp)
+    #  The shape of the corruption, asserted directly: a stray comma
+    #  after a closing brace is a parse error that silently kills every
+    #  rule after it in the block.
+    check("...and parses: no stray comma after a brace",
+          "}," not in comp and "}," not in css_now.split(comp)[0],
+          "found a `},`")
+    #  Which means ANY template can wear one -- shipped or generated --
+    #  and one that has chosen none is untouched.
+    page = io.open("/app/app/templates/public/page.html", encoding="utf-8").read()
+    check("...so any template can wear one, and none has to",
+          'data-composition="{{ composition }}"' in page
+          and "css/composition.css" in page)
     #  `organic` is a blob and `pill` is 999px. On a control that is the
     #  shape somebody chose; on a 1468px band or a card it draws an
     #  ellipse with the page showing through around it. The band's own

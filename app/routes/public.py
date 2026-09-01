@@ -2261,6 +2261,12 @@ def _render_page(db, page, post=None, post_content=""):
         color_presets=color_scheme_choices(db) if editing else {},
         role_color_ramps=_role_color_ramps(template) if editing else {},
         font_pairings=FONT_PAIRINGS if editing else {},
+        #  Which composition this template wears, if any. It gates
+        #  composition.css: no choice, no rules, which is how a template
+        #  that ships its own design keeps it.
+        composition=((_column(template, "composition_override")
+                      or _column(template, "composition_default") or "")
+                     if template else ""),
         shape_presets=SHAPE_PRESETS if editing else {},
         shadow_presets=SHADOW_PRESETS if editing else {},
         #  The two properties the generator can set. They are controls
