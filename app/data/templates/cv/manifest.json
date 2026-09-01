@@ -33,5 +33,6 @@
   "has_content": true,
   "shape_override": "sharp",
   "shadow_override": "none",
-  "tagline": "Engineer, team lead, occasional writer"
+  "tagline": "Engineer, team lead, occasional writer",
+  "ground_color": "#ffffff"
 }

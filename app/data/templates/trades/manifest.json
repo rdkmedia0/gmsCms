@@ -40,5 +40,6 @@
     "services",
     "team",
     "contact"
-  ]
+  ],
+  "ground_color": "#f7f9fb"
 }

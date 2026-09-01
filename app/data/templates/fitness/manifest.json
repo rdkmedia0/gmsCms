@@ -41,5 +41,6 @@
     "membership",
     "coaches",
     "contact"
-  ]
+  ],
+  "ground_color": "#fff"
 }

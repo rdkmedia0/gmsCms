@@ -139,7 +139,7 @@
   max-width: min(52ch, 100%); margin-inline: var(--site-hero-margin, auto);
   margin-block: 0 36px;
 }
-.cms-banner-overlay p { font-size: var(--site-lead-size, 19px); line-height: 1.5; opacity: .94; }
+.cms-banner-overlay p { font-size: var(--site-lead-size, 19px); line-height: 1.5; }
 
 /*  The small line above a heading. */
 .cms-eyebrow {
@@ -203,10 +203,10 @@
 .cms-hero-actions .cms-btn + .cms-btn { margin-inline-start: 0; }
 .cms-banner-overlay .cms-btn-ghost { color: #fff; }
 .cms-banner-overlay .cms-btn:not(.cms-btn-ghost) {
-  background: #fff; color: var(--site-ink, #1b1b1b);
+  background: #fff; color: var(--site-on-white, #14100f);
 }
 .cms-banner-overlay .cms-btn:not(.cms-btn-ghost):hover {
-  background: rgba(255, 255, 255, .88); color: var(--site-ink, #1b1b1b);
+  background: rgba(255, 255, 255, .88); color: var(--site-on-white, #14100f);
 }
 
 
@@ -341,10 +341,10 @@
 
     Each one is a surface that knew its own background and not its own
     foreground. */
-.cms-banner-overlay .cms-btn:not(.cms-btn-ghost) { color: #14100f; }
-.cms-banner-overlay .cms-btn:not(.cms-btn-ghost):hover { color: #14100f; }
-.cms-stat { color: #14100f; }
-.cms-stat-label { color: #14100f; opacity: .72; }
+.cms-banner-overlay .cms-btn:not(.cms-btn-ghost) { color: var(--site-on-white, #14100f); }
+.cms-banner-overlay .cms-btn:not(.cms-btn-ghost):hover { color: var(--site-on-white, #14100f); }
+.cms-stat { color: var(--site-ink, #14100f); }
+.cms-stat-label { color: var(--site-ink-soft, #5b6472); }
 /*  A link inside a card takes the accent that was DARKENED (or
     lightened) to pass on this page's ground -- not the raw brand
     colour, which is chosen to be a background. */
@@ -365,7 +365,7 @@
   background: var(--site-surface, #fff);
   color: var(--site-ink, inherit);
 }
-.cms-stat-label { color: var(--site-ink, inherit); opacity: .72; }
+.cms-stat-label { color: var(--site-ink-soft, #5b6472); }
 .cms-stat-value { color: var(--site-accent-text, var(--primary-700, currentColor)); }
 .cms-cta-btn, .cms-block .cms-btn { border-radius: var(--site-radius, 8px); }
 
@@ -409,8 +409,7 @@
     has to reach the INNER element: `.cms-cta-solid` is on a div inside
     `.cms-block`, not on the block itself, so excluding it with `:not()`
     on the block matched nothing at all. */
-.cms-block .cms-cta-solid h2,
-.cms-block .cms-cta-solid p { color: inherit; }
+
 .cms-banner-overlay h1, .cms-banner-overlay h2, .cms-banner-overlay h3 {
   color: inherit;
 }

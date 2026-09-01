@@ -10,6 +10,8 @@ installed template, and that is a question only the database can answer.
 import json
 import re
 
+from . import tones
+
 
 def _match_palette_roles(palette):
     """Guess which palette slug plays which brand-color role, by name."""
@@ -405,7 +407,7 @@ def _hex(rgb):
     return "#%02x%02x%02x" % tuple(max(0, min(255, int(round(v)))) for v in rgb)
 
 
-def _relative_luminance(rgb):
+def _luminance_rgb(rgb):
     def channel(v):
         v = v / 255.0
         return v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4
@@ -418,7 +420,7 @@ def contrast(one, two):
     a, b = _rgb(one), _rgb(two)
     if not a or not b:
         return 1.0
-    la, lb = _relative_luminance(a), _relative_luminance(b)
+    la, lb = _luminance_rgb(a), _luminance_rgb(b)
     lighter, darker = max(la, lb), min(la, lb)
     return (lighter + 0.05) / (darker + 0.05)
 
@@ -431,22 +433,33 @@ def _mix(one, two, amount):
 
 
 def page_colours(palette, ground="", ink=""):
-    """Ground, ink, tint, hairline, card and the two accent variants.
+    """Every colour a page needs, taken as STEPS of a tonal scale.
 
-    ONE path, whatever colour the ground is -- pale, dark, or the mid
-    grey-blue a photograph of a workshop actually has. There were two
-    branches, one for light pages and one for dark, and a mid ground fit
-    neither, so it was thrown away and a light page derived instead.
-    That is the tool overruling the example somebody uploaded: they
-    chose that picture, and if they had wanted a white site they would
-    have chosen a white one.
+    This used to mix each role towards black or white and then MEASURE
+    whether the result could be read, walking it 6% at a time until it
+    passed. That is an audit standing in for an algorithm, and it failed
+    the way audits fail -- only where somebody thought to look. Measured
+    across the shipped templates, sixty-five pieces of text came out
+    below AA, every one of them from a rule that read sensibly alone.
 
-    So the direction is MEASURED rather than assumed. Ink is whichever
-    of near-black or near-white actually reads on this ground; a band is
-    a step away from the ground in whichever direction has room; and the
-    accent is walked until it passes 4.5:1 against it. Every one of
-    those is arithmetic, which is why the tool can be trusted with a
-    colour nobody planned for.
+    The roles are now indices into services/tones.scale(), built in
+    OKLab so a step is the same size on every hue. Contrast follows from
+    WHICH STEP was asked for, so nothing downstream has to check. The
+    shape is the one Radix and Material both arrived at: a fixed set of
+    lightness targets, and roles named as positions on it.
+
+    Two roles carry the whole of the reading problem:
+
+      --site-ink       body text, at 7:1 -- comfortable, not borderline
+      --site-ink-soft  the QUIET text, at 4.5:1
+
+    The second is new and it replaces `opacity`. A hint, a caption, a
+    pricing feature and a timeline label were all faded with
+    `opacity: .7`, which is not a colour and cannot be checked: it
+    multiplies whatever ink it is given by whatever surface is behind
+    it, so one declaration is comfortable on one template and invisible
+    on the next. A quiet role has to BE a colour, or it is not a
+    decision at all.
     """
     roles = {r.get("slug"): r.get("color") for r in (palette or [])
              if isinstance(r, dict) and r.get("color")}
@@ -455,97 +468,89 @@ def page_colours(palette, ground="", ink=""):
     if not _rgb(primary):
         return {}
 
-    #  The picture's own ground, or one mixed from the brand when there
-    #  is no picture at all.
     if not (ground and _rgb(ground)):
-        ground = _mix("#ffffff", primary, 0.03)
-    #  Is this a dark page? MEASURED, not thresholded.
-    #
-    #  A luminance cut-off gets mid grounds wrong in both directions: a
-    #  sage #989880 sits at 0.30 and so counted as "dark", which sent the
-    #  ink light and the accent walking towards white -- on a ground
-    #  where dark text actually reads better by two and a half times.
-    #  The question is not how bright the ground is, it is which ink
-    #  wins on it, and that is one comparison.
-    dark_page = contrast("#ffffff", ground) > contrast("#111111", ground)
+        ground = (tones.scale(primary) or ["#ffffff"])[0]
+
+    #  Which way up the page is. MEASURED -- whichever ink wins on this
+    #  ground -- rather than thresholded, because a mid ground has no
+    #  side and a cut-off picks the wrong one. A sage #989880 sits at
+    #  luminance 0.30 and so counted as "dark", which sent the ink light
+    #  on a ground where dark text reads two and a half times better.
+    dark_page = tones.is_dark(ground)
 
     #  THE INK THE PICTURE WAS WRITTEN IN, if it gave us one that works.
-    #
     #  A reference is showing its text colour, and deriving one when it
-    #  is right there is the same mistake as deriving a ground. But a
-    #  sampled ink is a guess about which near-neutral pixels were
+    #  is right there is the same mistake as deriving a ground -- but a
+    #  sampled ink is a GUESS about which near-neutral pixels were
     #  letters, and it is wrong in ordinary ways: Hacker News hands back
-    #  the mid grey of its own interface (3.0:1 on its cream, which no
-    #  page should use for body text) and a photograph of a workshop has
-    #  no writing in it at all.
-    #
-    #  So it is taken when it READS -- 7:1, comfortable rather than
-    #  borderline -- and the arithmetic below does the job when it does
-    #  not. That is the algorithm for "if unclear": measure, and only
-    #  believe what passes.
-    if ink and _rgb(ink) and contrast(ink, ground) >= 7.0:
-        return _with_ink(ground, ink, primary, accent)
+    #  its own interface grey (3.0:1 on its cream) and a photograph of a
+    #  workshop has no writing in it at all. Taken when it reads.
+    if not (ink and _rgb(ink) and contrast(ink, ground) >= 7.0):
+        ink = tones.step_that_reads(primary, ground, 7.0, dark=dark_page)
 
-    #  Ink: the direction that reads, tinted towards the brand so it is
-    #  a chosen colour rather than plain black or plain white.
-    ink = _mix("#f4f4f4", primary, 0.06) if dark_page else _mix(primary, "#000000", 0.55)
-    if contrast(ink, ground) < 7.0:
-        ink = "#f2f2f2" if dark_page else "#241f1f"
-    #  ...and if the ground is mid enough that neither passes, take
-    #  whichever passes better and say so by measuring, not by hoping.
-    if contrast(ink, ground) < 4.5:
-        ink = max(("#ffffff", "#111111"), key=lambda c: contrast(c, ground))
-
-    #  A band steps AWAY from the ground -- lighter on a dark page,
-    #  darker on a light one -- because the direction is what makes it
-    #  read as a band at all.
-    towards = "#ffffff" if dark_page else "#000000"
-    tint = _mix(ground, towards, 0.13 if dark_page else 0.05)
-    line = _mix(ground, towards, 0.22 if dark_page else 0.12)
-    card = _mix(ground, "#ffffff" if dark_page else "#ffffff",
-                0.05 if dark_page else 1.0)
-
-    return _with_ink(ground, ink, primary, accent)
+    return _with_ink(ground, ink, primary, accent, dark_page)
 
 
-def _with_ink(ground, ink, primary, accent):
+def _with_ink(ground, ink, primary, accent, dark_page=None):
     """The rest of a page, given a ground and the ink that reads on it.
 
-    Both paths end here -- the ink the picture supplied and the ink this
-    module worked out -- so a sampled page and a derived one are the
-    same kind of thing, and a change to how a band steps away from the
-    ground applies to both.
+    Both paths end here -- the ink the picture supplied and the ink the
+    scale produced -- so a sampled page and a derived one are the same
+    kind of thing, and a change to how a band steps applies to both.
     """
-    dark_page = contrast("#ffffff", ground) > contrast("#111111", ground)
-    towards = "#ffffff" if dark_page else "#000000"
-    tint = _mix(ground, towards, 0.13 if dark_page else 0.05)
-    line = _mix(ground, towards, 0.22 if dark_page else 0.12)
-    card = _mix(ground, "#ffffff", 0.05 if dark_page else 1.0)
+    if dark_page is None:
+        dark_page = tones.is_dark(ground)
+
+    #  A band and a hairline step TOWARDS the ink, at a ratio rather
+    #  than a lightness delta: +0.045 in OKLab is a clear step on a
+    #  cream page and still pure black on a black one. Towards the ink,
+    #  because a card is on the other side by definition, and a hairline
+    #  that drifted the card's way vanished against it.
+    tint = tones.step_at_contrast(ground, 1.18, ink)
+    line = tones.step_at_contrast(ground, 1.90, ink)
+    card = tones.step_at_contrast(ground, 1.35, ink) if dark_page else "#ffffff"
+
+    #  The quiet role: one reading threshold down from the ink, never
+    #  past it. Every hint, caption, label and feature list takes this
+    #  instead of an opacity, which is why they can be checked at all.
+
+    #  Every surface a piece of text can land on. One list, used by both
+    #  the quiet role and the accent, so neither can be chosen against a
+    #  narrower set than the other.
+    surfaces = (ground, tint, card)
+    #  ...and it has to pass on every surface it can land on, not just
+    #  the ground. Measured against the ground alone it was 4.5:1 there
+    #  and 3.49:1 on a card -- and a stat label, a caption and a feature
+    #  list all sit on cards. Same fault the accent had, one role along.
+    ink_soft = ink
+    for candidate in tones.scale(primary, dark=dark_page):
+        if min(contrast(candidate, on) for on in surfaces) >= 4.5:
+            ink_soft = candidate
+            break
+    if contrast(ink_soft, ground) > contrast(ink, ground):
+        ink_soft = ink
+
     accent_ink = max((ink, "#ffffff", "#111111"), key=lambda c: contrast(c, accent))
 
-    #  The accent as TEXT, walked towards white or black until it passes
-    #  on EVERY surface it can land on -- the ground, a band, and a card.
-    #
-    #  It was measured against the ground alone, and that is only safe
-    #  while the other two are close to it. On a dark page they are not:
-    #  a band steps LIGHTER than the ground by design, so a rose accent
-    #  that passed at 4.87:1 on black was 3.73:1 on the band -- and the
-    #  band is exactly where the Stats block puts its numbers, which are
-    #  the largest and least readable thing on the page.
-    #
-    #  So the test is the worst of the three, since a colour that only
-    #  works on one of them is a colour that fails somewhere nobody
-    #  looked.
-    surfaces = (ground, tint, card)
-    accent_text = accent
-    for step in range(1, 15):
-        if min(contrast(accent_text, on) for on in surfaces) >= 4.5:
+    #  The accent as TEXT has to pass on every surface it can land on --
+    #  the ground, a band and a card. Measured against the ground alone
+    #  it was 4.87:1 on black and 3.73:1 on the band, and the band is
+    #  where the Stats block puts its numbers.
+    accent_text = ink
+    for candidate in tones.scale(accent, dark=dark_page):
+        if min(contrast(candidate, on) for on in surfaces) >= 4.5:
+            accent_text = candidate
             break
-        accent_text = _mix(accent, towards_text(ground), step * 0.06)
+
+    #  `--primary-on` is NOT here. It is emitted beside `--primary`
+    #  itself (routes/public.py), because an owner's colour override
+    #  lands there and never reaches this function -- so a value derived
+    #  here would be the ink for a colour the page does not use.
     return {
-        "--site-ground": ground, "--site-ink": ink, "--site-tint": tint,
-        "--site-line": line, "--site-card-bg": card,
+        "--site-ground": ground, "--site-ink": ink, "--site-ink-soft": ink_soft,
+        "--site-tint": tint, "--site-line": line, "--site-card-bg": card,
         "--site-accent-ink": accent_ink, "--site-accent-text": accent_text,
+        "--site-on-white": tones.step_that_reads(primary, "#ffffff", 4.5),
     }
 
 

@@ -9,7 +9,7 @@
   --site-body-bg: var(--accent-50, #fdfcf7);
 }
 body { background: var(--site-body-bg, #fdfcf7); color: #33372c; }
-.site-header { background: var(--primary-base, #4a7c3f); }
+.site-header { color: var(--primary-on, #fff); background: var(--primary-base, #4a7c3f); }
 .site-brand { color: var(--accent-50, #fff); font-weight: 800; }
 .site-nav a { color: var(--neutral-200, #e3ecdd); font-weight: 600; }
 .site-nav a:hover { color: var(--wp--preset--color--accent, #d9a520); }

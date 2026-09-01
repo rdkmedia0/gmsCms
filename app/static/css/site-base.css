@@ -609,7 +609,7 @@ body.has-sidebar-right > .site-sidebar.site-sidebar-right.site-sidebar-empty { f
   color: var(--primary-dark, #1d4ed8);
 }
 
-.site-footer { text-align: center; padding: 24px; color: #888; font-size: 14px; }
+.site-footer { text-align: center; padding: 24px; color: var(--site-ink-soft, #5b6472); font-size: 14px; }
 
 /* Configurable image sizing — height:auto keeps the aspect ratio correct
    (this is what fixes images rendering distorted/oversized) */
@@ -666,7 +666,7 @@ body.has-sidebar-right > .site-sidebar.site-sidebar-right.site-sidebar-empty { f
     stays at 18px on a small card, where the corner is small too. */
 .cms-blog-card-body { padding: 16px max(18px, 6%); }
 .cms-blog-card-body h3 { margin: 0 0 6px; font-family: var(--site-heading-font-family); }
-.cms-blog-date { font-size: 13px; color: #888; }
+.cms-blog-date { font-size: 13px; color: var(--site-ink-soft, #5b6472); }
 .cms-blog-post-image { width: 100%; max-height: 420px; object-fit: cover; border-radius: var(--site-radius, 10px); margin-bottom: 20px; }
 .cms-blog-post-body { margin-top: 16px; line-height: 1.7; }
 /* Semantic status colors (draft/sent/error below) are deliberately NOT
@@ -814,7 +814,7 @@ body.has-sidebar-right > .site-sidebar.site-sidebar-right.site-sidebar-empty { f
   /*  The mark and its words are one thing, so they sit like one thing.
       7px read as an icon and a separate label. */
   display: inline-flex; align-items: center; gap: 4px;
-  color: inherit; text-decoration: none; font-size: 14px; opacity: 0.9;
+  color: inherit; text-decoration: none; font-size: 14px;
 }
 /*  The icon's size, and only the icon's: the words beside it keep the size
     the zone gives them. --cms-contact-icon is written onto the block when
@@ -922,7 +922,7 @@ li.cms-menu-divider { display: block; width: auto; height: 1px; margin: 4px 8px;
   text-decoration: none; font-weight: 600; font-size: 14px; border: 2px solid transparent;
   transition: opacity 0.15s, transform 0.15s, box-shadow 0.15s;
 }
-.cms-menu-buttons a.cms-menu-btn:hover { opacity: 0.85; text-decoration: none; }
+.cms-menu-buttons a.cms-menu-btn:hover { text-decoration: underline; }
 
 /* Outline: border only, transparent fill, text takes the button color. */
 .cms-menu-btnstyle-outline a.cms-menu-btn {
@@ -934,7 +934,8 @@ li.cms-menu-divider { display: block; width: auto; height: 1px; margin: 4px 8px;
 .cms-menu-btnstyle-soft a.cms-menu-btn {
   background: color-mix(in srgb, var(--menu-btn-color) 15%, #fff); color: var(--menu-btn-color);
 }
-.cms-menu-btnstyle-soft a.cms-menu-btn:hover { background: color-mix(in srgb, var(--menu-btn-color) 28%, #fff); opacity: 1; }
+.cms-menu-btnstyle-soft a.cms-menu-btn:hover { background: color-mix(in srgb, var(--menu-btn-color) 28%, #fff);
+  color: var(--menu-btn-color); opacity: 1; }
 
 /* Floating: pill shape, raised off the page with a shadow that grows on hover. */
 .cms-menu-btnstyle-floating a.cms-menu-btn {
@@ -1436,12 +1437,12 @@ video, .cms-media video, .cms-video {
 .cms-file-icon { font-size: 28px; }
 .cms-file-info { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 .cms-file-name { font-weight: 700; }
-.cms-file-size { font-size: 13px; color: #888; }
+.cms-file-size { font-size: 13px; color: var(--site-ink-soft, #5b6472); }
 .cms-file-download {
   background: var(--primary, #2563eb); color: #fff; text-decoration: none; font-weight: 600;
   padding: 8px 16px; border-radius: var(--site-radius, 8px); white-space: nowrap;
 }
-.cms-file-placeholder { color: #888; font-size: 14px; }
+.cms-file-placeholder { color: var(--site-ink-soft, #5b6472); font-size: 14px; }
 
 /* File display variants: button, plain text link, icon-only */
 .cms-file-btn {
@@ -1497,7 +1498,7 @@ video, .cms-media video, .cms-video {
 }
 .cms-faq-item[open] .cms-faq-q::after { transform: rotate(-135deg); margin-top: -2px; }
 .cms-faq-q:focus-visible { outline: 2px solid var(--primary, #2563eb); outline-offset: 2px; border-radius: 4px; }
-.cms-faq-a { padding: 0 34px 18px 4px; line-height: 1.65; opacity: .92; }
+.cms-faq-a { padding: 0 34px 18px 4px; line-height: 1.65; }
 
 .cms-faq-style-list .cms-faq-item { border-bottom: 1px solid rgba(0,0,0,0.12); }
 .cms-faq-style-list .cms-faq-item:first-child { border-top: 1px solid rgba(0,0,0,0.12); }
@@ -1806,7 +1807,7 @@ body.cms-editing .cms-video-thumb-empty::after {
 .cms-action-btn, .cms-buy-btn {
   font: inherit; font-weight: 600; cursor: pointer; padding: 12px 22px;
   border: none; border-radius: var(--site-radius, 8px);
-  background: var(--primary, #2563eb); color: #fff;
+  background: var(--primary, #2563eb); color: var(--primary-on, #fff);
   box-shadow: var(--site-shadow, none); transition: filter .15s ease;
 }
 .cms-action-btn:hover, .cms-buy-btn:hover { filter: brightness(1.08); }
@@ -1827,7 +1828,7 @@ body.cms-editing .cms-video-thumb-empty::after {
 /* The buyer's own page. Reached by a link from their email, so it is
    read once, quickly, often on a phone — plain blocks, generous type,
    no navigation to get lost in. */
-.cms-account-sub { opacity: .8; }
+.cms-account-sub { color: var(--site-ink-soft, #5b6472); }
 .cms-account-block { text-align: left; margin: 28px 0; padding: var(--site-radius-pad, 20px 22px);
   border-radius: var(--site-radius, 10px); box-shadow: var(--site-shadow, none);
   background: color-mix(in srgb, var(--primary, #2563eb) 5%, transparent); }
@@ -1837,13 +1838,13 @@ body.cms-editing .cms-video-thumb-empty::after {
 .cms-thanks-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 22px 0; }
 .cms-thanks-actions .cms-action-btn,
 .cms-thanks-actions .cms-buy-btn { text-decoration: none; display: inline-block; }
-.cms-thanks-link { font-size: .9rem; opacity: .85; word-break: break-all; }
+.cms-thanks-link { font-size: .9rem; color: var(--site-ink-soft, #5b6472); word-break: break-all; }
 
 /* Slot picker on the buyer's page. Times are the only thing that
    matters here, so they are big, tappable and evenly sized — this is
    read on a phone more often than not. */
 .cms-slot-day { margin-top: 18px; }
-.cms-slot-day h3 { margin: 0 0 8px; font-size: 1rem; opacity: .75; }
+.cms-slot-day h3 { margin: 0 0 8px; font-size: 1rem; color: var(--site-ink-soft, #5b6472); }
 .cms-slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
 .cms-slot-form { margin: 0; }
 .cms-slot-btn {
@@ -1880,8 +1881,8 @@ body.cms-editing .cms-video-thumb-empty::after {
   cursor: pointer; transition: background .15s, color .15s; }
 .cms-cal-day.is-free:hover, .cms-cal-day.is-chosen {
   background: var(--primary, #2563eb); color: #fff; }
-.cms-cal-count { font-size: .68rem; font-weight: 500; opacity: .8; }
-.cms-day-panel h3 { margin: 0 0 8px; font-size: 1rem; opacity: .75; }
+.cms-cal-count { font-size: .68rem; font-weight: 500; color: var(--site-ink-soft, #5b6472); }
+.cms-day-panel h3 { margin: 0 0 8px; font-size: 1rem; color: var(--site-ink-soft, #5b6472); }
 .cms-confirm-when { font-size: 1.35rem; font-weight: 700; margin: 4px 0 10px; }
 .cms-confirm-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 14px; }
 .cms-confirm-back { font-size: .92rem; }
@@ -1985,7 +1986,7 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
 .cms-shop-image { width: 100%; aspect-ratio: 4 / 3; object-fit: cover;
   border-radius: var(--site-radius, 8px); }
 .cms-shop-name { margin: 0; font-size: 1.05rem; }
-.cms-shop-desc { margin: 0; font-size: .9rem; opacity: .8; }
+.cms-shop-desc { margin: 0; font-size: .9rem; color: var(--site-ink-soft, #5b6472); }
 .cms-shop-price { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
 .cms-shop-stock { margin: 0; font-size: .82rem; color: var(--primary-dark, #1d4ed8); }
 .cms-shop-item .cms-action-btn,
@@ -2006,7 +2007,12 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
    change moves all of them together.
    ===================================================================== */
 
-.cms-block { margin: 8px 0; }
+/*  A block sits in its own space. Without this the timeline's first
+    marker and the pricing cards ran into the edge of whatever surface
+    they were placed on -- there was margin between blocks and no room
+    INSIDE one, which reads as a layout that has not been finished. */
+.cms-block { margin: 8px 0; padding: 18px 20px; }
+.cms-block:first-child { margin-top: 0; }
 
 /* --- Pricing ------------------------------------------------------- */
 .cms-price-grid { display: grid; gap: 18px;
@@ -2021,7 +2027,7 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
 .cms-price-amount { margin: 0; font-size: 2.4rem; font-weight: 700; line-height: 1;
   color: var(--primary-900, #111); font-variant-numeric: tabular-nums; }
 .cms-price-amount small { display: block; margin-top: 6px; font-size: .85rem; font-weight: 500;
-  letter-spacing: .02em; opacity: .7; }
+  letter-spacing: .02em; color: var(--site-ink-soft, #5b6472); }
 .cms-price-features { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: .95rem; }
 .cms-price-features li { padding-left: 22px; position: relative; }
 .cms-price-features li::before { content: ""; position: absolute; left: 0; top: .45em;
@@ -2034,8 +2040,9 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
 
 /* --- Testimonial --------------------------------------------------- */
 .cms-quote { margin: 0; padding: var(--site-radius-pad, 26px); border-radius: var(--site-radius, 10px); display: grid; gap: 14px; }
-.cms-quote-card { background: var(--primary-50, #f8fafc);
-  border: 1px solid var(--primary-100, rgba(128,128,128,.2)); }
+.cms-quote-card { background: var(--site-tint, var(--primary-50, #f8fafc));
+  color: var(--site-ink, inherit);
+  border: 1px solid var(--site-line, var(--primary-100, rgba(128,128,128,.2))); }
 .cms-quote-large { text-align: center; padding: 40px 24px; }
 .cms-quote blockquote { margin: 0; font-size: 1.15rem; line-height: 1.6; }
 .cms-quote-large blockquote { font-size: 1.6rem; line-height: 1.45; }
@@ -2044,7 +2051,7 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
 .cms-quote figcaption { display: flex; flex-direction: column; gap: 2px; font-size: .92rem; }
 .cms-quote-large figcaption { align-items: center; }
 .cms-quote-name { font-weight: 700; }
-.cms-quote-role { opacity: .72; }
+.cms-quote-role { color: var(--site-ink-soft, #5b6472); }
 .cms-quote-photo { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; }
 .cms-quote-large .cms-quote-photo { margin: 0 auto; }
 
@@ -2055,7 +2062,7 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
   background: var(--primary-50, transparent); }
 .cms-stat-value { font-size: 2.6rem; font-weight: 700; line-height: 1;
   color: var(--primary-700, #1d4ed8); font-variant-numeric: tabular-nums; }
-.cms-stat-label { font-size: .9rem; opacity: .8; }
+.cms-stat-label { font-size: .9rem; color: var(--site-ink-soft, #5b6472); }
 
 /* --- Logo row ------------------------------------------------------ */
 .cms-logo-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
@@ -2070,7 +2077,7 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
 .cms-person-photo { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--site-radius, 10px); }
 .cms-person-name { margin: 6px 0 0; font-size: 1.05rem; }
 .cms-person-role { margin: 0; font-size: .88rem; font-weight: 600; color: var(--primary-700, #1d4ed8); }
-.cms-person-bio { margin: 0; font-size: .92rem; opacity: .82; line-height: 1.55; }
+.cms-person-bio { margin: 0; font-size: .92rem; color: var(--site-ink-soft, #5b6472); line-height: 1.55; }
 
 /* --- Timeline ------------------------------------------------------ */
 .cms-timeline { list-style: none; margin: 0; padding: 0; display: grid; }
@@ -2085,7 +2092,7 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
   width: 16px; height: 16px; border-radius: 50%; background: var(--primary, #2563eb);
   box-shadow: 0 0 0 4px var(--primary-100, #dbeafe); }
 .cms-timeline-body h3 { margin: 0 0 4px; font-size: 1.05rem; }
-.cms-timeline-body p { margin: 0; opacity: .85; line-height: 1.6; }
+.cms-timeline-body p { margin: 0; color: var(--site-ink-soft, #5b6472); line-height: 1.6; }
 .cms-timeline-horizontal { grid-auto-flow: column; grid-auto-columns: minmax(190px, 1fr);
   overflow-x: auto; gap: 20px; }
 .cms-timeline-horizontal .cms-timeline-item { grid-template-columns: 1fr; gap: 8px; }
@@ -2094,9 +2101,23 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
 .cms-cta { display: grid; gap: 12px; justify-items: center; text-align: center;
   padding: var(--site-radius-pad, 44px 28px); border-radius: var(--site-radius, 12px); }
 .cms-cta h2 { margin: 0; font-size: 1.9rem; }
-.cms-cta p { margin: 0; max-width: 52ch; opacity: .9; }
+.cms-cta p { margin: 0; max-width: 52ch; }
 .cms-cta-solid { background: var(--primary, #2563eb); color: var(--primary-on, #fff); }
-.cms-cta-solid .cms-cta-btn { background: var(--primary-on, #fff); color: var(--primary-800, #1e3a8a); }
+/*  A block that paints its OWN background states what colour the words
+    on it are, and nothing outside may reach in and change them -- not
+    the page's ink, and not a theme that colours every paragraph. This
+    lived in composition.css, which most templates never load. */
+/*  `.cms-block` is in the selector to WIN, not to scope: composition.css
+    loads after this file and carries `.cms-block h2 { color: var(--site-ink) }`
+    at the same specificity, so a tie here is decided by file order and
+    the page's ink reaches back in. One more class settles it in every
+    load order. */
+.cms-block .cms-cta-solid h2, .cms-block .cms-cta-solid h3,
+.cms-block .cms-cta-solid p, .cms-block .cms-cta-solid li { color: inherit; }
+/*  Same rule, the newsletter block: it paints itself in --site-tint, so
+    a theme's heading colour chosen against the PAGE can miss on it. */
+.cms-block .cms-newsletter h2, .cms-block .cms-newsletter h3 { color: var(--site-ink, inherit); }
+.cms-cta-solid .cms-cta-btn { background: var(--primary-on, #fff); color: var(--primary, #1e3a8a); }
 .cms-cta-soft { background: var(--primary-50, #eff6ff); color: var(--primary-950, #0f172a);
   border: 1px solid var(--primary-100, #dbeafe); }
 .cms-cta-outline { border: 2px solid var(--primary, #2563eb); }
@@ -2107,9 +2128,10 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
 
 /* --- Email sign-up ------------------------------------------------- */
 .cms-newsletter { display: grid; gap: 10px; padding: var(--site-radius-pad, 30px 24px); border-radius: var(--site-radius, 12px);
-  background: var(--primary-50, #f8fafc); border: 1px solid var(--primary-100, rgba(128,128,128,.2)); }
+  background: var(--site-tint, var(--primary-50, #f8fafc)); color: var(--site-ink, inherit);
+  border: 1px solid var(--site-line, var(--primary-100, rgba(128,128,128,.2))); }
 .cms-newsletter h2 { margin: 0; font-size: 1.4rem; }
-.cms-newsletter p { margin: 0; opacity: .85; }
+.cms-newsletter p { margin: 0; color: var(--site-ink-soft, #5b6472); }
 .cms-newsletter-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 6px; }
 .cms-newsletter-form input[type=email] { flex: 1 1 220px; padding: 12px 14px;
   border: 1px solid var(--primary-200, #cbd5e1); border-radius: var(--site-radius, 8px); }
@@ -2136,13 +2158,13 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
 /*  How the sign-up actually works, said before it is used rather than
     after. Quieter than the consent line above it -- it is a note about
     the mechanism, not part of what is being agreed to. */
-.cms-newsletter-howitworks { flex: 1 1 100%; margin: 2px 0 0; font-size: .82rem; opacity: .7; }
+.cms-newsletter-howitworks { flex: 1 1 100%; margin: 2px 0 0; font-size: .82rem; color: var(--site-ink-soft, #5b6472); }
 /*  The answer appears here, inside the form. Hidden until there is one --
     `hidden` alone loses to the display above, so it is spelled out. */
 .cms-newsletter-form .cms-subscribe-note { flex: 1 1 100%; margin: 6px 0 0; }
 .cms-newsletter-form .cms-subscribe-note[hidden] { display: none; }
 .cms-newsletter-consent { flex: 1 1 100%; margin: 4px 0 0;
-  font-size: .85rem; opacity: .85; }
+  font-size: .85rem; color: var(--site-ink-soft, #5b6472); }
 
 @media (max-width: 640px) {
   .cms-price-amount { font-size: 2rem; }
@@ -2176,6 +2198,11 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
 .cms-bg-light::before { background: rgba(255,255,255,.72); }
 .cms-bg-medium::before { background: rgba(12,14,18,.48); }
 .cms-bg-dark::before { background: rgba(9,11,15,.72); }
+/*  A dimmed band redefines the quiet role as well as the ink.
+    Setting only `color: #fff` below leaves every caption inside
+    it reading the LIGHT page's soft ink, which is the one thing
+    guaranteed not to work on a dark band. */
+.cms-bg-medium, .cms-bg-dark, .cms-bg-tint { --site-ink-soft: #dcdcdc; }
 /*  A tint takes the site's own primary rather than grey, so an image band
     still reads as part of the palette instead of a photograph dropped in
     from somewhere else. */
@@ -2353,7 +2380,7 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
   padding: 6px 2px;
 }
 .cms-search-box:focus-within { border-color: var(--primary, #2563eb); }
-.cms-search-count { margin: 8px 2px 0; font-size: .9rem; opacity: .75; }
+.cms-search-count { margin: 8px 2px 0; font-size: .9rem; color: var(--site-ink-soft, #5b6472); }
 
 /*  A contents list — the FAQ Reader's own display option. */
 .cms-faq-contents { margin: 0 0 18px; padding-left: 20px; display: grid; gap: 6px; font-size: .95rem; }

@@ -41,5 +41,6 @@
     "menu",
     "room",
     "contact"
-  ]
+  ],
+  "ground_color": "#1c1917"
 }

@@ -40,5 +40,6 @@
     "services",
     "workshop",
     "contact"
-  ]
+  ],
+  "ground_color": "#f4f5f6"
 }
