@@ -49,7 +49,18 @@
 {% endif %}
 {% if body_sidebar_width_px %}{% set _ = body_style_parts.append('--cms-sidebar-width:' ~ body_sidebar_width_px ~ 'px') %}{% endif %}
 {% if body_sidebar_right_width_px %}{% set _ = body_style_parts.append('--cms-sidebar-right-width:' ~ body_sidebar_right_width_px ~ 'px') %}{% endif %}
-<body class="{{ 'cms-page-bg cms-page-veil-' ~ (page.bg_overlay or 'none') ~ ' cms-page-surface-' ~ (page.bg_surface or 'plain') if page.bg_image }} {{ 'cms-logged-in' if logged_in }} {{ 'cms-editing' if editing }} nav-layout-{{ nav_layout }} {{ 'has-sidebar' if editing or sidebar_sections }} {{ 'has-sidebar-right' if editing or sidebar_right_sections }} {{ 'sidebar-reach-full' if sidebar_sections and sidebar_sections[0].layout_width == 'full' }} {{ 'sidebar-right-reach-full' if sidebar_right_sections and sidebar_right_sections[0].layout_width == 'full' }}" {% if editing %}data-save-template-url="{{ url_for('admin.template_save_current') }}"{% endif %} {{ ('style="' ~ body_style_parts | join('; ') ~ ';"') | safe if body_style_parts }}>
+{#  A template with no stylesheet of its own renders under
+    `cms-plain-theme`, and the composition rules in site-base.css are
+    scoped to it.
+
+    They must be. A shipped template's theme.css IS its design: it
+    decides what colour a hero heading is, what a card looks like, how
+    much air a band gets. Applying the generator's own composition on
+    top of that overrules a design somebody made -- measured on the
+    bakery: its white hero headline turned dark brown on the
+    photograph, unreadable, because a rule meant for templates with no
+    opinion reached one that had one. #}
+<body class="{{ '' if (template and template.css_path) else 'cms-plain-theme' }} {{ 'cms-page-bg cms-page-veil-' ~ (page.bg_overlay or 'none') ~ ' cms-page-surface-' ~ (page.bg_surface or 'plain') if page.bg_image }} {{ 'cms-logged-in' if logged_in }} {{ 'cms-editing' if editing }} nav-layout-{{ nav_layout }} {{ 'has-sidebar' if editing or sidebar_sections }} {{ 'has-sidebar-right' if editing or sidebar_right_sections }} {{ 'sidebar-reach-full' if sidebar_sections and sidebar_sections[0].layout_width == 'full' }} {{ 'sidebar-right-reach-full' if sidebar_right_sections and sidebar_right_sections[0].layout_width == 'full' }}" {% if editing %}data-save-template-url="{{ url_for('admin.template_save_current') }}"{% endif %} {{ ('style="' ~ body_style_parts | join('; ') ~ ';"') | safe if body_style_parts }}>
   {% if logged_in %}
   <div class="cms-admin-bar">
     <span>{{ '✏️ Editing your site' if editing else '👁 Viewing as a visitor' }}</span>

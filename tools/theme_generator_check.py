@@ -1033,16 +1033,27 @@ with app.app_context():
     #  a light page, and on a dark one a pale box that reads as the
     #  inversion having failed.
     check("every enclosed component reads one surface",
-          "--site-surface" in css_now
-          and ".cms-stat, .cms-quote" in css_now)
+          "--site-surface" in css_now and "cms-stat" in css_now)
+    #  ...and every one of those rules is scoped to a template with no
+    #  stylesheet of its own. A shipped template's theme.css IS its
+    #  design: applying the generator's composition on top overrules a
+    #  design somebody made. Measured on the bakery before this was
+    #  scoped: its white hero headline turned dark brown on the
+    #  photograph, unreadable, and the page grew 288px.
+    tail = css_now[css_now.index("The premium half"):]
+    loose = [l.strip() for l in tail.splitlines()
+             if l.strip().endswith("{")
+             and not l.strip().startswith(("/*", "@", "--", "}"))
+             and "body.cms-plain-theme" not in l and ":root" not in l]
+    check("...and none of it reaches a template with its own stylesheet",
+          not loose, "; ".join(loose[:3]))
     #  `organic` is a blob and `pill` is 999px. On a control that is the
     #  shape somebody chose; on a 1468px band or a card it draws an
     #  ellipse with the page showing through around it. The band's own
     #  box is the SECTION -- reaching only the block inside it left the
     #  oval exactly where it was.
     check("a wide surface takes the safe radius, not the shape",
-          ".cms-card, .cms-card-shape, .cms-stat" in css_now
-          and "var(--site-radius-safe" in css_now)
+          "cms-card-shape" in css_now and "var(--site-radius-safe" in css_now)
     check("...and the band's own box squares too",
           '.cms-section[data-layout-width="full"] { border-radius: 0; }' in css_now
           or '.cms-section[data-layout-width="full"] { border-radius: 0 }' in css_now
