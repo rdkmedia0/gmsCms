@@ -34,6 +34,10 @@ SECTION_TYPES = [
 ]
 
 BLOCK_LIBRARY = {
+    #  The site's own name. Filled in below, beside the other starters
+    #  that are built by the same function every later edit goes
+    #  through, so the starter can never drift from an edited one.
+    "wordmark": ("html", ""),
     "table": (
         "html",
         '<table class="cms-table">\n'
@@ -269,6 +273,43 @@ def _breadcrumb_starter_html(size, style):
     size = size if size in BREADCRUMB_SIZES else "medium"
     style = style if style in BREADCRUMB_STYLES else "plain"
     return f'<nav class="cms-breadcrumb cms-breadcrumb-{size} cms-breadcrumb-style-{style}">%%CMS_BREADCRUMB%%</nav>'
+
+
+#  ---------------------------------------------------------------
+#  WORDMARK — the site's own name, as a thing you can put somewhere.
+#
+#  The name lives in settings and everything that needs it reads it
+#  there: the browser tab, the footer, the legal pages, an email's
+#  sender line. The one place it could not go was a PAGE -- so an owner
+#  who wanted their name in the header had to type it into a Text
+#  section, where it becomes dead text that does not follow a rename.
+#
+#  Optional, like every tool: nothing puts one on a page but a person
+#  choosing it, and no template ships one.
+#  Written as constants so no format string can eat them.
+TITLE_PLACEHOLDER = "%" + "%CMS_SITE_TITLE%" + "%"
+TAGLINE_PLACEHOLDER = "%" + "%CMS_SITE_TAGLINE%" + "%"
+WORDMARK_SIZES = ("small", "medium", "large")
+WORDMARK_STYLES = ("plain", "uppercase", "spaced")
+
+
+def _wordmark_starter_html(size="medium", style="plain", with_tagline=False):
+    size = size if size in WORDMARK_SIZES else "medium"
+    style = style if style in WORDMARK_STYLES else "plain"
+    #  Built by concatenation, NOT by %-formatting: the placeholder this
+    #  markup has to carry is literally `%%CMS_SITE_TITLE%%`, and a
+    #  %-format collapses the doubled percent signs to one -- so the tool
+    #  stored `%CMS_SITE_TITLE%`, which matches no placeholder and
+    #  printed itself on the page.
+    tagline = ('<span class="cms-wordmark-tagline">' + TAGLINE_PLACEHOLDER + "</span>"
+               if with_tagline else "")
+    return ('<a class="cms-wordmark cms-wordmark-' + size
+            + " cms-wordmark-style-" + style + '" href="/">'
+            '<span class="cms-wordmark-name">' + TITLE_PLACEHOLDER + "</span>"
+            + tagline + "</a>")
+
+
+BLOCK_LIBRARY["wordmark"] = ("html", _wordmark_starter_html())
 
 
 DIVIDER_STYLES = ("solid", "dashed", "dotted", "double")

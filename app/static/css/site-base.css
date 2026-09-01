@@ -2713,3 +2713,25 @@ body.cms-logged-in .cms-basket-link.cms-basket-align-float-top { top: 60px; }
 }
 
 
+
+
+/*  The Site name tool. Content, not chrome: it wears the site's own
+    heading face and ink, because it IS the site's name on the site's
+    own page -- see the chrome-vs-content rule in CLAUDE.md. */
+.cms-wordmark {
+  display: inline-flex; flex-direction: column; gap: 2px;
+  text-decoration: none; color: inherit;
+  font-family: var(--site-heading-font-family, inherit);
+  font-weight: var(--site-heading-weight, 700);
+  letter-spacing: var(--site-heading-track, 0);
+}
+.cms-wordmark:hover .cms-wordmark-name { text-decoration: underline; }
+.cms-wordmark-small .cms-wordmark-name { font-size: 18px; }
+.cms-wordmark-medium .cms-wordmark-name { font-size: 24px; }
+.cms-wordmark-large .cms-wordmark-name { font-size: 34px; }
+.cms-wordmark-style-uppercase .cms-wordmark-name { text-transform: uppercase; }
+.cms-wordmark-style-spaced .cms-wordmark-name { letter-spacing: .16em; text-transform: uppercase; }
+.cms-wordmark-tagline {
+  font-family: var(--site-font-family, inherit); font-weight: 400;
+  font-size: 13px; opacity: .72; letter-spacing: 0;
+}

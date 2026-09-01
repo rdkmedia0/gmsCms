@@ -1195,10 +1195,39 @@ def _build_breadcrumb_html(page, current_title=None, current_url=None):
     return "".join(parts)
 
 
-def _apply_placeholders(html_text, nav_html, breadcrumb_html=""):
+def _live_site_title():
+    """The site's own name, from settings, for a tool that shows it."""
+    try:
+        return (get_site_settings(get_db()) or {}).get("site_title") or SITE_TITLE
+    except Exception:                                             # noqa: BLE001
+        return SITE_TITLE
+
+
+def _live_site_tagline():
+    """The site's own tagline, for a Wordmark that shows one."""
+    try:
+        return (get_site_settings(get_db()) or {}).get("site_tagline") or ""
+    except Exception:                                             # noqa: BLE001
+        return ""
+
+
+def _apply_placeholders(html_text, nav_html, breadcrumb_html="", site_title=""):
+    """The placeholders a tool's markup can carry, filled in at render.
+
+    `%%CMS_SITE_TITLE%%` used to be filled from a module-level constant
+    reading "My Site" -- so any tool that carried it printed that,
+    forever, on every install. It is the site's OWN name now
+    (settings.site_title), which is the only thing it could ever have
+    usefully meant, and it is what makes a Wordmark follow a rename
+    instead of going stale the day somebody changes their business
+    name.
+    """
     if not html_text:
         return html_text
-    html_text = html_text.replace("%%CMS_SITE_TITLE%%", html_escape(SITE_TITLE))
+    html_text = html_text.replace("%" + "%CMS_SITE_TITLE%" + "%",
+                                  html_escape(site_title or SITE_TITLE))
+    html_text = html_text.replace("%" + "%CMS_SITE_TAGLINE%" + "%",
+                                  html_escape(_live_site_tagline()))
     html_text = html_text.replace("%%CMS_NAV%%", nav_html)
     html_text = html_text.replace("%%CMS_BREADCRUMB%%", breadcrumb_html)
     return html_text
@@ -1435,6 +1464,8 @@ _BLOCK_LABEL_MARKERS = tuple(
 )
 
 HTML_SECTION_LABEL_MARKERS = _BLOCK_LABEL_MARKERS + (
+    #  The site's own name, wherever somebody has put it.
+    ("cms-wordmark", "Site name"),
     #  cms-buy-style-, not cms-buy: the shorter string is a substring of
     #  cms-buy-btn, which other tools' markup carried -- an Email sign-up
     #  rendered one, and pages saved before that was fixed still do. It
@@ -1567,7 +1598,8 @@ def _normalize_column_cell(cell, nav_html="", breadcrumb_html=""):
     if d["type"] == "text":
         d["display_content"] = _text_to_html(d["content"])
     elif d["is_dynamic"]:
-        d["display_content"] = _apply_placeholders(d["content"], nav_html, breadcrumb_html)
+        d["display_content"] = _apply_placeholders(
+            d["content"], nav_html, breadcrumb_html, _live_site_title())
     else:
         d["display_content"] = d["content"]
     d["width_class"] = f'cms-img-{d.get("width") or "normal"}'
@@ -1575,6 +1607,8 @@ def _normalize_column_cell(cell, nav_html="", breadcrumb_html=""):
     d["file_size_display"] = _format_file_size(d.get("file_size"))
     if d["type"] == "media" and d.get("media_type") == "youtube":
         d["youtube_id"] = _youtube_id(d.get("content", ""))
+    if d["type"] == "html" and "cms-wordmark" in d["content"]:
+        d["is_wordmark"] = True
     if d["type"] == "html" and "cms-menu" in d["content"]:
         d["is_menu"] = True
         (d["menu_items"], d["menu_style"], d["menu_size"], d["menu_align"], d["menu_highlight_current"],
@@ -1692,7 +1726,8 @@ def _prepare_sections(sections, section_type_labels=None, nav_html="", breadcrum
         if d["type"] == "text":
             d["display_content"] = _text_to_html(d["content"])
         elif d["is_dynamic"]:
-            d["display_content"] = _apply_placeholders(d["content"], nav_html, breadcrumb_html)
+            d["display_content"] = _apply_placeholders(
+            d["content"], nav_html, breadcrumb_html, _live_site_title())
         else:
             d["display_content"] = d["content"]
         d["width_class"] = f'cms-img-{d["width"] or "normal"}'

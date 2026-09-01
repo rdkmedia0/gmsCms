@@ -87,6 +87,36 @@ FONT_PAIRINGS = {
         "body": "-apple-system, \"Segoe UI\", sans-serif",
         "google_fonts_url": "/static/fonts/playfair-system.css",
     },
+    #  THREE WITH A VOICE.
+    #
+    #  The eight pairings above are all workmanlike -- a serif and a
+    #  sans, chosen to be safe -- so a reference with delicate or
+    #  poster-like typography could only ever be answered with a
+    #  geometric sans at weight 700. Measured against a real reference
+    #  by two reviewers, that was the single largest thing lost.
+    #
+    #  Every family here is already bundled and self-hosted: these are
+    #  faces from GOOGLE_FONT_CHOICES, so they share `choices.css` the
+    #  same way an individually-picked font does. No new download, no
+    #  live Google link -- see the fonts rule in CLAUDE.md.
+    "abril-lato": {
+        "name": "Abril Fatface + Lato",
+        "heading": "\"Abril Fatface\", Georgia, serif",
+        "body": "\"Lato\", -apple-system, \"Segoe UI\", sans-serif",
+        "google_fonts_url": "/static/fonts/choices.css",
+    },
+    "josefin-karla": {
+        "name": "Josefin Sans + Karla",
+        "heading": "\"Josefin Sans\", -apple-system, \"Segoe UI\", sans-serif",
+        "body": "\"Karla\", -apple-system, \"Segoe UI\", sans-serif",
+        "google_fonts_url": "/static/fonts/choices.css",
+    },
+    "oswald-cabin": {
+        "name": "Oswald + Cabin",
+        "heading": "\"Oswald\", Impact, sans-serif",
+        "body": "\"Cabin\", -apple-system, \"Segoe UI\", sans-serif",
+        "google_fonts_url": "/static/fonts/choices.css",
+    },
     "system-only": {
         "name": "System Sans (no webfont)", "heading": "-apple-system, \"Segoe UI\", sans-serif",
         "body": "-apple-system, \"Segoe UI\", sans-serif", "google_fonts_url": "",

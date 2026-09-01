@@ -123,6 +123,7 @@ TOOL_CATEGORY_BY_NAME = {
     "Divider": "layout", "Card": "layout", "Banner": "layout",
     "Table (Data)": "layout", "Embed": "layout",
     "Menu": "navigation", "Breadcrumb": "navigation", "Search": "navigation",
+    "Site name": "navigation",
     "Pricing": "sections", "Testimonial": "sections", "Numbers": "sections",
     "Logo row": "sections", "The team": "sections", "Timeline": "sections",
     "Call to action": "sections", "Blog": "sections",
@@ -149,6 +150,9 @@ DEFAULT_TOOLS = [
     ("Embed", "</>", "html", None),
     ("Menu", "📋", "html", None),
     ("Breadcrumb", "🧭", "html", None),
+    #  The site's own name, wherever somebody wants it -- usually the
+    #  header, which is the one zone that could not show it.
+    ("Site name", "🔤", "html", "wordmark"),
     ("Banner", "🏞️", "banner", None),
     ("Card", "🃏", "card", None),
     #  Writing questions and showing them are different jobs with
