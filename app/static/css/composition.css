@@ -398,9 +398,23 @@
     This is the same fault, in the same shape, as the one that turned
     the bakery's white headline brown: a colour rule written for the
     page reaching content that had already answered the question. */
-.cms-wysiwyg-body h1:not(.cms-banner-overlay h1),
-.cms-wysiwyg-body h2:not(.cms-banner-overlay h2),
-.cms-wysiwyg-body h3:not(.cms-banner-overlay h3),
+/*  A DIMMED BAND IS EXCLUDED TOO, for the same reason the overlay is:
+    it has already said what colour its words are.
+
+    `:not()` carries the specificity of its argument, so
+    `:not(.cms-banner-overlay h2)` lifted this selector to (0,2,2) --
+    above `.cms-bg-dark h2 { color: #fff }` at (0,1,1), which is the
+    rule that makes text readable on a section with a photograph behind
+    it. So the page's ink reached a heading standing on a dark
+    photograph: measured at brown-on-black on a generated page whose
+    picture band is the whole point of the arrangement.
+
+    Excluding rather than out-specifying, because the question is not
+    which rule is stronger -- it is that this one has no business
+    speaking about a surface that painted itself. */
+.cms-wysiwyg-body h1:not(.cms-banner-overlay h1):not(.cms-section-bg h1),
+.cms-wysiwyg-body h2:not(.cms-banner-overlay h2):not(.cms-section-bg h2),
+.cms-wysiwyg-body h3:not(.cms-banner-overlay h3):not(.cms-section-bg h3),
 .cms-block h2, .cms-block h3, .cms-card h3 { color: var(--site-ink, inherit); }
 
 /*  ...except inside a block that paints its OWN background, which
