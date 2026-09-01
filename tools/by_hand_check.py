@@ -51,7 +51,7 @@ from app.routes.public import _section_display_label               # noqa: E402
 
 #  ...and an Embed is legitimate for exactly one thing: real
 #  third-party code that needs a script or an iframe to work.
-EMBED_IS_FINE = re.compile(r"<(script|iframe)", re.I)
+EMBED_IS_FINE = re.compile(r"<(script|iframe)[ >/]", re.I)
 
 
 def sections_of(pkg_dir):
