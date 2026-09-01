@@ -446,7 +446,10 @@ with app.app_context():
     check("...and shows what it made, rather than announcing it",
           "cms-made-frame" in screen_says
           and "admin.template_preview" in screen_says)
-    check("...and says how many sections", shown["sections"] == 4, str(shown))
+    #  A front page is six things now, not four: the numbers, the quote
+    #  and the closing call joined it when a page stopped being a banner,
+    #  a paragraph and three cards.
+    check("...and says how many sections", shown["sections"] == 6, str(shown))
     check("...how many pictures", shown["pictures"] >= 1, str(shown))
     check("...and what it will cost", shown["calls"] >= 1, str(shown))
     check("...in the language it will write",
@@ -477,7 +480,7 @@ with app.app_context():
     #  Guessed from the name, and SHOWN in the plan before it runs -- a
     #  guess somebody can see and change is worth ten they cannot.
     check("the first page is the front page", tg.layout_for("Anything", 0) == "landing")
-    check("an About page gets the story layout", tg.layout_for("About us", 1) == "about")
+    check("an About page gets the story layout", tg.layout_for("About us", 1) == "story")
     check("...and anything else the small one", tg.layout_for("Contact", 2) == "simple")
 
     REPLIES["content"] = json.dumps(ANSWER)
@@ -723,8 +726,11 @@ with app.app_context():
     #  feature" costs the same wait as a good one and has to be found
     #  and thrown away by hand -- which is worse than being told.
     src = io.open("/app/app/services/theme_generator.py", encoding="utf-8").read()
+    #  Any shape that can BE a front page counts, not just "landing" --
+    #  a poster or a showcase is somebody's home page too.
     check("a mute front page refuses the run",
-          'u.get("layout") == "landing"' in src and "front_unwritten" in src)
+          'u.get("layout") in ("landing", "poster", "showcase")' in src
+          and "front_unwritten" in src)
     #  A model that returns nothing once very often answers properly a
     #  second later, and a six-request run should not be lost to that.
     #  Once, though: a model with nothing to say twice is telling you
@@ -1171,7 +1177,7 @@ with app.app_context():
         "primary": "#1d6b58", "secondary": "#16403a", "accent": "#d94f2b",
         "fonts": "cormorant-jost", "shape": "soft", "shadow": "subtle",
         "pages": [{"title": "Home", "shape": "landing"},
-                  {"title": "Our story", "shape": "about"},
+                  {"title": "Our story", "shape": "story"},
                   {"title": "Contact", "shape": "simple"}],
         "why": "Warm and unfussy, like a corner bakery.",
     })
@@ -1185,7 +1191,7 @@ with app.app_context():
           look["shape"] in SHAPE_PRESETS and look["shadow"] in SHADOW_PRESETS,
           "%s / %s" % (look["shape"], look["shadow"]))
     check("...a shape for every page",
-          look["pages"] == ["landing", "about", "simple"], str(look["pages"]))
+          look["pages"] == ["landing", "story", "simple"], str(look["pages"]))
     check("...and says why, for the owner to read", bool(look["why"]), look["why"])
 
     #  The important half: a model naming something this app does not
@@ -1219,6 +1225,21 @@ with app.app_context():
     check("...and the rest is filled in", mine["shape"] == "pill"
           and bool(mine["palette"]), str(mine["shape"]))
 
+    #  Every shape the generator can pick must be describable in the
+    #  plan and buildable by hand. A private list beside a shared one
+    #  drifts the first time the shared one grows -- it did, and a plan
+    #  for a "story" page raised a KeyError instead of describing it.
+    from app.services.sections import PAGE_LAYOUTS, starter_page_sections
+    pickable = {k for k, _l, _b in PAGE_LAYOUTS}
+    for shape in tg.LAYOUTS:
+        check("the plan can describe a %s page" % shape,
+              shape in tg.SECTION_NAMES, shape)
+        if shape != "simple":
+            check("...and an owner can pick it by hand", shape in pickable, shape)
+            with app.app_context():
+                built = starter_page_sections(db, shape, "Test")
+            check("...and gets the same shape", bool(built), shape)
+
     print()
     print("Every page asked for is a page made")
     print("-" * 70)
@@ -1228,7 +1249,7 @@ with app.app_context():
                        fill_scope="all", use_ai_images=False,
                        pages_wanted=["Home", "Our story", "What we bake",
                                      "Find us", "Contact"],
-                       looked={"pages": ["landing", "about", "simple",
+                       looked={"pages": ["landing", "story", "simple",
                                          "simple", "simple"], "asked": True})
     db.commit()
     made = sorted(os.listdir(os.path.join(static_folder, "themes", five, "pages")))
@@ -1248,11 +1269,11 @@ with app.app_context():
     print("-" * 70)
     per_page = tg.plan(db, tg.brand_kit(brief="a bakery", banner_per_page=True),
                        "Banners", pages_wanted=["Home", "About", "Contact"],
-                       looked={"pages": ["landing", "about", "simple"], "asked": True})
+                       looked={"pages": ["landing", "story", "simple"], "asked": True})
     check("three pages, three pictures", per_page["pictures"] == 3, str(per_page))
     one = tg.plan(db, tg.brand_kit(brief="a bakery"), "One",
                   pages_wanted=["Home", "About", "Contact"],
-                  looked={"pages": ["landing", "about", "simple"], "asked": True})
+                  looked={"pages": ["landing", "story", "simple"], "asked": True})
     check("...and one otherwise, at the top of the front page",
           one["pictures"] == 1, str(one["pictures"]))
     check("...which is said in what it costs",

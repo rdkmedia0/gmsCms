@@ -2848,14 +2848,46 @@ PAGE_TYPES = (
 #  kind of page usually starts. The choice is a starting layout, not a
 #  behaviour — so the page can be changed into anything afterwards, and
 #  nothing later has to ask what it was created as.
+#  THE SAME LIST THE GENERATOR PICKS FROM.
+#
+#  The AI Theme Generator had its own private set of page arrangements
+#  -- landing, about, simple -- which meant it could make a shape by
+#  hand that an owner could not choose when creating a page. That is the
+#  rule this app has about tools, applied to arrangements: if the
+#  machine can make it, a person can pick it.
+#
+#  So the arrangements live here, with the ones that were already here,
+#  and `theme_generator.LAYOUTS` reads this list rather than keeping a
+#  second copy that can disagree.
 PAGE_LAYOUTS = (
     ("standard", "Standard page", "An empty page to build up yourself."),
+    ("landing", "Front page",
+     "A banner, a short introduction, some numbers, three cards, a quote and "
+     "a closing call to action."),
+    ("story", "Story",
+     "A banner, a longer piece of writing, and a closing call to action."),
+    ("poster", "Poster",
+     "A tall picture with a few words on it, one block of writing, and nothing "
+     "else. For a place with one thing to say."),
+    ("showcase", "Showcase",
+     "A banner, a short introduction, and a row of pictures to look through."),
     ("newsletter", "Newsletter",
      "A page to write an issue on, then send to your email list."),
     ("blog", "Blog", "A page showing your posts. Starts a blog if you have none."),
     ("faq", "FAQ", "Questions and answers, plus a search box to find one."),
     ("contact", "Contact", "A form people can write to you with."),
 )
+
+
+def build_block(key):
+    """One declared block's markup, from its own defaults.
+
+    The generator and the new-page screen both need this, and building
+    it twice is how the two come to disagree about what a Numbers block
+    starts as.
+    """
+    from . import blocks
+    return blocks.build(key, dict(blocks.BLOCKS[key].get("defaults") or {}))
 
 
 def starter_page_sections(db, layout, page_title="Page"):
@@ -2902,6 +2934,30 @@ def starter_page_sections(db, layout, page_title="Page"):
                          "version of it, because email cannot do everything a browser "
                          "can &mdash; the Preview shows exactly what lands.</p>"),
         ]
+
+    #  The arrangements the generator also uses. A page created by hand
+    #  gets the same shape, with the words left to be written -- which is
+    #  what a starting arrangement is.
+    if layout in ("landing", "story", "poster", "showcase"):
+        #  The same starter the Banner tool itself uses, so a shape
+        #  picked by hand opens with the same banner a generated one
+        #  does -- one definition, in db.py, read by both.
+        from ..db import BANNER_TOOL_STARTER
+        out = [("banner", "", BANNER_TOOL_STARTER)]
+        out.append(("text", "", "<h2>A heading</h2><p>Write your introduction here.</p>"))
+        if layout == "landing":
+            out += [
+                ("html", "", build_block("stats")),
+                ("columns", "", json.dumps({"columns": ["", "", ""]})),
+                ("html", "", build_block("testimonial")),
+                ("html", "", build_block("cta")),
+            ]
+        elif layout == "story":
+            out.append(("html", "", build_block("cta")))
+        elif layout == "showcase":
+            out.append((BLOCK_LIBRARY["image-accordion"][0], "",
+                        BLOCK_LIBRARY["image-accordion"][1]))
+        return out
 
     if layout == "contact":
         return [

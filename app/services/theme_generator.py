@@ -50,22 +50,30 @@ class ThemeGenError(Exception):
 
 # ------------------------------------------------------- the layouts
 
+#  READ from PAGE_LAYOUTS, not kept here.
+#
+#  These were three private arrangements with their own names, so the
+#  generator could build a page shape an owner had no way to choose.
+#  That is this app's rule about tools, applied to arrangements: if the
+#  machine can make it, a person can pick it. The words the plan shows
+#  are the words the "new page" screen shows, because they are the same
+#  words.
+#
+#  A plain import, at import time: `services.sections` imports nothing
+#  from here, and it has to stay that way round.
+from .sections import PAGE_LAYOUTS as _PAGE_LAYOUTS
+
 LAYOUTS = {
-    "landing": {
-        "label": "Landing",
-        "description": "Hero banner, short intro, three feature highlights, "
-                       "and a closing call-to-action.",
-    },
-    "about": {
-        "label": "About / Story",
-        "description": "Hero banner, a longer story section, and a closing "
-                       "call-to-action.",
-    },
-    "simple": {
-        "label": "Simple",
-        "description": "Just a hero banner and one text section — the "
-                       "smallest useful starting point.",
-    },
+    key: {"label": label, "description": blurb}
+    for key, label, blurb in _PAGE_LAYOUTS
+    if key in ("landing", "story", "poster", "showcase")
+}
+#  The smallest shape a page can be. It predates the shared list and is
+#  what every fallback lands on, so it is named here rather than offered
+#  on the "new page" screen, where "Standard page" already means it.
+LAYOUTS["simple"] = {
+    "label": "Simple",
+    "description": "A banner across the top and one block of writing.",
 }
 
 _SCHEMAS = {
@@ -84,10 +92,15 @@ _SCHEMAS = {
         '{"value": "...", "label": "..."}, {"value": "...", "label": "..."}], '
         '"cta_headline": "...", "cta_subtext": "...", "cta_button": "two or three words"}'
     ),
-    "about": (
+    "story": (
         '{"hero_headline": "...", "hero_subtext": "...", "story_heading": "...", '
         '"story_body": "...", "cta_headline": "...", "cta_subtext": "..."}'
     ),
+    "poster": ('{"hero_headline": "...", "hero_subtext": "...", "eyebrow": "...", '
+               '"cta_button": "two or three words", '
+               '"intro_heading": "...", "intro_body": "..."}'),
+    "showcase": ('{"hero_headline": "...", "hero_subtext": "...", "eyebrow": "...", '
+                 '"intro_heading": "...", "intro_body": "..."}'),
     "simple": ('{"hero_headline": "...", "hero_subtext": "...", '
                '"body_heading": "...", "body_text": "..."}'),
 }
@@ -426,7 +439,7 @@ DESIGN_SCHEMA = (
     #  This was the other way round, and a truncated answer cost the
     #  typeface and the composition while carefully preserving a list of
     #  page shapes the code can work out for itself.
-    '"pages": [{"title": "...", "shape": "landing|about|simple"}]}'
+    '"pages": [{"title": "...", "shape": "landing|story|poster|showcase|simple"}]}'
 )
 
 _HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
@@ -545,11 +558,20 @@ def with_design(kit, look):
 #  says so afterwards, gets used once.
 
 
+#  What the plan SAYS each shape will make, in the owner's words. It has
+#  to name every shape the generator can pick, or a plan for one of them
+#  raises rather than describing itself -- which is what a private list
+#  beside a shared one does the first time the shared one grows.
 SECTION_NAMES = {
     "landing": ["a banner across the top", "a short introduction",
-                "three cards side by side", "a closing banner"],
-    "about": ["a banner across the top", "the story, as running text",
-              "a closing banner"],
+                "some numbers", "three cards side by side",
+                "a quote", "a closing call to action"],
+    "story": ["a banner across the top", "the story, as running text",
+              "a closing call to action"],
+    "poster": ["a tall picture with a few words on it",
+               "one block of writing"],
+    "showcase": ["a banner across the top", "a short introduction",
+                 "a row of pictures to look through"],
     "simple": ["a banner across the top", "one block of writing"],
 }
 
@@ -1030,9 +1052,15 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
             val("hero_headline", "Your headline"),
             val("hero_subtext", "A short supporting line."), hero,
             eyebrow=val("eyebrow", ""),
+            #  The second button says what it DOES, and it is not the
+            #  same words as the link at the bottom of a card. "Read
+            #  more" appearing on a hero button and three cards is one
+            #  label meaning two things, which is the fault
+            #  design_conventions_check.py exists for.
             buttons=((val("cta_button", "Get in touch"), "/contact"),
-                     ("Read more", "#more")), ground=_ink_of(kit)),
-            {"layout_width": "full", "corner_style": "sharp"}))
+                     ("See the work", "#more")), ground=_ink_of(kit)),
+            {"layout_width": "full", "corner_style": "sharp",
+             "bg_position": "top"}))
         #  Full page width, with the WORDS stopping at the reading
         #  measure. A section set to 62% of the window is centred, which
         #  put its left edge 272px in -- a fourth axis on a page that
@@ -1106,7 +1134,7 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
             "quote": "Add something a customer said about you.",
             "name": "", "role": "", "photo": "",
             "style": "large",
-        }, {"layout_width": "full", "bg_color": tint}))
+        }, {"layout_width": "full"}))
         #  And it closes on the brand colour, not on a second photograph.
         #
         #  The CTA tool's "solid" tone paints the band in the site's own
@@ -1135,11 +1163,12 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
         #  here." -- rendered as live copy to visitors. Placeholder text
         #  that reads as an instruction is not thin content; it is a
         #  page telling the public what its owner has not done yet.
-    elif layout_key == "about":
+    elif layout_key in ("story", "about"):
         chunks.append(_piece(_hero_chunk(val("hero_headline", "Our story"),
                                          val("hero_subtext", "A short supporting line."),
                                          hero, ground=_ink_of(kit)),
-                             {"layout_width": "full", "corner_style": "sharp"}))
+                             {"layout_width": "full", "corner_style": "sharp",
+             "bg_position": "top"}))
         chunks.append(_piece(_text_chunk(val("story_heading", "About us"),
                                          val("story_body", "Tell your story here.")),
                              {"layout_width": "auto"}))
@@ -1150,11 +1179,52 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
             "link": "/contact",
             "tone": "solid",
         }, {"layout_width": "full"}))
+    elif layout_key == "poster":
+        #  A tall picture with a few words on it, and one block of
+        #  writing. Nothing else -- that is the whole point of the
+        #  shape, and it is what an image-led reference asks for: a
+        #  page whose subject is the photograph.
+        chunks.append(_piece(_hero_chunk(
+            val("hero_headline", "Your headline"),
+            val("hero_subtext", "A short supporting line."), hero,
+            eyebrow=val("eyebrow", ""),
+            buttons=((val("cta_button", "Get in touch"), "/contact"),),
+            ground=_ink_of(kit)),
+            {"layout_width": "full", "corner_style": "sharp",
+             #  Which part of the picture to keep when the band crops it.
+             #  A hero's words sit at the bottom left, so the TOP of the
+             #  photograph is the half worth keeping -- measured on a
+             #  real render, a centred crop put the headline across the
+             #  player's face and the standfirst over the brightest
+             #  shelf. `bg_position` is the section control that already
+             #  says this; the generator simply never set it.
+             "bg_position": "top"}))
+        chunks.append(_piece(_text_chunk(val("intro_heading", "Welcome"),
+                                         val("intro_body", "Write an introduction here.")),
+                             {"layout_width": "auto"}))
+    elif layout_key == "showcase":
+        #  A banner, a line of introduction, and a row of pictures to
+        #  look through -- the Accordion tool, which is what this app
+        #  already has for "a set of pictures somebody browses".
+        chunks.append(_piece(_hero_chunk(
+            val("hero_headline", "Your headline"),
+            val("hero_subtext", "A short supporting line."), hero,
+            eyebrow=val("eyebrow", ""), ground=_ink_of(kit)),
+            {"layout_width": "full", "corner_style": "sharp",
+             "bg_position": "top"}))
+        chunks.append(_piece(_text_chunk(val("intro_heading", "Welcome"),
+                                         val("intro_body", "Write an introduction here.")),
+                             {"layout_width": "auto"}))
+        from .sections import BLOCK_LIBRARY
+        chunks.append({"type": BLOCK_LIBRARY["image-accordion"][0],
+                       "content": BLOCK_LIBRARY["image-accordion"][1],
+                       "style": {"layout_width": "auto"}})
     else:
         chunks.append(_piece(_hero_chunk(val("hero_headline", "Your headline"),
                                          val("hero_subtext", "A short supporting line."),
                                          hero, ground=_ink_of(kit)),
-                             {"layout_width": "full", "corner_style": "sharp"}))
+                             {"layout_width": "full", "corner_style": "sharp",
+             "bg_position": "top"}))
         chunks.append(_piece(_text_chunk(val("body_heading", "Welcome"),
                                          val("body_text", "Write something here.")),
                              {"layout_width": "auto"}))
@@ -1468,7 +1538,12 @@ def layout_for(title, index):
     if index == 0:
         return "landing"
     if any(w in words for w in ("about", "story", "who we are", "team", "us")):
-        return "about"
+        return "story"
+    #  A page whose name is about LOOKING at things gets the shape for
+    #  that -- a gallery, a portfolio, a menu of work.
+    if any(w in words for w in ("gallery", "portfolio", "work", "photos",
+                                "pictures", "space", "rooms", "library")):
+        return "showcase"
     return "simple"
 
 
@@ -1557,7 +1632,7 @@ def generate(db, static_folder, name, kit, fill_scope, use_ai_images,
     #
     #  A front page of placeholders is worse than no template: it costs
     #  the same wait, and it has to be found and thrown away by hand.
-    front_unwritten = any(u.get("layout") == "landing"
+    front_unwritten = any(u.get("layout") in ("landing", "poster", "showcase")
                           for u in (kit.get("unwritten") or []))
     if fill_scope != "none" and pages and (
             front_unwritten
