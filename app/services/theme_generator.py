@@ -203,38 +203,28 @@ def brand_kit(brief="", tone="warm", voice="we", reading="normal",
 
 
 def _ground_from(colours):
-    """The FOURTH colour a picture gives: the ground it all sits on.
+    """The ground the picture sat on. Whatever it is.
 
-    The sampler returns three decided colours and one ground -- the
-    quiet, unsaturated colour most of the picture is made of. The
-    palette has three roles, so the fourth was collected, shown to the
-    owner as a swatch, and then dropped.
+    The sampler writes three decided colours and THEN the ground, so
+    the ground is the last entry and nothing else -- reading any of the
+    first three inverts a site on the strength of its brand colour,
+    which is how a workshop photograph with a grey-blue ground came to
+    produce a navy page.
 
-    It is the most useful one for a band. Hacker News's cream and a dark
-    site's near-black are the whole first impression of those pages, and
-    neither can be derived from the primary: `tint_shade_ramp` only ever
-    returns tints OF the brand colour, so a warm brand always gets a
-    warm-pink band whatever the site it was read from actually looked
-    like.
+    And it is taken as it comes. This used to accept a ground only if it
+    was pale enough to carry dark text or dark enough to carry light
+    text, and derive one otherwise -- so a picture with a MID ground got
+    a default light page, which is the one thing the owner did not ask
+    for. They uploaded that picture. If they had wanted a white site
+    they would have uploaded a white one.
 
-    Taken only when it is pale enough to carry ordinary dark text.
-    Nothing here knows what colour the words on that band will be, so a
-    dark ground would be a band of black with black text on it -- and
-    the honest answer to "can I use this" is no rather than a guess at
-    the text colour.
+    Making text readable on it is this app's job, not the owner's, and
+    it is arithmetic: see palette.page_colours, which picks the ink by
+    measuring against the ground rather than assuming which way round
+    the page is.
     """
-    for colour in reversed(list(colours or [])):
-        if not (isinstance(colour, str) and re.match(r"^#[0-9a-fA-F]{6}$", colour)):
-            continue
-        r, g, b = (int(colour[i:i + 2], 16) for i in (1, 3, 5))
-        #  Rec. 709 luma, the same weighting `readable_on` uses.
-        luma = 0.2126 * r + 0.7152 * g + 0.0722 * b
-        #  PALE enough to carry dark text, or DARK enough to carry light
-        #  text. It was only the first, so a black site sampled its
-        #  three brand colours, threw away the black, and came back
-        #  white -- which is not what anybody pointing at a dark site
-        #  is asking for.
-        if luma >= 232 or luma <= 46:
+    for colour in list(colours or [])[-1:]:
+        if isinstance(colour, str) and re.match(r"^#[0-9a-fA-F]{6}$", colour):
             return colour
     return ""
 

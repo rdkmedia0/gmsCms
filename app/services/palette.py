@@ -431,54 +431,99 @@ def _mix(one, two, amount):
 
 
 def page_colours(palette, ground=""):
-    """Ground, ink, tint, hairline and the two safe accent variants.
+    """Ground, ink, tint, hairline, card and the two accent variants.
 
-    `ground` is the colour read off a picture the owner showed us, when
-    they showed us one. It may be DARK -- and that is the whole point of
-    reading it: simbasax.com is a black site, and a generator that
-    samples it, keeps the three brand colours and then builds a white
-    page has read half the picture. A dark ground inverts the ink, the
-    tint, the hairline and the card, all of which are tokens the
-    stylesheet already reads, so nothing needs a new rule.
+    ONE path, whatever colour the ground is -- pale, dark, or the mid
+    grey-blue a photograph of a workshop actually has. There were two
+    branches, one for light pages and one for dark, and a mid ground fit
+    neither, so it was thrown away and a light page derived instead.
+    That is the tool overruling the example somebody uploaded: they
+    chose that picture, and if they had wanted a white site they would
+    have chosen a white one.
+
+    So the direction is MEASURED rather than assumed. Ink is whichever
+    of near-black or near-white actually reads on this ground; a band is
+    a step away from the ground in whichever direction has room; and the
+    accent is walked until it passes 4.5:1 against it. Every one of
+    those is arithmetic, which is why the tool can be trusted with a
+    colour nobody planned for.
     """
-    if ground and _rgb(ground) and _relative_luminance(_rgb(ground)) < 0.18:
-        return _dark_page(palette, ground)
-    return _light_page(palette, ground)
-
-
-def _dark_page(palette, ground):
-    """The same six colours, for a site whose ground is dark."""
     roles = {r.get("slug"): r.get("color") for r in (palette or [])
              if isinstance(r, dict) and r.get("color")}
-    primary = roles.get("primary") or "#888888"
+    primary = roles.get("primary") or "#333333"
     accent = roles.get("accent") or roles.get("secondary") or primary
-    #  Not pure white: an off-white lifted towards the brand reads as
-    #  chosen, and full white on near-black vibrates.
-    ink = _mix("#f4f4f4", primary, 0.06)
-    #  A band on a dark page is LIGHTER than the ground, not darker --
-    #  the direction of the step is what makes it read as a band at all.
-    #  Far enough from the ground to READ as a band. At 7% a band on
-    #  black measured 1.09:1 against the page -- a smudge rather than a
-    #  change of surface, and three of them alternating meant nothing.
-    tint = _mix(ground, "#ffffff", 0.13)
-    line = _mix(ground, "#ffffff", 0.22)
-    card = _mix(ground, "#ffffff", 0.05)
-    accent_ink = ink if contrast(ink, accent) >= contrast("#111111", accent) else "#111111"
-    #  The accent has to carry as TEXT on a dark ground, which usually
-    #  means lightening it rather than darkening it.
+    if not _rgb(primary):
+        return {}
+
+    #  The picture's own ground, or one mixed from the brand when there
+    #  is no picture at all.
+    if not (ground and _rgb(ground)):
+        ground = _mix("#ffffff", primary, 0.03)
+    #  Is this a dark page? MEASURED, not thresholded.
+    #
+    #  A luminance cut-off gets mid grounds wrong in both directions: a
+    #  sage #989880 sits at 0.30 and so counted as "dark", which sent the
+    #  ink light and the accent walking towards white -- on a ground
+    #  where dark text actually reads better by two and a half times.
+    #  The question is not how bright the ground is, it is which ink
+    #  wins on it, and that is one comparison.
+    dark_page = contrast("#ffffff", ground) > contrast("#111111", ground)
+
+    #  Ink: the direction that reads, tinted towards the brand so it is
+    #  a chosen colour rather than plain black or plain white.
+    ink = _mix("#f4f4f4", primary, 0.06) if dark_page else _mix(primary, "#000000", 0.55)
+    if contrast(ink, ground) < 7.0:
+        ink = "#f2f2f2" if dark_page else "#241f1f"
+    #  ...and if the ground is mid enough that neither passes, take
+    #  whichever passes better and say so by measuring, not by hoping.
+    if contrast(ink, ground) < 4.5:
+        ink = max(("#ffffff", "#111111"), key=lambda c: contrast(c, ground))
+
+    #  A band steps AWAY from the ground -- lighter on a dark page,
+    #  darker on a light one -- because the direction is what makes it
+    #  read as a band at all.
+    towards = "#ffffff" if dark_page else "#000000"
+    tint = _mix(ground, towards, 0.13 if dark_page else 0.05)
+    line = _mix(ground, towards, 0.22 if dark_page else 0.12)
+    card = _mix(ground, "#ffffff" if dark_page else "#ffffff",
+                0.05 if dark_page else 1.0)
+
+    accent_ink = max((ink, "#ffffff", "#111111"), key=lambda c: contrast(c, accent))
+    #  The accent as TEXT, walked towards white or black until it passes
+    #  on THIS ground.
     accent_text = accent
-    for step in range(1, 13):
+    for step in range(1, 15):
         if contrast(accent_text, ground) >= 4.5:
             break
-        accent_text = _mix(accent, "#ffffff", step * 0.07)
+        accent_text = _mix(accent, towards_text(ground), step * 0.06)
     return {
-        "--site-ground": ground, "--site-ink": ink, "--site-tint": tint,
-        "--site-line": line, "--site-card-bg": card,
-        "--site-accent-ink": accent_ink, "--site-accent-text": accent_text,
+        "--site-ground": ground,
+        "--site-ink": ink,
+        "--site-tint": tint,
+        "--site-line": line,
+        "--site-card-bg": card,
+        "--site-accent-ink": accent_ink,
+        "--site-accent-text": accent_text,
     }
 
 
-def _light_page(palette, ground=""):
+def towards_text(ground):
+    """Which way an accent has to move to read on this ground.
+
+    The same measurement the page itself uses: towards whichever of
+    white or black carries better here.
+    """
+    return ("#ffffff" if contrast("#ffffff", ground) > contrast("#111111", ground)
+            else "#000000")
+
+
+def _unused_light_page(palette, ground=""):
+    """The old light-only path, kept for one release as a reference.
+
+    It is not called: `page_colours` has one path now, which measures
+    the ground rather than assuming which way round the page is. Two
+    branches is exactly what made a mid-tone ground fit neither.
+    """
     """Ground, ink, tint, hairline and the two safe accent variants.
 
     Returned as a plain dict of CSS custom properties, so the caller

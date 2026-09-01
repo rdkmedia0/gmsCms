@@ -1024,6 +1024,38 @@ with app.app_context():
           contrast(dark["--site-tint"], "#000000") > 1.0
           and dark["--site-tint"] != "#000000", dark["--site-tint"])
     light = page_colours(pal, "#f8f8f0")
+    #  The sampler writes three decided colours and THEN the ground.
+    #  Reading any of the first three as a ground inverts a site on the
+    #  strength of its brand colour: measured on a workshop photograph,
+    #  a mid-tone ground was rightly rejected and the primary #082038
+    #  taken in its place, so the page went navy for no reason anybody
+    #  chose.
+    #  The sampler writes three decided colours and THEN the ground, so
+    #  the ground is the last entry and nothing else -- reading any of
+    #  the first three inverts a site on the strength of its brand
+    #  colour, which is how a workshop photograph with a grey-blue
+    #  ground came to produce a navy page.
+    check("only the sampler's ground can be the ground",
+          tg._ground_from(["#082038", "#883028", "#003878", "#a8b8b8"]) == "#a8b8b8")
+    check("...and it is taken as it comes, mid tones included",
+          tg._ground_from(["#a", "#b", "#c", "#989880"]) == "#989880")
+    #  THE EXAMPLE IS THE INSTRUCTION. A picture with a mid ground used
+    #  to be refused and a default light page derived instead -- the one
+    #  thing the owner did not ask for, since they uploaded that
+    #  picture. Following it is the tool's job; making the words legible
+    #  on it is arithmetic.
+    for label, ground, accent in (("near-black", "#000000", "#ff4000"),
+                                  ("cream", "#f8f8f0", "#ff6800"),
+                                  ("mid sage", "#989880", "#503828"),
+                                  ("mid grey-blue", "#a8b8b8", "#003878")):
+        made = page_colours([{"slug": "primary", "color": "#382828"},
+                             {"slug": "accent", "color": accent}], ground)
+        check("a %s ground is followed" % label, made["--site-ground"] == ground)
+        check("...and its words read on it",
+              contrast(made["--site-ink"], ground) >= 4.5
+              and contrast(made["--site-accent-text"], ground) >= 4.5,
+              "ink %.1f, accent %.1f" % (contrast(made["--site-ink"], ground),
+                                         contrast(made["--site-accent-text"], ground)))
     check("...and a pale picture keeps its own pale ground",
           light["--site-ground"] == "#f8f8f0", light["--site-ground"])
     #  A band cannot wear a lens: --site-radius may be 50%/30%, which on
