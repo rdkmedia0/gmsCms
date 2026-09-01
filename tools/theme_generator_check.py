@@ -1069,6 +1069,16 @@ with app.app_context():
     page_src = io.open("/app/app/templates/public/page.html", encoding="utf-8").read()
     check("...loaded only when a template has chosen one",
           "{% if composition %}" in page_src and "css/composition.css" in page_src)
+    #  A hero's words sit on a photograph and the overlay says what
+    #  colour they are. The page's ink is chosen to read on the PAGE,
+    #  and on a light site that is dark -- so a colour rule reaching one
+    #  level too far put a dark orange headline on a dark photograph and
+    #  made the most important sentence on the site the least legible.
+    #  Same fault, same shape, as the one that turned the bakery's white
+    #  headline brown.
+    check("the page's ink never reaches a hero's words",
+          ":not(.cms-banner-overlay h2)" in comp
+          and ".cms-banner-overlay h1, .cms-banner-overlay h2" in comp)
     check("...and it carries no scoping selector of its own",
           "cms-plain-theme" not in comp and "[data-composition]" not in comp)
     #  The shape of the corruption, asserted directly: a stray comma

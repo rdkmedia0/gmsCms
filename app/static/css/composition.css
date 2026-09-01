@@ -382,8 +382,24 @@
 /*  A heading is the page's ink. It was picking up the theme's own link
     colour on a dark ground and rendering pale blue -- the coldest thing
     on a page sampled from a warm photograph, on its largest type. */
-.cms-wysiwyg-body h1, .cms-wysiwyg-body h2, .cms-wysiwyg-body h3,
+/*  ...but NEVER inside a banner's overlay.
+    A hero's words sit on a photograph, and the overlay already says
+    what colour they are: light, over a scrim built to carry them. The
+    page's ink is chosen to read on the PAGE, and on a light site that
+    is a dark colour -- so this rule, reaching one level too far, put a
+    dark orange headline on a dark photograph and made the most
+    important sentence on the site the least legible.
+
+    This is the same fault, in the same shape, as the one that turned
+    the bakery's white headline brown: a colour rule written for the
+    page reaching content that had already answered the question. */
+.cms-wysiwyg-body h1:not(.cms-banner-overlay h1),
+.cms-wysiwyg-body h2:not(.cms-banner-overlay h2),
+.cms-wysiwyg-body h3:not(.cms-banner-overlay h3),
 .cms-block h2, .cms-block h3, .cms-card h3 { color: var(--site-ink, inherit); }
+.cms-banner-overlay h1, .cms-banner-overlay h2, .cms-banner-overlay h3 {
+  color: inherit;
+}
 
 /*  A finger is 44px. Both hero buttons measured 33px on a phone, and
     both were full width, so there was no primary either. */
