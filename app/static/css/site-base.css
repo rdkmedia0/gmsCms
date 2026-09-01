@@ -600,13 +600,22 @@ body.has-sidebar-right > .site-sidebar.site-sidebar-right.site-sidebar-empty { f
     Components that want the surface's own colour just say
     `color: inherit`, which is what .cms-contact-detail already said and
     could not have. */
+/*  A body link, and only a body link.
+    ---------------------------------
+    `--primary` is a colour chosen to be a BACKGROUND -- it is what the
+    buttons and the filled bands are painted in -- so using it as text
+    is a guess. --site-accent-text is the same brand colour walked until
+    it passes on the ground, the band AND the card, and the hover goes
+    to the ink, which is the strongest thing on the page by definition.
+    `--primary-dark` was neither: a darkened brand, measured against
+    nothing, and on a navy site it is a near-black that vanishes. */
 .cms-wysiwyg-body :where(a),
 .cms-html-preview :where(a) {
-  color: var(--primary, #2563eb); text-decoration: underline;
+  color: var(--site-accent-text, var(--primary, #2563eb)); text-decoration: underline;
 }
 .cms-wysiwyg-body :where(a):hover,
 .cms-html-preview :where(a):hover {
-  color: var(--primary-dark, #1d4ed8);
+  color: var(--site-ink, var(--primary-dark, #1d4ed8));
 }
 
 .site-footer { text-align: center; padding: 24px; color: var(--site-ink-soft, #5b6472); font-size: 14px; }
@@ -874,7 +883,14 @@ a.cms-contact-detail:hover { opacity: 1; text-decoration: underline; }
    under the mobile breakpoint, collapsing .cms-menu-links. */
 .cms-menu { padding: 8px 24px; display: flex; align-items: center; }
 .cms-menu a { color: inherit; text-decoration: none; }
-.cms-menu a:hover { text-decoration: underline; }
+/*  A MENU link is not a body link, and the rule above reaches it: the
+    Menu tool renders inside .cms-html-preview like every other block,
+    so hovering a nav item recoloured it to a body-link hover. On a navy
+    bar that was a near-black on navy -- the item disappeared under the
+    cursor, which reads as a gap in the menu.
+
+    The menu keeps the colour it already has and says so instead. */
+.cms-menu a:hover { text-decoration: underline; color: inherit; }
 .cms-menu-small { font-size: 13px; padding: 4px 16px; }
 .cms-menu-medium { font-size: 15px; }
 .cms-menu-large { font-size: 18px; padding: 12px 32px; }
@@ -2361,7 +2377,7 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
     a mistake rather than as emphasis. */
 .cms-search-tool { margin: 0 0 20px; }
 .cms-search-box { display: flex; align-items: center; gap: 8px; }
-.cms-search-icon { opacity: .6; flex: none; }
+.cms-search-icon { color: var(--site-ink-soft, #5b6472); flex: none; }
 .cms-search-box input {
   flex: 1; min-width: 0; border: none; background: none; outline: none;
   font: inherit; color: inherit; padding: 0;

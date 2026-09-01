@@ -28,6 +28,7 @@ Run inside the container:
     docker compose exec -T web python tools/theme_generator_check.py
 """
 import io
+import re
 
 
 def _dashboard():
@@ -47,9 +48,35 @@ from app import create_app                                            # noqa: E4
 from app.db import get_db                                             # noqa: E402
 from app import assistant                                             # noqa: E402
 from app.services import theme_generator as tg                        # noqa: E402
+from app.services import palette                                       # noqa: E402
 
 failures = []
 passed = 0
+
+
+#  A rule about what the generator may EMIT, not about what any one
+#  template happens to look like.
+#
+#  Every surface it paints has to say what colour the words on it are.
+#  The failure this is written from: a hero with no picture is painted
+#  in the page's ink, and `.cms-banner-overlay` is `color: #fff` -- true
+#  over a photograph, which always carries a scrim, and false over a
+#  flat band. On a dark site the ink is CREAM, so three subpages of one
+#  generated template came out white-on-cream, and nothing in the
+#  generator was wrong in a way that reading it would show.
+#
+#  Fixing the templates that had already been made is not the fix. This
+#  is: the check runs on the markup the generator produces, for a light
+#  page and a dark one, so the pairing cannot come apart again.
+def paints_without_ink(markup):
+    """Every inline background in `markup` that names no text colour."""
+    loose = []
+    for style in re.findall(r'style="([^"]*)"', markup):
+        if "background-color:" not in style:
+            continue
+        if "color:" not in style.replace("background-color:", ""):
+            loose.append(style)
+    return loose
 
 
 def check(name, ok, detail=""):
@@ -1419,6 +1446,35 @@ with app.app_context():
     #  somebody chose by hand always wins.
     check("a hand-picked shape beats one read from a picture",
           'kit["shape"] = kit["shape"] or signals' in route)
+
+print()
+print("Every surface it paints says what colour the words on it are")
+print("-" * 70)
+#  Not "does this template look right" -- what the GENERATOR emits, on
+#  bands at both ends of the range and in the middle, so no page has to
+#  be rendered and no template has to be repaired afterwards.
+for band in ("#f5f2e2", "#000000", "#ff6800", "#a8b8b8", "#ffffff", "#241f1f"):
+    markup = tg._hero_chunk("A headline", "Some words", "", ground=band)
+    loose = paints_without_ink(markup)
+    check("a hero band in %s carries an ink" % band, not loose,
+          "  ".join(loose))
+    said = re.search(r"color:(#[0-9a-fA-F]{6})", markup.split("background-color:")[1])
+    ratio = palette.contrast(said.group(1), band) if said else 0
+    check("...and it reads on that band (%.1f:1)" % ratio, ratio >= 4.5)
+
+#  The pairing is only guaranteed while readable_on works, and it did
+#  not: two functions in palette.py were both called
+#  `_relative_luminance`, the later one shadowed the earlier, and
+#  `contrast_ratio` raised TypeError on every call -- which the one
+#  caller catches, returning white for every colour in the app. A
+#  fallback that swallows a programming error leaves a function with no
+#  effect and nothing to show for it.
+check("readable_on picks black on a pale brand",
+      palette.readable_on("#ff6800") == "#111111")
+check("readable_on picks white on a deep one",
+      palette.readable_on("#082038") == "#ffffff")
+check("contrast_ratio does not raise on hex",
+      round(palette.contrast_ratio("#ffffff", "#000000")) == 21)
 
 print()
 print("  %d ok, %d failed" % (passed, len(failures)))

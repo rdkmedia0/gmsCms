@@ -140,9 +140,24 @@ def main():
                 headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                 body: 'force=1'})""", row["url"])
             ap.wait_for_timeout(900)
+            #  EVERY page, not just the front one. A hero with no
+            #  picture only appears on the pages that have no picture --
+            #  which is the subpages -- so checking the home page alone
+            #  said a template was fine while three of its pages carried
+            #  white words on a cream band.
             gp.goto(site + "/", wait_until="load")
             gp.wait_for_timeout(900)
             bad = gp.evaluate(WALK)
+            for href in gp.evaluate(
+                    "() => [...document.querySelectorAll('.cms-menu a')]"
+                    ".map(a => a.getAttribute('href'))"):
+                if not href or not href.startswith("/") or href == "/":
+                    continue
+                gp.goto(site + href, wait_until="load")
+                gp.wait_for_timeout(600)
+                for one in gp.evaluate(WALK):
+                    one["words"] = href + "  " + one["words"]
+                    bad.append(one)
             label = row["name"] or slug
             if not bad:
                 print("  %-26s ok" % label)

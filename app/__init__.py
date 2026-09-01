@@ -344,6 +344,19 @@ def create_app():
 
     from . import icons as _icons
     app.jinja_env.globals["icon_svg"] = _icons.render_icon
+    #  A SURFACE THAT PAINTS ITSELF STATES ITS OWN INK, and a section
+    #  with a background colour is the commonest surface there is: the
+    #  Colour control on any section, and every band the theme generator
+    #  lays down. The colour was written inline and the text left to
+    #  inherit the PAGE's ink, so a pale band on a dark site -- or a
+    #  brand-coloured band on a light one -- swallowed whatever stood on
+    #  it. Measured on the shipped bakery and hair-salon templates: a
+    #  contact row at 1.30:1 and 1.40:1.
+    #
+    #  Templates ask for it here rather than each one working it out,
+    #  because the ones that forget are exactly the ones that break.
+    from .services.palette import readable_on as _readable_on
+    app.jinja_env.globals["ink_for"] = _readable_on
 
     from .services.sections import (
         banner_overlay_settings, card_style_settings, card_button_settings,

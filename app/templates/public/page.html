@@ -45,7 +45,7 @@
 {% set body_sidebar_width_px = sidebar_sections[0].sidebar_width_px if sidebar_sections and sidebar_sections[0].sidebar_width == 'custom' and sidebar_sections[0].sidebar_width_px else none %}
 {% set body_sidebar_right_width_px = sidebar_right_sections[0].sidebar_width_px if sidebar_right_sections and sidebar_right_sections[0].sidebar_width == 'custom' and sidebar_right_sections[0].sidebar_width_px else none %}
 {% set body_style_parts = [] %}
-{% if page.bg_color %}{% set _ = body_style_parts.append('background-color:' ~ page.bg_color) %}{% endif %}
+{% if page.bg_color %}{% set _ = body_style_parts.append('background-color:' ~ page.bg_color) %}{% set _ = body_style_parts.append('color:' ~ ink_for(page.bg_color)) %}{% endif %}
 {# A picture behind the whole page. Fixed makes the content travel over a
    still image; scroll makes the image travel with it, which is what turns
    a tall backdrop into something that frames the page's own structure. #}
@@ -1852,7 +1852,7 @@
       {% set effective_width = default_section_width if s.layout_width == 'auto' else s.layout_width %}
       {% set effective_pct = s.layout_width_pct or (default_section_width_pct | int) %}
       {% set section_style_parts = [] %}
-      {% if s.bg_color %}{% set _ = section_style_parts.append('background-color:' ~ s.bg_color) %}{% endif %}
+      {% if s.bg_color %}{% set _ = section_style_parts.append('background-color:' ~ s.bg_color) %}{% set _ = section_style_parts.append('color:' ~ ink_for(s.bg_color)) %}{% endif %}
       {# A picture behind the section. The overlay is a class rather than
          another inline value so it can adapt to the theme, and so the
          same photograph can sit under dark text on one page and light

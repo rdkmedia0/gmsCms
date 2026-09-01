@@ -895,10 +895,23 @@ def _hero_chunk(headline, subtext, image_url, eyebrow="", buttons=(), ground="")
     #  That reads as broken; a solid brand-coloured hero reads as a
     #  choice, and the owner can drop a photograph in afterwards from the
     #  Media Library either way.
+    #
+    #  AND IT SAYS WHAT COLOUR THE WORDS ON IT ARE. `.cms-banner-overlay`
+    #  is `color: #fff`, which is right over a photograph -- every one
+    #  gets a dark scrim -- and wrong the moment the band is a flat
+    #  colour that might be pale. The band here is painted in the page's
+    #  INK, which on a dark site is CREAM: measured on three subpages of
+    #  one generated template, white words on a cream slab.
+    #
+    #  A surface that paints its own background states its own ink, and
+    #  this is the only place that knows the band's colour.
     if not image_url or image_url == PLACEHOLDER_IMAGE:
-        return ('<div class="cms-banner cms-banner-plain" style="background-color:%s">'
-                '<div class="cms-banner-overlay">%s</div></div>'
-                % (escape(ground or "#241f1f", quote=True), inside))
+        from .palette import readable_on
+        band = ground or "#241f1f"
+        return ('<div class="cms-banner cms-banner-plain" '
+                'style="background-color:%s;color:%s">'
+                '<div class="cms-banner-overlay" style="color:inherit">%s</div></div>'
+                % (escape(band, quote=True), escape(readable_on(band), quote=True), inside))
     return (
         '<div class="cms-banner" style="background-image:url(' + chr(39) + '%s'
         + chr(39) + ')"><div class="cms-banner-overlay">%s</div></div>'
@@ -1366,7 +1379,15 @@ def sections_for(chunks):
 
 
 def _ink_of(kit):
-    """The site's own dark, as a real colour a section can be painted in."""
+    """The band colour for a hero with no picture: the page, inverted.
+
+    This was called "the site's own dark", which it was while every page
+    was a light one. `--site-ink` is now whatever reads on the ground --
+    so on a black site it is cream. Painting a band in it is still the
+    right idea, because it is the one colour guaranteed to stand apart
+    from the page; what was missing is that the words on it have to be
+    the other half of that pair. See _hero_chunk.
+    """
     from .palette import page_colours
     return (page_colours(kit.get("palette") or [], kit.get("ground") or "",
                          kit.get("ink") or "")
