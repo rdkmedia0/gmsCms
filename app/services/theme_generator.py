@@ -1556,11 +1556,28 @@ def _rows(given, keys, least, fallback):
 
 
 def _numbered(rows, keys, prefix="item"):
-    """A block tool's flat, numbered field names, from a list of rows."""
+    """A block tool's flat, numbered field names, from a list of rows.
+
+    A LIST BECOMES LINES, not its own repr. A field like a pricing
+    tier's features takes several things one per line, and asking a
+    model for "three or four things included, one per line" gets a JSON
+    array about as often as it gets a string -- both are reasonable
+    readings of the request. `str()` on the array put
+    ['Lighting setup', 'Changing room'] on a live pricing card, brackets
+    and quotes included.
+
+    Joining is the right answer rather than re-asking: the model gave
+    the right facts in a shape the field can hold once it is written
+    down properly.
+    """
     out = {}
     for i, row in enumerate(rows, start=1):
         for key in keys:
-            out["%s%d_%s" % (prefix, i, key)] = str(row.get(key) or "").strip()
+            value = row.get(key)
+            if isinstance(value, (list, tuple)):
+                value = chr(10).join(
+                    str(part).strip() for part in value if str(part).strip())
+            out["%s%d_%s" % (prefix, i, key)] = str(value or "").strip()
     return out
 
 

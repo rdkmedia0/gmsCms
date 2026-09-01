@@ -1477,6 +1477,22 @@ check("contrast_ratio does not raise on hex",
       round(palette.contrast_ratio("#ffffff", "#000000")) == 21)
 
 print()
+print("A field takes what the model gave it, in the shape it holds")
+print("-" * 70)
+#  A pricing tier's features take several things, one per line, and a
+#  model asked for that returns a JSON array about as often as a string.
+#  `str()` on the array put ['Lighting setup', 'Changing room'] on a live
+#  pricing card, brackets and quotes included.
+_made = tg._numbered(
+    [{"name": "Half day", "features": ["Lighting setup", "Changing room"]}],
+    ("name", "features"), "tier")
+check("a list answer becomes lines, not its own repr",
+      _made["tier1_features"] == "Lighting setup" + chr(10) + "Changing room",
+      _made["tier1_features"])
+check("...and a plain string is untouched",
+      tg._numbered([{"a": " x "}], ("a",))["item1_a"] == "x")
+
+print()
 print("  %d ok, %d failed" % (passed, len(failures)))
 for name in failures:
     print("    - " + name)
