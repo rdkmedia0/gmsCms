@@ -582,8 +582,8 @@ def design(db, kit, pages):
         "composition": (chosen.get("composition")
                         if chosen.get("composition") in COMPOSITION_PRESETS else ""),
         #  Per page, by title, falling back to what the name suggests.
-        "pages": [shapes.get(title.strip().lower())
-                  or layout_for(title, i, kit.get("brief", ""))
+        "pages": [_front_shape(shapes.get(title.strip().lower()), title, i,
+                               kit.get("brief", ""))
                   for i, title in enumerate(wanted)],
         "why": (chosen.get("why") or "").strip(),
         "asked": bool(chosen),
@@ -943,9 +943,24 @@ def _maybe_generate_image(db, prompt, use_ai_images):
     if not image_bytes:
         return PLACEHOLDER_IMAGE
     unique_name = "%s.png" % uuid.uuid4().hex
-    os.makedirs(current_app.config["UPLOAD_FOLDER"], exist_ok=True)
-    with open(os.path.join(current_app.config["UPLOAD_FOLDER"], unique_name), "wb") as f:
-        f.write(image_bytes)
+    #  MAKING the picture is allowed to fail, and did not take the run
+    #  with it. SAVING it was not, and did: an uploads directory the
+    #  process could not write to raised PermissionError out of here,
+    #  through generate(), to the route -- a 500 after six minutes and
+    #  five provider calls, with the words, the palette and the picture
+    #  all already paid for and nothing kept.
+    #
+    #  The docstring above already says what should happen: "a look that
+    #  arrives without its photograph is still a look". A disk that
+    #  refuses is the same outcome as a backend that refuses, and gets
+    #  the same answer.
+    try:
+        os.makedirs(current_app.config["UPLOAD_FOLDER"], exist_ok=True)
+        with open(os.path.join(current_app.config["UPLOAD_FOLDER"],
+                               unique_name), "wb") as f:
+            f.write(image_bytes)
+    except OSError:
+        return PLACEHOLDER_IMAGE
     url = "/static/uploads/%s" % unique_name
     db.execute("INSERT INTO generated_images (url, prompt) VALUES (?, ?)", (url, prompt))
     db.commit()
@@ -1799,6 +1814,55 @@ def _carry_media(pkg_dir, slug):
             json.dump(spec, f, indent=2, ensure_ascii=False)
 
 
+def _front_shape(said, title, index, brief):
+    """The model's answer, unless the model gave the generic one.
+
+    A DEFAULT IS NOT A DECISION. Asked which shape a front page should
+    be, this model answers "landing" whatever the business is -- it did
+    so for a wedding barn with three package prices, a bicycle workshop
+    and a potter, in the same run, after being given all four shapes
+    with their descriptions and told explicitly that landing is one of
+    four rather than the normal one. Describing the choice better was
+    worth doing and did not change the answer.
+
+    So: any shape it names that is NOT the generic one is a real
+    choice and wins. "landing" on a front page is indistinguishable
+    from not having chosen, and loses to a specific signal in the
+    brief -- three package prices means the prices belong on the front
+    page, whoever noticed it.
+
+    Every other page is left entirely to the model: there is no
+    generic answer to override there.
+    """
+    if index != 0:
+        return said or layout_for(title, index, brief)
+    if said and said != "landing":
+        return said
+    return layout_for(title, index, brief)
+
+
+#  What a brief SOUNDS like, per front-page shape. Whole words, matched
+#  by stem, so "servicing" counts for "servic" and "workshop" does not
+#  count for "shop" -- which it did, as a plain substring, and put a
+#  bicycle repair workshop in the catalogue instead of the process.
+FRONT_SIGNALS = {
+    "catalogue": ("price", "prices", "pricing", "package", "packages",
+                  "hire", "rent", "rental", "room", "rooms", "menu",
+                  "shop", "sell", "sells", "selling", "product",
+                  "products", "membership", "rate", "rates"),
+    "editorial": ("write", "writer", "writing", "writes", "journal",
+                  "essay", "essays", "coach", "coaching", "consult",
+                  "consultant", "therapy", "studio", "portfolio",
+                  "photograph", "photographer", "design", "designer",
+                  "teach", "teaches", "teaching"),
+    "process": ("repair", "repairs", "fit", "fitting", "install",
+                "service", "services", "servicing", "clinic", "treatment",
+                "treatments", "appointment", "appointments", "book",
+                "booked", "booking", "wedding", "weddings", "event",
+                "events", "build", "building", "renovation", "restoration"),
+}
+
+
 def layout_for(title, index, brief=""):
     """Which starting arrangement a page called this should get.
 
@@ -1814,24 +1878,21 @@ def layout_for(title, index, brief=""):
         #  This returned "landing" for page one of every site ever
         #  generated, so a bakery, a saxophonist and a wedding venue all
         #  opened with a photograph, a paragraph, three numbers, three
-        #  cards, a quote and a band -- in that order. The model can
-        #  override this per page (see design()); what it does is give a
-        #  sensible different answer when the model does not.
-        what = (brief or "").lower()
-        if any(w in what for w in ("price", "prices", "package", "packages",
-                                   "hire", "rent", "room", "rooms", "menu",
-                                   "shop", "sell", "product", "membership")):
-            return "catalogue"
-        if any(w in what for w in ("write", "writer", "writing", "journal",
-                                   "essay", "coach", "coaching", "consult",
-                                   "therapy", "studio", "portfolio",
-                                   "photograph", "design")):
-            return "editorial"
-        if any(w in what for w in ("repair", "fit", "install", "service",
-                                   "servicing", "clinic", "treatment",
-                                   "appointment", "booking", "wedding",
-                                   "event", "plan", "build", "renovat")):
-            return "process"
+        #  cards, a quote and a band -- in that order.
+        #
+        #  Scored rather than ordered: the first list to match used to
+        #  win, which made the answer depend on which shape happened to
+        #  be checked first. Counting lets a brief that is mostly about
+        #  one thing say so, and a tie means nothing stood out, which is
+        #  what "landing" is for.
+        found = re.findall(r"[a-z]+", (brief or "").lower())
+        scores = {}
+        for shape, stems in FRONT_SIGNALS.items():
+            scores[shape] = sum(1 for w in found if w in stems)
+        best = max(scores, key=lambda k: scores[k])
+        top = scores[best]
+        if top and list(scores.values()).count(top) == 1:
+            return best
         return "landing"
     if any(w in words for w in ("about", "story", "who we are", "team", "us")):
         return "story"
