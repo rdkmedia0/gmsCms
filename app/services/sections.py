@@ -2871,6 +2871,22 @@ PAGE_LAYOUTS = (
      "else. For a place with one thing to say."),
     ("showcase", "Showcase",
      "A banner, a short introduction, and a row of pictures to look through."),
+    #  Three more ways a front page can be arranged. Offered here, not
+    #  only inside the generator, because an arrangement the AI can
+    #  choose has to be one an owner can choose too -- otherwise the
+    #  tool makes pages nobody can make.
+    ("editorial", "Editorial",
+     "A title page with no photograph, a story in two parts, a picture "
+     "band between them, and a quiet close. For writing, coaching or a "
+     "studio, where the voice is the product."),
+    ("catalogue", "Catalogue",
+     "A banner, a short introduction, your prices in three options, what "
+     "is included, and a closing call to action. For a venue, a shop or "
+     "a practice with packages."),
+    ("process", "Process",
+     "A banner, a short introduction, the steps of working together in "
+     "order, some numbers, a quote and a closing call to action. For "
+     "trades, clinics or anything booked in advance."),
     ("newsletter", "Newsletter",
      "A page to write an issue on, then send to your email list."),
     ("blog", "Blog", "A page showing your posts. Starts a blog if you have none."),
@@ -2938,7 +2954,8 @@ def starter_page_sections(db, layout, page_title="Page"):
     #  The arrangements the generator also uses. A page created by hand
     #  gets the same shape, with the words left to be written -- which is
     #  what a starting arrangement is.
-    if layout in ("landing", "story", "poster", "showcase"):
+    if layout in ("landing", "story", "poster", "showcase",
+                  "editorial", "catalogue", "process"):
         #  The same starter the Banner tool itself uses, so a shape
         #  picked by hand opens with the same banner a generated one
         #  does -- one definition, in db.py, read by both.
@@ -2949,6 +2966,25 @@ def starter_page_sections(db, layout, page_title="Page"):
             out += [
                 ("html", "", build_block("stats")),
                 ("columns", "", json.dumps({"columns": ["", "", ""]})),
+                ("html", "", build_block("testimonial")),
+                ("html", "", build_block("cta")),
+            ]
+        elif layout == "editorial":
+            out += [
+                ("text", "", "<h2>And then</h2><p>Carry the story on here.</p>"),
+                ("html", "", build_block("testimonial")),
+                ("html", "", build_block("cta")),
+            ]
+        elif layout == "catalogue":
+            out += [
+                ("html", "", build_block("pricing")),
+                ("columns", "", json.dumps({"columns": ["", "", ""]})),
+                ("html", "", build_block("cta")),
+            ]
+        elif layout == "process":
+            out += [
+                ("html", "", build_block("timeline")),
+                ("html", "", build_block("stats")),
                 ("html", "", build_block("testimonial")),
                 ("html", "", build_block("cta")),
             ]

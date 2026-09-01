@@ -76,6 +76,38 @@ LAYOUTS["simple"] = {
     "description": "A banner across the top and one block of writing.",
 }
 
+#  FOUR WAYS A FRONT PAGE CAN BE ARRANGED, not one.
+#
+#  Every site this generator made opened the same way -- picture,
+#  paragraph, three numbers, three cards, a quote, a closing band --
+#  because `layout_for` returned "landing" for page one whatever the
+#  business was. Six templates built from the same four sections
+#  demonstrate one layout six times, which is the fault the shipped set
+#  was rebuilt to avoid, reappearing in the tool that writes new ones.
+#
+#  Each of these is the SAME vocabulary in a different order, which is
+#  the point: an owner can rearrange them afterwards with the controls
+#  they already have, because every piece is a tool from the panel.
+LAYOUTS["editorial"] = {
+    "label": "Editorial",
+    "description": ("Words first: a title page with no photograph, a "
+                    "story, then a picture. For writing, coaching, "
+                    "consulting, a studio -- anywhere the voice is the "
+                    "product."),
+}
+LAYOUTS["catalogue"] = {
+    "label": "Catalogue",
+    "description": ("What you offer and what it costs, early. Prices, "
+                    "then what is included. For a venue, a shop, a "
+                    "practice with packages."),
+}
+LAYOUTS["process"] = {
+    "label": "Process",
+    "description": ("How working together goes, step by step, then the "
+                    "evidence. For trades, clinics, weddings, anything "
+                    "booked in advance."),
+}
+
 _SCHEMAS = {
     #  A front page is not three paragraphs. The numbers, the quote and
     #  the closing call are asked for in the SAME request as the rest --
@@ -88,6 +120,48 @@ _SCHEMAS = {
         '"eyebrow": "two or three words above the headline, like a category", '
         '"hero_button": "two or three words on a button, an action", '
         '"card_link": "two or three words, the same for every card, like Read more", '
+        '"stats": [{"value": "a number or short figure", "label": "what it counts"}, '
+        '{"value": "...", "label": "..."}, {"value": "...", "label": "..."}], '
+        '"cta_headline": "...", "cta_subtext": "...", "cta_button": "two or three words"}'
+    ),
+    #  Words first. No stats, no card row: a title, a story in two
+    #  parts, a line somebody said, and a quiet close.
+    "editorial": (
+        '{"hero_headline": "...", "hero_subtext": "...", '
+        '"eyebrow": "two or three words above the headline, like a category", '
+        '"cta_button": "two or three words, an action", '
+        '"intro_heading": "...", "intro_body": "two or three sentences", '
+        '"second_heading": "...", "second_body": "two or three sentences", '
+        '"picture_caption": "one line to sit over the photograph", '
+        '"cta_headline": "...", "cta_subtext": "..."}'
+    ),
+    #  What it costs, early, because for these businesses that is the
+    #  question. Three tiers and what each includes.
+    "catalogue": (
+        '{"hero_headline": "...", "hero_subtext": "...", '
+        '"eyebrow": "two or three words above the headline", '
+        '"intro_heading": "...", "intro_body": "two or three sentences", '
+        '"tiers": [{"name": "what this option is called", '
+        '"price": "a figure, digits only, no currency", '
+        '"period": "what the price covers, like per day", '
+        '"features": "three or four things included, one per line"}, '
+        '{"name": "...", "price": "...", "period": "...", "features": "..."}, '
+        '{"name": "...", "price": "...", "period": "...", "features": "..."}], '
+        '"tier_cta": "two or three words on each tier button", '
+        '"features": [{"title": "...", "body": "..."}, {"title": "...", "body": "..."}, '
+        '{"title": "...", "body": "..."}], '
+        '"cta_headline": "...", "cta_subtext": "...", "cta_button": "two or three words"}'
+    ),
+    #  How it goes, in order. The evidence after the explanation.
+    "process": (
+        '{"hero_headline": "...", "hero_subtext": "...", '
+        '"eyebrow": "two or three words above the headline", '
+        '"intro_heading": "...", "intro_body": "two or three sentences", '
+        '"steps": [{"when": "one or two words, like First or Week one", '
+        '"title": "what happens", "text": "one sentence"}, '
+        '{"when": "...", "title": "...", "text": "..."}, '
+        '{"when": "...", "title": "...", "text": "..."}, '
+        '{"when": "...", "title": "...", "text": "..."}], '
         '"stats": [{"value": "a number or short figure", "label": "what it counts"}, '
         '{"value": "...", "label": "..."}, {"value": "...", "label": "..."}], '
         '"cta_headline": "...", "cta_subtext": "...", "cta_button": "two or three words"}'
@@ -508,7 +582,8 @@ def design(db, kit, pages):
         "composition": (chosen.get("composition")
                         if chosen.get("composition") in COMPOSITION_PRESETS else ""),
         #  Per page, by title, falling back to what the name suggests.
-        "pages": [shapes.get(title.strip().lower()) or layout_for(title, i)
+        "pages": [shapes.get(title.strip().lower())
+                  or layout_for(title, i, kit.get("brief", ""))
                   for i, title in enumerate(wanted)],
         "why": (chosen.get("why") or "").strip(),
         "asked": bool(chosen),
@@ -590,6 +665,22 @@ SECTION_NAMES = {
     "showcase": ["a banner across the top", "a short introduction",
                  "a row of pictures to look through"],
     "simple": ["a banner across the top", "one block of writing"],
+    #  Said in the same plain words as the rest: what the owner will see
+    #  on the page, in the order they will see it. "Looking is free" --
+    #  this is the whole of what a plan can promise before a single
+    #  provider call is made.
+    "editorial": ["a title across the top, no photograph",
+                  "the opening, as running text",
+                  "a picture band with one line on it",
+                  "the rest of the story",
+                  "a quote", "a quiet closing call to action"],
+    "catalogue": ["a banner across the top", "a short introduction",
+                  "your prices, in three options",
+                  "three cards side by side",
+                  "a closing call to action"],
+    "process": ["a banner across the top", "a short introduction",
+                "the steps of working together, in order",
+                "some numbers", "a quote", "a closing call to action"],
 }
 
 
@@ -634,7 +725,8 @@ def plan(db, kit, name, mode="scratch", pages_wanted=None, looked=None,
     #  handed back to `generate` for exactly that reason.
     keys = [k for k in (looked or {}).get("pages") or []]
     if len(keys) != len(wanted):
-        keys = [layout_for(title, i) for i, title in enumerate(wanted)]
+        keys = [layout_for(title, i, kit.get("brief", ""))
+                for i, title in enumerate(wanted)]
 
     writes = bool(kit["brief"]) and fill_scope != "none"
     per_page = kit.get("banner_per_page", False)
@@ -1130,7 +1222,7 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
         #  one in the site's own dark, which also gives the page the
         #  change of ground it needs in the middle.
         chunks.append(_block_piece(
-            "stats", _numbered(stats, ("value", "label")),
+            "stats", _numbered(stats, ("value", "label"), "stat"),
             #  On the TINT, not on the site's dark.
             #
             #  A Stats block draws each figure in its own pale box, so a
@@ -1171,7 +1263,7 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
             #  yet, which is the same misattribution the invented NAME
             #  was, one layer in.
             "quote": "Add something a customer said about you.",
-            "name": "", "role": "", "photo": "",
+            "name": "", "role": "",
             "style": "large",
         }, {"layout_width": "full"}))
         #  And it closes on the brand colour, not on a second photograph.
@@ -1183,8 +1275,8 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
         #  same idea said twice and the palette still nowhere visible.
         chunks.append(_block_piece("cta", {
             "heading": val("cta_headline", "Ready to get started?"),
-            "body": val("cta_subtext", "Get in touch today."),
-            "button": val("cta_button", "Get in touch"),
+            "text": val("cta_subtext", "Get in touch today."),
+            "cta": val("cta_button", "Get in touch"),
             "link": "/contact",
             "tone": "solid",
         }, {"layout_width": "full"}))
@@ -1213,11 +1305,127 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
                              {"layout_width": "auto"}))
         chunks.append(_block_piece("cta", {
             "heading": val("cta_headline", "Let's talk"),
-            "body": val("cta_subtext", "Reach out anytime."),
-            "button": val("cta_button", "Get in touch"),
+            "text": val("cta_subtext", "Reach out anytime."),
+            "cta": val("cta_button", "Get in touch"),
             "link": "/contact",
             "tone": "solid",
         }, {"layout_width": "full"}))
+    elif layout_key == "editorial":
+        #  A TITLE PAGE, not a photograph. The band is the site's own
+        #  ink, the type is the whole of it, and the picture is held
+        #  back until the reader has been given a reason to look.
+        chunks.append(_piece(_hero_chunk(
+            val("hero_headline", "A title"),
+            val("hero_subtext", "One line underneath."), "",
+            eyebrow=val("eyebrow", ""),
+            buttons=((val("cta_button", "Read on"), "#more"),),
+            ground=_ink_of(kit)),
+            {"layout_width": "full", "corner_style": "sharp"}))
+        chunks.append(_piece(_text_chunk(val("intro_heading", "The short version"),
+                                         val("intro_body", "Write the opening here.")),
+                             {"layout_width": "auto"}))
+        #  Then the picture, full width, with one line over it -- the
+        #  section's own background-image and overlay, which is how
+        #  every template does a photographic band.
+        caption = val("picture_caption", "")
+        if hero:
+            chunks.append(_piece(
+                "<h2>%s</h2>" % escape(caption) if caption else "",
+                {"layout_width": "full", "bg_image": hero,
+                 "bg_overlay": "dark", "bg_position": "center"}))
+        chunks.append(_piece(_text_chunk(val("second_heading", "And then"),
+                                         val("second_body", "Carry the story on.")),
+                             {"layout_width": "auto"}))
+        chunks.append(_block_piece("testimonial", {
+            "quote": "Add something a reader or client said.",
+            "name": "", "role": "", "style": "large",
+        }, {"layout_width": "full", "bg_color": tint}))
+        chunks.append(_block_piece("cta", {
+            "heading": val("cta_headline", "Get in touch"),
+            "text": val("cta_subtext", "A line about what happens next."),
+            "cta": val("cta_button", "Say hello"),
+            "link": "/contact",
+            #  Quiet, because this page has been quiet the whole way
+            #  down and a solid brand band at the end is a different
+            #  document.
+            "tone": "outline",
+        }, {"layout_width": "auto"}))
+
+    elif layout_key == "catalogue":
+        chunks.append(_piece(_hero_chunk(
+            val("hero_headline", "What we offer"),
+            val("hero_subtext", "A short supporting line."), hero,
+            eyebrow=val("eyebrow", ""),
+            buttons=((val("cta_button", "See prices"), "#more"),),
+            ground=_ink_of(kit)),
+            {"layout_width": "full", "corner_style": "sharp",
+             "bg_position": "center"}))
+        chunks.append(_piece(_text_chunk(val("intro_heading", "How it works"),
+                                         val("intro_body", "Write an introduction here.")),
+                             {"layout_width": "auto"}))
+        tiers = _rows(copy.get("tiers") if fill else None,
+                      ("name", "price", "period", "features"), 3,
+                      [{"name": "Option %d" % (i + 1), "price": "",
+                        "period": "", "features": "What is included"}
+                       for i in range(3)])[:3]
+        priced = _numbered(tiers, ("name", "price", "period", "features"), "tier")
+        label = (copy.get("tier_cta") or "").strip() if fill else ""
+        for i in range(1, 4):
+            priced["tier%d_cta" % i] = label or "Enquire"
+            priced["tier%d_link" % i] = "/contact"
+        chunks.append(_block_piece("pricing", priced,
+                                   {"layout_width": "full", "bg_color": tint}))
+        features = _rows(copy.get("features") if fill else None, ("title", "body"), 3,
+                         [{"title": "Feature %d" % (i + 1),
+                           "body": "Describe this feature."} for i in range(3)])
+        chunks.append(_piece(_cards_chunk(features[:6]),
+                             {"layout_width": "auto",
+                              "shadow_style": kit.get("shadow") or "subtle"}))
+        chunks.append(_block_piece("cta", {
+            "heading": val("cta_headline", "Ready to book?"),
+            "text": val("cta_subtext", "Tell us what you need."),
+            "cta": val("cta_button", "Get in touch"),
+            "link": "/contact", "tone": "solid",
+        }, {"layout_width": "full"}))
+
+    elif layout_key == "process":
+        chunks.append(_piece(_hero_chunk(
+            val("hero_headline", "How it goes"),
+            val("hero_subtext", "A short supporting line."), hero,
+            eyebrow=val("eyebrow", ""),
+            buttons=((val("cta_button", "Get in touch"), "/contact"),
+                     ("How it works", "#more")),
+            ground=_ink_of(kit)),
+            {"layout_width": "full", "corner_style": "sharp",
+             "bg_position": "center"}))
+        chunks.append(_piece(_text_chunk(val("intro_heading", "What to expect"),
+                                         val("intro_body", "Write an introduction here.")),
+                             {"layout_width": "auto"}))
+        steps = _rows(copy.get("steps") if fill else None,
+                      ("when", "title", "text"), 3,
+                      [{"when": "Step %d" % (i + 1), "title": "What happens",
+                        "text": "One sentence."} for i in range(4)])[:3]
+        laid = _numbered(steps, ("when", "title", "text"), "step")
+        laid["style"] = "vertical"
+        chunks.append(_block_piece("timeline", laid, {"layout_width": "auto"}))
+        stats = _rows(copy.get("stats") if fill else None, ("value", "label"), 3,
+                      [{"value": "10", "label": "Years"},
+                       {"value": "200", "label": "Jobs done"},
+                       {"value": "24h", "label": "Reply time"}])
+        chunks.append(_block_piece(
+            "stats", _numbered(stats, ("value", "label"), "stat"),
+            {"layout_width": "full", "bg_color": tint}))
+        chunks.append(_block_piece("testimonial", {
+            "quote": "Add something a customer said about you.",
+            "name": "", "role": "", "style": "large",
+        }, {"layout_width": "full"}))
+        chunks.append(_block_piece("cta", {
+            "heading": val("cta_headline", "Ready to start?"),
+            "text": val("cta_subtext", "Get in touch and we will talk it through."),
+            "cta": val("cta_button", "Get in touch"),
+            "link": "/contact", "tone": "solid",
+        }, {"layout_width": "full"}))
+
     elif layout_key == "poster":
         #  A tall picture with a few words on it, and one block of
         #  writing. Nothing else -- that is the whole point of the
@@ -1286,6 +1494,21 @@ def _block_piece(key, values, style=None):
     """
     from . import blocks
     made = dict(blocks.BLOCKS[key].get("defaults") or {})
+    #  A FIELD THE BLOCK DOES NOT HAVE IS A MISTAKE, NOT AN EXTRA.
+    #
+    #  `_numbered` writes `item1_value` unless it is told the tool's own
+    #  prefix, and the Stats block reads `stat1_value`. The keys did not
+    #  match, `made` kept its defaults, and every site this generator has
+    #  ever produced shipped the same three figures -- 12, 400+, 98% --
+    #  while the model's real numbers were written, passed in, and
+    #  dropped on the floor. Nothing raised and nothing looked wrong.
+    #
+    #  Loud, because it can only be a coding error: the callers are all
+    #  in this file and the checker runs every one of them.
+    unknown = [k for k in values if k not in made]
+    if unknown:
+        raise ThemeGenError(
+            "The %s tool has no field called %s." % (key, ", ".join(sorted(unknown))))
     #  A blank is a DECISION; only "not supplied" defers to the default.
     #
     #  Filtering empty strings out here meant the testimonial's own
@@ -1576,7 +1799,7 @@ def _carry_media(pkg_dir, slug):
             json.dump(spec, f, indent=2, ensure_ascii=False)
 
 
-def layout_for(title, index):
+def layout_for(title, index, brief=""):
     """Which starting arrangement a page called this should get.
 
     By the name, because the names people give pages mean something: an
@@ -1586,6 +1809,29 @@ def layout_for(title, index):
     """
     words = (title or "").strip().lower()
     if index == 0:
+        #  A FRONT PAGE IS NOT ONE SHAPE.
+        #
+        #  This returned "landing" for page one of every site ever
+        #  generated, so a bakery, a saxophonist and a wedding venue all
+        #  opened with a photograph, a paragraph, three numbers, three
+        #  cards, a quote and a band -- in that order. The model can
+        #  override this per page (see design()); what it does is give a
+        #  sensible different answer when the model does not.
+        what = (brief or "").lower()
+        if any(w in what for w in ("price", "prices", "package", "packages",
+                                   "hire", "rent", "room", "rooms", "menu",
+                                   "shop", "sell", "product", "membership")):
+            return "catalogue"
+        if any(w in what for w in ("write", "writer", "writing", "journal",
+                                   "essay", "coach", "coaching", "consult",
+                                   "therapy", "studio", "portfolio",
+                                   "photograph", "design")):
+            return "editorial"
+        if any(w in what for w in ("repair", "fit", "install", "service",
+                                   "servicing", "clinic", "treatment",
+                                   "appointment", "booking", "wedding",
+                                   "event", "plan", "build", "renovat")):
+            return "process"
         return "landing"
     if any(w in words for w in ("about", "story", "who we are", "team", "us")):
         return "story"
@@ -1652,7 +1898,8 @@ def generate(db, static_folder, name, kit, fill_scope, use_ai_images,
         chosen = (looked or {}).get("pages") or design(db, kit, wanted)["pages"]
         pages = []
         for i, title in enumerate(wanted):
-            key = chosen[i] if i < len(chosen) else layout_for(title, i)
+            key = (chosen[i] if i < len(chosen)
+                   else layout_for(title, i, kit.get("brief", "")))
             #  One picture for the run, at the top of the first page --
             #  five hero photographs is five waits and five charges for a
             #  look nobody has approved yet. Unless they asked for one
