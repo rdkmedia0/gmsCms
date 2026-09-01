@@ -15,6 +15,7 @@ from ...services import lifecycle, packages
 from ...services.palette import _match_palette_roles, color_scheme_choices
 from . import (
     FONT_PAIRINGS, SHAPE_PRESETS, SHADOW_PRESETS, SHADE_SPREADS,
+    COMPOSITION_PRESETS,
     GOOGLE_FONT_CHOICES, wants_json, _redirect_next,
     NAV_LAYOUTS, _set_setting, slugify, _google_fonts_stylesheet_url,
     _apply_pack_content, SIDEBAR_LAYOUT_PRESETS, _apply_sidebar_layout,
@@ -461,6 +462,85 @@ def template_shades_reset(template_id):
     db.execute("UPDATE templates SET shade_spread = NULL WHERE id = ?", (template_id,))
     db.commit()
     flash("Shades reset to Balanced.", "success")
+    return _redirect_next("admin.dashboard")
+
+
+@bp.route("/templates/<int:template_id>/composition/preset", methods=["POST"])
+@login_required
+def template_composition_preset(template_id):
+    """What the page is SHAPED like -- how tall the hero stands, how much
+    air a band gets, how big a heading is against its text, how far apart
+    the lines sit, how wide a column of reading gets.
+
+    A control, in the same panel as Corners and Depth, for the same
+    reason they are controls: this app's rule is that a value an owner
+    cannot change is a decision taken away from them. The AI Theme
+    Generator picks one of these when it makes a template -- it picks
+    from THIS list, and this is where the owner changes their mind.
+    """
+    db = get_db()
+    if not db.execute("SELECT 1 FROM templates WHERE id = ?", (template_id,)).fetchone():
+        return redirect(url_for("admin.dashboard"))
+    key = request.form.get("preset", "")
+    if key not in COMPOSITION_PRESETS:
+        flash("Unknown composition.", "error")
+        return redirect(url_for("admin.dashboard"))
+    db.execute("UPDATE templates SET composition_override = ? WHERE id = ?",
+               (key, template_id))
+    db.commit()
+    flash('Applied the "%s" composition.' % COMPOSITION_PRESETS[key]["name"], "success")
+    return _redirect_next("admin.dashboard")
+
+
+@bp.route("/templates/<int:template_id>/composition/reset", methods=["POST"])
+@login_required
+def template_composition_reset(template_id):
+    db = get_db()
+    db.execute("UPDATE templates SET composition_override = NULL WHERE id = ?",
+               (template_id,))
+    db.commit()
+    flash("Composition reset to the one this template ships with.", "success")
+    return _redirect_next("admin.dashboard")
+
+
+#  Light, dark, or whatever the template's own picture was.
+GROUNDS = {
+    "light": {"name": "Light", "blurb": "Dark words on a pale page.", "value": ""},
+    "dark": {"name": "Dark", "blurb": "Pale words on a near-black page.",
+             "value": "#0b0b0d"},
+}
+
+
+@bp.route("/templates/<int:template_id>/ground", methods=["POST"])
+@login_required
+def template_ground(template_id):
+    """Whether this site is a light one or a dark one.
+
+    Everything downstream -- the ink, the band tints, the hairlines, the
+    card surfaces -- is worked out from this one colour (see
+    palette.page_colours), so it is one choice rather than a dozen.
+
+    It exists as a control because the generator can set it: a template
+    made from a dark photograph comes out dark, and an owner who wanted
+    the opposite needs somewhere to say so that is not "generate again
+    and hope".
+    """
+    db = get_db()
+    if not db.execute("SELECT 1 FROM templates WHERE id = ?", (template_id,)).fetchone():
+        return redirect(url_for("admin.dashboard"))
+    choice = request.form.get("ground", "")
+    if choice == "default":
+        db.execute("UPDATE templates SET ground_color = NULL WHERE id = ?", (template_id,))
+        db.commit()
+        flash("Ground reset to the one this template ships with.", "success")
+        return _redirect_next("admin.dashboard")
+    if choice not in GROUNDS:
+        flash("Unknown ground.", "error")
+        return redirect(url_for("admin.dashboard"))
+    db.execute("UPDATE templates SET ground_color = ? WHERE id = ?",
+               (GROUNDS[choice]["value"] or None, template_id))
+    db.commit()
+    flash("This site is now %s." % GROUNDS[choice]["name"].lower(), "success")
     return _redirect_next("admin.dashboard")
 
 

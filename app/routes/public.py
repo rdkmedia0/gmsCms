@@ -33,6 +33,7 @@ from ..services import (blocks, captcha, cart as cart_service, commerce, downloa
                         integrations, legal, newsletter, ratelimit, site, site_emails,
                         subscribers)
 from ..services import palette as palette_mod
+from .admin.templates import GROUNDS
 from .admin import (
     _list_tools, get_email_settings, get_layout_settings, get_site_settings, COLOR_PRESETS,
     NAV_LAYOUTS, get_nav_layout, SIDEBAR_LAYOUT_PRESETS, FOOTER_LAYOUT_PRESETS,
@@ -2262,6 +2263,11 @@ def _render_page(db, page, post=None, post_content=""):
         font_pairings=FONT_PAIRINGS if editing else {},
         shape_presets=SHAPE_PRESETS if editing else {},
         shadow_presets=SHADOW_PRESETS if editing else {},
+        #  The two properties the generator can set. They are controls
+        #  for the same reason Corners and Depth are: a value an owner
+        #  cannot change is a decision taken away from them.
+        composition_presets=COMPOSITION_PRESETS if editing else {},
+        grounds=GROUNDS if editing else {},
         shade_spreads=SHADE_SPREADS if editing else {},
         shade_previews=_shade_previews(template) if editing else {},
         stripe_catalogue=(integrations.stripe_catalogue_cached(db)[0]

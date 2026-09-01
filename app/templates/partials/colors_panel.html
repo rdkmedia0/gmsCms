@@ -217,6 +217,47 @@
     </form>
     {% endif %}
 
+    {{ panel_section("Composition", "What the page is shaped like, as against what colour it is: how tall a banner stands, how much air a band gets, how big a heading is next to its writing. This is the biggest single difference between two looks — bigger than the colours.") }}
+    <div class="cms-color-preset-gallery">
+      {% for key, preset in composition_presets.items() %}
+      <form method="post" action="{{ url_for('admin.template_composition_preset', template_id=template.id) }}">
+        <input type="hidden" name="next" value="{{ current_path }}">
+        <input type="hidden" name="preset" value="{{ key }}">
+        <button type="submit" class="cms-color-preset-swatch" title="{{ preset.blurb }}">
+          <span class="cms-composition-swatch" data-composition="{{ key }}"><i></i><b></b></span>
+          <span class="cms-color-preset-label">{{ preset.name }}</span>
+        </button>
+      </form>
+      {% endfor %}
+    </div>
+    {% if template.composition_override %}
+    <form method="post" action="{{ url_for('admin.template_composition_reset', template_id=template.id) }}">
+      <input type="hidden" name="next" value="{{ current_path }}">
+      <button type="submit" class="btn btn-small" title="Put the composition back to the one this template ships with">Reset</button>
+    </form>
+    {% endif %}
+
+    {{ panel_section("Light or dark", "Which way round the whole site reads. Everything else — the writing, the band colours, the lines, the cards — is worked out from this, so it is one choice rather than a dozen.") }}
+    <div class="cms-color-preset-gallery">
+      {% for key, ground in grounds.items() %}
+      <form method="post" action="{{ url_for('admin.template_ground', template_id=template.id) }}">
+        <input type="hidden" name="next" value="{{ current_path }}">
+        <input type="hidden" name="ground" value="{{ key }}">
+        <button type="submit" class="cms-color-preset-swatch" title="{{ ground.blurb }}">
+          <span class="cms-color-preset-dot" style="background: {{ ground.value or '#ffffff' }}; border: 1px solid var(--cms-ui-line, #d9e0dd);"></span>
+          <span class="cms-color-preset-label">{{ ground.name }}</span>
+        </button>
+      </form>
+      {% endfor %}
+    </div>
+    {% if template.ground_color %}
+    <form method="post" action="{{ url_for('admin.template_ground', template_id=template.id) }}">
+      <input type="hidden" name="next" value="{{ current_path }}">
+      <input type="hidden" name="ground" value="default">
+      <button type="submit" class="btn btn-small" title="Put the ground back to the one this template ships with">Reset</button>
+    </form>
+    {% endif %}
+
     {{ panel_section("Depth", "Raises Cards, Images, Banners and file cards off the page with a soft shadow, tinted from your palette rather than black — black goes invisible on a dark theme. A full-width section stays flat on purpose: a shadow says 'this sits above the page', which reads as a mistake on something that IS the page.") }}
     <div class="cms-color-preset-gallery">
       {% for key, preset in shadow_presets.items() %}

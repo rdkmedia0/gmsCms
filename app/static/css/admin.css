@@ -1635,3 +1635,33 @@ button[aria-busy="true"] { opacity: .75; cursor: progress; }
 }
 .cms-made-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .cms-made-actions .inline-form { margin: 0; }
+
+
+/*  The Composition swatch: a heading and a line of writing inside a
+    band, at each preset's own proportions. The Corners swatch shows a
+    corner and the Depth swatch shows a shadow; this one has to show
+    the thing it changes, which is the relationship between a heading,
+    its text and the air around them. */
+.cms-composition-swatch {
+  display: block; width: 46px; height: 34px; border-radius: 4px;
+  background: var(--cms-ui-line, #e6e6e6); position: relative; overflow: hidden;
+}
+.cms-composition-swatch i, .cms-composition-swatch b {
+  position: absolute; left: 6px; right: 6px; display: block;
+  background: var(--cms-ui-text, #333); border-radius: 1px;
+}
+.cms-composition-swatch i { height: 5px; top: 8px; }
+.cms-composition-swatch b { height: 2px; top: 18px; opacity: .45; }
+.cms-composition-swatch[data-composition="editorial"] i { height: 7px; top: 7px; right: 16px; }
+.cms-composition-swatch[data-composition="editorial"] b { top: 19px; right: 12px; }
+.cms-composition-swatch[data-composition="bold"] i { height: 10px; top: 5px; right: 10px; }
+.cms-composition-swatch[data-composition="bold"] b { top: 20px; }
+.cms-composition-swatch[data-composition="quiet"] i { height: 4px; top: 11px; right: 20px; }
+.cms-composition-swatch[data-composition="quiet"] b { top: 20px; right: 8px; opacity: .3; }
+.cms-composition-swatch[data-composition="warm"] i { height: 6px; top: 9px; right: 14px; }
+.cms-composition-swatch[data-composition="compact"] i { height: 5px; top: 4px; }
+.cms-composition-swatch[data-composition="compact"] b { top: 13px; }
+.cms-composition-swatch[data-composition="compact"]::after {
+  content: ""; position: absolute; left: 6px; right: 6px; top: 19px; height: 2px;
+  background: var(--cms-ui-text, #333); opacity: .45; border-radius: 1px;
+}

@@ -620,6 +620,47 @@ with app.app_context():
     os.remove(shot)
 
     print()
+    print("Everything the generator picks, an owner can pick too")
+    print("-" * 70)
+    #  THE RULE, made mechanical.
+    #
+    #  This app's own test is "could an owner change it with a control?"
+    #  -- and it is easy to add a property to the generator, wire it
+    #  through the package, the row and the stylesheet, and never notice
+    #  that the only way to change it afterwards is to edit the
+    #  database. Composition and the light/dark ground both shipped that
+    #  way: they shape a site more than Corners or Depth do, and neither
+    #  had a control.
+    #
+    #  So: every key the generator writes into a manifest is listed here
+    #  against the route that lets somebody change their mind. A new key
+    #  with no route fails, which is the only way this stays true.
+    OWNED_BY = {
+        "palette": "admin.template_colors_preset",
+        "google_fonts_url": "admin.template_fonts_preset",
+        "shape_override": "admin.template_shape_preset",
+        "shadow_override": "admin.template_shadow_preset",
+        "composition": "admin.template_composition_preset",
+        "ground_color": "admin.template_ground",
+        "nav_layout": "admin.layout_screen",
+        "footer_layout": "admin.layout_screen",
+        "page_layout": "admin.layout_screen",
+    }
+    known = {r.endpoint for r in app.url_map.iter_rules()}
+    src = io.open("/app/app/services/theme_generator.py", encoding="utf-8").read()
+    written = set(re.findall(r'manifest\["([a-z_]+)"\]\s*=', src))
+    #  Identity and bookkeeping are not LOOK properties; they are the
+    #  package saying what it is.
+    written -= {"name", "slug", "has_content", "pages"}
+    for key in sorted(written):
+        route = OWNED_BY.get(key)
+        check("an owner can change: %s" % key,
+              bool(route) and route in known,
+              "no control" if not route else "no route %s" % route)
+    check("...and nothing it writes is unaccounted for",
+          not (written - set(OWNED_BY)), ", ".join(sorted(written - set(OWNED_BY))))
+
+    print()
     print("A generated look is actually worn")
     print("-" * 70)
     #  A pairing's file is only @font-face -- it makes the faces
