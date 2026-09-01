@@ -646,6 +646,10 @@ with app.app_context():
         "shadow_override": "admin.template_shadow_preset",
         "composition": "admin.template_composition_preset",
         "ground_color": "admin.template_ground",
+        #  The ink the reference was written in. It is not a control of
+        #  its own: "light or dark" is one decision, and choosing a
+        #  ground clears the ink so it is worked out to suit.
+        "ink_color": "admin.template_ground",
         "nav_layout": "admin.layout_screen",
         "footer_layout": "admin.layout_screen",
         "page_layout": "admin.layout_screen",
@@ -1039,6 +1043,26 @@ with app.app_context():
           tg._ground_from(["#082038", "#883028", "#003878", "#a8b8b8"]) == "#a8b8b8")
     check("...and it is taken as it comes, mid tones included",
           tg._ground_from(["#a", "#b", "#c", "#989880"]) == "#989880")
+    #  THE PICTURE IS SHOWING ITS TEXT COLOUR, so it is read rather
+    #  than derived -- but a sampled ink is a guess about which
+    #  near-neutral pixels were letters, and it is wrong in ordinary
+    #  ways. Hacker News hands back the mid grey of its own interface
+    #  (3.0:1 on its cream, which no page should use for body text) and
+    #  a photograph of a workshop has no writing in it at all. So it is
+    #  believed only when it reads comfortably, and measured, never
+    #  assumed.
+    used = page_colours([{"slug": "primary", "color": "#382828"}],
+                        "#000000", "#f5f2e2")["--site-ink"]
+    check("an ink the picture shows clearly is used", used == "#f5f2e2", used)
+    used = page_colours([{"slug": "primary", "color": "#8a4f24"}],
+                        "#f8f8f0", "#828286")["--site-ink"]
+    check("...one that does not read is refused", used != "#828286", used)
+    check("...and what replaces it does read",
+          contrast(used, "#f8f8f0") >= 7, "%.1f:1" % contrast(used, "#f8f8f0"))
+    used = page_colours([{"slug": "primary", "color": "#2070b8"}], "#f8f8f8", "")
+    check("...and a picture that shows none gets one worked out",
+          contrast(used["--site-ink"], "#f8f8f8") >= 7)
+
     #  THE EXAMPLE IS THE INSTRUCTION. A picture with a mid ground used
     #  to be refused and a default light page derived instead -- the one
     #  thing the owner did not ask for, since they uploaded that

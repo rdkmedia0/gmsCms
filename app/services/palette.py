@@ -430,7 +430,7 @@ def _mix(one, two, amount):
     return _hex(tuple(x + (y - x) * amount for x, y in zip(a, b)))
 
 
-def page_colours(palette, ground=""):
+def page_colours(palette, ground="", ink=""):
     """Ground, ink, tint, hairline, card and the two accent variants.
 
     ONE path, whatever colour the ground is -- pale, dark, or the mid
@@ -469,6 +469,23 @@ def page_colours(palette, ground=""):
     #  wins on it, and that is one comparison.
     dark_page = contrast("#ffffff", ground) > contrast("#111111", ground)
 
+    #  THE INK THE PICTURE WAS WRITTEN IN, if it gave us one that works.
+    #
+    #  A reference is showing its text colour, and deriving one when it
+    #  is right there is the same mistake as deriving a ground. But a
+    #  sampled ink is a guess about which near-neutral pixels were
+    #  letters, and it is wrong in ordinary ways: Hacker News hands back
+    #  the mid grey of its own interface (3.0:1 on its cream, which no
+    #  page should use for body text) and a photograph of a workshop has
+    #  no writing in it at all.
+    #
+    #  So it is taken when it READS -- 7:1, comfortable rather than
+    #  borderline -- and the arithmetic below does the job when it does
+    #  not. That is the algorithm for "if unclear": measure, and only
+    #  believe what passes.
+    if ink and _rgb(ink) and contrast(ink, ground) >= 7.0:
+        return _with_ink(ground, ink, primary, accent)
+
     #  Ink: the direction that reads, tinted towards the brand so it is
     #  a chosen colour rather than plain black or plain white.
     ink = _mix("#f4f4f4", primary, 0.06) if dark_page else _mix(primary, "#000000", 0.55)
@@ -488,22 +505,32 @@ def page_colours(palette, ground=""):
     card = _mix(ground, "#ffffff" if dark_page else "#ffffff",
                 0.05 if dark_page else 1.0)
 
+    return _with_ink(ground, ink, primary, accent)
+
+
+def _with_ink(ground, ink, primary, accent):
+    """The rest of a page, given a ground and the ink that reads on it.
+
+    Both paths end here -- the ink the picture supplied and the ink this
+    module worked out -- so a sampled page and a derived one are the
+    same kind of thing, and a change to how a band steps away from the
+    ground applies to both.
+    """
+    dark_page = contrast("#ffffff", ground) > contrast("#111111", ground)
+    towards = "#ffffff" if dark_page else "#000000"
+    tint = _mix(ground, towards, 0.13 if dark_page else 0.05)
+    line = _mix(ground, towards, 0.22 if dark_page else 0.12)
+    card = _mix(ground, "#ffffff", 0.05 if dark_page else 1.0)
     accent_ink = max((ink, "#ffffff", "#111111"), key=lambda c: contrast(c, accent))
-    #  The accent as TEXT, walked towards white or black until it passes
-    #  on THIS ground.
     accent_text = accent
     for step in range(1, 15):
         if contrast(accent_text, ground) >= 4.5:
             break
         accent_text = _mix(accent, towards_text(ground), step * 0.06)
     return {
-        "--site-ground": ground,
-        "--site-ink": ink,
-        "--site-tint": tint,
-        "--site-line": line,
-        "--site-card-bg": card,
-        "--site-accent-ink": accent_ink,
-        "--site-accent-text": accent_text,
+        "--site-ground": ground, "--site-ink": ink, "--site-tint": tint,
+        "--site-line": line, "--site-card-bg": card,
+        "--site-accent-ink": accent_ink, "--site-accent-text": accent_text,
     }
 
 

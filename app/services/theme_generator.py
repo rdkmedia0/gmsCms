@@ -145,7 +145,7 @@ IMAGE_BUDGETS = (
 def brand_kit(brief="", tone="warm", voice="we", reading="normal",
               language="English", palette=None, fonts="", shape="", shadow="",
               image_budget="1", ref_colours=None, colour_note="",
-              banner_per_page=False, ref_feel="", composition=""):
+              banner_per_page=False, ref_feel="", composition="", ref_ink=""):
     """One kit, resolved once, read by every prompt and every picture.
 
     Returns plain data -- no db, no request -- so a checker, a script and
@@ -194,6 +194,10 @@ def brand_kit(brief="", tone="warm", voice="we", reading="normal",
         #  one. Read from the same sampling that gave the palette, and
         #  used for the bands -- see `_tint_of`.
         "ground": _ground_from(ref_colours),
+        #  The colour the reference was WRITTEN in, when the picture
+        #  showed one clearly enough to use. Checked against the
+        #  ground before it is believed -- see palette.page_colours.
+        "ink": (ref_ink or "").strip(),
         "composition": composition or "",
         #  One direction for every picture in a run. Generating each from
         #  its own section's words is why AI sites look assembled out of
@@ -1332,7 +1336,8 @@ def sections_for(chunks):
 def _ink_of(kit):
     """The site's own dark, as a real colour a section can be painted in."""
     from .palette import page_colours
-    return (page_colours(kit.get("palette") or [], kit.get("ground") or "")
+    return (page_colours(kit.get("palette") or [], kit.get("ground") or "",
+                         kit.get("ink") or "")
             .get("--site-ink") or "#241f1f")
 
 
@@ -1351,8 +1356,8 @@ def _tint_of(kit):
     #  cream page got a pink band, and the one colour that would have
     #  made it look like the thing it was read from was thrown away.
     from .palette import page_colours
-    derived = page_colours(kit.get("palette") or [],
-                           kit.get("ground") or "").get("--site-tint")
+    derived = page_colours(kit.get("palette") or [], kit.get("ground") or "",
+                           kit.get("ink") or "").get("--site-tint")
     if derived:
         return derived
     from .palette import tint_shade_ramp
@@ -1369,7 +1374,7 @@ def _tint_of(kit):
 def build_package(db, name, pages, palette=None, google_fonts_url=None,
                   shape=None, shadow=None, work_dir=None,
                   nav_layout=None, footer_layout=None, composition=None,
-                  ground=None):
+                  ground=None, ink=None):
     """Writes a package directory and returns (its path, its slug).
 
     `pages` is a list of {title, slug_suffix, sections}. A package with
@@ -1410,6 +1415,8 @@ def build_package(db, name, pages, palette=None, google_fonts_url=None,
     }
     if palette:
         manifest["palette"] = palette
+    if ink:
+        manifest["ink_color"] = ink
     if ground:
         #  The ground the picture sat on. Carried beside the palette
         #  because it is the same kind of thing -- a colour somebody
@@ -1635,7 +1642,8 @@ def generate(db, static_folder, name, kit, fill_scope, use_ai_images,
         palette=kit.get("palette"),
         google_fonts_url=_fonts_url(kit.get("fonts")),
         shape=kit.get("shape"), shadow=kit.get("shadow"),
-        composition=kit.get("composition"), ground=kit.get("ground"))
+        composition=kit.get("composition"), ground=kit.get("ground"),
+        ink=kit.get("ink"))
     try:
         packages.install_theme_package(
             db, slug, static_folder, pkg_dir_override=pkg_dir, is_builtin=False)

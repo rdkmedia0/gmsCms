@@ -294,6 +294,7 @@ def theme_generator():
             shadow=request.form.get("shadow", ""),
             image_budget=request.form.get("image_budget", "1"),
             ref_colours=seen_colours or None,
+            ref_ink=(request.form.get("ref_ink") or "").strip(),
             ref_feel=(signals or {}).get("feel"),
         )
         if signals:

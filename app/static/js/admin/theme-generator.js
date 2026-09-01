@@ -118,7 +118,7 @@
     } catch (e) {
       return null;
     }
-    var strong = {}, plain = {};
+    var strong = {}, plain = {}, quiet = {};
     for (var i = 0; i < data.length; i += 4) {
       if (data[i + 3] < 128) continue;
       var r = data[i], g = data[i + 1], b = data[i + 2];
@@ -136,8 +136,57 @@
         //  on, and a cream page is a different look from a white one.
         plain[key] = (plain[key] || 0) + weight;
       }
+      //  ...and separately, WHAT THE WRITING IS.
+      //
+      //  A page's text colour is not something to derive when the
+      //  picture is showing it. Text is near-neutral, and it is the
+      //  quiet end of the page opposite the paper -- so every
+      //  low-saturation pixel is counted into a luminance histogram,
+      //  and the ink is read off whichever end the ground is not.
+      if (sat < 0.25) {
+        var luma = Math.round((0.2126 * r + 0.7152 * g + 0.0722 * b) / 8);
+        if (!quiet[luma]) quiet[luma] = { n: 0, r: 0, g: 0, b: 0 };
+        quiet[luma].n += 1;
+        quiet[luma].r += r; quiet[luma].g += g; quiet[luma].b += b;
+      }
     }
-    return { strong: strong, plain: plain };
+    return { strong: strong, plain: plain, quiet: quiet };
+  }
+
+  function inkFrom(quiet, groundKey) {
+    //  The colour the writing is, from the picture that is showing it.
+    //
+    //  `quiet` is every near-neutral pixel, bucketed by luminance. The
+    //  paper is the biggest bucket; the ink is the biggest bucket far
+    //  enough away from it to BE ink -- 40% of the luminance range,
+    //  which is roughly the least a page can use and still be read.
+    //
+    //  Returned only when there is enough of it to mean something. A
+    //  photograph of a workshop has no writing on it, and the honest
+    //  answer there is nothing at all, so the arithmetic can do its job
+    //  instead.
+    var keys = Object.keys(quiet);
+    if (!keys.length) return "";
+    var paper = keys.reduce(function (best, k) {
+      return quiet[k].n > quiet[best].n ? k : best;
+    }, keys[0]);
+    var total = keys.reduce(function (n, k) { return n + quiet[k].n; }, 0);
+    var far = keys.filter(function (k) {
+      return Math.abs(Number(k) - Number(paper)) >= 0.4 * (255 / 8);
+    });
+    if (!far.length) return "";
+    var best = far.reduce(function (a, k) {
+      return quiet[k].n > quiet[a].n ? k : a;
+    }, far[0]);
+    //  Under half a percent of the picture is not the writing, it is
+    //  noise -- a shadow, a dark window, the edge of a photograph.
+    if (quiet[best].n < total * 0.005) return "";
+    var bucket = quiet[best];
+    return hexOf([
+      Math.round(bucket.r / bucket.n),
+      Math.round(bucket.g / bucket.n),
+      Math.round(bucket.b / bucket.n)
+    ].join(","));
   }
 
   function distinct(buckets, howMany, apart) {
@@ -205,6 +254,15 @@
         row.querySelectorAll("[data-sampled]").forEach(function (old) {
           old.remove();
         });
+        var ink = inkFrom(found.quiet, ground[0]);
+        if (ink) {
+          var inkField = document.createElement("input");
+          inkField.type = "hidden";
+          inkField.name = "ref_ink";
+          inkField.value = ink;
+          inkField.setAttribute("data-sampled", "1");
+          row.appendChild(inkField);
+        }
         top.concat(ground).forEach(function (key) {
           var field = document.createElement("input");
           field.type = "hidden";

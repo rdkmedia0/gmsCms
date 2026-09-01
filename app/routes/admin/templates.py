@@ -529,15 +529,24 @@ def template_ground(template_id):
     if not db.execute("SELECT 1 FROM templates WHERE id = ?", (template_id,)).fetchone():
         return redirect(url_for("admin.dashboard"))
     choice = request.form.get("ground", "")
+    #  The ink goes with the ground, because they are one decision.
+    #
+    #  A template can arrive carrying the ink its reference picture was
+    #  written in. The moment an owner says "make this a light site",
+    #  that ink is an answer to a question they have just changed -- so
+    #  it is cleared and worked out afresh to suit the ground they
+    #  chose. Reset puts both back to whatever the template shipped
+    #  with.
     if choice == "default":
-        db.execute("UPDATE templates SET ground_color = NULL WHERE id = ?", (template_id,))
+        db.execute("UPDATE templates SET ground_color = NULL, ink_color = NULL "
+                   "WHERE id = ?", (template_id,))
         db.commit()
         flash("Ground reset to the one this template ships with.", "success")
         return _redirect_next("admin.dashboard")
     if choice not in GROUNDS:
         flash("Unknown ground.", "error")
         return redirect(url_for("admin.dashboard"))
-    db.execute("UPDATE templates SET ground_color = ? WHERE id = ?",
+    db.execute("UPDATE templates SET ground_color = ?, ink_color = NULL WHERE id = ?",
                (GROUNDS[choice]["value"] or None, template_id))
     db.commit()
     flash("This site is now %s." % GROUNDS[choice]["name"].lower(), "success")

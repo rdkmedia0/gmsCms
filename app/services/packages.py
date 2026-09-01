@@ -545,6 +545,9 @@ def install_theme_package(db, slug, static_folder, pkg_dir_override=None, is_bui
         if adopt_manifest_overrides and manifest.get("ground_color"):
             db.execute("UPDATE templates SET ground_color = ? WHERE id = ?",
                        (manifest["ground_color"], existing["id"]))
+        if adopt_manifest_overrides and manifest.get("ink_color"):
+            db.execute("UPDATE templates SET ink_color = ? WHERE id = ?",
+                       (manifest["ink_color"], existing["id"]))
         if adopt_manifest_overrides and manifest.get("zone_style_overrides"):
             db.execute(
                 "UPDATE templates SET zone_style_overrides = ? WHERE id = ?",
@@ -565,8 +568,8 @@ def install_theme_package(db, slug, static_folder, pkg_dir_override=None, is_bui
             #  freshly generated one, which is every generated one, came
             #  out unshaped.
             "shape_default, shadow_default, composition_default, composition_override, "
-            "ground_color) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "ground_color, ink_color) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 manifest["name"], slug, css_path,
                 1 if manifest.get("default_active") else 0,
@@ -582,6 +585,7 @@ def install_theme_package(db, slug, static_folder, pkg_dir_override=None, is_bui
                 manifest.get("composition"),
                 manifest.get("composition"),
                 manifest.get("ground_color"),
+                manifest.get("ink_color"),
             ),
         )
         return cur.lastrowid

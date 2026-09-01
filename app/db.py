@@ -482,6 +482,8 @@ def _migrate(db):
     #  The ground a template's own picture sat on. A dark one makes a
     #  dark site -- see palette.page_colours.
     _add_column(db, "templates", "ground_color", "TEXT")
+    #  The colour the reference picture was written in.
+    _add_column(db, "templates", "ink_color", "TEXT")
     # Elevation, the same preset-only override as shape_override above
     # (SHADOW_PRESETS). NULL means "whatever the theme itself does".
     _add_column(db, "templates", "shadow_override", "TEXT")
