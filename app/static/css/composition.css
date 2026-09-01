@@ -397,6 +397,20 @@
 .cms-wysiwyg-body h2:not(.cms-banner-overlay h2),
 .cms-wysiwyg-body h3:not(.cms-banner-overlay h3),
 .cms-block h2, .cms-block h3, .cms-card h3 { color: var(--site-ink, inherit); }
+
+/*  ...except inside a block that paints its OWN background, which
+    states what colour the words on it are and must not have the page's
+    ink reach in and overrule it. The call-to-action in "solid" tone is
+    the brand colour with `--primary-on` on top; the page's ink put dark
+    text on a navy band, which is the hero fault again, one block along.
+
+    `inherit` rather than naming the colour, because the tone that
+    painted the ground is the thing that knows -- and note the selector
+    has to reach the INNER element: `.cms-cta-solid` is on a div inside
+    `.cms-block`, not on the block itself, so excluding it with `:not()`
+    on the block matched nothing at all. */
+.cms-block .cms-cta-solid h2,
+.cms-block .cms-cta-solid p { color: inherit; }
 .cms-banner-overlay h1, .cms-banner-overlay h2, .cms-banner-overlay h3 {
   color: inherit;
 }

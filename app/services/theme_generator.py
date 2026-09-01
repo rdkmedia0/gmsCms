@@ -197,13 +197,36 @@ def brand_kit(brief="", tone="warm", voice="we", reading="normal",
         #  The colour the reference was WRITTEN in, when the picture
         #  showed one clearly enough to use. Checked against the
         #  ground before it is believed -- see palette.page_colours.
-        "ink": (ref_ink or "").strip(),
+        "ink": _ink_that_reads(ref_ink, _ground_from(ref_colours), palette),
         "composition": composition or "",
         #  One direction for every picture in a run. Generating each from
         #  its own section's words is why AI sites look assembled out of
         #  stock: five photographs by five photographers.
         "image_direction": _image_direction(brief, tone),
     }
+
+
+def _ink_that_reads(ink, ground, palette):
+    """The sampled ink, or nothing -- decided the way the PAGE decides.
+
+    A template stores the ink it was read with, and the renderer takes
+    it only when it reaches 7:1 on the ground. So an ink that can never
+    pass was being written down anyway: true of Hacker News' interface
+    grey, and of a photograph with no writing in it at all.
+
+    That is worse than storing nothing. The page looked right, because
+    the renderer had already thrown the value away -- but the template
+    claimed a text colour it does not use, and a later change of ground
+    could make the claim come true and repaint the site in it.
+
+    Same threshold, same arithmetic, one place earlier.
+    """
+    from .palette import contrast, page_colours
+    ink = (ink or "").strip()
+    if not ink:
+        return ""
+    on = ground or (page_colours(palette or []) or {}).get("--site-ground") or "#ffffff"
+    return ink if contrast(ink, on) >= 7.0 else ""
 
 
 def _ground_from(colours):
@@ -907,9 +930,18 @@ def _cards_chunk(cards):
 #  Words an image model reliably DRAWS rather than depicts, and the
 #  scaffolding of a sentence, which invites it to letter the picture.
 _PROMPT_NOISE = re.compile(
-    r"(a|an|the|and|or|for|with|to|of|in|on|at|is|are|my|our|your|their|"
-    r"place|places|somewhere|website|site|page|business|company|based|"
-    r"working|browse|listen|book|booking|get|touch|dates|about|one|person)",
+    #  Lookarounds rather than a word-boundary escape. The pattern is a
+    #  list of whole words and needs its edges, and this file has already
+    #  carried a LOST escape once -- the boundary arrived as a literal
+    #  control character, so the rule asked for something no brief
+    #  contains and stripped nothing at all, silently, for as long as
+    #  nobody read the prompt it produced. `email_layout_check.py` is
+    #  what found it; a pattern with no escape in it cannot be broken
+    #  that way in the first place.
+    r"(?<![A-Za-z])(a|an|the|and|or|for|with|to|of|in|on|at|is|are|my|our|"
+    r"your|their|place|places|somewhere|website|site|page|business|company|"
+    r"based|working|browse|listen|book|booking|get|touch|dates|about|one|"
+    r"person)(?![A-Za-z])",
     re.I)
 
 

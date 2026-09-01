@@ -1060,6 +1060,14 @@ with app.app_context():
     check("...and what replaces it does read",
           contrast(used, "#f8f8f0") >= 7, "%.1f:1" % contrast(used, "#f8f8f0"))
     used = page_colours([{"slug": "primary", "color": "#2070b8"}], "#f8f8f8", "")
+    #  ...and it is refused where it is CAPTURED, not only where it is
+    #  used. A stored ink the renderer will always reject is a value
+    #  nobody sees, sitting in the template's record and travelling in
+    #  its package -- and if the ground later changes it could quietly
+    #  become usable and take over.
+    check("a template carries only an ink it will use",
+          tg._ink_that_reads("#828286", "#f8f8f0", []) == ""
+          and tg._ink_that_reads("#f5f2e2", "#000000", []) == "#f5f2e2")
     check("...and a picture that shows none gets one worked out",
           contrast(used["--site-ink"], "#f8f8f8") >= 7)
 

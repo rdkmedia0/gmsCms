@@ -522,9 +522,24 @@ def _with_ink(ground, ink, primary, accent):
     line = _mix(ground, towards, 0.22 if dark_page else 0.12)
     card = _mix(ground, "#ffffff", 0.05 if dark_page else 1.0)
     accent_ink = max((ink, "#ffffff", "#111111"), key=lambda c: contrast(c, accent))
+
+    #  The accent as TEXT, walked towards white or black until it passes
+    #  on EVERY surface it can land on -- the ground, a band, and a card.
+    #
+    #  It was measured against the ground alone, and that is only safe
+    #  while the other two are close to it. On a dark page they are not:
+    #  a band steps LIGHTER than the ground by design, so a rose accent
+    #  that passed at 4.87:1 on black was 3.73:1 on the band -- and the
+    #  band is exactly where the Stats block puts its numbers, which are
+    #  the largest and least readable thing on the page.
+    #
+    #  So the test is the worst of the three, since a colour that only
+    #  works on one of them is a colour that fails somewhere nobody
+    #  looked.
+    surfaces = (ground, tint, card)
     accent_text = accent
     for step in range(1, 15):
-        if contrast(accent_text, ground) >= 4.5:
+        if min(contrast(accent_text, on) for on in surfaces) >= 4.5:
             break
         accent_text = _mix(accent, towards_text(ground), step * 0.06)
     return {
