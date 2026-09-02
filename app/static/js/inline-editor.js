@@ -1581,6 +1581,17 @@
         if (data.overlay_style) overlay.setAttribute("style", data.overlay_style);
         else overlay.removeAttribute("style");
       }
+      //  The portrait is a child of the banner, not an attribute of it,
+      //  and this used to apply attributes only -- so picking a portrait
+      //  changed nothing on screen until a refresh. An empty answer means
+      //  none: whatever is there comes out.
+      if (target && "portrait_html" in data) {
+        const old = target.querySelector(".cms-banner-portrait");
+        if (old) old.remove();
+        if (data.portrait_html) {
+          target.insertAdjacentHTML("afterbegin", data.portrait_html);
+        }
+      }
     }
   }
 

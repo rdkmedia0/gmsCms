@@ -487,6 +487,10 @@ def _carried_look(form):
         #  time, no matter what was decided.
         "composition": form.get("look_composition", ""),
         "pages": shapes,
+        #  The titles too. Without these a run made after a plan lost the
+        #  pages the plan had worked out from the content, and fell back
+        #  to one page called Home -- with a five-section CV attached.
+        "page_titles": [t for t in form.getlist("look_title") if t],
         "why": form.get("look_why", ""),
         "asked": True,
     }

@@ -168,6 +168,7 @@
     {% if looked %}
     {% for colour in looked.colours %}<input type="hidden" name="look_colour" value="{{ colour }}">{% endfor %}
     {% for shape in looked.pages %}<input type="hidden" name="look_page" value="{{ shape }}">{% endfor %}
+    {% for title in (looked.page_titles or []) %}<input type="hidden" name="look_title" value="{{ title }}">{% endfor %}
     <input type="hidden" name="look_fonts" value="{{ looked.fonts }}">
     <input type="hidden" name="look_shape" value="{{ looked.shape }}">
     <input type="hidden" name="look_shadow" value="{{ looked.shadow }}">

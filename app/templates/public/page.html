@@ -1228,66 +1228,86 @@
 
   {% macro banner_config_fields(cell, generate_url=none, apply_url=none, image_upload_url=none, image_clear_url=none, portrait_upload_url=none) %}
     {% set ov = banner_overlay_settings(cell.content) %}
-    <select name="shape" onchange="this.form.requestSubmit()" title="Shape / cutout for the banner">
-      <option value="none" {{ 'selected' if 'cms-mask-' not in cell.content }}>No shape</option>
-      <option value="rounded" {{ 'selected' if 'cms-mask-rounded' in cell.content }}>Rounded</option>
-      <option value="circle" {{ 'selected' if 'cms-mask-circle' in cell.content }}>Circle</option>
-      <option value="square" {{ 'selected' if 'cms-mask-square' in cell.content }}>Square</option>
-      <option value="diamond" {{ 'selected' if 'cms-mask-diamond' in cell.content }}>Diamond</option>
-      <option value="hexagon" {{ 'selected' if 'cms-mask-hexagon' in cell.content }}>Hexagon</option>
-      <option value="star" {{ 'selected' if 'cms-mask-star' in cell.content }}>Star</option>
-    </select>
-    <select name="attachment" onchange="this.form.requestSubmit()" title="Whether the background image scrolls with the page or stays fixed (parallax)">
-      <option value="scroll" {{ 'selected' if 'cms-banner-fixed' not in cell.content }}>Scrolls with page</option>
-      <option value="fixed" {{ 'selected' if 'cms-banner-fixed' in cell.content }}>Fixed (parallax)</option>
-    </select>
-    {#  A round picture of a person overlapping the band, which is the
-        shape every profile page has settled on. An option here rather
-        than a tool of its own: it is the same banner with a face on it,
-        and it works with no background picture at all. #}
     {% set portrait = banner_portrait_of(cell.content) %}
-    <select name="portrait" onchange="this.form.requestSubmit()" title="A round photo of a person, overlapping the bottom of the banner — for a profile, an About page or a CV">
-      <option value="none" {{ 'selected' if portrait == 'none' }}>No portrait</option>
-      <option value="left" {{ 'selected' if portrait == 'left' }}>Portrait: left</option>
-      <option value="center" {{ 'selected' if portrait == 'center' }}>Portrait: centre</option>
-      <option value="right" {{ 'selected' if portrait == 'right' }}>Portrait: right</option>
-    </select>
-    {% if portrait != 'none' %}
-    {% set portrait_size = banner_portrait_size_of(cell.content) %}
-    <select name="portrait_size" onchange="this.form.requestSubmit()" title="How big the portrait is. A headshot on a CV wants more presence than a small round avatar beside a contact line.">
-      <option value="small" {{ 'selected' if portrait_size == 'small' }}>Small</option>
-      <option value="medium" {{ 'selected' if portrait_size == 'medium' }}>Medium</option>
-      <option value="large" {{ 'selected' if portrait_size == 'large' }}>Large</option>
-    </select>
-    {% else %}
-    {#  Sent anyway so the size survives being switched off and on --
-        the select above is the only control that is gone, not the
-        answer it was holding. #}
-    <input type="hidden" name="portrait_size" value="{{ banner_portrait_size_of(cell.content) }}">
-    {% endif %}
-    {% if portrait != 'none' and portrait_upload_url %}
-    <button type="button" class="cms-pick-library-btn" data-library-pick
-            data-library-for="cms-banner-portrait-file-input" data-library-kinds="image"
-            title="Choose the portrait from your Media Library">Choose face</button>
-    <button type="button" class="cms-change-banner-portrait-btn"
-            title="Upload the portrait from your device">&#11014; Portrait</button>
-    <input type="file" class="cms-banner-portrait-file-input"
-           data-upload-url="{{ portrait_upload_url }}" accept="image/*" hidden>
-    {% endif %}
-    {% if image_upload_url %}
-    <button type="button" class="cms-pick-library-btn" data-library-pick
-            data-library-for="cms-banner-image-file-input" data-library-kinds="image"
-            title="Choose a picture already in your Media Library">Choose</button>
-    <button type="button" class="cms-change-banner-image-btn" title="Upload a background image from your device">⬆ Upload</button>
-    <input type="file" class="cms-banner-image-file-input" data-upload-url="{{ image_upload_url }}" accept="image/*" hidden>
-    <button type="button" class="cms-clear-card-image-btn" data-clear-url="{{ image_clear_url }}" title="Remove the background image" {{ 'hidden' if 'background-image' not in cell.content }}>Remove image</button>
-    {% endif %}
-    {% if generate_url %}
-    <button type="button" class="cms-generate-image-btn" data-generate-url="{{ generate_url }}" data-apply-url="{{ apply_url }}" data-kind="banner" title="Generate a background image with AI">✨ Generate</button>
-    {% endif %}
-    {% if apply_url %}
-    <button type="button" class="cms-library-pick-btn" data-apply-url="{{ apply_url }}" data-kind="banner" title="Choose an existing image from the Media Library">📚 Library</button>
-    {% endif %}
+    {#  THREE SECTIONS, ONE LAYOUT. The panel was a stack of full-width
+        controls -- two selects, then two more, then six buttons, then a
+        grid -- and nothing said which button belonged to which picture.
+        Every group now takes the grid the Text box style already had:
+        a heading, then labelled controls in a row. #}
+    <div class="cms-banner-text-config">
+      <span class="cms-banner-text-config-label">Banner</span>
+      <div class="cms-banner-text-config-grid">
+        <label>Shape
+          <select name="shape" onchange="this.form.requestSubmit()" title="Shape / cutout for the banner">
+            <option value="none" {{ 'selected' if 'cms-mask-' not in cell.content }}>None</option>
+            <option value="rounded" {{ 'selected' if 'cms-mask-rounded' in cell.content }}>Rounded</option>
+            <option value="circle" {{ 'selected' if 'cms-mask-circle' in cell.content }}>Circle</option>
+            <option value="square" {{ 'selected' if 'cms-mask-square' in cell.content }}>Square</option>
+            <option value="diamond" {{ 'selected' if 'cms-mask-diamond' in cell.content }}>Diamond</option>
+            <option value="hexagon" {{ 'selected' if 'cms-mask-hexagon' in cell.content }}>Hexagon</option>
+            <option value="star" {{ 'selected' if 'cms-mask-star' in cell.content }}>Star</option>
+          </select>
+        </label>
+        <label>Picture
+          <select name="attachment" onchange="this.form.requestSubmit()" title="Whether the background image scrolls with the page or stays fixed (parallax)">
+            <option value="scroll" {{ 'selected' if 'cms-banner-fixed' not in cell.content }}>Scrolls</option>
+            <option value="fixed" {{ 'selected' if 'cms-banner-fixed' in cell.content }}>Fixed</option>
+          </select>
+        </label>
+        {% if image_upload_url %}
+        <span class="cms-config-actions">
+          <button type="button" class="cms-pick-library-btn" data-library-pick
+                  data-library-for="cms-banner-image-file-input" data-library-kinds="image"
+                  title="Choose the background picture from your Media Library">Choose</button>
+          <button type="button" class="cms-change-banner-image-btn" title="Upload a background picture from your device">&#11014; Upload</button>
+          <input type="file" class="cms-banner-image-file-input" data-upload-url="{{ image_upload_url }}" accept="image/*" hidden>
+          <button type="button" class="cms-clear-card-image-btn" data-clear-url="{{ image_clear_url }}" title="Remove the background picture" {{ 'hidden' if 'background-image' not in cell.content }}>Remove</button>
+          {% if generate_url %}
+          <button type="button" class="cms-generate-banner-btn" data-generate-url="{{ generate_url }}" data-kind="banner" title="Generate a background picture with AI">&#10024; Generate</button>
+          {% endif %}
+          {% if apply_url %}
+          <button type="button" class="cms-library-pick-btn" data-apply-url="{{ apply_url }}" data-kind="banner" title="Choose an existing image from the Media Library">&#128218; Library</button>
+          {% endif %}
+        </span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="cms-banner-text-config">
+      <span class="cms-banner-text-config-label">Portrait</span>
+      <div class="cms-banner-text-config-grid">
+        <label>Show
+          <select name="portrait" onchange="this.form.requestSubmit()" title="A round photo of a person, overlapping the bottom of the banner - for a profile, an About page or a CV">
+            <option value="none" {{ 'selected' if portrait == 'none' }}>No portrait</option>
+            <option value="left" {{ 'selected' if portrait == 'left' }}>On the left</option>
+            <option value="center" {{ 'selected' if portrait == 'center' }}>In the centre</option>
+            <option value="right" {{ 'selected' if portrait == 'right' }}>On the right</option>
+          </select>
+        </label>
+        {% if portrait != 'none' %}
+        {% set portrait_size = banner_portrait_size_of(cell.content) %}
+        <label>Size
+          <select name="portrait_size" onchange="this.form.requestSubmit()" title="How big the portrait is. A headshot on a CV wants more presence than a small round avatar beside a contact line.">
+            <option value="small" {{ 'selected' if portrait_size == 'small' }}>Small</option>
+            <option value="medium" {{ 'selected' if portrait_size == 'medium' }}>Medium</option>
+            <option value="large" {{ 'selected' if portrait_size == 'large' }}>Large</option>
+          </select>
+        </label>
+        {% if portrait_upload_url %}
+        <span class="cms-config-actions">
+          <button type="button" class="cms-pick-library-btn" data-library-pick
+                  data-library-for="cms-banner-portrait-file-input" data-library-kinds="image"
+                  title="Choose the portrait from your Media Library">Choose</button>
+          <button type="button" class="cms-change-banner-portrait-btn"
+                  title="Upload the portrait from your device">&#11014; Upload</button>
+          <input type="file" class="cms-banner-portrait-file-input"
+                 data-upload-url="{{ portrait_upload_url }}" accept="image/*" hidden>
+        </span>
+        {% endif %}
+        {% else %}
+        <input type="hidden" name="portrait_size" value="{{ banner_portrait_size_of(cell.content) }}">
+        {% endif %}
+      </div>
+    </div>
     <div class="cms-banner-text-config">
       <span class="cms-banner-text-config-label">Text box style</span>
       <div class="cms-banner-text-config-grid">

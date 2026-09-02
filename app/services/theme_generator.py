@@ -861,7 +861,17 @@ def plan(db, kit, name, mode="scratch", pages_wanted=None, looked=None,
             "tone": kit["tone_label"],
         }
 
-    wanted = pages_wanted or ["Home"]
+    #  THE PAGES THE RUN WILL ACTUALLY MAKE. This defaulted to Home when
+    #  nobody typed a list, so the plan promised one page and one picture
+    #  to somebody who had attached a five-section CV -- and then the run
+    #  made five. What the plan shows must be what gets made, or the
+    #  plan is a guess with a Make button under it.
+    wanted = list(pages_wanted or [])
+    if not wanted:
+        wanted = list((looked or {}).get("page_titles") or [])
+    if len(wanted) <= 1:
+        wanted = headings_in(kit.get("source_text", "")) if kit.get("source_text") else wanted
+    wanted = wanted or ["Home"]
     #  The look is decided HERE, not when the run starts, so what the
     #  plan shows is what gets made -- and so the owner can look at the
     #  colours and the shapes before anything is written. `looked` is
@@ -1295,7 +1305,7 @@ _PROMPT_NOISE = re.compile(
     re.I)
 
 
-def _picture_prompt(brief, direction):
+def _picture_prompt(brief, direction, people=True):
     """What to ask for, as a SCENE rather than as a sentence.
 
     The prompt used to be "A wide background photograph for the top of a
@@ -1317,8 +1327,15 @@ def _picture_prompt(brief, direction):
     #  a word boundary rather than a character count, because "sessions
     #  a" is exactly the kind of fragment a model renders literally.
     subject = " ".join([w for w in words.split() if len(w) > 2][:8]).strip()
-    return ("Photograph: %s. %s. Wide, no lettering of any kind."
-            % (subject or "a small independent business", direction))
+    #  NO PEOPLE on a personal site. A generated photograph of a man at
+    #  a desk, across the top of somebody's CV, is a stranger's face
+    #  presented as theirs -- the misattribution this app refuses
+    #  everywhere else, on the page most likely to be believed. The
+    #  portrait slot is where the owner's own face goes; the picture
+    #  behind it is a place, a tool, a view.
+    crowd = "" if people else " No people, no faces, no figures."
+    return ("Photograph: %s. %s. Wide, no lettering of any kind.%s"
+            % (subject or "a small independent business", direction, crowd))
 
 
 #  A copy answer has to carry at least this much to count as one: the
@@ -1347,6 +1364,42 @@ def _note_unwritten(kit, layout_key, why, page_title=""):
     #  share a shape.
     kit.setdefault("unwritten", []).append(
         {"layout": layout_key, "why": why, "page": page_title})
+
+
+def _distinctive(text):
+    """The tokens a page built from this text would carry: numbers, and
+    capitalised words that are not the first word of a sentence."""
+    out = set()
+    for sentence in re.split(r"[.!?\n]+", text or ""):
+        words = sentence.split()
+        for n, w in enumerate(words):
+            bare = w.strip(",;:()'" + chr(34))
+            if not bare:
+                continue
+            if any(ch.isdigit() for ch in bare):
+                out.add(bare.lower())
+            elif n > 0 and bare[0].isupper() and len(bare) > 2:
+                out.add(bare.lower())
+    return out
+
+
+def _used_the_content(answer, source):
+    """Whether a model's answer carries any of the source's own facts.
+
+    A source with fewer than two distinctive tokens cannot be checked
+    and is not: a section that says only "Contact me" leaves nothing
+    to measure, and refusing an answer for failing a test it could not
+    take would be the wrong kind of strict.
+    """
+    marks = _distinctive(source)
+    if len(marks) < 2:
+        return True
+    said = " ".join(str(v) for v in (answer or {}).values()
+                    if isinstance(v, str))
+    said += " " + " ".join(
+        str(x) for v in (answer or {}).values() if isinstance(v, list)
+        for row in v if isinstance(row, dict) for x in row.values())
+    return bool(marks & _distinctive(said))
 
 
 def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
@@ -1419,6 +1472,28 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
     #  and beats the alternative outright: the alternative is "Write
     #  your introduction here" on a page called Qualifications, next to
     #  a CV that lists them.
+    #  ...AND WHEN IT SAID SOMETHING THAT IGNORED THE CONTENT. A brief
+    #  with a strong flavour -- "1939 gangster steampunk" -- came back
+    #  as three paragraphs of flavour and not one fact from the CV
+    #  attached beside it. The model answered, so nothing was
+    #  unwritten, and the owner's content sat in the request unused.
+    #
+    #  Measured rather than trusted: the distinctive tokens of the
+    #  content -- numbers, and capitalised words that are not sentence
+    #  starts -- are what a page built FROM it would carry. If the
+    #  page carries none of them while its section of the document
+    #  has several, the answer did not use the document, and the
+    #  document is used instead.
+    if fill and copy and kit.get("source_text") and page_title:
+        own_now = section_under(kit["source_text"], page_title)
+        if not own_now:
+            own_now = opening_of(kit["source_text"])[1]
+        if own_now and not _used_the_content(copy, own_now):
+            copy = {}
+            _note_unwritten(kit, layout_key,
+                            "The AI wrote around your content rather than from it.",
+                            page_title)
+
     if fill and not copy and kit.get("source_text") and page_title:
         own = section_under(kit["source_text"], page_title)
         #  The FRONT page has no heading of its own -- no document says
@@ -1468,7 +1543,8 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
     #  One direction for every picture in a run -- see
     #  brand_kit()["image_direction"].
     hero = _maybe_generate_image(
-        db, _picture_prompt(brief or layout_key, kit["image_direction"]),
+        db, _picture_prompt(brief or layout_key, kit["image_direction"],
+                            people=not wants_portrait(kit)),
         use_ai_images and want_image and kit["image_budget"] > 0)
 
     #  Every piece carries its own STYLING, and a piece may be a real

@@ -1259,10 +1259,16 @@ def _banner_dom_response(content):
     the opacity slider changes)."""
     soup, div = _banner_div(content)
     overlay = div.find(class_="cms-banner-overlay") if div is not None else None
+    figure = div.find(class_="cms-banner-portrait") if div is not None else None
     return {
         "class": " ".join(div.get("class") or []) if div is not None else "cms-banner",
         "style": div.get("style", "") if div is not None else "",
         "overlay_style": overlay.get("style", "") if overlay is not None else "",
+        #  The portrait is a child, not an attribute, and the in-place
+        #  update carried only attributes -- so choosing a portrait did
+        #  nothing on screen until a refresh. Empty string means "none":
+        #  the JS removes what is there.
+        "portrait_html": str(figure) if figure is not None else "",
     }
 
 

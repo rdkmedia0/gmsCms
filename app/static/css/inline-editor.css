@@ -1314,3 +1314,10 @@ body.cms-preview-open { overflow: hidden; }
   background: #f4f6f8;
   border-radius: var(--cms-ui-radius-control, 4px);
 }
+
+/*  The picture buttons inside a config grid sit as one group, on their
+    own row, so a section reads as: settings, then what you can do. */
+.cms-banner-text-config-grid .cms-config-actions {
+  flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px;
+}
+.cms-banner-text-config + .cms-banner-text-config { margin-top: 10px; }

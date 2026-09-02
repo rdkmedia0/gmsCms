@@ -1868,6 +1868,50 @@ check("a hero has no portrait unless one is asked for",
       "cms-has-portrait" not in tg._hero_chunk("X", "y", ""))
 
 print()
+print("What the plan shows is what gets made, and the content is used")
+print("-" * 70)
+#  The plan defaulted to one page called Home when nobody typed a list,
+#  so it promised one page and one picture to somebody who had attached
+#  a five-section CV and asked for three -- and then the run made five.
+with app.app_context():
+    _db = get_db()
+    _kit = tg.brand_kit(source_text=_cv2, voice="i", image_budget="3")
+    _p = tg.plan(_db, _kit, "CV", pages_wanted=[], use_ai_images=True, fill_scope="all")
+    check("the plan lists the document's pages when none were typed",
+          [pg["title"] for pg in _p["pages"]] == ["Home", "Experience", "Qualifications", "Contact"],
+          str([pg["title"] for pg in _p["pages"]]))
+    check("...and counts the pictures asked for", _p["pictures"] == 3, str(_p["pictures"]))
+#  ...and the titles it worked out survive to the run.
+check("the plan carries its page titles to the run",
+      'name="look_title"' in io.open("/app/app/templates/admin/theme_generator.html",
+                                     encoding="utf-8").read()
+      and '"page_titles": [t for t in form.getlist("look_title")' in
+      io.open("/app/app/routes/admin/dashboard.py", encoding="utf-8").read())
+
+#  A brief with a strong flavour came back as three paragraphs of flavour
+#  and not one fact from the CV attached beside it. The model answered, so
+#  nothing was unwritten. Measured now: numbers and proper names.
+_src = "Ward sister at St Mary, 2015 to 2019. Clinical lead, 2019 to 2024."
+check("an answer with none of the content's facts is caught",
+      not tg._used_the_content({"intro_body": "Brass gears and tactical precision."}, _src))
+check("...an answer that placed them passes",
+      tg._used_the_content({"intro_body": "Clinical lead from 2019 to 2024."}, _src))
+check("...and a source too thin to judge is not judged",
+      tg._used_the_content({"x": "anything"}, "Contact me."))
+check("...and the page falls back to the document when it is caught",
+      "wrote around your content" in _src_now if (_src_now := io.open(
+          "/app/app/services/theme_generator.py", encoding="utf-8").read()) else False)
+
+#  No strangers on a CV: the generated picture behind a personal site is a
+#  place, a tool, a view -- never a person presented as the owner.
+check("a personal site's picture is asked for without people",
+      "No people, no faces" in tg._picture_prompt("a landscape architect", "warm", people=False))
+check("...and a business's picture is not so restricted",
+      "No people" not in tg._picture_prompt("a bakery", "warm", people=True))
+check("...decided by whether the site wants a portrait",
+      "people=not wants_portrait(kit)" in _src_now)
+
+print()
 print("  %d ok, %d failed" % (passed, len(failures)))
 for name in failures:
     print("    - " + name)
