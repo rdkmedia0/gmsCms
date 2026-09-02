@@ -90,7 +90,7 @@ def pages_tidy():
     active = db.execute("SELECT slug FROM templates WHERE is_active = 1").fetchone()
     if not active:
         return redirect(url_for("admin.dashboard"))
-    removed, kept = _retire_foreign_pack_pages(db, active["slug"])
+    removed, written_in = _retire_foreign_pack_pages(db, active["slug"])
     db.commit()
     if removed:
         flash("Removed " + ", ".join(removed) + ". Those pages came with templates you are no "
@@ -98,13 +98,15 @@ def pages_tidy():
     else:
         flash("Nothing to tidy — every page belongs to the template you are using, or to you.",
               "success")
-    #  Said out loud, because it is the surprising half: a page from an
-    #  old template that somebody has since written in is kept, and an
-    #  owner who expected a clean sweep should know why it is still there.
-    if kept:
-        flash("Kept " + ", ".join(kept) + " — you have written in " +
-              ("those, so they are" if len(kept) > 1 else "that, so it is") +
-              " yours now, whatever they arrived as.", "success")
+    #  Said out loud, because it is the half somebody will regret: these
+    #  went with the rest, and they had the owner's own writing in them.
+    #  A warning rather than a veto -- the template is the site, and
+    #  "just the look" is how you keep what is there.
+    if written_in:
+        flash("You had written in " + ", ".join(written_in) +
+              ". That went too. To keep your own pages, choose just the "
+              "look next time, or save the site as a template first.",
+              "warning")
     return redirect(url_for("admin.dashboard"))
 
 
@@ -788,14 +790,15 @@ def template_activate(template_id):
             #  And take away what the last template left. Same
             #  all-or-nothing confirmation as replacing the content: this
             #  only runs once the admin has agreed to that.
-            retired, kept = _retire_foreign_pack_pages(db, tpl["slug"])
+            retired, written_in = _retire_foreign_pack_pages(db, tpl["slug"])
             if retired:
                 flash("Removed " + ", ".join(retired) +
                       " — those pages belonged to the template you were using before.", "success")
-            if kept:
-                flash("Kept " + ", ".join(kept) + " — you have written in " +
-                      ("those, so they are" if len(kept) > 1 else "that, so it is") +
-                      " yours now.", "success")
+            if written_in:
+                flash("You had written in " + ", ".join(written_in) +
+                      ". That went with them. To keep your own pages, "
+                      "choose just the look, or save the site as a "
+                      "template before switching.", "warning")
         elif content_conflict:
             needs_confirm = True
     #  After the content, not before it. A template's header menu is built
@@ -840,6 +843,18 @@ def template_delete(template_id):
             return jsonify({"error": "Can't delete the active template. Activate another one first."}), 400
         flash("Can't delete the active template. Activate another one first.", "error")
         return redirect(url_for("admin.dashboard"))
+    #  A TEMPLATE'S ZONE SECTIONS GO WITH IT.
+    #
+    #  The header menu, the footer and the sidebars a template ships are
+    #  `sections` rows carrying its template_id -- and deleting the
+    #  template left every one of them behind, pointing at an id nothing
+    #  answers to. Twenty-one of them on this install, from eleven
+    #  templates that no longer exist, invisible because only the ACTIVE
+    #  template's zone sections are ever rendered.
+    #
+    #  The same shape as _drop_stale_media: a row whose owner is gone is
+    #  not data, it is residue.
+    db.execute("DELETE FROM sections WHERE template_id = ?", (template_id,))
     db.execute("DELETE FROM templates WHERE id = ?", (template_id,))
     db.commit()
     # A builtin's own package is the .zip built into the image and is

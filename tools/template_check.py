@@ -157,7 +157,7 @@ with app.app_context():
     shutil.rmtree(empty, ignore_errors=True)
 
     print()
-    print("A page somebody has written in is not disposable")
+    print("A template load loads the template's pages -- all of them")
     print("-" * 70)
     from app.routes.admin import _retire_foreign_pack_pages
     db.execute("INSERT INTO pages (title, slug, source_template, is_home) "
@@ -175,22 +175,51 @@ with app.app_context():
                         (written,)).fetchone()["owner_edited"]
     check("writing a section marks its page as written in", marked == 1, str(marked))
 
-    removed, kept = _retire_foreign_pack_pages(db, "newpack")
+    #  A TEMPLATE IS A STRUCTURED WEBSITE, PAGES INCLUDED. Loading one
+    #  loads its pages and the previous template's go -- all of them.
+    #
+    #  This checked the opposite until today: a page carrying
+    #  `owner_edited` was SPARED, and a spared page is spared by every
+    #  future switch as well. Combined with a bug that marked every page
+    #  of every pack as edited, that is how one template's "The library"
+    #  survived onto three unrelated sites carrying its own heading.
+    #
+    #  The care that rule was reaching for is a warning now, not a veto:
+    #  the second return value names the pages that had the owner's own
+    #  writing in them, and the caller says so. Keeping them is what
+    #  "just the look" is for.
+    removed, written_in = _retire_foreign_pack_pages(db, "newpack")
     check("an untouched page from an old pack is removed",
           "Untouched" in removed, str(removed))
-    check("a page somebody wrote in is kept", "Written in" in kept, str(kept))
-    check("...and it is still there afterwards",
-          db.execute("SELECT 1 FROM pages WHERE slug = 'written-in'").fetchone() is not None)
+    check("a page somebody wrote in is removed too",
+          "Written in" in removed, str(removed))
+    check("...and it is gone afterwards",
+          db.execute("SELECT 1 FROM pages WHERE slug = 'written-in'").fetchone() is None)
+    check("...and the owner is told which of them they had written in",
+          "Written in" in written_in, str(written_in))
 
     print()
     print("Loading a template's content makes the page the template's again")
     print("-" * 70)
-    #  The one act that un-edits a page: putting the pack's own copy back.
-    db.execute("UPDATE pages SET owner_edited = 0 WHERE id = ?", (written,))
+    #  A fresh page: the one above is gone now, which is the rule this
+    #  file states two sections up. The flag still exists and still means
+    #  "somebody wrote in this" -- it is what the warning is built from --
+    #  and putting the pack's own copy back is what un-sets it.
+    db.execute("INSERT INTO pages (title, slug, source_template, is_home) "
+               "VALUES ('Reloaded', 'reloaded', 'oldpack', 0)")
+    db.commit()
+    again = db.execute("SELECT id FROM pages WHERE slug = 'reloaded'").fetchone()["id"]
+    db.execute("INSERT INTO sections (page_id, zone, type, content, position) "
+               "VALUES (?, 'body', 'html', '<p>Mine</p>', 0)", (again,))
+    db.commit()
+    check("writing in it marks it again",
+          db.execute("SELECT owner_edited FROM pages WHERE id = ?",
+                     (again,)).fetchone()["owner_edited"] == 1)
+    db.execute("UPDATE pages SET owner_edited = 0 WHERE id = ?", (again,))
     db.commit()
     check("after Load Content it is the pack's copy again",
           db.execute("SELECT owner_edited FROM pages WHERE id = ?",
-                     (written,)).fetchone()["owner_edited"] == 0)
+                     (again,)).fetchone()["owner_edited"] == 0)
 
 shutil.rmtree(DATA_DIR, ignore_errors=True)
 print()

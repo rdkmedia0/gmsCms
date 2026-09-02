@@ -554,16 +554,30 @@ package happens to have `pages/`:
   and refused once something does, the same shape as "the active template
   cannot be deleted". A shipped template can never be demoted: its
   package is in the image and comes back on the next boot.
-- **A page somebody has written in is the site's, whatever it arrived
-  as.** `pages.owner_edited` is set by a trigger on `sections` -- a dozen
-  places write one, and any of them forgetting would be a page quietly
-  deleted months later. `_retire_foreign_pack_pages` spares those and
-  says which it spared, because an owner expecting a clean sweep should
-  know why something is still there. Load Content clears the flag: putting
-  the pack's own copy back is exactly the act that un-edits a page.
-  Before this, switching template deleted every page whose
-  `source_template` was a different pack -- including ones the owner had
-  rewritten, since an edited page still carries the slug it arrived with.
+- **A template is a structured website, pages included.** Loading one
+  loads its pages, and the previous template's pages go -- ALL of them.
+  Keeping what is there is what "just the look" is for, and that is the
+  only exception.
+
+  This spared any page carrying `pages.owner_edited`, on the reasoning
+  that a page somebody has written in is the site's now. Two things were
+  wrong with it. The flag is set by a trigger on `sections`, so an older
+  bug that cleared it BEFORE writing a pack's own sections marked every
+  page of every pack as edited -- and a spared page is spared by every
+  future switch too. That is how one template's "The library" survived
+  onto a wedding barn, a bicycle workshop and a pottery studio, carrying
+  its own heading, with nothing on screen explaining why. The second is
+  that it made "load the template" mean different things depending on
+  history nobody can see.
+
+  The flag still exists and still means "somebody wrote in this page".
+  It is a WARNING now, not a veto: `_retire_foreign_pack_pages` returns
+  which of the removed pages had the owner's own writing in them, and
+  the caller says so. The undo is the one this app already has -- the
+  confirm dialog's "save the current setup as a new template first" --
+  which is an act the owner chooses, rather than preservation by a flag
+  they cannot see. Load Content clears the flag: putting the pack's own
+  copy back is exactly the act that un-edits a page.
 - **Delete** works on any template, including builtins — a deleted
   builtin's `templates` row (and its copied `static/themes/<slug>/`
   asset) just comes back the next time the app restarts, since the seed

@@ -409,28 +409,46 @@ def _retire_foreign_pack_pages(db, slug):
     rather than have pages quietly vanish -- and can say what it SPARED,
     which is the more surprising half.
     """
-    #  `owner_edited = 0` is the whole of the change here, and it answers
-    #  a question BOW.md flagged before this was built: what happens to a
-    #  page somebody has since written in? It was deleted. An edited page
-    #  still carries the slug of the pack that created it -- it has to, so
-    #  Load Content can find it and put it back -- so switching template
-    #  threw the owner's work away with the rest of the demo content, and
-    #  said only "removed 4 pages".
+    #  A TEMPLATE IS A STRUCTURED WEBSITE, PAGES INCLUDED. Loading one
+    #  loads its pages, and the previous template's pages go -- ALL of
+    #  them. The only way to keep what is there is to choose just the
+    #  look, which is what that option is for.
     #
-    #  A page somebody has written in is the SITE'S now, whatever it
-    #  arrived as. It is left alone, and the caller says so.
+    #  This used to spare any page carrying `owner_edited = 1`, on the
+    #  reasoning that a page somebody has written in is the site's now.
+    #  Two things were wrong with it. The flag was set by a trigger on
+    #  `sections`, so an older bug that cleared it before writing a
+    #  pack's own sections marked EVERY page of every pack as edited --
+    #  and a spared page is spared forever, by every future switch. That
+    #  is how a saxophone template's "The library" survived onto a
+    #  wedding barn, a bicycle workshop and a pottery studio, carrying
+    #  its own heading, with nothing on any screen explaining why.
+    #
+    #  And the second is that it made the feature mean two different
+    #  things depending on history nobody can see. "Load the template"
+    #  either loads the template or it does not.
+    #
+    #  The care that rule was reaching for has a better home: the flag
+    #  still says which of these pages had the owner's own writing in
+    #  them, and the caller WARNS with that instead of vetoing. The
+    #  confirm dialog already offers to save the current site as a new
+    #  template first, which is this app's undo (see CLAUDE.md) -- so
+    #  the work is recoverable, by an act the owner chose, rather than
+    #  preserved by a flag they cannot see.
     doomed = db.execute(
         "SELECT id, title FROM pages WHERE source_template IS NOT NULL "
-        "AND source_template != ? AND is_home = 0 AND owner_edited = 0", (slug,)
+        "AND source_template != ? AND is_home = 0", (slug,)
     ).fetchall()
-    kept = db.execute(
+    written_in = db.execute(
         "SELECT title FROM pages WHERE source_template IS NOT NULL "
         "AND source_template != ? AND is_home = 0 AND owner_edited = 1", (slug,)
     ).fetchall()
     for page in doomed:
         db.execute("DELETE FROM sections WHERE page_id = ?", (page["id"],))
         db.execute("DELETE FROM pages WHERE id = ?", (page["id"],))
-    return [p["title"] for p in doomed], [p["title"] for p in kept]
+    #  (removed, had your own writing in them) -- the second is a subset
+    #  of the first now, and is a warning rather than a list of survivors.
+    return [p["title"] for p in doomed], [p["title"] for p in written_in]
 
 
 def demo_identity_names(db):
