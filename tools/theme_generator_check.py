@@ -1832,6 +1832,42 @@ check("content read from a file is carried between the two presses",
           "/app/app/routes/admin/dashboard.py", encoding="utf-8").read())
 
 print()
+print("A CV gets a portrait; a bakery does not, and neither gets a face")
+print("-" * 70)
+#  The Banner's own portrait option, chosen by the generator when the
+#  site is a PERSON rather than a business.
+for _tag, _kw, _want in (
+        ("a CV speaking as I",
+         dict(source_text="Experience. Qualifications: MA. 2021 to now.", voice="i"), True),
+        ("a portfolio", dict(brief="My portfolio of photography work.", voice="i"), True),
+        ("a sole trader speaking as I",
+         dict(brief="I repair and install boilers.", voice="i"), False),
+        ("a bakery speaking as we",
+         dict(brief="A family bakery selling sourdough.", voice="we"), False),
+        ("a CV in a company voice",
+         dict(source_text="Curriculum vitae. Experience.", voice="we"), True)):
+    check("%s %s a portrait" % (_tag, "wants" if _want else "does not want"),
+          tg.wants_portrait(tg.brand_kit(**_kw)) is _want)
+
+#  The Process shape is chosen by a bicycle workshop AND a CV -- both are
+#  a series of things in order -- so the portrait rule reads career words
+#  rather than the shape, or every trade would get a headshot.
+check("a career history is not the same signal as a trade",
+      "CAREER_WORDS" in _src and 'words & set(CAREER_WORDS)' in _src)
+
+_face = tg._hero_chunk("Alina Ferreira", "Landscape architect", "", portrait="left")
+check("the hero carries the Banner's own portrait classes",
+      "cms-has-portrait-left" in _face and "cms-portrait-size-" in _face)
+#  EMPTY. This generator carries no identity and must not invent one; a
+#  synthetic face on somebody's CV is the sharpest form of breaking that.
+check("...and the picture is left for the owner",
+      "cms-banner-portrait-empty" in _face and "<img" not in _face)
+check("...on the front page only",
+      'portrait=("left" if i == 0 and wants_portrait(kit) else "")' in _src)
+check("a hero has no portrait unless one is asked for",
+      "cms-has-portrait" not in tg._hero_chunk("X", "y", ""))
+
+print()
 print("  %d ok, %d failed" % (passed, len(failures)))
 for name in failures:
     print("    - " + name)

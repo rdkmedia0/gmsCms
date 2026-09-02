@@ -1139,7 +1139,56 @@ def _maybe_generate_image(db, prompt, use_ai_images):
 #  a class of its own, what it makes stops being editable.
 
 
-def _hero_chunk(headline, subtext, image_url, eyebrow="", buttons=(), ground=""):
+#  A PORTRAIT, when the site is a person rather than a business.
+#
+#  The shape a CV asks for -- a round photograph overlapping the band
+#  -- and the generator can tell when it is wanted: a career history
+#  speaks as one person and reads as a chronology. It is the Banner's
+#  own option (services/sections.BANNER_PORTRAITS), so what it produces
+#  is a banner the owner goes on editing with the controls already on
+#  it.
+#
+#  IT LEAVES THE PICTURE EMPTY, deliberately. This generator carries no
+#  identity and must not invent one, and a synthetic face on somebody's
+#  CV is the sharpest form of breaking that -- a stranger's face
+#  presented as theirs. The slot is made and the page is styled around
+#  it; the photograph is one click on a control that is already there.
+PORTRAIT_WORDS = ("cv", "resume", "curriculum", "vitae", "profile",
+                  "portfolio", "freelance", "freelancer")
+
+#  A CAREER history, which is not the same as a trade. The Process
+#  shape is chosen by both -- a bicycle workshop and a CV are each a
+#  series of things in order -- but only one of them is a person's own
+#  history, and a headshot over "I repair and install boilers" is not
+#  the same page as one over "Clinical lead, 2019 to 2024".
+CAREER_WORDS = ("cv", "resume", "curriculum", "vitae", "career",
+                "employment", "employed", "experience", "qualification",
+                "qualifications", "qualified", "education", "graduated",
+                "references", "referees")
+
+
+def wants_portrait(kit):
+    """Whether a front page should carry a portrait slot.
+
+    Two ways to be sure, and both need the site to be ONE PERSON: the
+    words say so outright (a CV, a profile), or the site speaks as
+    "I" and the content is a career history -- the same evidence that
+    puts the front page on the Process shape.
+
+    A business speaking as "we" gets none of this, however many people
+    work there: a round headshot over a company's banner is a
+    different page altogether.
+    """
+    words = set(re.findall(r"[a-z]+", _signal_text(kit).lower()))
+    if words & set(PORTRAIT_WORDS):
+        return True
+    if (kit or {}).get("voice") != "i":
+        return False
+    return bool(words & set(CAREER_WORDS))
+
+
+def _hero_chunk(headline, subtext, image_url, eyebrow="", buttons=(), ground="",
+                portrait=""):
     #  Escaped, because these are WORDS somebody (or a model) wrote, not
     #  markup. A stray "<" in a headline is a headline, not a tag.
     #
@@ -1176,17 +1225,34 @@ def _hero_chunk(headline, subtext, image_url, eyebrow="", buttons=(), ground="")
     #
     #  A surface that paints its own background states its own ink, and
     #  this is the only place that knows the band's colour.
+    #  The portrait, when one belongs: the Banner tool's own classes
+    #  and its own empty figure, so what arrives is a banner the owner
+    #  edits with the controls already on it. EMPTY, because a face is
+    #  an identity and this generator invents none.
+    face, slot = "", ""
+    if portrait:
+        from .sections import BANNER_PORTRAITS, BANNER_PORTRAIT_SIZES
+        where = portrait if portrait in BANNER_PORTRAITS[1:] else "left"
+        #  A short headline leaves room for a big portrait; a long one
+        #  does not, and the two would collide on a narrow band.
+        big = "large" if len(headline or "") < 40 else "medium"
+        big = big if big in BANNER_PORTRAIT_SIZES else "medium"
+        face = (" cms-has-portrait cms-has-portrait-%s"
+                " cms-portrait-size-%s") % (where, big)
+        slot = ('<figure class="cms-banner-portrait cms-banner-portrait-empty">'
+                '<span class="cms-banner-portrait-hint">Choose a picture</span>'
+                '</figure>')
     if not image_url or image_url == PLACEHOLDER_IMAGE:
         from .palette import readable_on
         band = ground or "#241f1f"
-        return ('<div class="cms-banner cms-banner-plain" '
-                'style="background-color:%s;color:%s">'
+        return ('<div class="cms-banner cms-banner-plain%s" '
+                'style="background-color:%s;color:%s">%s'
                 '<div class="cms-banner-overlay" style="color:inherit">%s</div></div>'
-                % (escape(band, quote=True), escape(readable_on(band), quote=True), inside))
+                % (face, escape(band, quote=True), escape(readable_on(band), quote=True), slot, inside))
     return (
-        '<div class="cms-banner" style="background-image:url(' + chr(39) + '%s'
-        + chr(39) + ')"><div class="cms-banner-overlay">%s</div></div>'
-    ) % (escape(image_url, quote=True), inside)
+        '<div class="cms-banner%s" style="background-image:url(' + chr(39) + '%s'
+        + chr(39) + ')">%s<div class="cms-banner-overlay">%s</div></div>'
+    ) % (face, escape(image_url, quote=True), slot, inside)
 
 
 def _text_chunk(heading, body):
@@ -1284,7 +1350,7 @@ def _note_unwritten(kit, layout_key, why, page_title=""):
 
 
 def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
-                  want_image=True, page_title=""):
+                  want_image=True, page_title="", portrait=""):
     """The HTML chunks for one layout. `fill_scope` "none" asks nobody.
 
     Takes the brand KIT rather than a bare brief: the tone, the language
@@ -1432,7 +1498,7 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
             #  label meaning two things, which is the fault
             #  design_conventions_check.py exists for.
             buttons=((val("cta_button", "Get in touch"), "/contact"),
-                     ("See the work", "#more")), ground=_ink_of(kit)),
+                     ("See the work", "#more")), ground=_ink_of(kit), portrait=portrait),
             {"layout_width": "full", "corner_style": "sharp",
              "bg_position": "top"}))
         #  Full page width, with the WORDS stopping at the reading
@@ -1548,7 +1614,7 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
     elif layout_key in ("story", "about"):
         chunks.append(_piece(_hero_chunk(val("hero_headline", "Our story"),
                                          val("hero_subtext", "A short supporting line."),
-                                         hero, ground=_ink_of(kit)),
+                                         hero, ground=_ink_of(kit), portrait=portrait),
                              {"layout_width": "full", "corner_style": "sharp",
              "bg_position": "top"}))
         chunks.append(_piece(_text_chunk(val("story_heading", "About us"),
@@ -1570,7 +1636,7 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
             val("hero_subtext", "One line underneath."), "",
             eyebrow=val("eyebrow", ""),
             buttons=((val("cta_button", "Read on"), "#more"),),
-            ground=_ink_of(kit)),
+            ground=_ink_of(kit), portrait=portrait),
             {"layout_width": "full", "corner_style": "sharp"}))
         chunks.append(_piece(_text_chunk(val("intro_heading", "The short version"),
                                          val("intro_body", "Write the opening here.")),
@@ -1608,7 +1674,7 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
             val("hero_subtext", "A short supporting line."), hero,
             eyebrow=val("eyebrow", ""),
             buttons=((val("cta_button", "See prices"), "#more"),),
-            ground=_ink_of(kit)),
+            ground=_ink_of(kit), portrait=portrait),
             {"layout_width": "full", "corner_style": "sharp",
              "bg_position": "center"}))
         chunks.append(_piece(_text_chunk(val("intro_heading", "How it works"),
@@ -1646,7 +1712,7 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
             eyebrow=val("eyebrow", ""),
             buttons=((val("cta_button", "Get in touch"), "/contact"),
                      ("How it works", "#more")),
-            ground=_ink_of(kit)),
+            ground=_ink_of(kit), portrait=portrait),
             {"layout_width": "full", "corner_style": "sharp",
              "bg_position": "center"}))
         chunks.append(_piece(_text_chunk(val("intro_heading", "What to expect"),
@@ -1687,7 +1753,7 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
             val("hero_subtext", "A short supporting line."), hero,
             eyebrow=val("eyebrow", ""),
             buttons=((val("cta_button", "Get in touch"), "/contact"),),
-            ground=_ink_of(kit)),
+            ground=_ink_of(kit), portrait=portrait),
             {"layout_width": "full", "corner_style": "sharp",
              #  Which part of the picture to keep when the band crops it.
              #  A hero's words sit at the bottom left, so the TOP of the
@@ -1707,7 +1773,7 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
         chunks.append(_piece(_hero_chunk(
             val("hero_headline", "Your headline"),
             val("hero_subtext", "A short supporting line."), hero,
-            eyebrow=val("eyebrow", ""), ground=_ink_of(kit)),
+            eyebrow=val("eyebrow", ""), ground=_ink_of(kit), portrait=portrait),
             {"layout_width": "full", "corner_style": "sharp",
              "bg_position": "top"}))
         chunks.append(_piece(_text_chunk(val("intro_heading", page_title or "Welcome"),
@@ -1720,7 +1786,7 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
     else:
         chunks.append(_piece(_hero_chunk(val("hero_headline", "Your headline"),
                                          val("hero_subtext", "A short supporting line."),
-                                         hero, ground=_ink_of(kit)),
+                                         hero, ground=_ink_of(kit), portrait=portrait),
                              {"layout_width": "full", "corner_style": "sharp",
              "bg_position": "top"}))
         chunks.append(_piece(_text_chunk(val("body_heading", page_title or "Welcome"),
@@ -2379,7 +2445,10 @@ def generate(db, static_folder, name, kit, fill_scope, use_ai_images,
             chunks = layout_chunks(
                 db, key, kit, fill_scope, use_ai_images,
                 want_image=(i < wants),
-                page_title=title)
+                page_title=title,
+                #  THE FRONT PAGE ONLY. A portrait on every page of a
+                #  CV is a contact sheet.
+                portrait=("left" if i == 0 and wants_portrait(kit) else ""))
             pages.append({"title": title, "slug_suffix": "",
                           "sections": sections_for(chunks)})
 
