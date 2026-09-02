@@ -356,8 +356,37 @@ def _palette_from(colours):
     return out or None
 
 
+#  Words that say what a picture should LOOK like rather than what it is
+#  of. When a brief carries any of these the concept is the direction,
+#  and the house style has to get out of its way -- "warm natural light,
+#  inviting, unstaged" is the opposite of brass machinery under
+#  gaslight, and it was appended to every prompt regardless.
+STYLE_WORDS = ("steampunk", "vintage", "retro", "noir", "gangster", "art deco",
+               "deco", "brutalist", "minimal", "minimalist", "industrial",
+               "rustic", "futuristic", "cyberpunk", "gothic", "victorian",
+               "mid-century", "scandinavian", "japanese", "tropical", "nautical",
+               "neon", "pastel", "monochrome", "brass", "copper", "marble",
+               "concrete", "timber", "1920s", "1930s", "1939", "1950s", "1960s",
+               "1970s", "1980s", "1990s")
+
+
 def _image_direction(brief, tone):
-    """What every picture in this run should look like."""
+    """What every picture in this run should look like.
+
+    The concept first, when the brief has one. This was a house style
+    keyed off the TONE alone -- warm meant "natural light, inviting,
+    unstaged" -- appended to every picture whatever the brief said, so
+    a 1939 steampunk concept was asked for as an inviting, unstaged
+    photograph. Style words in a brief are the owner saying what the
+    pictures should look like; the tone is the fallback for a brief
+    that says nothing about it.
+    """
+    low = (brief or "").lower()
+    styled = [w for w in STYLE_WORDS if w in low]
+    if styled:
+        return ("in a %s style, staged and art-directed, consistent across "
+                "every image in this set; no text, no logos, no watermarks"
+                % ", ".join(styled[:4]))
     feel = {
         "warm": "warm natural light, inviting, unstaged",
         "plain": "clean daylight, uncluttered, matter-of-fact",
@@ -614,6 +643,11 @@ DESIGN_SCHEMA = (
     '"shadow": "a key from the list", '
     '"composition": "a key from the list", '
     '"why": "one sentence", '
+    #  The pictures, from the same call that decides the look -- one
+    #  kit, resolved once, read by every picture in the run. A brief
+    #  written as a concept ("1939 gangster steampunk") is answered
+    #  here as a SCENE: brass, gaslight, cathode screens.
+    '"picture": "the scene every photograph on this site should show, in ten to twenty words: places, objects, light, materials. Never a person.", '
     #  LAST, and deliberately: a model that runs out of room stops
     #  mid-answer, and `_salvage` keeps whatever it had finished saying.
     #  So the order of these keys is an order of PRIORITY -- the look
@@ -729,6 +763,7 @@ def design(db, kit, pages):
                   for i, title in enumerate(titles)],
         "page_titles": titles,
         "why": (chosen.get("why") or "").strip(),
+        "picture": (chosen.get("picture") or "").strip()[:240],
         "asked": bool(chosen),
     }
 
@@ -783,6 +818,11 @@ def with_design(kit, look):
     #  which is a guess, and shown in the plan, which is what makes a
     #  guess honest.
     made["composition"] = made["composition"] or _composition_from(made)
+    #  The scene the design call wrote goes in FRONT of the direction,
+    #  so every picture in the run is asked for as that scene in that
+    #  style. The house style is what happens when nobody said.
+    if look.get("picture") and not str(made.get("image_direction", "")).startswith("SCENE:"):
+        made["image_direction"] = "SCENE:%s|%s" % (look["picture"], made.get("image_direction", ""))
     return made
 
 
@@ -1321,6 +1361,16 @@ def _picture_prompt(brief, direction, people=True):
     nouns, in order, capped -- and the sentence around them is dropped.
     A picture cannot letter a caption it was never given.
     """
+    #  A SCENE THE DESIGN CALL WROTE, when there is one: the concept
+    #  turned into things a camera can point at, by the one call that
+    #  read the whole brief. It is why a steampunk CV can get a brass
+    #  control room rather than a man at a desk. `direction` carries it
+    #  in front of the house style when the kit has it.
+    if direction and direction.startswith("SCENE:"):
+        scene, _, rest = direction[6:].partition("|")
+        return ("Photograph: %s. %s Wide, no lettering of any kind.%s"
+                % (scene.strip(), rest.strip(),
+                   "" if people else " No people, no faces, no figures."))
     words = _PROMPT_NOISE.sub(" ", (brief or "").replace(":", " ").replace(",", " "))
     #  Eight words, whole ones. Long enough to name the scene, short
     #  enough that there is no sentence left to letter -- and cutting on

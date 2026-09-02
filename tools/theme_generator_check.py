@@ -1912,6 +1912,37 @@ check("...decided by whether the site wants a portrait",
       "people=not wants_portrait(kit)" in _src_now)
 
 print()
+print("The picture is where a concept lands, and it lands there")
+print("-" * 70)
+#  A 1939 steampunk brief produced a businessman at three monitors. The
+#  prompt led with the occupation -- "reliability engineer" -- so the
+#  image model drew one, and the house style appended "warm natural
+#  light, inviting, unstaged" to a concept that is the opposite of it.
+_brief = ("A CV site for a site reliability engineer, in a 1939 gangster "
+          "steampunk style with brass and vintage machinery.")
+_dir = tg._image_direction(_brief, "warm")
+check("a brief's style words become the direction",
+      _dir.startswith("in a ") and "steampunk" in _dir, _dir[:60])
+check("...and the house style gets out of the way", "unstaged" not in _dir)
+check("a brief with no style words keeps the tone's look",
+      "unstaged" in tg._image_direction("a family bakery", "warm"))
+#  The scene comes from the design call -- one kit, resolved once -- and
+#  leads the prompt in front of everything else.
+_kit = tg.with_design(tg.brand_kit(brief=_brief, voice="i"),
+                      {"picture": "a brass-and-mahogany control room under gaslight"})
+_prompt = tg._picture_prompt(_brief, _kit["image_direction"],
+                             people=not tg.wants_portrait(_kit))
+check("the design call is asked for the scene", '"picture"' in tg.DESIGN_SCHEMA)
+check("...and its answer is carried into the kit",
+      _kit["image_direction"].startswith("SCENE:"))
+check("...and leads the prompt", _prompt.startswith("Photograph: a brass-and-mahogany"))
+check("...with no occupation noun for the model to draw a person from",
+      "engineer" not in _prompt)
+check("...and no people, because this is a CV", "No people" in _prompt)
+check("design() returns the scene it was given",
+      '"picture": (chosen.get("picture") or "").strip()' in _src_now)
+
+print()
 print("  %d ok, %d failed" % (passed, len(failures)))
 for name in failures:
     print("    - " + name)
