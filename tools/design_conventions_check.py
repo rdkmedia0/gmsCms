@@ -233,6 +233,25 @@ check("...and removed without losing the words",
 check("left, centre and right are all offered",
       set(_sec.BANNER_PORTRAITS) == {"none", "left", "center", "right"},
       str(_sec.BANNER_PORTRAITS))
+#  Size is a choice too: a headshot on a CV wants more presence than a
+#  small round avatar beside a contact line, and one number cannot
+#  settle both.
+_big = _sec._update_banner_portrait(_start, "left", "large")
+check("a portrait can be sized", _sec.banner_portrait_size_of(_big) == "large")
+check("...three sizes are offered",
+      set(_sec.BANNER_PORTRAIT_SIZES) == {"small", "medium", "large"},
+      str(_sec.BANNER_PORTRAIT_SIZES))
+check("...an unnamed size is the middle one",
+      _sec.banner_portrait_size_of(
+          _sec._update_banner_portrait(_start, "left")) == "medium")
+#  The band's own bottom margin moves with it: the portrait hangs below
+#  the banner, so the room it needs is the room the band has to leave.
+#  One number for both put a large portrait through the heading under it.
+_css = open(os.path.join(_here, "app", "static", "css", "site-base.css"),
+            encoding="utf-8").read()
+check("...and the banner leaves room for the size chosen",
+      "cms-portrait-size-large { margin-bottom" in _css
+      and "cms-portrait-size-small { margin-bottom" in _css)
 check("...and a banner with no picture can still carry one",
       _sec.banner_portrait_of(
           _sec._update_banner_portrait('<div class="cms-banner"></div>',

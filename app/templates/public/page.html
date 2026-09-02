@@ -1252,6 +1252,19 @@
       <option value="center" {{ 'selected' if portrait == 'center' }}>Portrait: centre</option>
       <option value="right" {{ 'selected' if portrait == 'right' }}>Portrait: right</option>
     </select>
+    {% if portrait != 'none' %}
+    {% set portrait_size = banner_portrait_size_of(cell.content) %}
+    <select name="portrait_size" onchange="this.form.requestSubmit()" title="How big the portrait is. A headshot on a CV wants more presence than a small round avatar beside a contact line.">
+      <option value="small" {{ 'selected' if portrait_size == 'small' }}>Small</option>
+      <option value="medium" {{ 'selected' if portrait_size == 'medium' }}>Medium</option>
+      <option value="large" {{ 'selected' if portrait_size == 'large' }}>Large</option>
+    </select>
+    {% else %}
+    {#  Sent anyway so the size survives being switched off and on --
+        the select above is the only control that is gone, not the
+        answer it was holding. #}
+    <input type="hidden" name="portrait_size" value="{{ banner_portrait_size_of(cell.content) }}">
+    {% endif %}
     {% if portrait != 'none' and portrait_upload_url %}
     <button type="button" class="cms-pick-library-btn" data-library-pick
             data-library-for="cms-banner-portrait-file-input" data-library-kinds="image"

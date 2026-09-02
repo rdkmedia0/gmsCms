@@ -779,16 +779,28 @@ def _update_banner_classes(content, shape, attachment):
 #  headshot and no cover photograph should not have to find one.
 BANNER_PORTRAITS = ("none", "left", "center", "right")
 
+#  How big. A headshot on a CV wants more presence than the small round
+#  avatar a contact strip wants, and the difference is not something one
+#  number can settle for both.
+BANNER_PORTRAIT_SIZES = ("small", "medium", "large")
 
-def _update_banner_portrait(content, position):
-    """Where the portrait sits on a banner, or that there is not one."""
+
+def _update_banner_portrait(content, position, size=None):
+    """Where the portrait sits on a banner and how big, or that there is
+    not one.
+
+    Both in one call, because they are one control's worth of answer and
+    setting them separately would mean a banner that briefly has a size
+    and no position.
+    """
     soup = BeautifulSoup(content or "", "html.parser")
     div = soup.find(class_="cms-banner") or soup.find("div")
     if div is None:
         return content
     position = position if position in BANNER_PORTRAITS else "none"
     classes = [c for c in (div.get("class") or [])
-               if not c.startswith("cms-has-portrait")]
+               if not c.startswith("cms-has-portrait")
+               and not c.startswith("cms-portrait-size-")]
     figure = soup.find(class_="cms-banner-portrait")
     if position == "none":
         if figure:
@@ -797,6 +809,8 @@ def _update_banner_portrait(content, position):
         return str(soup)
     classes.append("cms-has-portrait")
     classes.append("cms-has-portrait-%s" % position)
+    size = size if size in BANNER_PORTRAIT_SIZES else "medium"
+    classes.append("cms-portrait-size-%s" % size)
     div["class"] = classes
     if not figure:
         #  Empty until a picture is chosen: an <img> with no src is a
@@ -834,6 +848,14 @@ def _set_banner_portrait_image(content, url):
         figure.append(hint)
     figure["class"] = classes
     return str(soup)
+
+
+def banner_portrait_size_of(content):
+    """How big a banner's portrait is, for the control to show."""
+    for size in BANNER_PORTRAIT_SIZES:
+        if "cms-portrait-size-%s" % size in (content or ""):
+            return size
+    return "medium"
 
 
 def banner_portrait_of(content):

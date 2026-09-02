@@ -401,12 +401,14 @@ def create_app():
     app.jinja_env.globals["admin_notes"] = _admin_notes
 
     from .services.sections import (
-        banner_overlay_settings, banner_portrait_of, card_style_settings, card_button_settings,
+        banner_overlay_settings, banner_portrait_of, banner_portrait_size_of,
+        card_style_settings, card_button_settings,
         TABLE_STYLE_CHOICES, VIDEO_GALLERY_LAYOUTS, MAX_VIDEO_GALLERY_CLIPS,
         ACCORDION_STYLES, FAQ_STYLES, MAX_FAQ_ITEMS,
     )
     app.jinja_env.globals["banner_overlay_settings"] = banner_overlay_settings
     app.jinja_env.globals["banner_portrait_of"] = banner_portrait_of
+    app.jinja_env.globals["banner_portrait_size_of"] = banner_portrait_size_of
     app.jinja_env.globals["card_style_settings"] = card_style_settings
     app.jinja_env.globals["card_button_settings"] = card_button_settings
     app.jinja_env.globals["table_style_choices"] = TABLE_STYLE_CHOICES

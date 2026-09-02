@@ -2807,7 +2807,19 @@ body.cms-logged-in .cms-basket-link.cms-basket-align-float-top { top: 60px; }
     below and the portrait sits in that, which gets the same look without
     anything escaping a box that may be masked into a circle or a
     hexagon. */
+/*  Three sizes, and the banner's own bottom margin moves with them --
+    the portrait hangs below the band, so the room it needs is the room
+    the band has to leave. One number for both would put a large
+    portrait through the heading under it. */
 .cms-banner.cms-has-portrait { margin-bottom: 64px; overflow: visible; }
+.cms-banner.cms-portrait-size-small { margin-bottom: 48px; }
+.cms-banner.cms-portrait-size-large { margin-bottom: 92px; }
+.cms-portrait-size-small .cms-banner-portrait {
+  width: 88px; height: 88px; bottom: -44px; border-width: 3px;
+}
+.cms-portrait-size-large .cms-banner-portrait {
+  width: 168px; height: 168px; bottom: -84px; border-width: 5px;
+}
 .cms-banner-portrait {
   position: absolute; bottom: -60px; margin: 0; z-index: 2;
   width: 120px; height: 120px; border-radius: 50%; overflow: hidden;
@@ -2832,8 +2844,17 @@ body:not(.cms-editing) .cms-banner-portrait-empty { display: none; }
 .cms-has-portrait-center .cms-banner-portrait { left: 50%; transform: translateX(-50%); }
 
 @media (max-width: 700px) {
-  .cms-banner.cms-has-portrait { margin-bottom: 52px; }
-  .cms-banner-portrait { width: 96px; height: 96px; bottom: -48px; }
+  /*  One size on a narrow screen, whichever was chosen: a 168px circle
+      is a third of the width of a phone, and the choice was made about
+      how it sits on a wide band. */
+  .cms-banner.cms-has-portrait,
+  .cms-banner.cms-portrait-size-small,
+  .cms-banner.cms-portrait-size-large { margin-bottom: 52px; }
+  .cms-banner-portrait,
+  .cms-portrait-size-small .cms-banner-portrait,
+  .cms-portrait-size-large .cms-banner-portrait {
+    width: 96px; height: 96px; bottom: -48px; border-width: 3px;
+  }
   .cms-has-portrait-left .cms-banner-portrait,
   .cms-has-portrait-right .cms-banner-portrait { left: 50%; right: auto;
     transform: translateX(-50%); }
