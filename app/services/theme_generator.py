@@ -1256,6 +1256,33 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
             copy = {}
             _note_unwritten(kit, layout_key, str(e))
 
+    #  IF THE MODEL SAID NOTHING, THE DOCUMENT STILL HAS.
+    #
+    #  Asked to fill a page called "Qualifications" from a CV, this
+    #  model very often answers with nothing at all -- and five thin
+    #  pages answering that way refuses the whole run, after three
+    #  minutes, with the owner's content sitting unread in the request.
+    #
+    #  The document already says what belongs under that word, in the
+    #  owner's own wording. It needs no provider, cannot invent a fact,
+    #  and beats the alternative outright: the alternative is "Write
+    #  your introduction here" on a page called Qualifications, next to
+    #  a CV that lists them.
+    if fill and not copy and kit.get("source_text") and page_title:
+        own = section_under(kit["source_text"], page_title)
+        if own:
+            copy = {"intro_heading": page_title,
+                    "intro_body": own,
+                    "story_heading": page_title,
+                    "story_body": own,
+                    "hero_headline": page_title,
+                    "hero_subtext": own.split(chr(10))[0]}
+            #  Written after all, just not by the model.
+            for note in (kit.get("unwritten") or []):
+                if note.get("page") == page_title:
+                    kit["unwritten"].remove(note)
+                    break
+
     def val(key, fallback):
         return (copy.get(key) or fallback) if fill else fallback
 
@@ -2031,6 +2058,42 @@ def layout_for(title, index, brief=""):
                                 "pictures", "space", "rooms", "library")):
         return "showcase"
     return "simple"
+
+
+def section_under(text, heading):
+    """The lines a document keeps under one of its own headings.
+
+    The other half of headings_in. If the model cannot place a page --
+    and asked to fill "Qualifications" from a CV it very often answers
+    with nothing at all -- the document already says what belongs there,
+    in the owner's own words, under that exact word.
+
+    This needs no provider and cannot invent anything, which makes it a
+    better failure than the placeholder text the page would otherwise
+    keep: "Write your introduction here" on a page called
+    Qualifications, next to a CV that lists them.
+    """
+    want = (heading or "").strip().lower()
+    if not want:
+        return ""
+    rows = [l.strip() for l in (text or "").split(chr(10))]
+    marks = set(h.strip().lower() for h in headings_in(text))
+    out, taking = [], False
+    for row in rows:
+        low = row.lower()
+        if taking and low in marks and low != want:
+            break
+        if low == want:
+            taking = True
+            continue
+        if taking:
+            out.append(row)
+    while out and not out[0]:
+        out.pop(0)
+    while out and not out[-1]:
+        out.pop()
+    return chr(10).join(out).strip()
+
 
 
 def headings_in(text, most=5):

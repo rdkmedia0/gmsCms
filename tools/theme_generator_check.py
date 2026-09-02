@@ -1650,6 +1650,26 @@ _src = io.open("/app/app/services/theme_generator.py", encoding="utf-8").read()
 check("a single proposed page loses to the document's headings",
       "if len(titles) <= 1:" in _src and "headings_in(kit" in _src)
 
+#  And when the model says nothing for a page, the document still has.
+#  Asked to fill "Qualifications" from a CV this model very often answers
+#  with nothing, and five thin pages doing that refuses the whole run --
+#  after three minutes, with the owner's content sitting unread in the
+#  request.
+_cv2 = chr(10).join([
+    "Alina Ferreira", "", "Experience", "2021 to now. Independent practice.",
+    "", "Qualifications", "MA Landscape Architecture, 2013.",
+    "Registered with the Order of Architects.", "", "Contact", "alina@example.pt",
+])
+check("a heading's own lines can be read back",
+      tg.section_under(_cv2, "Qualifications").startswith("MA Landscape"),
+      tg.section_under(_cv2, "Qualifications"))
+check("...stopping at the next heading",
+      "alina@example.pt" not in tg.section_under(_cv2, "Qualifications"))
+check("...and an unknown heading gives nothing rather than everything",
+      tg.section_under(_cv2, "Referees") == "")
+check("a page the model left empty falls back to the document",
+      'own = section_under(kit["source_text"], page_title)' in _src)
+
 print()
 print("  %d ok, %d failed" % (passed, len(failures)))
 for name in failures:
