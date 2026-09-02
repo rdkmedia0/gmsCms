@@ -1669,6 +1669,17 @@ check("...and an unknown heading gives nothing rather than everything",
       tg.section_under(_cv2, "Referees") == "")
 check("a page the model left empty falls back to the document",
       'own = section_under(kit["source_text"], page_title)' in _src)
+#  And the FRONT page has no heading of its own -- no document says
+#  "Home" -- so it takes the opening: the name, what the person does,
+#  and the sentence or two under it. Without this the front page was the
+#  one page left unwritten, which is exactly what refuses a run.
+_title, _under = tg.opening_of(_cv2)
+check("the front page takes the document's opening",
+      _title == "Alina Ferreira", _title)
+check("...and the words under it, stopping at the first heading",
+      _under == "" or "2021 to now" not in _under, repr(_under))
+check("...wired in for a page with no section of its own",
+      'head, own = opening_of(kit["source_text"])' in _src)
 
 print()
 print("  %d ok, %d failed" % (passed, len(failures)))

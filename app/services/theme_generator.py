@@ -1270,12 +1270,20 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
     #  a CV that lists them.
     if fill and not copy and kit.get("source_text") and page_title:
         own = section_under(kit["source_text"], page_title)
+        #  The FRONT page has no heading of its own -- no document says
+        #  "Home" -- so it takes the opening instead: the name, what the
+        #  person does, and the sentence or two under it. Without this
+        #  the front page was the one page still unwritten, which is
+        #  exactly what refuses the whole run.
+        head = page_title
+        if not own:
+            head, own = opening_of(kit["source_text"])
         if own:
-            copy = {"intro_heading": page_title,
+            copy = {"intro_heading": head or page_title,
                     "intro_body": own,
-                    "story_heading": page_title,
+                    "story_heading": head or page_title,
                     "story_body": own,
-                    "hero_headline": page_title,
+                    "hero_headline": head or page_title,
                     "hero_subtext": own.split(chr(10))[0]}
             #  Written after all, just not by the model.
             for note in (kit.get("unwritten") or []):
@@ -2058,6 +2066,35 @@ def layout_for(title, index, brief=""):
                                 "pictures", "space", "rooms", "library")):
         return "showcase"
     return "simple"
+
+
+def opening_of(text):
+    """Everything a document says before its first heading.
+
+    A CV opens with a name, what the person does, and a sentence or two
+    about it -- and that is the front page's material, exactly. There is
+    no heading called "Home", so section_under finds nothing for the
+    front page, which left it the one page still unwritten and refused
+    the whole run by the mute-front-page guard.
+
+    The first line is the document's title, so it is offered separately
+    from the rest: a headline and the words under it.
+    """
+    rows = [l.strip() for l in (text or "").split(chr(10))]
+    marks = set(h.strip().lower() for h in headings_in(text))
+    out = []
+    for row in rows:
+        if row.lower() in marks and row.lower() != "home":
+            break
+        out.append(row)
+    while out and not out[0]:
+        out.pop(0)
+    while out and not out[-1]:
+        out.pop()
+    title = out[0] if out else ""
+    rest = chr(10).join(out[1:]).strip()
+    return title, rest
+
 
 
 def section_under(text, heading):
