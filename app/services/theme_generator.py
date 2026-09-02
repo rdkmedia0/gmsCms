@@ -578,7 +578,13 @@ def design(db, kit, pages):
     """
     from .design import (FONT_PAIRINGS, SHAPE_PRESETS, SHADOW_PRESETS,
                          COMPOSITION_PRESETS)
-    wanted = list(pages) or ["Home"]
+    #  The list AS GIVEN, which may be empty -- that is the signal that
+    #  nobody named the pages and the content should decide. Defaulting
+    #  it here hid that signal from the code twenty lines down, so a
+    #  four-section CV was treated as a request for one page called
+    #  Home. The default belongs after the deciding, not before it.
+    asked_for = list(pages or [])
+    wanted = asked_for or ["Home"]
     chosen = {}
     if kit["brief"]:
         try:
@@ -608,7 +614,7 @@ def design(db, kit, pages):
     #  what pages the content needs is most of what "arrange it for me"
     #  asks for. Titles are taken only when there were none, so a list
     #  somebody typed is never quietly replaced.
-    titles = list(wanted or [])
+    titles = list(asked_for)
     if not titles:
         titles = [str(e.get("title", "")).strip()
                   for e in (chosen.get("pages") or [])
@@ -1187,7 +1193,7 @@ def _said_something(copy):
     return any(str(copy.get(key) or "").strip() for key in _MEANT_SOMETHING)
 
 
-def _note_unwritten(kit, layout_key, why):
+def _note_unwritten(kit, layout_key, why, page_title=""):
     """Remember that a page came back unwritten, to say so afterwards.
 
     On the KIT, because that is the one thing every call in a run shares
@@ -1195,7 +1201,11 @@ def _note_unwritten(kit, layout_key, why):
     owner which half. Silence here would be the worst of both: pages
     that look finished, carrying the placeholder text nobody chose.
     """
-    kit.setdefault("unwritten", []).append({"layout": layout_key, "why": why})
+    #  WHICH page, not just which shape. The mute-front-page guard
+    #  compares against the first page's title, and two pages can
+    #  share a shape.
+    kit.setdefault("unwritten", []).append(
+        {"layout": layout_key, "why": why, "page": page_title})
 
 
 def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
@@ -1254,7 +1264,7 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
             #  empty" produces and is editable in place. What went wrong
             #  is said once, at the end, naming the page.
             copy = {}
-            _note_unwritten(kit, layout_key, str(e))
+            _note_unwritten(kit, layout_key, str(e), page_title)
 
     #  IF THE MODEL SAID NOTHING, THE DOCUMENT STILL HAS.
     #
@@ -1278,8 +1288,27 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
         head = page_title
         if not own:
             head, own = opening_of(kit["source_text"])
+            #  A document that goes straight from its title into its
+            #  first heading has an opening with a name and nothing
+            #  under it -- and a front page with a headline and no
+            #  words is still unwritten, which refuses the run. What
+            #  such a document puts FIRST is its most important
+            #  section, so that is what the front page says.
+            if not own:
+                marks = headings_in(kit["source_text"])
+                if len(marks) > 1:
+                    own = section_under(kit["source_text"], marks[1])
         if own:
-            copy = {"intro_heading": head or page_title,
+            #  Every name the shapes read. A page's arrangement decides
+            #  which pair it asks for -- body_heading/body_text on the
+            #  simple one, intro_* on a landing, story_* on a story --
+            #  and filling only three of them left "Welcome / Write
+            #  something here" on the pages that use the fourth, which
+            #  is the placeholder text this whole fallback exists to
+            #  prevent.
+            copy = {"body_heading": head or page_title,
+                    "body_text": own,
+                    "intro_heading": head or page_title,
                     "intro_body": own,
                     "story_heading": head or page_title,
                     "story_body": own,
@@ -2227,13 +2256,19 @@ def generate(db, static_folder, name, kit, fill_scope, use_ai_images,
         if mode == "rewrite":
             pages = rewrite_pages(db, kit, pages)
     else:
-        wanted = pages_wanted or ["Home"]
+        #  NOT defaulted to Home yet. `design` proposes page titles
+        #  when the owner named none -- and defaulting here told it the
+        #  owner had asked for exactly one page called Home, so the
+        #  proposal and the document's own headings could never be
+        #  reached. A CV with four sections came out as one page.
+        wanted = list(pages_wanted or [])
         #  What each page should BE, decided from the description rather
         #  than picked by the owner from three named skeletons. `looked`
         #  is passed in when the plan has already worked it out, so the
         #  run does not ask twice and cannot get a different answer than
         #  the one that was shown.
         decided = looked or design(db, kit, wanted)
+        wanted = wanted or ["Home"]
         #  ...and if the owner named no pages, the ones it proposed.
         #  Deciding what pages the content needs is most of what
         #  "arrange it for me" is asking for; a list somebody typed is

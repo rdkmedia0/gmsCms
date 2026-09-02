@@ -27,6 +27,7 @@ Run inside the container:
 
     docker compose exec -T web python tools/theme_generator_check.py
 """
+import glob
 import io
 import re
 
@@ -1680,6 +1681,50 @@ check("...and the words under it, stopping at the first heading",
       _under == "" or "2021 to now" not in _under, repr(_under))
 check("...wired in for a page with no section of its own",
       'head, own = opening_of(kit["source_text"])' in _src)
+
+print()
+print("A pasted document makes a site even when the model says nothing")
+print("-" * 70)
+#  END TO END, with the provider answering with nothing at all -- which
+#  is what this model actually does when asked to fill a page called
+#  "Qualifications" from a CV. Five live runs failed for five different
+#  reasons before this was written offline; it finds them in a second.
+_before = assistant._call_provider
+assistant._call_provider = lambda *a, **k: {"content": "", "tool_calls": []}
+try:
+    with app.app_context():
+        _db = get_db()
+        _kit = tg.brand_kit(source_text=_cv2, voice="i", tone="plain")
+        _slug = tg.generate(_db, static_folder, name="Mute Provider CV",
+                            kit=_kit, fill_scope="all", use_ai_images=False,
+                            mode="place")
+        _db.commit()
+    _made = sorted(glob.glob(os.path.join(
+        static_folder, "themes", _slug, "pages", "*.json")))
+    _titles = [json.load(io.open(f, encoding="utf-8"))["title"] for f in _made]
+    check("it makes a template rather than refusing", bool(_made))
+    #  The document's own sections, not one page called Home.
+    check("...one page per heading in the document",
+          _titles == ["Home", "Experience", "Qualifications", "Contact"],
+          str(_titles))
+    #  And every one of them carries the owner's words. Filling only some
+    #  of the field names left "Welcome / Write something here" on the
+    #  pages whose shape reads the others, which is the placeholder text
+    #  this whole path exists to prevent.
+    _placeholder = 0
+    _own = 0
+    for f in _made:
+        _text = io.open(f, encoding="utf-8").read()
+        if "Write something here" in _text or "Write your introduction here" in _text:
+            _placeholder += 1
+        if "Alina" in _text or "Landscape" in _text or "alina@example" in _text:
+            _own += 1
+    check("...no page left showing placeholder text", _placeholder == 0,
+          "%d pages" % _placeholder)
+    check("...and the pages carry the document's own words", _own >= 2,
+          "%d pages" % _own)
+finally:
+    assistant._call_provider = _before
 
 print()
 print("  %d ok, %d failed" % (passed, len(failures)))
