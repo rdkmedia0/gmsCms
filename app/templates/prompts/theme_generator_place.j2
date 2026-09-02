@@ -1,22 +1,25 @@
-{#  The words for one generated page, taken from CONTENT THE OWNER GAVE.
+{#  One page, written to a DESCRIPTION, using CONTENT the owner supplied.
 
-    The sibling of theme_generator_brief.j2, and the rule is the exact
-    inverse of it. That one is writing from a description and must not
-    invent a fact -- no prices, no dates, no telephone numbers, because
-    those belong to the owner and it does not have them. This one HAS
-    them: the owner pasted their CV, their about page, their price list.
-    So the facts are the point, and the job is placement, not writing. #}
-You are laying out a small website from content its owner has given you.
+    Two different things, and the order matters. The description is the
+    guide: what to build, who it is for, what this site is. The content
+    is optional, and when it is there it is not a suggestion -- it is the
+    facts, and they have to appear.
 
-THE OWNER'S CONTENT — this is the source of every fact you use:
+    The sibling prompt (theme_generator_brief.j2) is this one without any
+    content, and it forbids inventing a fact for exactly the reason this
+    one exists: prices and dates and qualifications belong to the owner.
+    Here they have been handed over. #}
+You are writing one page of a small website.
+
+WHAT TO BUILD — this is the brief, and it directs everything:
+{{ kit.brief or "A small business website." }}
+
+This page is called "{{ page_title }}".
+
+THE OWNER'S OWN CONTENT — every fact you use comes from here:
 -----
 {{ kit.source_text }}
 -----
-{% if kit.brief %}
-What the site is for:
-{{ kit.brief }}
-{% endif %}
-This page is called "{{ page_title }}".
 
 Write in {{ kit.language }}.
 Voice: {{ kit.tone_label|lower }}, {{ 'speaking as "we"' if kit.voice == 'we' else 'speaking as "I"' }}.
@@ -27,20 +30,25 @@ Respond with ONLY a JSON object matching exactly this shape — no markdown fenc
 
 Rules, in order of importance:
 
-1. USE ONLY WHAT IS ABOVE. Every name, date, figure, price, job title,
-   qualification and place must appear in the owner's content. Do not add a
-   fact, round a number, or improve a claim. If the content does not say how
-   many years or how much something costs, leave that field out — an empty
-   field is a gap the owner fills in a minute; an invented one is a mistake
-   they may never find.
+1. THE CONTENT ABOVE IS REQUIRED, NOT OPTIONAL. Anything in it that belongs on
+   this page must appear on it. Names, dates, figures, prices, job titles,
+   qualifications and places are used exactly as written — do not round a
+   number, improve a claim, or add one that is not there. If the content does
+   not say something, leave that field out: an empty field is a gap the owner
+   fills in a minute, an invented one is a mistake they may never find.
 
-2. PUT EACH THING WHERE IT BELONGS ON THIS PAGE. Shorten and re-order freely:
-   a headline is not a paragraph, a card is not a chapter, and a timeline step
-   is one sentence. Cutting is expected. Changing what something says is not.
+2. THE BRIEF DECIDES WHAT THIS PAGE IS FOR. It says what kind of site this is
+   and who reads it; the content says what is true. Where the brief asks for
+   something the content does not cover, write nothing rather than inventing
+   it.
 
-3. THIS PAGE ONLY. The content may cover the whole site; take the part that
+3. PUT EACH THING WHERE IT BELONGS. Shorten and re-order freely: a headline is
+   not a paragraph, a card is not a chapter, a timeline step is one sentence.
+   Cutting is expected. Changing what something says is not.
+
+4. THIS PAGE ONLY. The content may cover the whole site; take the part that
    belongs under "{{ page_title }}" and leave the rest for the other pages.
-   Repeating the same sentence on two pages is worse than a short page.
+   The same sentence on two pages is worse than a short page.
 
-4. Keep the owner's own wording where it is already short enough to use. It is
+5. Keep the owner's own wording where it is already short enough to use. It is
    their voice, and they chose it.

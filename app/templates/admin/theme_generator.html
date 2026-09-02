@@ -244,16 +244,16 @@
   </div>
 
   <div class="form-row" data-needs="brief">
-    <label for="tg-brief">About the site</label>
+    <label for="tg-brief">Overall design concept</label>
     <textarea name="brief" id="tg-brief" rows="4"
-              title="What this site is for and who it is for. Everything written is based on this."
+              title="What to build: what this site is for, who it is for, and how it should feel. This guides the whole run, and it is always what directs it."
               placeholder="e.g. A family-owned bakery in Portland specialising in sourdough and celebration cakes, open Tue–Sat, focused on local ingredients and made-to-order service.">{{ form.brief if form else '' }}</textarea>
   </div>
 
   {% include "partials/ai_notice.html" %}
 
   <div class="form-row" data-needs="source">
-    <label for="tg-source">Your content</label>
+    <label for="tg-source">Content (optional)</label>
     <textarea name="source_text" id="tg-source" rows="10"
               title="Paste what you already have - a CV, an about page, a price list, a menu. Every fact on the site will come from this and nothing will be invented."
               placeholder="Paste a CV, an about page, a price list, a leaflet - whatever you already have written. It does not need tidying: headings, dates, prices and bullet points are all fine, and are what the layout is built around.">{{ form.source_text if form else '' }}</textarea>
@@ -261,13 +261,16 @@
       <label for="tg-source-file">&hellip;or open a file:</label>
       <input type="file" name="source_file" id="tg-source-file"
              accept=".docx,.txt,.md,.markdown,.text"
-             title="A Word document (.docx) or a plain text file. Its words are added to the box above. A PDF has to be pasted in, or saved as Word or text first.">
-      Word (.docx) or plain text. A PDF has to be pasted in.
+             title="Accepted: Word documents (.docx) and plain text (.txt, .md). Its words are added to the box above. A PDF is not read — paste it in, or save it as Word or text first.">
+      <strong>Accepted:</strong> Word <code>.docx</code>, plain text
+      <code>.txt</code>, Markdown <code>.md</code>. A PDF is not read &mdash;
+      paste it in, or save it as Word or text first.
     </p>
-    <p class="hint">Every name, date and figure on the finished site comes from
-      what you paste here, and nothing is invented. You do not need to say what
-      the pages should be &mdash; that is worked out from the content, along with
-      the shape each one takes.</p>
+    <p class="hint">Real content that has to appear on the site &mdash; a CV, a
+      price list, an about page, a menu. Paste it here or open a file below.
+      Every name, date and figure in it is used exactly as written, and nothing
+      is invented around it. Leave it empty and the concept above is written
+      from on its own.</p>
     <p class="hint">This becomes the template's own content, so anything personal
       in it travels with the template if you export or share it later.</p>
   </div>

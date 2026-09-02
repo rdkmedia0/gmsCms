@@ -384,11 +384,6 @@ MODES = (
     ("reskin", "Keep my words — change only the look"),
     ("rewrite", "Rewrite my words, in the voice below"),
     ("scratch", "Write new words from a description"),
-    #  Somebody who already HAS their words -- a CV, an about page,
-    #  a price list -- and wants a site made out of them. The AI does
-    #  not write here; it decides what shape each page should be and
-    #  where each thing goes on it. Every fact comes from the paste.
-    ("place", "Use the content I paste - arrange it for me"),
     ("blank", "Leave the sections empty — no AI at all"),
 )
 
@@ -399,11 +394,20 @@ MODES = (
 MODE_NEEDS = {
     "reskin": (),
     "rewrite": ("voice",),
-    "scratch": ("brief", "pages", "voice"),
-    #  No "pages": the arrangement and the page list are what this
-    #  mode asks the AI for. A brief stays optional -- the content
-    #  usually says what the site is.
-    "place": ("source", "voice"),
+    #  TWO DIFFERENT THINGS, and they were briefly made into one.
+    #
+    #  The DESCRIPTION is the guide: what to build, what this site is
+    #  for, the concept. It is always the thing directing the run.
+    #  CONTENT is optional and is a different axis entirely -- the real
+    #  words the owner already has and needs to appear, a CV, a price
+    #  list, an about page.
+    #
+    #  Making content a MODE said they were alternatives -- describe it
+    #  OR paste it -- which is wrong in both directions: somebody with
+    #  a CV still has to say what kind of site they want, and somebody
+    #  describing a business may still have the paragraph they want on
+    #  the about page.
+    "scratch": ("brief", "source", "pages", "voice"),
     "blank": ("pages",),
 }
 

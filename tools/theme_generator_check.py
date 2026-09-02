@@ -1261,12 +1261,13 @@ with app.app_context():
           tg.MODE_NEEDS["reskin"] == ())
     check("...a rewrite needs the voice and nothing else",
           tg.MODE_NEEDS["rewrite"] == ("voice",))
-    #  Three, not four: the page shape is no longer a row anybody fills
-    #  in -- it is decided from the description and shown in the plan.
-    check("...and writing new needs the description, the pages and the voice",
-          set(tg.MODE_NEEDS["scratch"]) == {"brief", "pages", "voice"},
+    #  Four now, not three: content joined them. It is not a mode -- the
+    #  description is always the guide, and content is an optional extra
+    #  that supplies facts the site must carry.
+    check("...and writing new needs the description, content, pages and voice",
+          set(tg.MODE_NEEDS["scratch"]) == {"brief", "source", "pages", "voice"},
           str(tg.MODE_NEEDS["scratch"]))
-    for needed in ("brief", "pages", "voice"):
+    for needed in ("brief", "source", "pages", "voice"):
         check("the form has a row for %s" % needed,
               'data-needs="%s"' % needed in screen)
 
@@ -1504,10 +1505,15 @@ print("-" * 70)
 #  The mode for somebody who already HAS their words. The AI does not
 #  write here: it decides what shape each page is and where each thing
 #  goes on it, and every fact comes from the paste.
-check("the mode is offered", "place" in dict(tg.MODES))
-check("...and asks for the content, not a brief",
-      tg.MODE_NEEDS["place"] == ("source", "voice"), str(tg.MODE_NEEDS["place"]))
-check("...and still uses the AI", tg.fill_scope_for("place") == "all")
+#  NOT A MODE. Content is not a way of working, it is a thing the owner
+#  may or may not have. Making it a mode said "describe it OR paste it",
+#  which is wrong in both directions: somebody with a CV still has to say
+#  what kind of site they want, and somebody describing a business may
+#  still have the paragraph they want on the about page.
+check("content is not a mode", "place" not in dict(tg.MODES))
+check("...it is a field beside the description",
+      tg.MODE_NEEDS["scratch"] == ("brief", "source", "pages", "voice"),
+      str(tg.MODE_NEEDS["scratch"]))
 
 _cv = "Ward sister 2015-2019. Clinical lead 2019-2024. Registered nurse."
 _kit = tg.brand_kit(source_text=_cv, brief="")
@@ -1519,9 +1525,12 @@ with app.app_context():
     _plain = tg._prompt(tg.brand_kit(brief="a bakery"), "{}")
 check("the content reaches the prompt", _cv in _asked)
 check("...and so does which page is being written", "About me" in _asked)
-check("...and it is told to invent nothing", "USE ONLY WHAT IS ABOVE" in _asked)
-check("without a paste it is the writing-from-a-brief prompt",
-      "USE ONLY WHAT IS ABOVE" not in _plain)
+check("...and it is told the content is required, not optional",
+      "REQUIRED, NOT OPTIONAL" in _asked)
+check("...and that the brief decides what the page is for",
+      "THE BRIEF DECIDES" in _asked)
+check("without content it is the writing-from-a-description prompt",
+      "REQUIRED, NOT OPTIONAL" not in _plain)
 
 #  The shape follows what the content IS. Scored from brief AND paste --
 #  in this mode the brief is optional and usually empty, so scoring the
@@ -1697,7 +1706,7 @@ try:
         _kit = tg.brand_kit(source_text=_cv2, voice="i", tone="plain")
         _slug = tg.generate(_db, static_folder, name="Mute Provider CV",
                             kit=_kit, fill_scope="all", use_ai_images=False,
-                            mode="place")
+                            mode="scratch")
         _db.commit()
     _made = sorted(glob.glob(os.path.join(
         static_folder, "themes", _slug, "pages", "*.json")))
