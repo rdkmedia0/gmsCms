@@ -1704,6 +1704,14 @@ try:
     _titles = [json.load(io.open(f, encoding="utf-8"))["title"] for f in _made]
     check("it makes a template rather than refusing", bool(_made))
     #  The document's own sections, not one page called Home.
+    #  THE ROUTE MUST NOT DECIDE EITHER. This default was found in
+    #  three places on one path -- the route, generate(), and design() --
+    #  and any one of them filling it in hides the "nobody named the
+    #  pages" signal from the code that reads the document.
+    _route = io.open("/app/app/routes/admin/dashboard.py", encoding="utf-8").read()
+    check("the route passes the page list as given",
+          'page_list(request.form.get("pages", ""))' in _route
+          and 'page_list(request.form.get("pages", "")) or ["Home"]' not in _route)
     check("...one page per heading in the document",
           _titles == ["Home", "Experience", "Qualifications", "Contact"],
           str(_titles))

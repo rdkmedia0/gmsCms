@@ -2328,8 +2328,15 @@ def generate(db, static_folder, name, kit, fill_scope, use_ai_images,
     if fill_scope != "none" and pages and (
             front_unwritten
             or len(kit.get("unwritten") or []) >= len(pages)):
-        raise ThemeGenError((kit["unwritten"][0]["why"] if kit.get("unwritten") else "")
-                            or "The AI returned nothing at all.")
+        #  NAME THE PAGES. This said only what went wrong, so a run
+        #  that refused told the owner nothing about WHERE -- and left
+        #  whoever was debugging it guessing between five pages.
+        why = (kit["unwritten"][0]["why"] if kit.get("unwritten") else "")
+        named = [u.get("page") or u.get("layout") or "?"
+                 for u in (kit.get("unwritten") or [])]
+        raise ThemeGenError(
+            (why or "The AI returned nothing at all.")
+            + (" Nothing came back for: %s." % ", ".join(named) if named else ""))
 
     pkg_dir, slug = build_package(
         db, name, pages,

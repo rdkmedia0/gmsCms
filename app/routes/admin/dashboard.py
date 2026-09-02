@@ -343,7 +343,14 @@ def theme_generator():
         mode = request.form.get("mode", "scratch")
         if mode not in dict(theme_generator_mod.MODES):
             mode = "scratch"
-        wanted = theme_generator_mod.page_list(request.form.get("pages", "")) or ["Home"]
+        #  AS GIVEN, which may be empty. An empty list is the signal
+        #  that nobody named the pages and the content should decide --
+        #  and filling it in here told the generator the owner had asked
+        #  for exactly one page called Home, so the proposal and the
+        #  document's own headings were never reached. That default has
+        #  now been found in three places on one path; the service puts
+        #  it back after the deciding, which is where it belongs.
+        wanted = theme_generator_mod.page_list(request.form.get("pages", ""))
 
         #  The look, decided once. Carried across the two presses in the
         #  form, so the run cannot come out different from the plan --
@@ -365,7 +372,8 @@ def theme_generator():
         if request.form.get("preview"):
             try:
                 shown = theme_generator_mod.plan(
-                    db, kit, name, mode=mode, pages_wanted=wanted, looked=looked,
+                    db, kit, name, mode=mode, pages_wanted=wanted or ["Home"],
+                    looked=looked,
                     use_ai_images=request.form.get("use_ai_images") == "1",
                     fill_scope=theme_generator_mod.fill_scope_for(mode))
             except theme_generator_mod.ThemeGenError as e:
