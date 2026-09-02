@@ -739,3 +739,46 @@ def apply_proposal(proposal, next_url_provider):
 
     db.commit()
     return True, None
+
+
+def where_content_goes(db):
+    """Where anything given to an AI tool actually goes, in the owner's terms.
+
+    A NOTICE THAT IS THE SAME ON EVERY INSTALL IS A NOTICE NOBODY READS,
+    and on this app it would also be untrue half the time. Three of the
+    four providers are self-hosted: with Ollama or Open WebUI the words
+    go to a machine the owner runs, which is a different fact from
+    sending them to Google, and telling somebody their own server is a
+    third party teaches them to ignore the warning that matters.
+
+    So it says which, and where. Returns:
+
+      label     what to call it -- "Google Gemini", "your Open WebUI
+                server at 10.0.0.4:3000"
+      offsite   True when the words leave this owner's control
+      ready     False when no provider is configured, in which case
+                nothing is being sent anywhere yet
+
+    Never returns a key, and never the URL's credentials -- host and
+    port only, which is what identifies a machine to the person who set
+    it up.
+    """
+    import urllib.parse
+
+    settings = get_ai_settings(db)
+    provider = settings.get("provider") or ""
+    if not provider:
+        return {"label": "", "offsite": False, "ready": False}
+    if provider == "gemini":
+        return {"label": PROVIDER_LABELS["gemini"], "offsite": True, "ready": True}
+    url = settings.get("%s_url" % provider) or ""
+    host = ""
+    try:
+        parsed = urllib.parse.urlsplit(url if "//" in url else "//" + url)
+        host = parsed.netloc.rsplit("@", 1)[-1]
+    except ValueError:
+        host = ""
+    label = "your %s server" % PROVIDER_LABELS.get(provider, provider)
+    if host:
+        label += " at %s" % host
+    return {"label": label, "offsite": False, "ready": True}

@@ -358,6 +358,22 @@ def create_app():
     from .services.palette import readable_on as _readable_on
     app.jinja_env.globals["ink_for"] = _readable_on
 
+    #  Where anything given to an AI tool goes, for partials/ai_notice.html.
+    #  A FUNCTION, not a context value: it costs a settings query, and only
+    #  the handful of screens that actually send something should pay it.
+    def _ai_destination():
+        from .assistant import where_content_goes
+        from .db import get_db
+        try:
+            return where_content_goes(get_db())
+        except Exception:                                     # noqa: BLE001
+            #  A notice that cannot be worked out must not take the page
+            #  down with it -- but it must not silently claim "nothing is
+            #  sent" either, so the screen shows the general form.
+            return {"label": "the AI provider set up for this site",
+                    "offsite": True, "ready": True}
+    app.jinja_env.globals["ai_destination"] = _ai_destination
+
     from .services.sections import (
         banner_overlay_settings, card_style_settings, card_button_settings,
         TABLE_STYLE_CHOICES, VIDEO_GALLERY_LAYOUTS, MAX_VIDEO_GALLERY_CLIPS,

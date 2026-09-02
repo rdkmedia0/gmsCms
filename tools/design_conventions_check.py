@@ -141,5 +141,36 @@ check("the blog editor loads the rich-text script",
       "js/admin/rich-text.js" in open(os.path.join(_admin, "blog_post_edit.html"), encoding="utf-8").read())
 
 print()
+print("Every screen that sends something to an AI says so")
+print("-" * 70)
+#  NAMED, so it can be CHECKED. A screen that hands somebody's words or
+#  pictures to a provider has to say where they go -- and the surfaces
+#  are few and known, so a list here catches the fifth one rather than
+#  hoping whoever writes it remembers.
+#
+#  One partial, not a paragraph pasted four times: pasted, it would
+#  differ on the fifth screen, and a notice that is wrong somewhere is
+#  worse than none because it teaches people to skip it.
+SENDS_TO_AI = (
+    "admin/theme_generator.html",       # a brief, a paste, a picture
+    "partials/assistant_panel.html",    # every question asked of it
+    "partials/newsletter_editor.html",  # write a first draft with AI
+)
+for _name in SENDS_TO_AI:
+    _text = open(os.path.join(_tpl, _name.replace('/', os.sep)), encoding="utf-8").read()
+    check("%s carries the AI notice" % _name,
+          "partials/ai_notice.html" in _text)
+
+_notice = open(os.path.join(_tpl, "partials", "ai_notice.html"),
+                  encoding="utf-8").read()
+#  It has to name WHICH provider and WHERE: three of the four are
+#  self-hosted, and telling somebody their own server is a third party
+#  trains them to ignore the warning that matters.
+check("the notice names the provider rather than saying 'a third party'",
+      "ai_destination()" in _notice and "ai.label" in _notice)
+check("...and says nothing at all when no AI is configured",
+      "ai.ready" in _notice)
+
+print()
 print("%d checks, %d failed" % (passed + failed, failed))
 sys.exit(1 if failed else 0)

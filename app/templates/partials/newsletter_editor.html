@@ -88,6 +88,11 @@
             title="Write a first draft with AI. It asks what this one is about, replaces what is in the tool, and sends nothing.">&#10024;</button>
     <input type="hidden" name="brief" form="cms-ai-form" data-ai-brief value="">
     {% endif %}
+    {#  Said here because this is the row that sends something. The
+        ribbon is chrome, so the notice sits under it rather than in it:
+        a sentence of running text inside a row of controls is most of
+        what makes a toolbar read as a section. #}
+    {% include "partials/ai_notice.html" %}
 
     {#  2. What can go in it. Every one of these is optional -- a
         newsletter is whatever blocks it has, and a template only decides

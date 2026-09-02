@@ -1184,10 +1184,16 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
     fill = fill_scope != "none"
     copy = {}
     if fill:
-        if not brief:
+        #  Something to work FROM -- a description, or the owner's own
+        #  content. This asked for a brief only, which refused the mode
+        #  built around pasting content instead of describing a
+        #  business: the paste IS the description there, and a run
+        #  carrying a full CV was turned away for having nothing to
+        #  write about.
+        if not (brief or kit.get("source_text")):
             raise ThemeGenError(
-                "Describe your site or business, so the AI has something to "
-                "write about.")
+                "Describe your site or business, or paste the content you "
+                "already have, so the AI has something to work from.")
         try:
             copy = _ai_json(db, _prompt(kit, _SCHEMAS[layout_key], page_title))
             #  An answer that PARSED is not an answer that said anything.

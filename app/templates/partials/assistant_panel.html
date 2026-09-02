@@ -30,6 +30,7 @@
     {% else %}
     <div class="cms-assistant-body">
       <p class="hint">Ask how to do something, or ask it to fix/improve a specific section. Nothing is saved until you click Apply.</p>
+      {% include "partials/ai_notice.html" %}
       <div id="chat-log" class="chat-log"></div>
       <div id="chat-proposal" class="chat-proposal" hidden>
         <h3>Proposed change</h3>

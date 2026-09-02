@@ -1,0 +1,27 @@
+{#  What happens to anything given to an AI tool, said where it is given.
+
+    ONE partial, included by every screen that sends somebody's words or
+    pictures to a provider. Pasted into four screens it would differ on
+    the fifth, which is the rule this app already follows for its tab
+    lists -- and a notice that is wrong somewhere is worse than none,
+    because it teaches people to skip it.
+
+    It names WHICH provider and WHERE, because three of the four are
+    self-hosted: with Ollama or Open WebUI the words go to a machine the
+    owner runs, and telling somebody their own server is a third party
+    trains them to ignore the warning that matters. See
+    assistant.where_content_goes().
+
+    Nothing is shown when no provider is configured: there is no AI to
+    send anything to, and a warning about a thing that cannot happen is
+    noise. #}
+{% set ai = ai_destination() %}
+{% if ai.ready %}
+<p class="hint cms-ai-notice"
+   title="Where what you type here is processed. This app sends it to the AI provider set up under Settings, and nowhere else.">
+  <strong>Sent to the AI:</strong> anything you write, paste or upload on this
+  screen is sent to {{ ai.label }} so it can be worked on{% if ai.offsite %},
+  which is a service outside this site and handles it under its own terms{% endif %}.
+  Please do not include anything you would not want sent there.
+</p>
+{% endif %}
