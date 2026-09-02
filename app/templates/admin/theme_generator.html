@@ -240,6 +240,19 @@
               placeholder="e.g. A family-owned bakery in Portland specialising in sourdough and celebration cakes, open Tue–Sat, focused on local ingredients and made-to-order service.">{{ form.brief if form else '' }}</textarea>
   </div>
 
+  <div class="form-row" data-needs="source">
+    <label for="tg-source">Your content</label>
+    <textarea name="source_text" id="tg-source" rows="10"
+              title="Paste what you already have - a CV, an about page, a price list, a menu. Every fact on the site will come from this and nothing will be invented."
+              placeholder="Paste a CV, an about page, a price list, a leaflet - whatever you already have written. It does not need tidying: headings, dates, prices and bullet points are all fine, and are what the layout is built around.">{{ form.source_text if form else '' }}</textarea>
+    <p class="hint">Every name, date and figure on the finished site comes from
+      what you paste here, and nothing is invented. You do not need to say what
+      the pages should be &mdash; that is worked out from the content, along with
+      the shape each one takes.</p>
+    <p class="hint">This becomes the template's own content, so anything personal
+      in it travels with the template if you export or share it later.</p>
+  </div>
+
   <div class="form-row" data-needs="pages">
     <label for="tg-pages">Pages</label>
     <textarea name="pages" id="tg-pages" rows="3"

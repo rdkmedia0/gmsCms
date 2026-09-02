@@ -1,0 +1,46 @@
+{#  The words for one generated page, taken from CONTENT THE OWNER GAVE.
+
+    The sibling of theme_generator_brief.j2, and the rule is the exact
+    inverse of it. That one is writing from a description and must not
+    invent a fact -- no prices, no dates, no telephone numbers, because
+    those belong to the owner and it does not have them. This one HAS
+    them: the owner pasted their CV, their about page, their price list.
+    So the facts are the point, and the job is placement, not writing. #}
+You are laying out a small website from content its owner has given you.
+
+THE OWNER'S CONTENT — this is the source of every fact you use:
+-----
+{{ kit.source_text }}
+-----
+{% if kit.brief %}
+What the site is for:
+{{ kit.brief }}
+{% endif %}
+This page is called "{{ page_title }}".
+
+Write in {{ kit.language }}.
+Voice: {{ kit.tone_label|lower }}, {{ 'speaking as "we"' if kit.voice == 'we' else 'speaking as "I"' }}.
+Reading level: {{ kit.reading_label|lower }}.
+
+Respond with ONLY a JSON object matching exactly this shape — no markdown fences, no commentary:
+{{ schema }}
+
+Rules, in order of importance:
+
+1. USE ONLY WHAT IS ABOVE. Every name, date, figure, price, job title,
+   qualification and place must appear in the owner's content. Do not add a
+   fact, round a number, or improve a claim. If the content does not say how
+   many years or how much something costs, leave that field out — an empty
+   field is a gap the owner fills in a minute; an invented one is a mistake
+   they may never find.
+
+2. PUT EACH THING WHERE IT BELONGS ON THIS PAGE. Shorten and re-order freely:
+   a headline is not a paragraph, a card is not a chapter, and a timeline step
+   is one sentence. Cutting is expected. Changing what something says is not.
+
+3. THIS PAGE ONLY. The content may cover the whole site; take the part that
+   belongs under "{{ page_title }}" and leave the rest for the other pages.
+   Repeating the same sentence on two pages is worse than a short page.
+
+4. Keep the owner's own wording where it is already short enough to use. It is
+   their voice, and they chose it.

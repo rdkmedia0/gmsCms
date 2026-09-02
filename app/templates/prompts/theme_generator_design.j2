@@ -53,6 +53,16 @@ Choose:
 {% endfor %}   Choose the one that suits how this business should carry itself, not the
    one that sounds most impressive. A shop with a lot to list is not a poster.
 
+{% if kit.source_text %}
+The owner has given you their own content, below. Choose the shapes that fit
+what is actually in it -- a list of prices wants the shape that shows prices, a
+history of roles and dates wants the one that runs in order, a single voice
+wants the one that leads with words. Do not choose a shape whose parts this
+content cannot fill.
+-----
+{{ kit.source_text }}
+-----
+{% endif %}
 5. For each page, a shape, by key, from exactly this list:
 {% for key, blurb in layouts %}   - {{ key }} — {{ blurb }}
 {% endfor %}

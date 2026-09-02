@@ -282,6 +282,9 @@ def theme_generator():
 
         kit = theme_generator_mod.brand_kit(
             brief=(request.form.get("brief") or "").strip(),
+            #  What the owner already has written. In "place" mode it is
+            #  the source of every fact on the finished site.
+            source_text=(request.form.get("source_text") or "").strip(),
             tone=request.form.get("tone", "warm"),
             voice=request.form.get("voice", "we"),
             reading=request.form.get("reading", "normal"),

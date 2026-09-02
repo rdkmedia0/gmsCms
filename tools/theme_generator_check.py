@@ -1493,6 +1493,54 @@ check("...and a plain string is untouched",
       tg._numbered([{"a": " x "}], ("a",))["item1_a"] == "x")
 
 print()
+print("Content the owner pasted is placed, not rewritten")
+print("-" * 70)
+#  The mode for somebody who already HAS their words. The AI does not
+#  write here: it decides what shape each page is and where each thing
+#  goes on it, and every fact comes from the paste.
+check("the mode is offered", "place" in dict(tg.MODES))
+check("...and asks for the content, not a brief",
+      tg.MODE_NEEDS["place"] == ("source", "voice"), str(tg.MODE_NEEDS["place"]))
+check("...and still uses the AI", tg.fill_scope_for("place") == "all")
+
+_cv = "Ward sister 2015-2019. Clinical lead 2019-2024. Registered nurse."
+_kit = tg.brand_kit(source_text=_cv, brief="")
+#  Rendering a prompt template needs the app: `_prompt` deliberately
+#  uses the Jinja environment rather than render_template, so a service
+#  stays callable without a REQUEST -- but it still needs the app.
+with app.app_context():
+    _asked = tg._prompt(_kit, '{"a": "..."}', "About me")
+    _plain = tg._prompt(tg.brand_kit(brief="a bakery"), "{}")
+check("the content reaches the prompt", _cv in _asked)
+check("...and so does which page is being written", "About me" in _asked)
+check("...and it is told to invent nothing", "USE ONLY WHAT IS ABOVE" in _asked)
+check("without a paste it is the writing-from-a-brief prompt",
+      "USE ONLY WHAT IS ABOVE" not in _plain)
+
+#  The shape follows what the content IS. Scored from brief AND paste --
+#  in this mode the brief is optional and usually empty, so scoring the
+#  brief alone would choose the shape from nothing at all.
+for _what, _text, _want in (
+        ("a career history", _cv + " Qualifications: BSc.", "process"),
+        ("a price list", "Half day 150. Full day 300. Prices include lighting.",
+         "catalogue"),
+        ("a writer's page", "I write essays and teach a weekly workshop.",
+         "editorial")):
+    _got = tg.layout_for("Home", 0, tg._signal_text(tg.brand_kit(source_text=_text)))
+    check("%s opens on the %s shape" % (_what, _want), _got == _want, _got)
+
+#  A long paste is cut with a rule rather than discovered as a provider
+#  error six minutes into a run: the whole of it goes into EVERY page's
+#  request, so length multiplies.
+check("a very long paste is capped",
+      len(tg.brand_kit(source_text="x" * 90000)["source_text"]) == tg.MAX_SOURCE_CHARS)
+
+#  Built from LAYOUTS: this listed the five shapes as they stood before
+#  three more were added, so the model was shown a menu missing them.
+for _shape in tg.LAYOUTS:
+    check("the design schema offers %s" % _shape, _shape in tg.DESIGN_SCHEMA)
+
+print()
 print("  %d ok, %d failed" % (passed, len(failures)))
 for name in failures:
     print("    - " + name)

@@ -216,10 +216,20 @@ IMAGE_BUDGETS = (
 )
 
 
+#  The most content anybody can paste in one go.
+#
+#  A CV is a page or two; an "everything we do" document can be fifty.
+#  The whole of it goes into EVERY page's request, so that one voice
+#  reads across the site -- which means a long paste multiplies. Cut with
+#  a message rather than discovered as a provider error halfway through a
+#  six-minute run.
+MAX_SOURCE_CHARS = 20000
+
 def brand_kit(brief="", tone="warm", voice="we", reading="normal",
               language="English", palette=None, fonts="", shape="", shadow="",
               image_budget="1", ref_colours=None, colour_note="",
-              banner_per_page=False, ref_feel="", composition="", ref_ink=""):
+              banner_per_page=False, ref_feel="", composition="", ref_ink="",
+              source_text=""):
     """One kit, resolved once, read by every prompt and every picture.
 
     Returns plain data -- no db, no request -- so a checker, a script and
@@ -232,6 +242,11 @@ def brand_kit(brief="", tone="warm", voice="we", reading="normal",
         budget = 1
     return {
         "brief": (brief or "").strip(),
+        #  The owner's own content, when they have some. Capped: the
+        #  whole of it goes into EVERY page's request, so one voice
+        #  reads across the site -- which means a long paste
+        #  multiplies. See MAX_SOURCE_CHARS.
+        "source_text": (source_text or "").strip()[:MAX_SOURCE_CHARS],
         "tone": tone if tone in dict(TONES) else "warm",
         "tone_label": dict(TONES).get(tone, dict(TONES)["warm"]),
         "voice": voice if voice in dict(VOICES) else "we",
@@ -369,6 +384,11 @@ MODES = (
     ("reskin", "Keep my words — change only the look"),
     ("rewrite", "Rewrite my words, in the voice below"),
     ("scratch", "Write new words from a description"),
+    #  Somebody who already HAS their words -- a CV, an about page,
+    #  a price list -- and wants a site made out of them. The AI does
+    #  not write here; it decides what shape each page should be and
+    #  where each thing goes on it. Every fact comes from the paste.
+    ("place", "Use the content I paste - arrange it for me"),
     ("blank", "Leave the sections empty — no AI at all"),
 )
 
@@ -380,6 +400,10 @@ MODE_NEEDS = {
     "reskin": (),
     "rewrite": ("voice",),
     "scratch": ("brief", "pages", "voice"),
+    #  No "pages": the arrangement and the page list are what this
+    #  mode asks the AI for. A brief stays optional -- the content
+    #  usually says what the site is.
+    "place": ("source", "voice"),
     "blank": ("pages",),
 }
 
@@ -530,7 +554,14 @@ DESIGN_SCHEMA = (
     #  This was the other way round, and a truncated answer cost the
     #  typeface and the composition while carefully preserving a list of
     #  page shapes the code can work out for itself.
-    '"pages": [{"title": "...", "shape": "landing|story|poster|showcase|simple"}]}'
+    #  BUILT from LAYOUTS, not written out here. This said
+    #  "landing|story|poster|showcase|simple" -- the set as it stood
+    #  before three arrangements were added, so the model was shown a
+    #  menu that did not include them while the prose above it described
+    #  all four. A private list beside a shared one drifts the first
+    #  time the shared one grows, which is the third time this file has
+    #  been caught doing it.
+    '"pages": [{"title": "...", "shape": "' + "|".join(LAYOUTS) + '"}]}'
 )
 
 _HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
@@ -572,6 +603,18 @@ def design(db, kit, pages):
         if isinstance(entry, dict) and entry.get("shape") in LAYOUTS:
             shapes[str(entry.get("title", "")).strip().lower()] = entry["shape"]
 
+    #  WHOSE PAGES. Normally the owner's list; in the mode where they
+    #  paste their content and name no pages, the model's -- deciding
+    #  what pages the content needs is most of what "arrange it for me"
+    #  asks for. Titles are taken only when there were none, so a list
+    #  somebody typed is never quietly replaced.
+    titles = list(wanted or [])
+    if not titles:
+        titles = [str(e.get("title", "")).strip()
+                  for e in (chosen.get("pages") or [])
+                  if isinstance(e, dict) and str(e.get("title", "")).strip()]
+        titles = page_list(chr(10).join(titles)) or ["Home"]
+
     return {
         "colours": [c.lower() for c in colours][:3],
         "fonts": chosen.get("fonts") if chosen.get("fonts") in FONT_PAIRINGS else "",
@@ -583,8 +626,9 @@ def design(db, kit, pages):
                         if chosen.get("composition") in COMPOSITION_PRESETS else ""),
         #  Per page, by title, falling back to what the name suggests.
         "pages": [_front_shape(shapes.get(title.strip().lower()), title, i,
-                               kit.get("brief", ""))
-                  for i, title in enumerate(wanted)],
+                               _signal_text(kit))
+                  for i, title in enumerate(titles)],
+        "page_titles": titles,
         "why": (chosen.get("why") or "").strip(),
         "asked": bool(chosen),
     }
@@ -725,7 +769,7 @@ def plan(db, kit, name, mode="scratch", pages_wanted=None, looked=None,
     #  handed back to `generate` for exactly that reason.
     keys = [k for k in (looked or {}).get("pages") or []]
     if len(keys) != len(wanted):
-        keys = [layout_for(title, i, kit.get("brief", ""))
+        keys = [layout_for(title, i, _signal_text(kit))
                 for i, title in enumerate(wanted)]
 
     writes = bool(kit["brief"]) and fill_scope != "none"
@@ -790,7 +834,9 @@ def _prompt_file(name, **values):
     return current_app.jinja_env.get_template(name).render(**values)
 
 
-def _prompt(kit, schema):
+
+
+def _prompt(kit, schema, page_title=""):
     """The brand kit, as the prompt file writes it.
 
     Rendered through the Jinja environment rather than `render_template`,
@@ -801,6 +847,13 @@ def _prompt(kit, schema):
     it showed up here as "Working outside of request context" the first
     time this was tested outside a browser.
     """
+    #  Two prompts, and the rule in them is the exact inverse. Writing
+    #  from a description must invent NO facts; placing content the owner
+    #  gave must invent no facts either, but for the opposite reason --
+    #  it has them, and every one it adds is one they never wrote.
+    if (kit.get("source_text") or "").strip():
+        return _prompt_file("prompts/theme_generator_place.j2", kit=kit,
+                            schema=schema, page_title=page_title or "this page")
     return _prompt_file("prompts/theme_generator_brief.j2", kit=kit, schema=schema)
 
 
@@ -1116,7 +1169,7 @@ def _note_unwritten(kit, layout_key, why):
 
 
 def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
-                  want_image=True):
+                  want_image=True, page_title=""):
     """The HTML chunks for one layout. `fill_scope` "none" asks nobody.
 
     Takes the brand KIT rather than a bare brief: the tone, the language
@@ -1136,7 +1189,7 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
                 "Describe your site or business, so the AI has something to "
                 "write about.")
         try:
-            copy = _ai_json(db, _prompt(kit, _SCHEMAS[layout_key]))
+            copy = _ai_json(db, _prompt(kit, _SCHEMAS[layout_key], page_title))
             #  An answer that PARSED is not an answer that said anything.
             #
             #  A reply of {} -- or one salvaged down to a key nobody
@@ -1831,6 +1884,18 @@ def _carry_media(pkg_dir, slug):
             json.dump(spec, f, indent=2, ensure_ascii=False)
 
 
+def _signal_text(kit):
+    """Everything the owner said about what this site is.
+
+    The brief AND anything they pasted. Scoring the brief alone reads
+    one line and ignores the two pages underneath it -- and in the mode
+    where they paste their content the brief is optional and usually
+    empty, so the shape would have been chosen from nothing at all.
+    """
+    return " ".join(x for x in ((kit or {}).get("brief"),
+                                (kit or {}).get("source_text")) if x)
+
+
 def _front_shape(said, title, index, brief):
     """The model's answer, unless the model gave the generic one.
 
@@ -1876,7 +1941,18 @@ FRONT_SIGNALS = {
                 "service", "services", "servicing", "clinic", "treatment",
                 "treatments", "appointment", "appointments", "book",
                 "booked", "booking", "wedding", "weddings", "event",
-                "events", "build", "building", "renovation", "restoration"),
+                "events", "build", "building", "renovation", "restoration",
+                #  A career history belongs here, not under
+                #  "editorial". The words are a person's rather than a
+                #  business's, but the SHAPE is the one the trades
+                #  need: things in order, with dates on them, which is
+                #  what the timeline block is. A CV as prose is a wall;
+                #  as a chronology it is the document people already
+                #  know how to read.
+                "cv", "resume", "curriculum", "vitae", "career",
+                "employment", "employed", "experience", "qualification",
+                "qualifications", "qualified", "education", "graduated",
+                "references", "referees", "registered", "certified"),
 }
 
 
@@ -1973,11 +2049,18 @@ def generate(db, static_folder, name, kit, fill_scope, use_ai_images,
         #  is passed in when the plan has already worked it out, so the
         #  run does not ask twice and cannot get a different answer than
         #  the one that was shown.
-        chosen = (looked or {}).get("pages") or design(db, kit, wanted)["pages"]
+        decided = looked or design(db, kit, wanted)
+        #  ...and if the owner named no pages, the ones it proposed.
+        #  Deciding what pages the content needs is most of what
+        #  "arrange it for me" is asking for; a list somebody typed is
+        #  never replaced, because `titles` only fills when empty.
+        if not pages_wanted and decided.get("page_titles"):
+            wanted = decided["page_titles"]
+        chosen = decided.get("pages") or []
         pages = []
         for i, title in enumerate(wanted):
             key = (chosen[i] if i < len(chosen)
-                   else layout_for(title, i, kit.get("brief", "")))
+                   else layout_for(title, i, _signal_text(kit)))
             #  One picture for the run, at the top of the first page --
             #  five hero photographs is five waits and five charges for a
             #  look nobody has approved yet. Unless they asked for one
@@ -1985,7 +2068,8 @@ def generate(db, static_folder, name, kit, fill_scope, use_ai_images,
             #  default.
             chunks = layout_chunks(
                 db, key, kit, fill_scope, use_ai_images,
-                want_image=(i == 0 or kit.get("banner_per_page", False)))
+                want_image=(i == 0 or kit.get("banner_per_page", False)),
+                page_title=title)
             pages.append({"title": title, "slug_suffix": "",
                           "sections": sections_for(chunks)})
 
