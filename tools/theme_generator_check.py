@@ -1602,15 +1602,26 @@ check("...and every entity decoded, not five of them",
 check("plain text is read as it stands",
       _doc.text_from("notes.txt", "Half day 150.".encode()) == "Half day 150.")
 
+#  A refusal names what IS accepted, never what is not: the list of
+#  things somebody might try is endless, and naming one teaches nothing.
 for _name, _raw, _says in (
         ("cv.pdf", b"%PDF-1.4", "PDF"),
         ("cv.rtf", b"{" + chr(92).encode() + b"rtf1}", "plain text"),
-        ("cv.docx", b"not a zip at all", "docx")):
+):
     try:
         _doc.text_from(_name, _raw)
         check("%s is refused" % _name, False, "it was accepted")
     except _doc.DocumentError as e:
-        check("%s is refused, in words" % _name, bool(str(e).strip()), str(e)[:50])
+        check("%s is refused, naming what is accepted" % _name,
+              ".docx" in str(e) and ".txt" in str(e), str(e)[:60])
+#  A file of the right TYPE that is broken gets a different answer: what
+#  is wrong with that file, not a list of types it already matched.
+try:
+    _doc.text_from("cv.docx", b"not a zip at all")
+    check("a broken .docx is refused", False, "it was accepted")
+except _doc.DocumentError as e:
+    check("a broken .docx says what is wrong with it, not the type list",
+          ".txt" not in str(e), str(e)[:60])
 
 #  An ARCHIVE, so it gets the treatment every archive gets here: the
 #  size is capped BEFORE decompressing, because a few hundred kilobytes

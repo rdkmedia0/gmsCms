@@ -7,9 +7,12 @@ paste is three seconds of work and one more reason not to bother.
 
 WHAT IT DELIBERATELY IS NOT. It reads plain text and .docx, and it adds
 no dependency to do it: a .docx is a zip holding XML, which the standard
-library opens. PDF is the format most CVs are actually in and is not
-here, because reading one needs a real parser in the image -- a
-decision for whoever runs this app, not a thing to slip in.
+Anything else is refused by name. The list of things somebody
+might try is endless and naming one of them teaches nothing; naming
+what IS read is the whole of the rule. (A PDF needs a real parser in
+the image, which is a decision for whoever runs this app rather than a
+thing to slip in -- but that is a reason for the code to know, not a
+sentence for the screen.)
 
 A .docx is an ARCHIVE, so it gets the treatment every archive gets in
 this codebase (see packages.safe_extract_zip and CLAUDE.md's "Security
@@ -130,6 +133,10 @@ def text_from(filename, raw):
         return _docx_text(raw)
     if any(name.endswith(ext) for ext in READS):
         return _plain_text(raw).strip()
+    #  NAME WHAT IS ACCEPTED, and refuse everything else. Calling out
+    #  one format that is not read implies the rest are -- and the list
+    #  of things somebody might try is endless (.pages, .odt, .rtf, a
+    #  photograph of a page). One list; anything not on it is refused.
     raise DocumentError(
-        "This reads Word documents (.docx) and plain text (.txt, .md). A PDF "
-        "has to be pasted in, or saved as one of those first.")
+        "That file type is not accepted. This reads Word documents "
+        "(.docx) and plain text (.txt, .md). Paste anything else in as text.")
