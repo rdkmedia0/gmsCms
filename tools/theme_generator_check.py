@@ -1643,6 +1643,12 @@ check("prose with no headings gives just the front page",
       == ["Home"])
 check("nothing at all is still a site with a front page",
       tg.headings_in("") == ["Home"])
+#  And a lone "Home" from the model loses to the document, the same way
+#  a lone "landing" does: asked what pages a five-section CV needs, it
+#  answered with one, and the CV says otherwise in the owner's own words.
+_src = io.open("/app/app/services/theme_generator.py", encoding="utf-8").read()
+check("a single proposed page loses to the document's headings",
+      "if len(titles) <= 1:" in _src and "headings_in(kit" in _src)
 
 print()
 print("  %d ok, %d failed" % (passed, len(failures)))

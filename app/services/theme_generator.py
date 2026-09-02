@@ -626,7 +626,18 @@ def design(db, kit, pages):
         #  Experience, Qualifications, How I work, Contact -- those
         #  are the pages, and the person who wrote them decided that,
         #  which is a better answer than a model's guess and free.
-        titles = titles or headings_in(kit.get("source_text", ""))
+        #  A LONE FRONT PAGE IS THE GENERIC ANSWER, and it loses to
+        #  evidence, the same way a "landing" shape does. Asked what
+        #  pages a five-section CV needs, the model answered with one:
+        #  Home. The document says otherwise -- Experience,
+        #  Qualifications, How I work, Contact are written in it, by
+        #  the person whose CV it is.
+        #
+        #  So the headings win when the model proposed nothing, and
+        #  when it proposed only a front page. Two or more titles is a
+        #  real answer and is kept.
+        if len(titles) <= 1:
+            titles = headings_in(kit.get("source_text", "")) or titles
         titles = titles or ["Home"]
 
     return {
