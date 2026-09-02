@@ -757,11 +757,16 @@ with app.app_context():
     #  feature" costs the same wait as a good one and has to be found
     #  and thrown away by hand -- which is worse than being told.
     src = io.open("/app/app/services/theme_generator.py", encoding="utf-8").read()
-    #  Any shape that can BE a front page counts, not just "landing" --
-    #  a poster or a showcase is somebody's home page too.
+    #  The front page is the FIRST page, whatever shape it is. This
+    #  asserted a list of three shape names, which is how the guard came
+    #  to miss the three arrangements added after it was written: a front
+    #  page in any of them could come back as nothing but placeholder
+    #  text and ship. A check that names a set is a check that has to be
+    #  remembered; this one names the position instead.
     check("a mute front page refuses the run",
-          'u.get("layout") in ("landing", "poster", "showcase")' in src
-          and "front_unwritten" in src)
+          'u.get("page") == front' in src and "front_unwritten" in src)
+    check("...and the front page is identified by position, not by shape",
+          '"landing", "poster", "showcase"' not in src, "a shape list is back")
     #  A model that returns nothing once very often answers properly a
     #  second later, and a six-request run should not be lost to that.
     #  Once, though: a model with nothing to say twice is telling you

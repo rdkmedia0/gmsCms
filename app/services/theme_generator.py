@@ -2159,7 +2159,20 @@ def generate(db, static_folder, name, kit, fill_scope, use_ai_images,
     #
     #  A front page of placeholders is worse than no template: it costs
     #  the same wait, and it has to be found and thrown away by hand.
-    front_unwritten = any(u.get("layout") in ("landing", "poster", "showcase")
+    #  WHICH PAGE, not which shape. This listed three shape names --
+    #  landing, poster, showcase -- so a front page in any of the
+    #  three arrangements added since could come back as nothing but
+    #  placeholder text and ship anyway, which is the exact outcome
+    #  this guard exists to prevent. The fourth private list this file
+    #  has been caught keeping beside a shared one.
+    #
+    #  The front page is the FIRST page. That is true whatever shapes
+    #  exist, today and after the next one is added.
+    #  From `pages`, which exists on every path -- `wanted` is bound
+    #  only where the run was given a page list, and reading it here
+    #  raised UnboundLocalError on the reskin path.
+    front = (pages[0].get("title") if pages else "") or ""
+    front_unwritten = any(u.get("page") == front
                           for u in (kit.get("unwritten") or []))
     if fill_scope != "none" and pages and (
             front_unwritten
