@@ -1,0 +1,26 @@
+{
+  "title": "What it costs",
+  "slug_suffix": "what-it-costs",
+  "page_type": "standard",
+  "meta_description": "",
+  "sections": [
+    [
+      "banner",
+      "",
+      "<div class=\"cms-banner cms-banner-plain\" style=\"background-color:#fefef6;color:#111111\"><div class=\"cms-banner-overlay\" style=\"color:inherit\"><h2>Celebrate in Our Country Barn</h2><p>We handle everything so you can relax and enjoy your special day.</p></div></div>",
+      {
+        "layout_width": "full",
+        "corner_style": "sharp",
+        "bg_position": "top"
+      }
+    ],
+    [
+      "text",
+      "",
+      "<h2>Your Celebration Space</h2><p>We have a courtyard for outdoor moments and room for 120 guests. Our staff is here all day to make your event perfect.</p>",
+      {
+        "layout_width": "auto"
+      }
+    ]
+  ]
+}

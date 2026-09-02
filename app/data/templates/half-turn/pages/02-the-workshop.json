@@ -1,0 +1,34 @@
+{
+  "title": "The workshop",
+  "slug_suffix": "the-workshop",
+  "page_type": "standard",
+  "meta_description": "",
+  "sections": [
+    [
+      "banner",
+      "",
+      "<div class=\"cms-banner cms-banner-plain\" style=\"background-color:#1c2a39;color:#ffffff\"><div class=\"cms-banner-overlay\" style=\"color:inherit\"><span class=\"cms-eyebrow\">Same-week service you can trust</span><h2>Expert Bicycle Repair, Same Week</h2><p>Book your service in advance. We fix your bike and return it the same week.</p></div></div>",
+      {
+        "layout_width": "full",
+        "corner_style": "sharp",
+        "bg_position": "top"
+      }
+    ],
+    [
+      "text",
+      "",
+      "<h2>Your Bike, Fixed Right</h2><p>We service, build wheels, and restore your bicycle. Book your service in advance for same-week returns. Your bike is safe with us.</p>",
+      {
+        "layout_width": "auto"
+      }
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-image-accordion\">\n<div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('/static/img/placeholder.svg')\"><span class=\"cms-accordion-caption\">Panel 1</span></div>\n<div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('/static/img/placeholder.svg')\"><span class=\"cms-accordion-caption\">Panel 2</span></div>\n<div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('/static/img/placeholder.svg')\"><span class=\"cms-accordion-caption\">Panel 3</span></div>\n<div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('/static/img/placeholder.svg')\"><span class=\"cms-accordion-caption\">Panel 4</span></div>\n<div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('/static/img/placeholder.svg')\"><span class=\"cms-accordion-caption\">Panel 5</span></div>\n</div>",
+      {
+        "layout_width": "auto"
+      }
+    ]
+  ]
+}

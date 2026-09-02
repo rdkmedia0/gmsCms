@@ -1,0 +1,26 @@
+{
+  "title": "Contact",
+  "slug_suffix": "contact",
+  "page_type": "standard",
+  "meta_description": "",
+  "sections": [
+    [
+      "banner",
+      "",
+      "<div class=\"cms-banner cms-banner-plain\" style=\"background-color:#1c2a39;color:#ffffff\"><div class=\"cms-banner-overlay\" style=\"color:inherit\"><h2>We Repair Bikes, Same Week</h2><p>Book in advance for service, wheel building, or restoration. We usually return your bike the same week.</p></div></div>",
+      {
+        "layout_width": "full",
+        "corner_style": "sharp",
+        "bg_position": "top"
+      }
+    ],
+    [
+      "text",
+      "",
+      "<h2>Our Services</h2><p>We service, build wheels, and restore bicycles. Book in advance for same-week service.</p>",
+      {
+        "layout_width": "auto"
+      }
+    ]
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "title": "Contact",
+  "slug_suffix": "contact",
+  "page_type": "standard",
+  "meta_description": "",
+  "sections": [
+    [
+      "banner",
+      "",
+      "<div class=\"cms-banner cms-banner-plain\" style=\"background-color:#fefef6;color:#111111\"><div class=\"cms-banner-overlay\" style=\"color:inherit\"><h2>Your Warm Barn Wedding &amp; Party Venue</h2><p>We have a courtyard and room for 120 guests. Our staff is here all day for your event.</p></div></div>",
+      {
+        "layout_width": "full",
+        "corner_style": "sharp",
+        "bg_position": "top"
+      }
+    ],
+    [
+      "text",
+      "",
+      "<h2>Your Event, Our Care</h2><p>We have a courtyard and space for 120 guests. Our team is here all day to make your wedding or party special. Let us help you plan your event.</p>",
+      {
+        "layout_width": "auto"
+      }
+    ]
+  ]
+}

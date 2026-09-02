@@ -1,0 +1,30 @@
+{
+  "name": "Harbour Physio",
+  "slug": "harbour-physio",
+  "has_content": true,
+  "nav_layout": "centered",
+  "footer_layout": "simple",
+  "page_layout": "none",
+  "palette": [
+    {
+      "slug": "primary",
+      "name": "Primary",
+      "color": "#2070b8"
+    },
+    {
+      "slug": "secondary",
+      "name": "Secondary",
+      "color": "#107850"
+    },
+    {
+      "slug": "accent",
+      "name": "Accent",
+      "color": "#084028"
+    }
+  ],
+  "ground_color": "#f8f8f8",
+  "google_fonts_url": "/static/fonts/dmserif-worksans.css",
+  "shape_override": "soft",
+  "shadow_override": "subtle",
+  "composition": "quiet"
+}

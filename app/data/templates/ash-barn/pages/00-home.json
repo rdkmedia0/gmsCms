@@ -1,0 +1,52 @@
+{
+  "title": "Home",
+  "slug_suffix": "home",
+  "page_type": "standard",
+  "meta_description": "",
+  "sections": [
+    [
+      "banner",
+      "",
+      "<div class=\"cms-banner\" style=\"background-image:url('media/ash-barn-banner.webp')\"><div class=\"cms-banner-overlay\"><span class=\"cms-eyebrow\">Country Charm</span><h2>Your Perfect Country Wedding Awaits</h2><p>Barn venue with courtyard &amp; full-day staff for weddings &amp; parties.</p><p class=\"cms-hero-actions\"><a class=\"cms-btn\" href=\"#more\">Get Started</a></p></div></div>",
+      {
+        "layout_width": "full",
+        "corner_style": "sharp",
+        "bg_position": "center"
+      }
+    ],
+    [
+      "text",
+      "",
+      "<h2>Your Special Day, Our Joy</h2><p>We handle every detail so you can relax. Your celebration is our priority.</p>",
+      {
+        "layout_width": "auto"
+      }
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-pricing\" data-columns=\"3\"><div class=\"cms-price-grid\"><div class=\"cms-price-tier\"><h3 class=\"cms-price-name\" data-field=\"tier1_name\">Basic Package</h3><p class=\"cms-price-amount\"><span data-field=\"tier1_price\">500</span><small data-field=\"tier1_period\">per day</small></p><ul class=\"cms-price-features\" data-field=\"tier1_features\"><li>[&#x27;Courtyard access&#x27;, &#x27;Staff present all day&#x27;, &#x27;Room for 120 guests&#x27;, &#x27;Basic setup&#x27;]</li></ul><a class=\"cms-price-btn\" href=\"/contact\" data-href-field=\"tier1_link\"><span data-field=\"tier1_cta\">Book Now</span></a></div><div class=\"cms-price-tier is-featured\" data-flag=\"tier2_featured\"><h3 class=\"cms-price-name\" data-field=\"tier2_name\">Standard Package</h3><p class=\"cms-price-amount\"><span data-field=\"tier2_price\">750</span><small data-field=\"tier2_period\">per day</small></p><ul class=\"cms-price-features\" data-field=\"tier2_features\"><li>[&#x27;Courtyard access&#x27;, &#x27;Staff present all day&#x27;, &#x27;Room for 120 guests&#x27;, &#x27;Extra lighting&#x27;]</li></ul><a class=\"cms-price-btn\" href=\"/contact\" data-href-field=\"tier2_link\"><span data-field=\"tier2_cta\">Book Now</span></a></div><div class=\"cms-price-tier\"><h3 class=\"cms-price-name\" data-field=\"tier3_name\">Premium Package</h3><p class=\"cms-price-amount\"><span data-field=\"tier3_price\">1000</span><small data-field=\"tier3_period\">per day</small></p><ul class=\"cms-price-features\" data-field=\"tier3_features\"><li>[&#x27;Courtyard access&#x27;, &#x27;Staff present all day&#x27;, &#x27;Room for 120 guests&#x27;, &#x27;Catering&#x27;]</li></ul><a class=\"cms-price-btn\" href=\"/contact\" data-href-field=\"tier3_link\"><span data-field=\"tier3_cta\">Book Now</span></a></div></div></div>",
+      {
+        "layout_width": "full",
+        "bg_color": "#1d1d1f"
+      }
+    ],
+    [
+      "columns",
+      "",
+      "{\"columns\": [\"<div class=\\\"cms-card\\\"><h3>Courtyard Access</h3><p>Sunny courtyard for photos and mingling.</p></div>\", \"<div class=\\\"cms-card\\\"><h3>Full-Day Staff</h3><p>Our team is here to help you all day long.</p></div>\", \"<div class=\\\"cms-card\\\"><h3>120-Guest Capacity</h3><p>Room for everyone with comfortable seating.</p></div>\"]}",
+      {
+        "layout_width": "auto",
+        "shadow_style": "subtle"
+      }
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-cta\" data-tone=\"solid\"><div class=\"cms-cta cms-cta-solid\"><h2 data-field=\"heading\">Plan Your Celebration Today</h2><p data-field=\"text\">Contact us for availability and to customize your package.</p><a class=\"cms-cta-btn\" href=\"/contact\" data-href-field=\"link\"><span data-field=\"cta\">Get Started</span></a></div></div>",
+      {
+        "layout_width": "full"
+      }
+    ]
+  ]
+}

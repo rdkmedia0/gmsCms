@@ -413,10 +413,19 @@ The product framing: **a template manager (browse/install/activate/save/
 export full-site looks) built on top of a general-purpose CMS**. A
 "Template Package" is authored as a directory under `app/data/templates/<slug>/`
 (built into a shipped `.zip` — see "Shipped templates travel as one .zip each" below)
-(built-in, shipped with the app — 16 exist today, each a complete look +
+(built-in, shipped with the app — 20 exist today, each a complete look +
 content pack: `bakery`, `business`, `clinic`, `coaching`, `coffee-shop`,
 `community`, `cv`, `fitness`, `garage`, `hair-salon`, `personal`,
-`restaurant`, `self-help`, `shop`, `trades`, `venue`. The set is chosen
+`restaurant`, `self-help`, `shop`, `trades`, `venue`, plus four made BY
+the Theme Generator and promoted into the set — `ash-barn`,
+`half-turn`, `harbour-physio`, `lumen-rooms`. Those four earn their
+place by SHAPE rather than by category, which is the second axis the
+original sixteen do not vary on: they are the only built-ins that open
+on a Catalogue (prices first, `ash-barn`, `lumen-rooms`) or a Process
+(the steps of working together, `half-turn`, `harbour-physio`) rather
+than a Landing. They also overlap the existing set by trade -- a venue,
+a garage, a clinic and a portfolio are all already there -- so when
+adding to the set, ask which of the two axes a candidate is new on. The set is chosen
 against how the large builders categorise demand, not by taste: trades,
 appointment-led services, food, retail and portfolio all have one, and
 each differs in nav/shape/shadow/palette/fonts AND in page structure —

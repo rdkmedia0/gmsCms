@@ -1,0 +1,34 @@
+{
+  "title": "The studio",
+  "slug_suffix": "the-studio",
+  "page_type": "standard",
+  "meta_description": "",
+  "sections": [
+    [
+      "banner",
+      "",
+      "<div class=\"cms-banner cms-banner-plain\" style=\"background-color:#f5f2e2;color:#111111\"><div class=\"cms-banner-overlay\" style=\"color:inherit\"><h2>We Rent Photography Studio Spaces for Your Shoots</h2><p>Our studio includes lighting and changing room. Half-day or full-day rates. Assistant available upon request.</p></div></div>",
+      {
+        "layout_width": "full",
+        "corner_style": "sharp",
+        "bg_position": "top"
+      }
+    ],
+    [
+      "text",
+      "",
+      "<h2>Dedicated Space for Your Photography Shoot</h2><p>We provide a dedicated space with lighting and changing room. Half-day or full-day rates. Assistant available upon request.</p>",
+      {
+        "layout_width": "auto"
+      }
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-cta\" data-tone=\"solid\"><div class=\"cms-cta cms-cta-solid\"><h2 data-field=\"heading\">Book Your Studio Today</h2><p data-field=\"text\">We include lighting, changing room, and assistant. Half-day or full-day rates.</p><a class=\"cms-cta-btn\" href=\"/contact\" data-href-field=\"link\"><span data-field=\"cta\">Get in touch</span></a></div></div>",
+      {
+        "layout_width": "full"
+      }
+    ]
+  ]
+}

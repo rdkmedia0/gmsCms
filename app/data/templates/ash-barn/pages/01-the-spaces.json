@@ -1,0 +1,34 @@
+{
+  "title": "The spaces",
+  "slug_suffix": "the-spaces",
+  "page_type": "standard",
+  "meta_description": "",
+  "sections": [
+    [
+      "banner",
+      "",
+      "<div class=\"cms-banner cms-banner-plain\" style=\"background-color:#fefef6;color:#111111\"><div class=\"cms-banner-overlay\" style=\"color:inherit\"><span class=\"cms-eyebrow\">Your dream day, our care</span><h2>Your Countryside Wedding &amp; Party Venue</h2><p>Three easy packages. Courtyard. Your day, our care.</p></div></div>",
+      {
+        "layout_width": "full",
+        "corner_style": "sharp",
+        "bg_position": "top"
+      }
+    ],
+    [
+      "text",
+      "",
+      "<h2>Your countryside wedding venue.</h2><p>We've got a courtyard for photos and a space for 120 guests. Our team is here all day to help.</p>",
+      {
+        "layout_width": "auto"
+      }
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-image-accordion\">\n<div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('/static/img/placeholder.svg')\"><span class=\"cms-accordion-caption\">Panel 1</span></div>\n<div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('/static/img/placeholder.svg')\"><span class=\"cms-accordion-caption\">Panel 2</span></div>\n<div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('/static/img/placeholder.svg')\"><span class=\"cms-accordion-caption\">Panel 3</span></div>\n<div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('/static/img/placeholder.svg')\"><span class=\"cms-accordion-caption\">Panel 4</span></div>\n<div class=\"cms-accordion-panel\" tabindex=\"0\" style=\"background-image:url('/static/img/placeholder.svg')\"><span class=\"cms-accordion-caption\">Panel 5</span></div>\n</div>",
+      {
+        "layout_width": "auto"
+      }
+    ]
+  ]
+}

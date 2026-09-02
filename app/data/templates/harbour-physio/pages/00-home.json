@@ -1,0 +1,59 @@
+{
+  "title": "Home",
+  "slug_suffix": "home",
+  "page_type": "standard",
+  "meta_description": "",
+  "sections": [
+    [
+      "banner",
+      "",
+      "<div class=\"cms-banner\" style=\"background-image:url('media/harbour-physio-banner.webp')\"><div class=\"cms-banner-overlay\"><h2>How it goes</h2><p>A short supporting line.</p><p class=\"cms-hero-actions\"><a class=\"cms-btn\" href=\"/contact\">Get in touch</a><a class=\"cms-btn cms-btn-ghost\" href=\"#more\">How it works</a></p></div></div>",
+      {
+        "layout_width": "full",
+        "corner_style": "sharp",
+        "bg_position": "center"
+      }
+    ],
+    [
+      "text",
+      "",
+      "<h2>What to expect</h2><p>Write an introduction here.</p>",
+      {
+        "layout_width": "auto"
+      }
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-timeline\" data-style=\"vertical\"><ol class=\"cms-timeline cms-timeline-vertical\"><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step1_when\">Step 1</span><div class=\"cms-timeline-body\"><h3 data-field=\"step1_title\">What happens</h3><p data-field=\"step1_text\">One sentence.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step2_when\">Step 2</span><div class=\"cms-timeline-body\"><h3 data-field=\"step2_title\">What happens</h3><p data-field=\"step2_text\">One sentence.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step3_when\">Step 3</span><div class=\"cms-timeline-body\"><h3 data-field=\"step3_title\">What happens</h3><p data-field=\"step3_text\">One sentence.</p></div></li></ol></div>",
+      {
+        "layout_width": "auto"
+      }
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-stats\" data-count=\"3\"><div class=\"cms-stat-row\"><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat1_value\">10</span><span class=\"cms-stat-label\" data-field=\"stat1_label\">Years</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat2_value\">200</span><span class=\"cms-stat-label\" data-field=\"stat2_label\">Jobs done</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat3_value\">24h</span><span class=\"cms-stat-label\" data-field=\"stat3_label\">Reply time</span></div></div></div>",
+      {
+        "layout_width": "full",
+        "bg_color": "#e9e9e9"
+      }
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-testimonial\" data-style=\"large\"><figure class=\"cms-quote cms-quote-large\"><blockquote data-field=\"quote\">Add something a customer said about you.</blockquote><figcaption><span class=\"cms-quote-name\" data-field=\"name\"></span><span class=\"cms-quote-role\" data-field=\"role\"></span></figcaption></figure></div>",
+      {
+        "layout_width": "full"
+      }
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-cta\" data-tone=\"solid\"><div class=\"cms-cta cms-cta-solid\"><h2 data-field=\"heading\">Ready to start?</h2><p data-field=\"text\">Get in touch and we will talk it through.</p><a class=\"cms-cta-btn\" href=\"/contact\" data-href-field=\"link\"><span data-field=\"cta\">Get in touch</span></a></div></div>",
+      {
+        "layout_width": "full"
+      }
+    ]
+  ]
+}

@@ -21,6 +21,7 @@ Run inside the container:
 
     docker compose exec -T web python /tmp/fic.py
 """
+import glob
 import os
 import shutil
 import sys
@@ -67,9 +68,14 @@ with app.app_context():
 
     #  ------------------------------------------------- the template library
     templates = db.execute("SELECT * FROM templates ORDER BY slug").fetchall()
-    shipped = len(packages.shipped_zips()) if hasattr(packages, "shipped_zips") else 16
-    check("every shipped template is in the library", len(templates) == 16,
-          "%d templates" % len(templates))
+    #  COUNTED, not written down here. This asserted 16 -- a private
+    #  number beside the real set, which is the drift this project keeps
+    #  finding: adding four templates broke a check that had nothing to
+    #  say about them. The archives on disk ARE the shipped set.
+    shipped = len(glob.glob(os.path.join(packages.PACKAGE_ZIPS_DIR, "*.zip")))
+    check("every shipped template is in the library",
+          shipped and len(templates) == shipped,
+          "%d templates, %d archives" % (len(templates), shipped))
     check("all of them marked built-in", all(t["is_builtin"] for t in templates))
     active = [t for t in templates if t["is_active"]]
     check("exactly one of them is active", len(active) == 1,
@@ -219,9 +225,11 @@ with app.app_context():
 second = create_app()
 with second.app_context():
     db = get_db()
+    shipped = len(glob.glob(os.path.join(packages.PACKAGE_ZIPS_DIR, "*.zip")))
     check("a second boot adds no duplicate template",
-          db.execute("SELECT COUNT(*) FROM templates").fetchone()[0] == 16,
-          str(db.execute("SELECT COUNT(*) FROM templates").fetchone()[0]))
+          db.execute("SELECT COUNT(*) FROM templates").fetchone()[0] == shipped,
+          "%d vs %d archives"
+          % (db.execute("SELECT COUNT(*) FROM templates").fetchone()[0], shipped))
     check("and no duplicate page",
           db.execute("SELECT COUNT(*) FROM pages").fetchone()[0] == len(pages))
     check("and no duplicate section", db.execute(

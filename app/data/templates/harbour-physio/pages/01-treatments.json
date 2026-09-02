@@ -1,0 +1,26 @@
+{
+  "title": "Treatments",
+  "slug_suffix": "treatments",
+  "page_type": "standard",
+  "meta_description": "",
+  "sections": [
+    [
+      "banner",
+      "",
+      "<div class=\"cms-banner cms-banner-plain\" style=\"background-color:#115794;color:#ffffff\"><div class=\"cms-banner-overlay\" style=\"color:inherit\"><h2>Waterfront Physiotherapy, Just for You</h2><p>We assess, treat, and give you a plan to take home.</p></div></div>",
+      {
+        "layout_width": "full",
+        "corner_style": "sharp",
+        "bg_position": "top"
+      }
+    ],
+    [
+      "text",
+      "",
+      "<h2>Your Comfort, Our Priority</h2><p>Book appointments in advance, including evenings. Let us help you feel better.</p>",
+      {
+        "layout_width": "auto"
+      }
+    ]
+  ]
+}

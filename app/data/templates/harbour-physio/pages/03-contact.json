@@ -1,0 +1,26 @@
+{
+  "title": "Contact",
+  "slug_suffix": "contact",
+  "page_type": "standard",
+  "meta_description": "",
+  "sections": [
+    [
+      "banner",
+      "",
+      "<div class=\"cms-banner cms-banner-plain\" style=\"background-color:#115794;color:#ffffff\"><div class=\"cms-banner-overlay\" style=\"color:inherit\"><h2>Physiotherapy by the Water, Your Way</h2><p>Assessment, treatment, and a plan you take home.</p></div></div>",
+      {
+        "layout_width": "full",
+        "corner_style": "sharp",
+        "bg_position": "top"
+      }
+    ],
+    [
+      "text",
+      "",
+      "<h2>Book Appointments with Us</h2><p>We assess your needs, treat your pain, and give you a plan to take home. Book appointments ahead for evenings.</p>",
+      {
+        "layout_width": "auto"
+      }
+    ]
+  ]
+}

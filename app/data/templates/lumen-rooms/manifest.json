@@ -1,0 +1,31 @@
+{
+  "name": "Lumen Rooms",
+  "slug": "lumen-rooms",
+  "has_content": true,
+  "nav_layout": "centered",
+  "footer_layout": "simple",
+  "page_layout": "none",
+  "palette": [
+    {
+      "slug": "primary",
+      "name": "Primary",
+      "color": "#382828"
+    },
+    {
+      "slug": "secondary",
+      "name": "Secondary",
+      "color": "#ff4000"
+    },
+    {
+      "slug": "accent",
+      "name": "Accent",
+      "color": "#684848"
+    }
+  ],
+  "ink_color": "#f5f2e2",
+  "ground_color": "#000000",
+  "google_fonts_url": "/static/fonts/grotesk-inter.css",
+  "shape_override": "rounded",
+  "shadow_override": "subtle",
+  "composition": "warm"
+}

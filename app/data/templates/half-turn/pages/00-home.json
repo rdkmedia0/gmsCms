@@ -1,0 +1,59 @@
+{
+  "title": "Home",
+  "slug_suffix": "home",
+  "page_type": "standard",
+  "meta_description": "",
+  "sections": [
+    [
+      "banner",
+      "",
+      "<div class=\"cms-banner\" style=\"background-image:url('media/half-turn-banner.webp')\"><div class=\"cms-banner-overlay\"><span class=\"cms-eyebrow\">Same Week Turnaround</span><h2>Expert Bicycle Repair Service</h2><p>Book in advance. Get back the same week.</p><p class=\"cms-hero-actions\"><a class=\"cms-btn\" href=\"/contact\">Schedule Now</a><a class=\"cms-btn cms-btn-ghost\" href=\"#more\">How it works</a></p></div></div>",
+      {
+        "layout_width": "full",
+        "corner_style": "sharp",
+        "bg_position": "center"
+      }
+    ],
+    [
+      "text",
+      "",
+      "<h2>How It Works</h2><p>We book your appointment. We fix your bike. We return it same week.</p>",
+      {
+        "layout_width": "auto"
+      }
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-timeline\" data-style=\"vertical\"><ol class=\"cms-timeline cms-timeline-vertical\"><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step1_when\">First</span><div class=\"cms-timeline-body\"><h3 data-field=\"step1_title\">Book your appointment</h3><p data-field=\"step1_text\">We schedule a time that works for you.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step2_when\">Next</span><div class=\"cms-timeline-body\"><h3 data-field=\"step2_title\">Bring your bike</h3><p data-field=\"step2_text\">We inspect and fix it.</p></div></li><li class=\"cms-timeline-item\"><span class=\"cms-timeline-when\" data-field=\"step3_when\">Week one</span><div class=\"cms-timeline-body\"><h3 data-field=\"step3_title\">Get your bike back</h3><p data-field=\"step3_text\">Most repairs are done within the same week.</p></div></li></ol></div>",
+      {
+        "layout_width": "auto"
+      }
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-stats\" data-count=\"3\"><div class=\"cms-stat-row\"><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat1_value\">3</span><span class=\"cms-stat-label\" data-field=\"stat1_label\">Core services</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat2_value\">Same week</span><span class=\"cms-stat-label\" data-field=\"stat2_label\">Turnaround</span></div><div class=\"cms-stat\"><span class=\"cms-stat-value\" data-field=\"stat3_value\">Booked</span><span class=\"cms-stat-label\" data-field=\"stat3_label\">Appointments</span></div></div></div>",
+      {
+        "layout_width": "full",
+        "bg_color": "#a1b0b0"
+      }
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-testimonial\" data-style=\"large\"><figure class=\"cms-quote cms-quote-large\"><blockquote data-field=\"quote\">Add something a customer said about you.</blockquote><figcaption><span class=\"cms-quote-name\" data-field=\"name\"></span><span class=\"cms-quote-role\" data-field=\"role\"></span></figcaption></figure></div>",
+      {
+        "layout_width": "full"
+      }
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-cta\" data-tone=\"solid\"><div class=\"cms-cta cms-cta-solid\"><h2 data-field=\"heading\">Book Your Repair Today</h2><p data-field=\"text\">Choose your service and schedule an appointment.</p><a class=\"cms-cta-btn\" href=\"/contact\" data-href-field=\"link\"><span data-field=\"cta\">Schedule Now</span></a></div></div>",
+      {
+        "layout_width": "full"
+      }
+    ]
+  ]
+}

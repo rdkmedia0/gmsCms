@@ -1,0 +1,52 @@
+{
+  "title": "Rates",
+  "slug_suffix": "rates",
+  "page_type": "standard",
+  "meta_description": "",
+  "sections": [
+    [
+      "banner",
+      "",
+      "<div class=\"cms-banner cms-banner-plain\" style=\"background-color:#f5f2e2;color:#111111\"><div class=\"cms-banner-overlay\" style=\"color:inherit\"><span class=\"cms-eyebrow\">Your Perfect Shoot</span><h2>Professional Photography Studio for Hire</h2><p>We provide lighting, a changing room, and a dedicated space for your shoot.</p><p class=\"cms-hero-actions\"><a class=\"cms-btn\" href=\"#more\">Book Now</a></p></div></div>",
+      {
+        "layout_width": "full",
+        "corner_style": "sharp",
+        "bg_position": "center"
+      }
+    ],
+    [
+      "text",
+      "",
+      "<h2>Why Choose Us?</h2><p>We offer flexible half-day and full-day rates. Our studio includes professional lighting and a private changing room. Let us help you capture your best moments.</p>",
+      {
+        "layout_width": "auto"
+      }
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-pricing\" data-columns=\"3\"><div class=\"cms-price-grid\"><div class=\"cms-price-tier\"><h3 class=\"cms-price-name\" data-field=\"tier1_name\">Half Day</h3><p class=\"cms-price-amount\"><span data-field=\"tier1_price\">500</span><small data-field=\"tier1_period\">per half day</small></p><ul class=\"cms-price-features\" data-field=\"tier1_features\"><li>[&#x27;Professional lighting&#x27;, &#x27;Private changing room&#x27;, &#x27;Studio space&#x27;, &#x27;Standard equipment&#x27;]</li></ul><a class=\"cms-price-btn\" href=\"/contact\" data-href-field=\"tier1_link\"><span data-field=\"tier1_cta\">Book Now</span></a></div><div class=\"cms-price-tier is-featured\" data-flag=\"tier2_featured\"><h3 class=\"cms-price-name\" data-field=\"tier2_name\">Full Day</h3><p class=\"cms-price-amount\"><span data-field=\"tier2_price\">1000</span><small data-field=\"tier2_period\">per full day</small></p><ul class=\"cms-price-features\" data-field=\"tier2_features\"><li>[&#x27;Professional lighting&#x27;, &#x27;Private changing room&#x27;, &#x27;Studio space&#x27;, &#x27;Extended time&#x27;]</li></ul><a class=\"cms-price-btn\" href=\"/contact\" data-href-field=\"tier2_link\"><span data-field=\"tier2_cta\">Book Now</span></a></div><div class=\"cms-price-tier\"><h3 class=\"cms-price-name\" data-field=\"tier3_name\">Assistant</h3><p class=\"cms-price-amount\"><span data-field=\"tier3_price\">200</span><small data-field=\"tier3_period\">per half day</small></p><ul class=\"cms-price-features\" data-field=\"tier3_features\"><li>[&#x27;One assistant included&#x27;, &#x27;Helps with setup and cleanup&#x27;, &#x27;Supports your shoot&#x27;]</li></ul><a class=\"cms-price-btn\" href=\"/contact\" data-href-field=\"tier3_link\"><span data-field=\"tier3_cta\">Book Now</span></a></div></div></div>",
+      {
+        "layout_width": "full",
+        "bg_color": "#141414"
+      }
+    ],
+    [
+      "columns",
+      "",
+      "{\"columns\": [\"<div class=\\\"cms-card\\\"><h3>Lighting</h3><p>Professional lighting setup for your shoot.</p></div>\", \"<div class=\\\"cms-card\\\"><h3>Changing Room</h3><p>Private changing room available.</p></div>\", \"<div class=\\\"cms-card\\\"><h3>Studio Space</h3><p>Our studio space is ready for your shoot.</p></div>\"]}",
+      {
+        "layout_width": "auto",
+        "shadow_style": "subtle"
+      }
+    ],
+    [
+      "html",
+      "",
+      "<div class=\"cms-block cms-block-cta\" data-tone=\"solid\"><div class=\"cms-cta cms-cta-solid\"><h2 data-field=\"heading\">Ready for your shoot?</h2><p data-field=\"text\">Contact us to book your session.</p><a class=\"cms-cta-btn\" href=\"/contact\" data-href-field=\"link\"><span data-field=\"cta\">Book Now</span></a></div></div>",
+      {
+        "layout_width": "full"
+      }
+    ]
+  ]
+}

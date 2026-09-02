@@ -1,0 +1,31 @@
+{
+  "name": "Ash Barn",
+  "slug": "ash-barn",
+  "has_content": true,
+  "nav_layout": "centered",
+  "footer_layout": "simple",
+  "page_layout": "none",
+  "palette": [
+    {
+      "slug": "primary",
+      "name": "Primary",
+      "color": "#005088"
+    },
+    {
+      "slug": "secondary",
+      "name": "Secondary",
+      "color": "#301808"
+    },
+    {
+      "slug": "accent",
+      "name": "Accent",
+      "color": "#583820"
+    }
+  ],
+  "ink_color": "#fefef6",
+  "ground_color": "#101018",
+  "google_fonts_url": "/static/fonts/dmserif-worksans.css",
+  "shape_override": "rounded",
+  "shadow_override": "subtle",
+  "composition": "bold"
+}

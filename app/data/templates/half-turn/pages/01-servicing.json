@@ -1,0 +1,26 @@
+{
+  "title": "Servicing",
+  "slug_suffix": "servicing",
+  "page_type": "standard",
+  "meta_description": "",
+  "sections": [
+    [
+      "banner",
+      "",
+      "<div class=\"cms-banner cms-banner-plain\" style=\"background-color:#1c2a39;color:#ffffff\"><div class=\"cms-banner-overlay\" style=\"color:inherit\"><h2>Expert Bike Care</h2><p>Book in advance for servicing, wheel building, or restoration - we return your bike the same week.</p></div></div>",
+      {
+        "layout_width": "full",
+        "corner_style": "sharp",
+        "bg_position": "top"
+      }
+    ],
+    [
+      "text",
+      "",
+      "<h2>What We Do</h2><p>We service bikes, build wheels, and restore vintage models. All work is booked in advance with same-week returns.</p>",
+      {
+        "layout_width": "auto"
+      }
+    ]
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "title": "Contact",
+  "slug_suffix": "contact",
+  "page_type": "standard",
+  "meta_description": "",
+  "sections": [
+    [
+      "banner",
+      "",
+      "<div class=\"cms-banner cms-banner-plain\" style=\"background-color:#f5f2e2;color:#111111\"><div class=\"cms-banner-overlay\" style=\"color:inherit\"><h2>Hire Our Photography Studio for Your Shoot</h2><p>Professional lighting and changing room included.</p></div></div>",
+      {
+        "layout_width": "full",
+        "corner_style": "sharp",
+        "bg_position": "top"
+      }
+    ],
+    [
+      "text",
+      "",
+      "<h2>Our Studio Features</h2><p>We provide lighting and a changing room for your shoot. Half day or full day rates available. An assistant is available if you want one.</p>",
+      {
+        "layout_width": "auto"
+      }
+    ]
+  ]
+}

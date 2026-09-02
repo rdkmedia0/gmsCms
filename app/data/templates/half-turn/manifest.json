@@ -1,0 +1,30 @@
+{
+  "name": "Half Turn",
+  "slug": "half-turn",
+  "has_content": true,
+  "nav_layout": "centered",
+  "footer_layout": "simple",
+  "page_layout": "none",
+  "palette": [
+    {
+      "slug": "primary",
+      "name": "Primary",
+      "color": "#082038"
+    },
+    {
+      "slug": "secondary",
+      "name": "Secondary",
+      "color": "#883028"
+    },
+    {
+      "slug": "accent",
+      "name": "Accent",
+      "color": "#003878"
+    }
+  ],
+  "ground_color": "#a8b8b8",
+  "google_fonts_url": "/static/fonts/grotesk-inter.css",
+  "shape_override": "sharp",
+  "shadow_override": "none",
+  "composition": "compact"
+}
