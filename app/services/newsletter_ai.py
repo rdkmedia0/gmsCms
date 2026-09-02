@@ -81,7 +81,8 @@ def draft(db, brief, site_title):
                              site_title=site_title or "this site",
                              allowed=", ".join(ALLOWED))
     try:
-        result = assistant._call_provider(db, [{"role": "user", "content": prompt}], [])
+        result = assistant._call_provider(db, [{"role": "user", "content": prompt}], [],
+                                          timeout=assistant.GENERATE_TIMEOUT)
     except assistant.ProviderError as e:
         raise Refused("The AI could not be reached: %s" % e)
 

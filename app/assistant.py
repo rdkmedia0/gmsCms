@@ -230,7 +230,24 @@ class ProviderError(Exception):
     pass
 
 
-def _post_json(url, body, headers, timeout=60):
+#  How long a provider gets to answer, per kind of call.
+#
+#  60s is right for the assistant panel: somebody is watching a cursor
+#  blink, and a minute of that is already too long. It is wrong for
+#  GENERATION -- a self-hosted model writing a structured JSON answer
+#  regularly takes longer, and the whole theme generator ran against the
+#  chat timeout. What that looked like from the outside was the tool
+#  failing at random: some calls came in under the minute and some did
+#  not, so the same brief succeeded, then produced a template with two
+#  unwritten pages, then refused outright.
+#
+#  Nobody is watching a batch run's cursor -- it already says "Generating
+#  ... 240s" -- so it can wait.
+CHAT_TIMEOUT = 60
+GENERATE_TIMEOUT = 300
+
+
+def _post_json(url, body, headers, timeout=CHAT_TIMEOUT):
     req = urllib.request.Request(url, data=json.dumps(body).encode(), method="POST", headers=headers)
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -317,7 +334,7 @@ def _openai_vision_messages(messages):
     return out
 
 
-def _call_open_webui(settings, messages, tools, want_json=False):
+def _call_open_webui(settings, messages, tools, want_json=False, timeout=CHAT_TIMEOUT):
     """OpenWebUI speaks an OpenAI-style /api/chat/completions shape."""
     headers = {"Content-Type": "application/json"}
     if settings["openwebui_api_key"]:
@@ -335,6 +352,7 @@ def _call_open_webui(settings, messages, tools, want_json=False):
         f"{settings['openwebui_url'].rstrip('/')}/api/chat/completions",
         body,
         headers,
+        timeout,
     )
     choice = data["choices"][0]["message"]
     tool_calls = []
@@ -383,7 +401,7 @@ def _ollama_wire_messages(messages):
     return out
 
 
-def _call_ollama(settings, messages, tools, want_json=False):
+def _call_ollama(settings, messages, tools, want_json=False, timeout=CHAT_TIMEOUT):
     base = settings["ollama_url"].rstrip("/")
     headers = {"Content-Type": "application/json"}
     body = {"model": settings["ollama_model"],
@@ -392,7 +410,7 @@ def _call_ollama(settings, messages, tools, want_json=False):
     if want_json:
         #  Ollama's own name for the same thing.
         body["format"] = "json"
-    data = _post_json(f"{base}/api/chat", body, headers)
+    data = _post_json(f"{base}/api/chat", body, headers, timeout)
     msg = data.get("message", {})
     tool_calls = []
     for call in (msg.get("tool_calls") or []):
@@ -446,14 +464,14 @@ def _openai_tools_to_gemini(tools):
     return [{"functionDeclarations": declarations}]
 
 
-def _call_gemini(settings, messages, tools):
+def _call_gemini(settings, messages, tools, timeout=CHAT_TIMEOUT):
     model = settings["gemini_model"]
     system_text, contents = _openai_messages_to_gemini(messages)
     body = {"contents": contents, "tools": _openai_tools_to_gemini(tools)}
     if system_text:
         body["systemInstruction"] = {"parts": [{"text": system_text}]}
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={settings['gemini_api_key']}"
-    data = _post_json(url, body, {"Content-Type": "application/json"})
+    data = _post_json(url, body, {"Content-Type": "application/json"}, timeout)
     candidates = data.get("candidates") or []
     if not candidates:
         return {"content": None, "tool_calls": []}
@@ -468,7 +486,7 @@ def _call_gemini(settings, messages, tools):
     return {"content": "\n".join(text_parts) if text_parts else None, "tool_calls": tool_calls}
 
 
-def _call_provider(db, messages, tools, want_json=False):
+def _call_provider(db, messages, tools, want_json=False, timeout=CHAT_TIMEOUT):
     """One reply from whatever provider is configured.
 
     `want_json` says the CALLER will parse the answer, and it is passed
@@ -482,11 +500,11 @@ def _call_provider(db, messages, tools, want_json=False):
     settings = get_ai_settings(db)
     provider = settings["provider"]
     if provider == "openwebui":
-        return _call_open_webui(settings, messages, tools, want_json)
+        return _call_open_webui(settings, messages, tools, want_json, timeout)
     if provider == "ollama":
-        return _call_ollama(settings, messages, tools, want_json)
+        return _call_ollama(settings, messages, tools, want_json, timeout)
     if provider == "gemini":
-        return _call_gemini(settings, messages, tools)
+        return _call_gemini(settings, messages, tools, timeout)
     raise ProviderError("No AI provider is configured.")
 
 

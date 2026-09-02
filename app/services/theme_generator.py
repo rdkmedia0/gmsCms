@@ -894,7 +894,12 @@ def _ai_json(db, prompt):
     for attempt in (1, 2):
         try:
             result = assistant._call_provider(
-                db, [{"role": "user", "content": prompt}], [], want_json=True)
+                #  A generation call, not a chat one: nobody is watching a
+                #  cursor, the screen already says "Generating ... 240s",
+                #  and a self-hosted model writing structured JSON needs
+                #  longer than a minute. See assistant.GENERATE_TIMEOUT.
+                db, [{"role": "user", "content": prompt}], [], want_json=True,
+                timeout=assistant.GENERATE_TIMEOUT)
         except assistant.ProviderError as e:
             last = ThemeGenError("The AI provider did not answer: %s" % e)
             result = None
