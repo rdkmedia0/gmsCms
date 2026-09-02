@@ -1958,8 +1958,11 @@ check("the style words lead, however long the brief",
       or _fb.startswith("Photograph: vintage") or _fb.startswith("Photograph: gangster"), _fb[:60])
 check("...no sentence fragments survive the cut",
       " that " not in _fb and " but." not in _fb and "encompasses" not in _fb, _fb[:120])
+#  Whole words: "engineering" is a discipline and a scene can be made of
+#  it; "engineer" is a person and cannot. The substring test refused the
+#  first for containing the second.
 check("...and no occupation for the model to draw a person from",
-      "specialist" not in _fb and "engineer" not in _fb, _fb[:120])
+      not re.search(r"(specialist|engineer|engineers)", _fb), _fb[:120])
 #  With no brief at all, the subject was the layout key: "Photograph:
 #  process." -- five times in the same table.
 check("the layout key is never the subject of a picture",

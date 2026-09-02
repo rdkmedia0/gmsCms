@@ -1417,6 +1417,7 @@ def _picture_prompt(brief, direction, people=True):
     #  So: style words first, always, however long the brief; then the
     #  things a camera can point at, with anything that is a kind of
     #  person set aside; and never the layout key.
+    crowd = "" if people else " No people, no faces, no figures."
     low = (brief or "").lower()
     styled = [w for w in STYLE_WORDS if w in low]
     cleaned = _PROMPT_NOISE.sub(" ", (brief or "").replace(":", " ").replace(",", " "))
