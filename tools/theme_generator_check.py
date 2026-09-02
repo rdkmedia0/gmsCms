@@ -1250,8 +1250,17 @@ with app.app_context():
                      encoding="utf-8").read()
     check("...so there is no second control asking it",
           'name="fill_scope"' not in screen)
-    check("...and only one control called Words",
-          screen.count(">Words</label>") == 1, str(screen.count(">Words</label>")))
+    #  One control decides where the words come from. It was labelled
+    #  "Words", which named the subject and not the question -- and the
+    #  options under it said "my words" without ever saying whose, so it
+    #  read as the template's rather than the site's.
+    check("...and only one control decides where the words come from",
+          screen.count(">Where the words come from</label>") == 1,
+          str(screen.count(">Where the words come from</label>")))
+    check("...and every option names its source",
+          all("my site" in label.lower() or "design concept" in label.lower()
+              or "empty" in label.lower() for _k, label in tg.MODES),
+          str([l for _k, l in tg.MODES]))
 
     #  A row that is not a choice is removed rather than greyed -- the
     #  rule this app follows for a schedule's irrelevant fields.

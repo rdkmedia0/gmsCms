@@ -232,15 +232,19 @@
   <h2 class="cms-form-heading">2 &middot; Where the words come from</h2>
 
   <div class="form-row">
-    <label for="tg-mode">Words</label>
+    <label for="tg-mode">Where the words come from</label>
     <select id="tg-mode" name="mode" data-generator-mode
-            title="Where the words come from. Everything below changes to match — keeping your words asks the AI nothing at all.">
+            title="Whose words the new template carries. &quot;My site's words&quot; means the pages on this site right now — not the ones that came with a template. Everything below changes to match.">
       {% for value, label in modes %}
       <option value="{{ value }}" {{ 'selected' if (form and form.mode == value) or (not form and value == 'scratch') }}>{{ label }}</option>
       {% endfor %}
     </select>
-    <p class="hint">Keeping your words needs no AI, and is the quickest way to try a new look on the
-      site you already have.</p>
+    <p class="hint"><strong>My site&rsquo;s words</strong> means the pages on this
+      site as they read now &mdash; your own writing, not the demo content a
+      template came with. Keeping them needs no AI at all and is the quickest
+      way to try a new look on the site you already have; saying them
+      differently keeps every fact and changes only the voice. Writing new
+      words starts from the design concept below instead.</p>
   </div>
 
   <div class="form-row" data-needs="brief">

@@ -380,11 +380,15 @@ def _image_direction(brief, tone):
 #
 #  "Leave them empty" belongs here because it IS a way of deciding where
 #  the words come from: from nowhere.
+#  WHOSE words, and which words. "My words" meant the pages on THIS
+#  SITE right now -- not the template's, which is what it read as, and
+#  the difference matters: one is the owner's own writing and the other
+#  is demo content that came with a look. Each label names its source.
 MODES = (
-    ("reskin", "Keep my words — change only the look"),
-    ("rewrite", "Rewrite my words, in the voice below"),
-    ("scratch", "Write new words from a description"),
-    ("blank", "Leave the sections empty — no AI at all"),
+    ("reskin", "Keep my site's words exactly - change only the look"),
+    ("rewrite", "Say my site's words differently - same facts, new voice"),
+    ("scratch", "Write new words from the design concept below"),
+    ("blank", "Leave every section empty - no AI at all"),
 )
 
 #  Which answers need which questions. The form shows only the rows a
