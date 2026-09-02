@@ -1606,6 +1606,40 @@ check("nothing is written to disk to read one",
       "extractall" not in io.open("app/services/documents.py", encoding="utf-8").read())
 
 print()
+print("A document's own headings are its pages")
+print("-" * 70)
+#  A real CV uploaded through the paste mode came back as ONE page: the
+#  design call had timed out, so nothing proposed any titles, and the
+#  screen had already said the pages would be worked out from the
+#  content. They can be, without asking anybody -- a document written
+#  for people already carries its structure, and the person who wrote it
+#  decided it, which beats a model's guess about the same document.
+_cv = chr(10).join([
+    "Alina Ferreira", "Landscape architect, Lisbon", "",
+    "I design public gardens and courtyards.", "",
+    "Experience", "2021 to now. Independent practice.", "",
+    "Qualifications", "MA Landscape Architecture, 2013.", "",
+    "How I work", "First a site visit.", "",
+    "Contact", "alina@example.pt",
+])
+_pages = tg.headings_in(_cv)
+check("the sections of a CV become its pages",
+      _pages == ["Home", "Experience", "Qualifications", "How I work", "Contact"],
+      str(_pages))
+#  A subtitle sits directly under the title with no blank line, which is
+#  exactly what separates it from a heading -- without that test, "Landscape
+#  architect, Lisbon" came back as a page.
+check("...but a subtitle under the name does not",
+      "Landscape architect, Lisbon" not in _pages, str(_pages))
+check("...and neither does the document's own title",
+      "Alina Ferreira" not in _pages, str(_pages))
+check("prose with no headings gives just the front page",
+      tg.headings_in("We bake bread every day and sell it until it is gone.")
+      == ["Home"])
+check("nothing at all is still a site with a front page",
+      tg.headings_in("") == ["Home"])
+
+print()
 print("  %d ok, %d failed" % (passed, len(failures)))
 for name in failures:
     print("    - " + name)

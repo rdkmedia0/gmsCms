@@ -613,7 +613,21 @@ def design(db, kit, pages):
         titles = [str(e.get("title", "")).strip()
                   for e in (chosen.get("pages") or [])
                   if isinstance(e, dict) and str(e.get("title", "")).strip()]
-        titles = page_list(chr(10).join(titles)) or ["Home"]
+        titles = page_list(chr(10).join(titles))
+        #  ...and if it proposed none, the CONTENT'S OWN HEADINGS.
+        #
+        #  A real CV uploaded through this mode came back as a single
+        #  page, because the design call had timed out and there was
+        #  nothing left to fall back to -- after the screen had said
+        #  the pages would be worked out from the content.
+        #
+        #  They can be, without asking anybody: a document that has
+        #  been written for people already has its sections marked.
+        #  Experience, Qualifications, How I work, Contact -- those
+        #  are the pages, and the person who wrote them decided that,
+        #  which is a better answer than a model's guess and free.
+        titles = titles or headings_in(kit.get("source_text", ""))
+        titles = titles or ["Home"]
 
     return {
         "colours": [c.lower() for c in colours][:3],
@@ -2001,6 +2015,54 @@ def layout_for(title, index, brief=""):
                                 "pictures", "space", "rooms", "library")):
         return "showcase"
     return "simple"
+
+
+def headings_in(text, most=5):
+    """The section headings of a document somebody wrote, as page names.
+
+    A document written for people already carries its own structure --
+    "Experience", "Qualifications", "How I work", "Contact" -- and the
+    person who wrote it decided that. It is a better answer than a
+    model's guess about the same document, and it costs nothing.
+
+    A heading is a SHORT line, on its own, that does not end in
+    punctuation and is followed by something. That is what a heading
+    looks like in every plain-text document and in the text a .docx
+    gives up; anything cleverer would be guessing.
+
+    "Home" is always first, because the document has no name for its own
+    front page and every site needs one.
+    """
+    lines = [l.strip() for l in (text or "").split(chr(10))]
+    found = []
+    for i, line in enumerate(lines):
+        if not line or len(line) > 40 or line[-1] in ".,;:!?-":
+            continue
+        #  Four words at most. A whole sentence with no full stop is a
+        #  sentence somebody forgot to finish, not a heading.
+        if len(line.split()) > 4:
+            continue
+        #  A BLANK LINE ABOVE IT. This is what separates a heading
+        #  from a subtitle, and without it a CV's second line --
+        #  "Landscape architect, Lisbon", sitting directly under the
+        #  name -- came back as a page. It also excludes the first
+        #  line, which is the document's title, not a section of it.
+        if i == 0 or lines[i - 1]:
+            continue
+        #  ...and something under it. A heading with nothing after it
+        #  is the end of the document, not a section of it.
+        if not any(lines[i + 1:i + 4]):
+            continue
+        found.append(line)
+    seen, out = set(), ["Home"]
+    for name in found:
+        key = name.lower()
+        if key in seen or key == "home":
+            continue
+        seen.add(key)
+        out.append(name)
+    return out[:most]
+
 
 
 def page_list(raw):
