@@ -239,6 +239,28 @@ def help():
     return render_template("admin/help.html")
 
 
+@bp.route("/activity")
+@login_required
+def activity():
+    """Everything this site has told the owner, newest first.
+
+    The other half of collapsing the message stack to one line. A
+    confirmation used to exist for exactly one page load -- "Removed
+    Notes, Writing, The library" appeared above whatever you opened next
+    and was gone on the click after that, which is no use at all when
+    you want to know WHICH pages it removed twenty minutes later.
+
+    Read-only, and deliberately without a filter or a search box: five
+    hundred lines is the whole of it (see the trim in admin_notes), and
+    a control nobody needs is a control in the way.
+    """
+    db = get_db()
+    notes = db.execute(
+        "SELECT said_at, category, message FROM admin_notes "
+        "ORDER BY id DESC LIMIT 500").fetchall()
+    return render_template("admin/activity.html", notes=notes)
+
+
 @bp.route("/theme-generator", methods=["GET", "POST"])
 @login_required
 def theme_generator():

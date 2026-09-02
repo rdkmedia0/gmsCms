@@ -27,15 +27,26 @@
   {% endif %}
 
   <main class="admin-main">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <div class="flash-list">
-        {% for category, message in messages %}
-          <div class="flash flash-{{ category }}">{{ message }}</div>
-        {% endfor %}
-        </div>
-      {% endif %}
-    {% endwith %}
+    {#  ONE line, not a stack.
+
+        Activating a template has three or four things to report, and
+        they all landed here: a paragraph of log above whatever screen
+        you had actually opened, and gone for good on the click after
+        that. Both halves were wrong -- too much of it in the way, and
+        no way back to any of it.
+
+        So the first message stays, because pressing a button and seeing
+        nothing happen is worse than either, and the rest is a page you
+        open when you want it. `admin_notes()` writes every one of them
+        down on its way through; see app/__init__.py. #}
+    {% set flashed = admin_notes() %}
+    {% if flashed %}
+      <div class="flash-list">
+        <div class="flash flash-{{ flashed[0][0] }}">{{ flashed[0][1] }}{% if flashed|length > 1 %}
+          <a href="{{ url_for('admin.activity') }}"
+             title="Everything this site has told you, newest first.">and {{ flashed|length - 1 }} more</a>{% endif %}</div>
+      </div>
+    {% endif %}
     {#  Everything from here to the end of this block is addressed to the
         OWNER: what they have not finished, what their site is still
         called, which password they are still using. A visitor at the

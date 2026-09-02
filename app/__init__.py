@@ -374,6 +374,32 @@ def create_app():
                     "offsite": True, "ready": True}
     app.jinja_env.globals["ai_destination"] = _ai_destination
 
+    #  The messages this app has for the owner, taken once and written
+    #  down. Called by admin/base.html and nowhere else, which is what
+    #  makes "record every one of them" true without touching the
+    #  hundred-odd places that raise one: `flash` stays exactly as it is,
+    #  and this is the single point where a flash is READ.
+    def _admin_notes():
+        from flask import get_flashed_messages
+        from .db import get_db
+        taken = get_flashed_messages(with_categories=True)
+        if not taken:
+            return []
+        try:
+            db = get_db()
+            for category, message in taken:
+                db.execute(
+                    "INSERT INTO admin_notes (category, message) VALUES (?, ?)",
+                    (category or "success", message))
+            db.execute("DELETE FROM admin_notes WHERE id <= "
+                       "(SELECT MAX(id) - 500 FROM admin_notes)")
+            db.commit()
+        except Exception:                                     # noqa: BLE001
+            #  Never let the record-keeping cost somebody their message.
+            pass
+        return taken
+    app.jinja_env.globals["admin_notes"] = _admin_notes
+
     from .services.sections import (
         banner_overlay_settings, card_style_settings, card_button_settings,
         TABLE_STYLE_CHOICES, VIDEO_GALLERY_LAYOUTS, MAX_VIDEO_GALLERY_CLIPS,

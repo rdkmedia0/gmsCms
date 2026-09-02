@@ -731,6 +731,31 @@ def _migrate(db):
             END
         """ % (_when.lower(), _when, _on))
 
+    #  WHAT THIS APP HAS TOLD THE OWNER, kept.
+    #
+    #  Every confirmation used to be a line at the top of the next admin
+    #  screen and nothing else, so a template activation -- which has
+    #  three or four things to report -- stacked into a paragraph of log
+    #  above whatever you had actually opened, and then was gone forever
+    #  on the click after that. Both halves were wrong: too much of it in
+    #  the way, and no way back to any of it.
+    #
+    #  So it is written down. The screen keeps ONE line, the rest is a
+    #  page you open when you want it. No foreign keys and no ids of
+    #  other rows: this is a record of what was SAID, and it outlives the
+    #  page or template it was said about -- the same reason
+    #  newsletter_sends carries none.
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS admin_notes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            said_at TEXT NOT NULL DEFAULT (datetime('now')),
+            category TEXT NOT NULL DEFAULT 'success',
+            message TEXT NOT NULL
+        )
+    """)
+    db.execute("CREATE INDEX IF NOT EXISTS admin_notes_when "
+               "ON admin_notes (id DESC)")
+
     #  A send put on the clock. See services/scheduling.py for why the
     #  claim is the lock and why a failure is never retried by itself.
     #

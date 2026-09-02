@@ -1,0 +1,27 @@
+{% extends "admin/base.html" %}
+{% block title %}Activity{% endblock %}
+{% block content %}
+<h1>Activity</h1>
+<p class="hint">Everything this site has told you, newest first. Confirmations
+  used to live for one page load and then be gone; this is where they are kept.
+  The last 500 are held.</p>
+
+<div class="card">
+  {% if notes %}
+  <table class="simple-table">
+    <thead><tr><th>When</th><th>What was said</th></tr></thead>
+    <tbody>
+      {% for n in notes %}
+      <tr>
+        <td class="cms-note-when" title="{{ n.said_at }} UTC">{{ n.said_at }}</td>
+        <td class="cms-note-said cms-note-{{ n.category }}">{{ n.message }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="hint">Nothing yet. Anything this site tells you &mdash; a template
+    activated, pages removed, an email sent &mdash; will be listed here.</p>
+  {% endif %}
+</div>
+{% endblock %}

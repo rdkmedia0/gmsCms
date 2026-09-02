@@ -1665,3 +1665,15 @@ button[aria-busy="true"] { opacity: .75; cursor: progress; }
   content: ""; position: absolute; left: 6px; right: 6px; top: 19px; height: 2px;
   background: var(--cms-ui-text, #333); opacity: .45; border-radius: 1px;
 }
+
+
+/*  The Activity page: what this site has told the owner, kept.
+    A row, not a banner -- these are read in a list, days later, and the
+    full-width coloured plate a flash uses would make five hundred of
+    them unreadable. The category shows as a mark on the left instead. */
+.cms-note-when { white-space: nowrap; color: var(--muted, #6b7280);
+  font-variant-numeric: tabular-nums; font-size: 13px; }
+.cms-note-said { border-left: 3px solid transparent; padding-left: 10px; }
+.cms-note-error { border-left-color: #b42318; }
+.cms-note-warning { border-left-color: #b54708; }
+.cms-note-success { border-left-color: #067647; }
