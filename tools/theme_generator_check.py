@@ -1731,6 +1731,14 @@ try:
           "%d pages" % _placeholder)
     check("...and the pages carry the document's own words", _own >= 2,
           "%d pages" % _own)
+    #  A model that writes a page's words but no heading is common, and
+    #  the generic default opened a page called "How I work" with
+    #  "Welcome" over the owner's own three steps. The page has a name
+    #  already; it is a better heading than any word this file supplies.
+    _welcomes = sum(1 for f in _made
+                    if "<h2>Welcome</h2>" in io.open(f, encoding="utf-8").read())
+    check("...and no page is headed with a generic word", _welcomes == 0,
+          "%d pages headed Welcome" % _welcomes)
 finally:
     assistant._call_provider = _before
 

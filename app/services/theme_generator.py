@@ -1364,7 +1364,15 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
         #  measure. A section set to 62% of the window is centred, which
         #  put its left edge 272px in -- a fourth axis on a page that
         #  already had three. The measure belongs to the text.
-        chunks.append(_piece(_text_chunk(val("intro_heading", "Welcome"),
+        #  THE PAGE'S OWN NAME, not the word "Welcome".
+        #
+        #  A model that writes a page's words but no heading for it is
+        #  common, and the generic default made a page called "How I
+        #  work" open with "Welcome" over the owner's own three steps.
+        #  The page already has a name -- the owner or the document
+        #  gave it one -- and it is a better heading than any word this
+        #  file can supply.
+        chunks.append(_piece(_text_chunk(val("intro_heading", page_title or "Welcome"),
                                          val("intro_body", "Write an introduction here.")),
                              {"layout_width": "auto"}))
         stats = _rows(copy.get("stats") if fill else None, ("value", "label"), 3,
@@ -1614,7 +1622,7 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
              #  shelf. `bg_position` is the section control that already
              #  says this; the generator simply never set it.
              "bg_position": "top"}))
-        chunks.append(_piece(_text_chunk(val("intro_heading", "Welcome"),
+        chunks.append(_piece(_text_chunk(val("intro_heading", page_title or "Welcome"),
                                          val("intro_body", "Write an introduction here.")),
                              {"layout_width": "auto"}))
     elif layout_key == "showcase":
@@ -1627,7 +1635,7 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
             eyebrow=val("eyebrow", ""), ground=_ink_of(kit)),
             {"layout_width": "full", "corner_style": "sharp",
              "bg_position": "top"}))
-        chunks.append(_piece(_text_chunk(val("intro_heading", "Welcome"),
+        chunks.append(_piece(_text_chunk(val("intro_heading", page_title or "Welcome"),
                                          val("intro_body", "Write an introduction here.")),
                              {"layout_width": "auto"}))
         from .sections import BLOCK_LIBRARY
@@ -1640,7 +1648,7 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
                                          hero, ground=_ink_of(kit)),
                              {"layout_width": "full", "corner_style": "sharp",
              "bg_position": "top"}))
-        chunks.append(_piece(_text_chunk(val("body_heading", "Welcome"),
+        chunks.append(_piece(_text_chunk(val("body_heading", page_title or "Welcome"),
                                          val("body_text", "Write something here.")),
                              {"layout_width": "auto"}))
     return chunks
