@@ -356,11 +356,40 @@ def _palette_from(colours):
     return out or None
 
 
+#  LAST RESORT ONLY. These two lists are one author's taste written down,
+#  and they help exactly the briefs that happen to contain one of these
+#  words. The real path is the design call writing a scene FROM the brief
+#  -- it has no list in it and it is where a vague idea gets its
+#  specificity added rather than matched. Everything below runs only when
+#  that call gave nothing back.
+#
 #  Words that say what a picture should LOOK like rather than what it is
 #  of. When a brief carries any of these the concept is the direction,
 #  and the house style has to get out of its way -- "warm natural light,
 #  inviting, unstaged" is the opposite of brass machinery under
 #  gaslight, and it was appended to every prompt regardless.
+#  Words the noun cut let through that are not things a camera can point
+#  at. Found in a prompt a real run sent.
+FRAGMENT_WORDS = ("that", "which", "but", "and", "with", "from", "into",
+                  "encompasses", "encompassing", "including", "specialist",
+                  "specialising", "specializing", "focused", "focusing",
+                  "based", "style", "styled", "themed", "theme", "site",
+                  "website", "page", "pages", "cv", "resume")
+_FRAGMENTS = set(FRAGMENT_WORDS)
+
+#  A kind of person. Led with, the image model draws one -- and a
+#  generated person on a personal site is a stranger presented as the
+#  owner. Set aside from the subject; the scene is made of what they
+#  work with, not of them.
+PERSON_NOUNS = ("engineer", "engineers", "architect", "architects",
+                "designer", "designers", "developer", "developers",
+                "consultant", "consultants", "coach", "coaches", "nurse",
+                "doctor", "lawyer", "accountant", "photographer", "writer",
+                "artist", "teacher", "trainer", "therapist", "plumber",
+                "electrician", "builder", "chef", "baker", "barber",
+                "stylist", "man", "woman", "person", "people", "team",
+                "staff", "founder", "owner", "director", "manager")
+
 STYLE_WORDS = ("steampunk", "vintage", "retro", "noir", "gangster", "art deco",
                "deco", "brutalist", "minimal", "minimalist", "industrial",
                "rustic", "futuristic", "cyberpunk", "gothic", "victorian",
@@ -1371,21 +1400,39 @@ def _picture_prompt(brief, direction, people=True):
         return ("Photograph: %s. %s Wide, no lettering of any kind.%s"
                 % (scene.strip(), rest.strip(),
                    "" if people else " No people, no faces, no figures."))
-    words = _PROMPT_NOISE.sub(" ", (brief or "").replace(":", " ").replace(",", " "))
-    #  Eight words, whole ones. Long enough to name the scene, short
-    #  enough that there is no sentence left to letter -- and cutting on
-    #  a word boundary rather than a character count, because "sessions
-    #  a" is exactly the kind of fragment a model renders literally.
-    subject = " ".join([w for w in words.split() if len(w) > 2][:8]).strip()
-    #  NO PEOPLE on a personal site. A generated photograph of a man at
-    #  a desk, across the top of somebody's CV, is a stranger's face
-    #  presented as theirs -- the misattribution this app refuses
-    #  everywhere else, on the page most likely to be believed. The
-    #  portrait slot is where the owner's own face goes; the picture
-    #  behind it is a place, a tool, a view.
-    crowd = "" if people else " No people, no faces, no figures."
+    #  THE FALLBACK, when the design call gave no scene. Rebuilt from the
+    #  prompt a real run sent:
+    #
+    #    "Photograph: that encompasses Reliability Engineering Automation
+    #     Observability specialist but."
+    #
+    #  Three faults in one line. The noun cut kept sentence fragments
+    #  ("that", "but") the noise list did not know; the STYLE words were
+    #  past the eight-word cap and fell off, so a steampunk brief carried
+    #  no steampunk; and what survived led with the occupation, which is
+    #  a person, so a person was drawn. And with no brief at all the
+    #  subject was the layout key -- "Photograph: process." -- five
+    #  times over.
+    #
+    #  So: style words first, always, however long the brief; then the
+    #  things a camera can point at, with anything that is a kind of
+    #  person set aside; and never the layout key.
+    low = (brief or "").lower()
+    styled = [w for w in STYLE_WORDS if w in low]
+    cleaned = _PROMPT_NOISE.sub(" ", (brief or "").replace(":", " ").replace(",", " "))
+    kept = []
+    for w in cleaned.split():
+        bare = w.strip(".;!?()" + chr(39) + chr(34)).lower()
+        if len(bare) <= 2 or bare in _FRAGMENTS or bare in PERSON_NOUNS:
+            continue
+        if bare in styled:
+            continue
+        kept.append(bare)
+    subject = " ".join(styled[:4] + kept[:6]).strip()
+    if not subject:
+        subject = "a small independent business"
     return ("Photograph: %s. %s. Wide, no lettering of any kind.%s"
-            % (subject or "a small independent business", direction, crowd))
+            % (subject, direction, crowd))
 
 
 #  A copy answer has to carry at least this much to count as one: the
@@ -1593,7 +1640,7 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
     #  One direction for every picture in a run -- see
     #  brand_kit()["image_direction"].
     hero = _maybe_generate_image(
-        db, _picture_prompt(brief or layout_key, kit["image_direction"],
+        db, _picture_prompt(brief or _signal_text(kit), kit["image_direction"],
                             people=not wants_portrait(kit)),
         use_ai_images and want_image and kit["image_budget"] > 0)
 

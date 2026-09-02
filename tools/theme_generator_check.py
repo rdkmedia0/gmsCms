@@ -1943,6 +1943,29 @@ check("design() returns the scene it was given",
       '"picture": (chosen.get("picture") or "").strip()' in _src_now)
 
 print()
+print("The prompt a real run sent cannot be sent again")
+print("-" * 70)
+#  Read back from generated_images after the run that produced a
+#  businessman: "Photograph: that encompasses Reliability Engineering
+#  Automation Observability specialist but." No steampunk, two sentence
+#  fragments, and an occupation to draw a person from.
+_real = ("A CV site that encompasses Reliability Engineering, Automation and "
+         "Observability. A specialist, but in a 1939 gangster steampunk style "
+         "with brass and vintage machinery.")
+_fb = tg._picture_prompt(_real, tg._image_direction(_real, "expert"), people=False)
+check("the style words lead, however long the brief",
+      _fb.startswith("Photograph: steampunk") or _fb.startswith("Photograph: 1939")
+      or _fb.startswith("Photograph: vintage") or _fb.startswith("Photograph: gangster"), _fb[:60])
+check("...no sentence fragments survive the cut",
+      " that " not in _fb and " but." not in _fb and "encompasses" not in _fb, _fb[:120])
+check("...and no occupation for the model to draw a person from",
+      "specialist" not in _fb and "engineer" not in _fb, _fb[:120])
+#  With no brief at all, the subject was the layout key: "Photograph:
+#  process." -- five times in the same table.
+check("the layout key is never the subject of a picture",
+      "brief or layout_key" not in _src_now and "brief or _signal_text(kit)" in _src_now)
+
+print()
 print("  %d ok, %d failed" % (passed, len(failures)))
 for name in failures:
     print("    - " + name)
