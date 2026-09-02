@@ -326,10 +326,24 @@
 
     <div class="form-row">
       <label for="tg-language">Language</label>
-      <input type="text" id="tg-language" name="language" maxlength="40"
-             value="{{ form.language if form else 'English' }}"
-             title="The language everything is written in. Type it in your own words — German, Deutsch, français — it is passed to the AI as you write it.">
-      <p class="hint">Typed rather than picked, because a list would be the languages somebody thought of.</p>
+      {#  A list AND a box. It was a box alone, on the grounds that a
+          list would only ever be the languages somebody thought of --
+          true, and it made everyone type, including the majority who
+          want one of these and now have to spell it and hope. #}
+      <select id="tg-language" name="language" data-language-select
+              title="The language everything on the site is written in. Pick one, or choose Something else and type it.">
+        {% for value, label in languages %}
+        <option value="{{ value }}" {{ 'selected' if (form.language if form else 'English') == value }}>{{ label }}</option>
+        {% endfor %}
+        <option value="other" {{ 'selected' if form and form.language not in language_values }}>Something else&hellip;</option>
+      </select>
+      <input type="text" id="tg-language-other" name="language_other" maxlength="40"
+             data-language-other hidden
+             value="{{ form.language_other if form else '' }}"
+             placeholder="e.g. Cymraeg, isiZulu, Bahasa Melayu"
+             title="Type the language in your own words. It is passed to the AI exactly as you write it.">
+      <p class="hint">Anything not on the list can be typed &mdash; choose
+        <em>Something else</em> and write it in your own words.</p>
     </div>
   </div>
 

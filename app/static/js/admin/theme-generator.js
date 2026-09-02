@@ -22,6 +22,21 @@
   var form = document.querySelector("[data-generator-form]");
   if (!form) return;
 
+  //  The language box appears only when the list is told to stand
+  //  aside. Done here rather than in the template, because this app
+  //  keeps no inline script -- and before the `mode` guard below, so a
+  //  screen without the mode control still gets it.
+  var langPick = form.querySelector("[data-language-select]");
+  var langBox = form.querySelector("[data-language-other]");
+  if (langPick && langBox) {
+    var showBox = function () {
+      langBox.hidden = langPick.value !== "other";
+      if (!langBox.hidden && document.activeElement === langPick) langBox.focus();
+    };
+    langPick.addEventListener("change", showBox);
+    showBox();
+  }
+
   var mode = form.querySelector("[data-generator-mode]");
   if (!mode) return;
 

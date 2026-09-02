@@ -1772,6 +1772,30 @@ finally:
     assistant._call_provider = _before
 
 print()
+print("A language is picked from a list, or typed when it is not on one")
+print("-" * 70)
+#  This was a box alone, defended as "a list would only ever be the
+#  languages somebody thought of". True -- and it made everyone type,
+#  including the majority who want one of these and now have to spell it
+#  and hope. A list AND a box answers both.
+check("common languages are offered", len(tg.LANGUAGES) >= 20,
+      str(len(tg.LANGUAGES)))
+check("...shown in their own name first",
+      any("Deutsch" in label for _v, label in tg.LANGUAGES))
+check("a picked language is used", tg.language_from("German", "") == "German")
+check("...and a typed one only when the list stands aside",
+      tg.language_from("other", "Cymraeg") == "Cymraeg")
+check("...so the two controls cannot disagree",
+      tg.language_from("German", "Cymraeg") == "German")
+check("an empty answer is still a language",
+      tg.language_from("", "") == "English"
+      and tg.language_from("other", "") == "English")
+#  No inline script: the box is revealed by the screen's own JS file.
+_js = io.open("/app/app/static/js/admin/theme-generator.js", encoding="utf-8").read()
+check("the box is revealed from the static script, not the template",
+      "data-language-other" in _js)
+
+print()
 print("  %d ok, %d failed" % (passed, len(failures)))
 for name in failures:
     print("    - " + name)

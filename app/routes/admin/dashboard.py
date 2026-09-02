@@ -320,7 +320,11 @@ def theme_generator():
             tone=request.form.get("tone", "warm"),
             voice=request.form.get("voice", "we"),
             reading=request.form.get("reading", "normal"),
-            language=request.form.get("language", "English"),
+            #  A list and a box: the box wins only when the list was
+            #  told to stand aside, so the two cannot disagree.
+            language=theme_generator_mod.language_from(
+                request.form.get("language", ""),
+                request.form.get("language_other", "")),
             colour_note=(request.form.get("colour_note") or "").strip(),
             banner_per_page=request.form.get("banner_per_page") == "1",
             palette=_chosen_palette(request.form),
@@ -564,6 +568,10 @@ def _theme_generator_context(db):
         #  No colour-scheme list any more: it offered every installed
         #  template's palette, which is a strange thing to want -- if you
         #  wanted that template's colours you would use that template.
+        languages=theme_generator_mod.LANGUAGES,
+        #  What the list holds, so the screen can tell a typed language
+        #  from a picked one and reopen the box on the one it typed.
+        language_values=[v for v, _l in theme_generator_mod.LANGUAGES],
         tones=theme_generator_mod.TONES,
         voices=theme_generator_mod.VOICES,
         readings=theme_generator_mod.READING,

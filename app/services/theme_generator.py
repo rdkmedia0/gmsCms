@@ -373,6 +373,66 @@ def _image_direction(brief, tone):
 #  Three modes, because there are three intentions, and the middle one is
 #  what most people with a site already want.
 
+#  Languages worth offering, and a way out of the list.
+#
+#  This was a free-text box, defended on the grounds that "a list would
+#  be the languages somebody thought of". True, and it made everyone
+#  type -- including the overwhelming majority who want one of these, and
+#  who now have to spell it and hope. A list AND a box is the answer to
+#  both: pick the common case, type the one nobody thought of.
+#
+#  Shown in the language's own name first, because somebody looking for
+#  German is looking for Deutsch. The value is the English name, which
+#  is what goes to the model.
+LANGUAGES = (
+    ("English", "English"),
+    ("Spanish", "Espanol (Spanish)"),
+    ("Portuguese", "Portugues (Portuguese)"),
+    ("French", "Francais (French)"),
+    ("German", "Deutsch (German)"),
+    ("Italian", "Italiano (Italian)"),
+    ("Dutch", "Nederlands (Dutch)"),
+    ("Polish", "Polski (Polish)"),
+    ("Czech", "Cestina (Czech)"),
+    ("Swedish", "Svenska (Swedish)"),
+    ("Danish", "Dansk (Danish)"),
+    ("Norwegian", "Norsk (Norwegian)"),
+    ("Finnish", "Suomi (Finnish)"),
+    ("Greek", "Ellinika (Greek)"),
+    ("Turkish", "Turkce (Turkish)"),
+    ("Russian", "Russkiy (Russian)"),
+    ("Ukrainian", "Ukrayinska (Ukrainian)"),
+    ("Arabic", "Arabiyya (Arabic)"),
+    ("Hebrew", "Ivrit (Hebrew)"),
+    ("Hindi", "Hindi"),
+    ("Chinese", "Zhongwen (Chinese)"),
+    ("Japanese", "Nihongo (Japanese)"),
+    ("Korean", "Hangugeo (Korean)"),
+    ("Vietnamese", "Tieng Viet (Vietnamese)"),
+    ("Indonesian", "Bahasa Indonesia"),
+)
+
+#  The value that means "not on the list", and the reason the box exists.
+LANGUAGE_OTHER = "other"
+
+
+def language_from(chosen, typed):
+    """The language to write in, from a list and a box.
+
+    The box wins only when the list was told to stand aside. Anything
+    else -- a typed value left over from a previous run, a blank box --
+    keeps what was picked, so the two controls cannot disagree about
+    what the answer is.
+    """
+    chosen = (chosen or "").strip()
+    typed = (typed or "").strip()
+    if chosen == LANGUAGE_OTHER:
+        return typed[:40] or "English"
+    known = dict(LANGUAGES)
+    return chosen if chosen in known else (chosen[:40] or "English")
+
+
+
 #  ONE question about words, with four answers. It was two controls both
 #  labelled "Words" -- this one, and a second further down the form
 #  offering "write them for me" or "leave the sections blank" -- which is
