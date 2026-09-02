@@ -2793,3 +2793,48 @@ body.cms-logged-in .cms-basket-link.cms-basket-align-float-top { top: 60px; }
   font-family: var(--site-font-family, inherit); font-weight: 400;
   font-size: 13px; opacity: .72; letter-spacing: 0;
 }
+
+
+/*  A PORTRAIT ON A BANNER.
+    ---------------------
+    The shape every profile page has settled on: a round photograph of a
+    person overlapping the bottom edge of a wide one. It is an option on
+    the Banner rather than a tool of its own, because that is what it is
+    -- the same band, with a face on it.
+
+    The banner keeps its own overflow for the picture behind it, so the
+    portrait cannot hang out of it; instead the banner grows a margin
+    below and the portrait sits in that, which gets the same look without
+    anything escaping a box that may be masked into a circle or a
+    hexagon. */
+.cms-banner.cms-has-portrait { margin-bottom: 64px; overflow: visible; }
+.cms-banner-portrait {
+  position: absolute; bottom: -60px; margin: 0; z-index: 2;
+  width: 120px; height: 120px; border-radius: 50%; overflow: hidden;
+  border: 4px solid var(--site-card-bg, #fff);
+  box-shadow: var(--site-shadow, 0 6px 20px -8px rgba(0, 0, 0, .35));
+  background: var(--site-tint, #eee);
+  display: grid; place-items: center;
+}
+.cms-banner-portrait img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/*  Empty until somebody chooses a picture: an <img> with no src is a
+    broken picture on a live page, so the empty state is a plate with a
+    word on it. Only an editor ever sees it -- a visitor who has not been
+    given a portrait is shown no portrait at all. */
+.cms-banner-portrait-hint { display: none; font-size: 12px; text-align: center;
+  padding: 0 8px; color: var(--site-ink-soft, #5b6472); }
+.cms-editing .cms-banner-portrait-hint { display: block; }
+.cms-banner-portrait-empty { border-style: dashed; }
+body:not(.cms-editing) .cms-banner-portrait-empty { display: none; }
+
+.cms-has-portrait-left .cms-banner-portrait { left: 40px; }
+.cms-has-portrait-right .cms-banner-portrait { right: 40px; }
+.cms-has-portrait-center .cms-banner-portrait { left: 50%; transform: translateX(-50%); }
+
+@media (max-width: 700px) {
+  .cms-banner.cms-has-portrait { margin-bottom: 52px; }
+  .cms-banner-portrait { width: 96px; height: 96px; bottom: -48px; }
+  .cms-has-portrait-left .cms-banner-portrait,
+  .cms-has-portrait-right .cms-banner-portrait { left: 50%; right: auto;
+    transform: translateX(-50%); }
+}

@@ -766,6 +766,84 @@ def _update_banner_classes(content, shape, attachment):
     return str(soup)
 
 
+#  A PORTRAIT ON A BANNER, the shape every profile page has settled on:
+#  a round picture of a person overlapping the bottom edge of a wide one.
+#
+#  An option on the Banner rather than a tool of its own, because that is
+#  what it is -- the same band, with a face on it. A tool would mean a
+#  second thing to place, a second thing to style, and a rule about which
+#  of the two owns the space they share.
+#
+#  It works with no background picture too: the band is then whatever
+#  colour the section is, and the portrait sits on that. Somebody with a
+#  headshot and no cover photograph should not have to find one.
+BANNER_PORTRAITS = ("none", "left", "center", "right")
+
+
+def _update_banner_portrait(content, position):
+    """Where the portrait sits on a banner, or that there is not one."""
+    soup = BeautifulSoup(content or "", "html.parser")
+    div = soup.find(class_="cms-banner") or soup.find("div")
+    if div is None:
+        return content
+    position = position if position in BANNER_PORTRAITS else "none"
+    classes = [c for c in (div.get("class") or [])
+               if not c.startswith("cms-has-portrait")]
+    figure = soup.find(class_="cms-banner-portrait")
+    if position == "none":
+        if figure:
+            figure.decompose()
+        div["class"] = classes
+        return str(soup)
+    classes.append("cms-has-portrait")
+    classes.append("cms-has-portrait-%s" % position)
+    div["class"] = classes
+    if not figure:
+        #  Empty until a picture is chosen: an <img> with no src is a
+        #  broken picture on the page, so the placeholder is a box the
+        #  owner clicks, which is what every other picture control here
+        #  does.
+        figure = BeautifulSoup(
+            '<figure class="cms-banner-portrait cms-banner-portrait-empty">'
+            '<span class="cms-banner-portrait-hint">Choose a picture</span>'
+            "</figure>", "html.parser").figure
+        div.insert(0, figure)
+    return str(soup)
+
+
+def _set_banner_portrait_image(content, url):
+    """The portrait's own picture, put in or taken out."""
+    soup = BeautifulSoup(content or "", "html.parser")
+    figure = soup.find(class_="cms-banner-portrait")
+    if figure is None:
+        return content
+    for child in list(figure.children):
+        child.extract()
+    classes = [c for c in (figure.get("class") or [])
+               if c != "cms-banner-portrait-empty"]
+    if url:
+        img = BeautifulSoup("<img>", "html.parser").img
+        img["src"] = url
+        img["alt"] = ""
+        figure.append(img)
+    else:
+        classes.append("cms-banner-portrait-empty")
+        hint = BeautifulSoup(
+            '<span class="cms-banner-portrait-hint">Choose a picture</span>',
+            "html.parser").span
+        figure.append(hint)
+    figure["class"] = classes
+    return str(soup)
+
+
+def banner_portrait_of(content):
+    """Which position a banner's portrait is in, for the control to show."""
+    for position in BANNER_PORTRAITS[1:]:
+        if "cms-has-portrait-%s" % position in (content or ""):
+            return position
+    return "none"
+
+
 BANNER_POSITIONS = {
     "top-left": ("flex-start", "flex-start"), "top-center": ("flex-start", "center"), "top-right": ("flex-start", "flex-end"),
     "center-left": ("center", "flex-start"), "center-center": ("center", "center"), "center-right": ("center", "flex-end"),

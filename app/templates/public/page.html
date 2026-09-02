@@ -1226,7 +1226,7 @@
     <input type="color" name="divider_color" value="{{ cell.divider_color or '#e2e4e9' }}" onchange="this.form.requestSubmit()" title="Line color">
   {% endmacro %}
 
-  {% macro banner_config_fields(cell, generate_url=none, apply_url=none, image_upload_url=none, image_clear_url=none) %}
+  {% macro banner_config_fields(cell, generate_url=none, apply_url=none, image_upload_url=none, image_clear_url=none, portrait_upload_url=none) %}
     {% set ov = banner_overlay_settings(cell.content) %}
     <select name="shape" onchange="this.form.requestSubmit()" title="Shape / cutout for the banner">
       <option value="none" {{ 'selected' if 'cms-mask-' not in cell.content }}>No shape</option>
@@ -1241,6 +1241,26 @@
       <option value="scroll" {{ 'selected' if 'cms-banner-fixed' not in cell.content }}>Scrolls with page</option>
       <option value="fixed" {{ 'selected' if 'cms-banner-fixed' in cell.content }}>Fixed (parallax)</option>
     </select>
+    {#  A round picture of a person overlapping the band, which is the
+        shape every profile page has settled on. An option here rather
+        than a tool of its own: it is the same banner with a face on it,
+        and it works with no background picture at all. #}
+    {% set portrait = banner_portrait_of(cell.content) %}
+    <select name="portrait" onchange="this.form.requestSubmit()" title="A round photo of a person, overlapping the bottom of the banner — for a profile, an About page or a CV">
+      <option value="none" {{ 'selected' if portrait == 'none' }}>No portrait</option>
+      <option value="left" {{ 'selected' if portrait == 'left' }}>Portrait: left</option>
+      <option value="center" {{ 'selected' if portrait == 'center' }}>Portrait: centre</option>
+      <option value="right" {{ 'selected' if portrait == 'right' }}>Portrait: right</option>
+    </select>
+    {% if portrait != 'none' and portrait_upload_url %}
+    <button type="button" class="cms-pick-library-btn" data-library-pick
+            data-library-for="cms-banner-portrait-file-input" data-library-kinds="image"
+            title="Choose the portrait from your Media Library">Choose face</button>
+    <button type="button" class="cms-change-banner-portrait-btn"
+            title="Upload the portrait from your device">&#11014; Portrait</button>
+    <input type="file" class="cms-banner-portrait-file-input"
+           data-upload-url="{{ portrait_upload_url }}" accept="image/*" hidden>
+    {% endif %}
     {% if image_upload_url %}
     <button type="button" class="cms-pick-library-btn" data-library-pick
             data-library-for="cms-banner-image-file-input" data-library-kinds="image"
@@ -1521,7 +1541,8 @@
                  url_for('admin.section_banner_image_generate', section_id=section.id, col_index=col_index) ~ row_qs,
                  url_for('admin.section_image_apply', section_id=section.id, col_index=col_index) ~ row_qs,
                  url_for('admin.section_banner_image_upload', section_id=section.id, col_index=col_index) ~ row_qs,
-                 url_for('admin.section_banner_image_clear', section_id=section.id, col_index=col_index) ~ row_qs) }}
+                 url_for('admin.section_banner_image_clear', section_id=section.id, col_index=col_index) ~ row_qs,
+                 url_for('admin.section_banner_portrait_upload', section_id=section.id, col_index=col_index) ~ row_qs) }}
           </form>
           {%- endif %}
           {%- if item.type == 'card' -%}

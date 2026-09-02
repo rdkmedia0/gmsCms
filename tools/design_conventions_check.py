@@ -205,5 +205,39 @@ for _root, _dirs, _files in os.walk(_tpl):
               "has a file input and no enctype")
 
 print()
+print("A portrait is an option on the Banner, not a tool of its own")
+print("-" * 70)
+#  The shape every profile page has settled on: a round photograph of a
+#  person overlapping the bottom edge of a wide one. It belongs to the
+#  Banner because that is what it is -- the same band with a face on it.
+#  A tool of its own would mean a second thing to place, a second thing
+#  to style, and a rule about which of the two owns the space they share.
+sys.path.insert(0, _here)
+from app.services import sections as _sec                     # noqa: E402
+_start = ('<div class="cms-banner"><div class="cms-banner-overlay">'
+          "<h2>Hello</h2></div></div>")
+_left = _sec._update_banner_portrait(_start, "left")
+check("a portrait can be put on a banner",
+      _sec.banner_portrait_of(_left) == "left")
+_shot = _sec._set_banner_portrait_image(_left, "/static/uploads/me.png")
+check("...and given a picture", "/static/uploads/me.png" in _shot)
+_moved = _sec._update_banner_portrait(_shot, "right")
+check("...moved without losing it",
+      _sec.banner_portrait_of(_moved) == "right" and "me.png" in _moved)
+_gone = _sec._update_banner_portrait(_moved, "none")
+check("...and removed without losing the words",
+      _sec.banner_portrait_of(_gone) == "none" and "<h2>Hello</h2>" in _gone)
+#  Three positions, and it works with no background picture at all --
+#  somebody with a headshot and no cover photograph should not have to
+#  find one.
+check("left, centre and right are all offered",
+      set(_sec.BANNER_PORTRAITS) == {"none", "left", "center", "right"},
+      str(_sec.BANNER_PORTRAITS))
+check("...and a banner with no picture can still carry one",
+      _sec.banner_portrait_of(
+          _sec._update_banner_portrait('<div class="cms-banner"></div>',
+                                       "center")) == "center")
+
+print()
 print("%d checks, %d failed" % (passed + failed, failed))
 sys.exit(1 if failed else 0)

@@ -22,6 +22,7 @@ from ...services.sections import (
     apply_contact_form,
     _columns_section_or_404, _get_columns_cells, _save_columns_cells, _normalize_cell, _cell_slot,
     _update_banner_classes, _update_banner_overlay_style, _card_div, _update_card_classes,
+    _update_banner_portrait, _set_banner_portrait_image, banner_portrait_of,
     _set_card_image, _set_banner_image, _banner_dom_response, _save_card_image_file, _reset_card_style,
     set_card_button, strip_editor_markup,
     IMAGE_WIDTH_PX, BANNER_SIZE_PX, CARD_SIZE_PX, ACCORDION_PANEL_SIZE_PX,
@@ -766,6 +767,7 @@ def section_banner_update(section_id, col_index=None):
         return bail
     content = _update_banner_classes(where.read(), request.form.get("shape"),
                                      request.form.get("attachment"))
+    content = _update_banner_portrait(content, request.form.get("portrait"))
     content = _update_banner_overlay_style(content, request.form)
     where.write(content, tool_name="Banner", cell_type="banner")
     return where.respond(_banner_dom_response(content))
@@ -795,6 +797,34 @@ def section_banner_image_clear(section_id, col_index=None):
     if bail:
         return bail
     where.write(_set_banner_image(where.read(), None), cell_type="banner")
+    return where.respond()
+
+
+@bp.route("/sections/<int:section_id>/banner-portrait-upload", methods=["POST"])
+@bp.route("/sections/<int:section_id>/columns/<int:col_index>/banner-portrait-upload", methods=["POST"])
+@login_required
+def section_banner_portrait_upload(section_id, col_index=None):
+    """The portrait on a Banner -- a picture of a person, not a backdrop."""
+    where, bail = _where(section_id, col_index)
+    if bail:
+        return bail
+    url, error = _save_card_image_file()
+    if error:
+        return jsonify({"error": error[0]}), error[1]
+    where.write(_set_banner_portrait_image(where.read(), url),
+                tool_name="Banner", cell_type="banner")
+    return jsonify({"ok": True, "url": url})
+
+
+@bp.route("/sections/<int:section_id>/banner-portrait-clear", methods=["POST"])
+@bp.route("/sections/<int:section_id>/columns/<int:col_index>/banner-portrait-clear", methods=["POST"])
+@login_required
+def section_banner_portrait_clear(section_id, col_index=None):
+    """Takes the portrait's picture out and leaves the space for another."""
+    where, bail = _where(section_id, col_index)
+    if bail:
+        return bail
+    where.write(_set_banner_portrait_image(where.read(), None), cell_type="banner")
     return where.respond()
 
 

@@ -1385,14 +1385,20 @@
       if (clearBtn) clearBtn.hidden = !url;
     }
   }
-  bindEach(".cms-change-card-image-btn, .cms-change-banner-image-btn, .cms-change-accordion-image-btn", (btn) => {
+  bindEach(".cms-change-card-image-btn, .cms-change-banner-image-btn, .cms-change-accordion-image-btn, .cms-change-banner-portrait-btn", (btn) => {
     const isPanel = btn.classList.contains("cms-change-accordion-image-btn");
     const scope = btn.closest(".cms-row-cell, .cms-column, .cms-section");
     // A Card/Banner scope has exactly one image button+input pair, so a
     // scope-wide query finds it; an Accordion scope has 5, so each button
     // must find its own adjacent input instead of always matching the
     // first one in the section.
-    const fileInput = isPanel
+    //
+    // A Banner with a PORTRAIT now has two -- the picture behind it and
+    // the face on it -- so it takes the adjacent route as well, or the
+    // portrait's button would upload into the background.
+    const adjacent = isPanel
+      || btn.classList.contains("cms-change-banner-portrait-btn");
+    const fileInput = adjacent
       ? btn.nextElementSibling
       : scope.querySelector(".cms-card-image-file-input, .cms-banner-image-file-input");
     const panelIndex = isPanel ? parseInt(btn.dataset.panelIndex, 10) : null;
@@ -1410,7 +1416,19 @@
         });
         const data = await res.json();
         if (res.ok && data.url) {
-          setCardImage(scope, data.url, panelIndex);
+          if (btn.classList.contains("cms-change-banner-portrait-btn")) {
+            const figure = scope.querySelector(".cms-banner-portrait");
+            if (figure) {
+              figure.classList.remove("cms-banner-portrait-empty");
+              figure.innerHTML = "";
+              const img = document.createElement("img");
+              img.src = data.url;
+              img.alt = "";
+              figure.appendChild(img);
+            }
+          } else {
+            setCardImage(scope, data.url, panelIndex);
+          }
           toast("Image updated");
         } else {
           toast(data.error || "That didn't work");
