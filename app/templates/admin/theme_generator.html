@@ -186,8 +186,15 @@
     {% endif %}
     <button type="submit" class="btn btn-primary"
             title="Make this template. Nothing on your site changes — it is added to your template list.">Make it</button>
-    <a class="btn" href="{{ url_for('admin.theme_generator') }}"
-       title="Go back and change the answers.">Change something</a>
+    {#  The ANSWERS, which are on this page already -- not a fresh form.
+
+        This was a link to the screen itself, so "change something"
+        emptied every box: the description, the pages, the picture, the
+        content. Somebody who wanted to alter one word of what the plan
+        proposed lost the lot and started again, which is the opposite
+        of what the words offer. #}
+    <a class="btn" href="#theme-gen-form"
+       title="Go down to your answers and change them. Nothing you have typed is lost.">Change something</a>
   </form>
 </div>
 {% endif %}
@@ -258,6 +265,15 @@
 
   <div class="form-row" data-needs="source">
     <label for="tg-source">Content (optional)</label>
+    {#  What an uploaded file gave us, carried across the two presses.
+
+        A file input cannot be re-filled by the server -- no browser
+        allows it -- so without this the content vanished between "show
+        me the plan" and "make it": the plan was built from a CV and the
+        run that followed had nothing. Same reason the reference
+        picture's answers are carried as hidden fields. #}
+    {% if carried_content %}<input type="hidden" name="source_carried"
+           value="{{ carried_content }}">{% endif %}
     <textarea name="source_text" id="tg-source" rows="10"
               title="Paste what you already have - a CV, an about page, a price list, a menu. Every fact on the site will come from this and nothing will be invented."
               placeholder="Paste a CV, an about page, a price list, a leaflet - whatever you already have written. It does not need tidying: headings, dates, prices and bullet points are all fine, and are what the layout is built around.">{{ form.source_text if form else '' }}</textarea>

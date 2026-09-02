@@ -1796,6 +1796,42 @@ check("the box is revealed from the static script, not the template",
       "data-language-other" in _js)
 
 print()
+print("The picture count is what was asked for, and answers keep their answers")
+print("-" * 70)
+#  `image_budget` was read as a gate -- greater than zero, make one --
+#  so "Up to three" and "One, for the top of the page" did the same
+#  thing, and the plan told somebody who asked for three that it would
+#  make one. A control tested only against zero lies about what it
+#  offers.
+with app.app_context():
+    _db = get_db()
+    _four = ["Home", "About", "Menu", "Contact"]
+    for _budget, _per_page, _want in (("1", False, 1), ("3", False, 3),
+                                      ("3", True, 4), ("0", False, 0)):
+        _p = tg.plan(_db, tg.brand_kit(brief="a bakery", image_budget=_budget,
+                                       banner_per_page=_per_page),
+                     "X", pages_wanted=_four, use_ai_images=True, fill_scope="all")
+        check("budget %s%s plans %d picture(s)"
+              % (_budget, " on every page" if _per_page else "", _want),
+              _p["pictures"] == _want, str(_p["pictures"]))
+    check("...and the run asks for the same number",
+          "want_image=(i < wants)" in _src)
+
+#  "Change something" was a link to the screen itself, so it emptied
+#  every box: the description, the pages, the content. Somebody wanting
+#  to alter one word of the plan lost the lot.
+_screen = io.open("/app/app/templates/admin/theme_generator.html",
+                  encoding="utf-8").read()
+check("changing something goes to the answers, not a fresh form",
+      'href="#theme-gen-form"' in _screen)
+#  ...and an uploaded file's content survives the trip, which a file
+#  input cannot do by itself.
+check("content read from a file is carried between the two presses",
+      'name="source_carried"' in _screen
+      and 'request.form.get("source_carried")' in io.open(
+          "/app/app/routes/admin/dashboard.py", encoding="utf-8").read())
+
+print()
 print("  %d ok, %d failed" % (passed, len(failures)))
 for name in failures:
     print("    - " + name)

@@ -385,6 +385,7 @@ def theme_generator():
                 return redirect(url_for("admin.theme_generator"))
             return render_template("admin/theme_generator.html",
                                    plan=shown, form=request.form,
+                                   carried_content=content_given,
                                    signals=signals, kit=kit, looked=looked,
                                    spent=spent, **_theme_generator_context(db))
 
@@ -442,6 +443,12 @@ def _content_given(request):
     from ...services import documents
 
     pasted = (request.form.get("source_text") or "").strip()
+    #  What a previous press already read out of a file. A file input
+    #  cannot be re-filled by the server, so without this the content
+    #  disappeared between "show me the plan" and "make it".
+    carried = (request.form.get("source_carried") or "").strip()
+    if carried and carried not in pasted:
+        pasted = (pasted + chr(10) + chr(10) + carried).strip() if pasted else carried
     upload = request.files.get("source_file")
     if not upload or not (upload.filename or "").strip():
         return pasted, ""

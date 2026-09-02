@@ -873,9 +873,16 @@ def plan(db, kit, name, mode="scratch", pages_wanted=None, looked=None,
 
     writes = bool(kit["brief"]) and fill_scope != "none"
     per_page = kit.get("banner_per_page", False)
+    #  A COUNT, which it never was. `image_budget` was read as a gate
+    #  -- greater than zero, make one picture -- so "Up to three" and
+    #  "One, for the top of the page" did exactly the same thing, and
+    #  the plan said one picture to somebody who had just asked for
+    #  three. A control whose value is only ever tested against zero is
+    #  a control that lies about what it offers.
     pictures = 0
     if use_ai_images and kit["image_budget"] > 0:
-        pictures = len(wanted) if per_page else 1
+        pictures = min(len(wanted) if per_page else kit["image_budget"],
+                       len(wanted))
     pages = [{"title": title, "sections": SECTION_NAMES[key],
               "shape": LAYOUTS[key]["label"]}
              for title, key in zip(wanted, keys)]
@@ -2356,14 +2363,22 @@ def generate(db, static_folder, name, kit, fill_scope, use_ai_images,
         for i, title in enumerate(wanted):
             key = (chosen[i] if i < len(chosen)
                    else layout_for(title, i, _signal_text(kit)))
-            #  One picture for the run, at the top of the first page --
-            #  five hero photographs is five waits and five charges for a
-            #  look nobody has approved yet. Unless they asked for one
-            #  per page, which is a question on the form and not a
-            #  default.
+            #  Pictures are the slow, paid part of a run, so how many
+            #  there are is the owner's answer and not a default.
+            #  HOW MANY PICTURES, as asked. This gave the first page a
+            #  picture and no other page one unless every page was to
+            #  have one -- so choosing "up to three" produced exactly
+            #  one, and the number in the control meant nothing.
+            #
+            #  Still never more than one per page, and never more than
+            #  the budget: pictures are the slow, paid part of a run,
+            #  and the whole point of the control is that the owner
+            #  says how many they are willing to wait for.
+            wants = (len(wanted) if kit.get("banner_per_page", False)
+                     else kit.get("image_budget", 1))
             chunks = layout_chunks(
                 db, key, kit, fill_scope, use_ai_images,
-                want_image=(i == 0 or kit.get("banner_per_page", False)),
+                want_image=(i < wants),
                 page_title=title)
             pages.append({"title": title, "slug_suffix": "",
                           "sections": sections_for(chunks)})
