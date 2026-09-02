@@ -205,7 +205,17 @@
     A row that is not a choice is REMOVED rather than greyed. That is the
     rule this app already follows for a schedule's irrelevant fields, and
     it came from the same complaint. #}
+{#  multipart, because this form now carries a FILE.
+
+    The reference picture never needed it -- that input is read in the
+    browser and sent as hidden fields, so nothing was ever uploaded from
+    here. The content file is a real upload, and without this the browser
+    posts its NAME and no bytes: `request.files` is empty, the paste is
+    empty too, and the run is refused for having nothing to work from,
+    which is exactly what it looks like from the outside and says nothing
+    about the form. #}
 <form method="post" action="{{ url_for('admin.theme_generator') }}" class="card"
+      enctype="multipart/form-data"
       id="theme-gen-form" data-generator-form
       data-send-picture="{{ '1' if picture_vision else '0' }}">
 

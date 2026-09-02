@@ -172,5 +172,38 @@ check("...and says nothing at all when no AI is configured",
       "ai.ready" in _notice)
 
 print()
+print("A form that takes a file says so")
+print("-" * 70)
+#  Without enctype the browser posts a file input's NAME and no bytes,
+#  so `request.files` is empty and the server sees nothing at all. It
+#  cost a full run to find, because the failure is silent and looks
+#  exactly like the owner having uploaded nothing.
+#
+#  Checked by walking every admin template rather than by naming them:
+#  the next form to take a file is the one that will forget.
+for _root, _dirs, _files in os.walk(_tpl):
+    for _f in _files:
+        if not _f.endswith(".html"):
+            continue
+        _path = os.path.join(_root, _f)
+        _t = open(_path, encoding="utf-8").read()
+        #  A file input with a NAME is one the browser will post; a
+        #  nameless one is read in JavaScript and sent some other way,
+        #  which is how every picture control in the editor works and
+        #  how the reference picture works. Only the first kind needs
+        #  the form to be multipart, and flagging the second would be a
+        #  check that cries wolf on six controls that are correct.
+        posted = (re.search(r'type="file"[^>]*\sname=', _t)
+                  or re.search(r'name="[^"]+"[^>]*type="file"', _t))
+        if not posted:
+            continue
+        _rel = os.path.relpath(_path, _tpl)
+        #  The form tag that encloses it -- these templates carry one
+        #  form each around any file input they have.
+        check("%s posts as multipart" % _rel,
+              "enctype=" in _t and "multipart/form-data" in _t,
+              "has a file input and no enctype")
+
+print()
 print("%d checks, %d failed" % (passed + failed, failed))
 sys.exit(1 if failed else 0)
