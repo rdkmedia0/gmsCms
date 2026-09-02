@@ -37,6 +37,16 @@
         <button type="button" class="cms-tpl-choice {{ 'cms-tpl-choice-selected' if t.id == template.id }}"
                 data-activate-url="{{ url_for('admin.template_activate', template_id=t.id) }}"
                 data-conflict="{{ 'true' if activate_conflict_map.get(t.id) else 'false' }}" title="{{ t.name }}">
+          {#  The template's own banner, which is what somebody is
+              choosing between. Three colour dots said what its palette
+              was and nothing about what it LOOKS like, so picking one
+              meant activating it to find out. A template that ships no
+              picture keeps the dots -- the honest answer, rather than a
+              stock image standing in for one. See packages.cover_for. #}
+          {% set cover = (template_covers or {}).get(t.id) or {} %}
+          {% if cover.url %}
+          <img class="cms-tpl-cover" src="{{ cover.url }}" alt="" loading="lazy">
+          {% else %}
           <span class="cms-tpl-dots">
             {% if t.palette_json %}
             {% for c in (t.palette_json | from_json)[:3] %}
@@ -46,6 +56,7 @@
             <span class="cms-tpl-dot cms-tpl-dot-empty"></span>
             {% endif %}
           </span>
+          {% endif %}
           <span class="cms-tpl-name">{{ t.name }}</span>
         </button>
         {% if t.id != template.id %}

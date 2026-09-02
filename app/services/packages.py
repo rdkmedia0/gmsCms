@@ -1037,3 +1037,41 @@ def save_current_site_as_package(db, static_folder, slug, name, page_ids=None):
         shutil.rmtree(work_dir, ignore_errors=True)
 
     return install_theme_package(db, slug, static_folder, pkg_dir_override=dest_dir, is_builtin=False)
+
+
+def cover_for(static_folder, slug):
+    """A picture that shows what a template looks like, or nothing.
+
+    A LIST OF NAMES IS NOT A LIBRARY. The Templates screen was twenty
+    rows of text with three icons on each -- so choosing between a
+    bakery and a barn meant opening a live preview twenty times, and the
+    one thing a person actually decides on, what it LOOKS like, was the
+    one thing not on the screen.
+
+    Nothing on this server can take a screenshot: the app ships no
+    browser, deliberately. But a template that ships a picture has
+    already said what it looks like -- it is the photograph across the
+    top of its own front page -- and its palette says the rest. So the
+    cover is the template's own banner, which costs nothing to produce
+    and is never out of date, because it IS the template's content
+    rather than a render of it.
+
+    Returns a URL under /static/themes/<slug>/media/, or "" when the
+    template ships no pictures (several do not, and a colour tile is the
+    honest answer there rather than a stock image standing in for one).
+    """
+    folder = os.path.join(static_folder, "themes", slug, "media")
+    if not os.path.isdir(folder):
+        return ""
+    names = sorted(
+        n for n in os.listdir(folder)
+        if os.path.splitext(n)[1].lower() in (".webp", ".png", ".jpg", ".jpeg"))
+    if not names:
+        return ""
+    #  The banner first, by name, because that is the picture the front
+    #  page opens with and so the one somebody is choosing between. The
+    #  shipped set is named for exactly this -- <slug>-banner.webp -- and
+    #  anything else falls back to whichever comes first, which is at
+    #  least stable.
+    chosen = next((n for n in names if "-banner." in n), names[0])
+    return "/static/themes/%s/media/%s" % (slug, chosen)

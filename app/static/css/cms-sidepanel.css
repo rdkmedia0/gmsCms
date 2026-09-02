@@ -2017,3 +2017,34 @@
 .cms-ramp-swatch { flex: 1; height: 26px; cursor: help; }
 .cms-ramp-swatch.is-base { box-shadow: inset 0 0 0 2px rgba(255,255,255,.85),
   inset 0 0 0 3px rgba(0,0,0,.35); }
+
+
+/*  A template's own banner on its choice button. The dots it replaces
+    said what the palette was and nothing about what the template LOOKS
+    like, so choosing one meant activating it to find out.
+
+    Fixed height and `cover`, because twenty different picture
+    proportions in one column is a list nobody can scan; the editor's own
+    control radius, because this is chrome. */
+.cms-tpl-cover {
+  display: block; width: 100%; height: 46px; object-fit: cover;
+  border-radius: var(--cms-ui-radius-control, 4px);
+  margin-bottom: 6px; background: rgba(127, 127, 127, .18);
+}
+
+/*  A tile carrying a picture has to grow to hold it.
+
+    These buttons are one of several controls sharing a FIXED tile
+    height in the side dock, and adding the picture pushed the name out
+    of the bottom of it -- twenty covers and not one label, so you could
+    see what each template looked like and not which one it was. A
+    picture without its name is a worse control than a name without its
+    picture.
+
+    Scoped with :has to the tiles that actually carry one, so the colour
+    presets and font presets keep the shared height they are lined up
+    against. */
+.cms-dock-panel:not(.cms-dock-bottom) .cms-tpl-choice:has(.cms-tpl-cover) {
+  height: auto;
+  padding-bottom: 6px;
+}

@@ -74,7 +74,25 @@ def dashboard_template_maps(db, static_folder, templates):
         activate_conflict_map[t["id"]] = conflict
         if t["is_active"] and pack_pages:
             active_content = {"template_id": t["id"], "name": t["name"]}
-    return activate_conflict_map, active_content
+    #  ...and what each one LOOKS like: its own banner picture, which
+    #  is the thing somebody is actually choosing between. See
+    #  packages.cover_for for why it is the template's own content
+    #  rather than a render of it.
+    covers = {}
+    for t in templates:
+        try:
+            roles = json.loads(t["palette_json"] or "[]")
+        except (ValueError, TypeError):
+            roles = []
+        covers[t["id"]] = {
+            "url": packages.cover_for(static_folder, t["slug"]),
+            #  The fallback for a template that ships no pictures: its
+            #  own three colours. Not a stock image standing in for one,
+            #  which would say something untrue about the template.
+            "colours": [r.get("color") for r in roles
+                        if isinstance(r, dict) and r.get("color")][:3],
+        }
+    return activate_conflict_map, active_content, covers
 
 @bp.route("/pages/tidy", methods=["POST"])
 @login_required

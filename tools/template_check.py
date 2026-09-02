@@ -27,12 +27,14 @@ import tempfile
 
 sys.path.insert(0, "/app")
 
+_here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = tempfile.mkdtemp(prefix="template-check-")
 os.environ["DATA_DIR"] = DATA_DIR
 
 from app import create_app                                    # noqa: E402
 from app.db import get_db                                     # noqa: E402
 from app.services import lifecycle                            # noqa: E402
+from app.services import packages                             # noqa: E402
 
 failures = []
 passed = 0
@@ -220,6 +222,35 @@ with app.app_context():
     check("after Load Content it is the pack's copy again",
           db.execute("SELECT owner_edited FROM pages WHERE id = ?",
                      (again,)).fetchone()["owner_edited"] == 0)
+
+print()
+print("A template shows what it looks like")
+print("-" * 70)
+#  A LIST OF NAMES IS NOT A LIBRARY. Choosing between twenty templates
+#  meant activating them one at a time, because the one thing anybody
+#  decides on -- what it looks like -- was the one thing not on screen.
+#
+#  Nothing here can take a screenshot (this app ships no browser), but a
+#  template that ships a photograph has already said what it looks like.
+_shipped = os.path.join(_here, "app", "data", "templates")
+_covered = 0
+for _slug in sorted(os.listdir(_shipped)):
+    if not os.path.isdir(os.path.join(_shipped, _slug, "media")):
+        continue
+    _covered += 1
+    _url = packages.cover_for(os.path.join(_here, "app", "static"), _slug)
+    #  Installed copies are what the screen reads; a source-only checkout
+    #  may not have them unpacked, so this asserts the RULE rather than
+    #  the file: whatever it returns must be that template's own media.
+    if _url:
+        check("%s's cover is its own picture" % _slug,
+              _url.startswith("/static/themes/%s/media/" % _slug), _url)
+        check("...and it is the banner",
+              "-banner." in _url or _url.count("/") == 5, _url)
+check("templates ship pictures to show", _covered >= 16, str(_covered))
+check("a template with no media gets no cover, not a stand-in",
+      packages.cover_for(os.path.join(_here, "app", "static"),
+                         "no-such-template-at-all") == "")
 
 shutil.rmtree(DATA_DIR, ignore_errors=True)
 print()

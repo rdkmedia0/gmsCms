@@ -21,10 +21,33 @@
           type, it is a state, and it belongs with the name of the thing it
           is a state of. Three columns instead of four also gives the rest
           room to breathe. #}
-      <thead><tr><th>Template</th><th>Type</th><th class="col-icons">Action</th></tr></thead>
+      <thead><tr><th class="col-cover"></th><th>Template</th><th>Type</th><th class="col-icons">Action</th></tr></thead>
       <tbody>
         {% for t in templates %}
         <tr>
+          {#  WHAT IT LOOKS LIKE, first, because that is what somebody is
+              choosing between. Twenty rows of names meant opening a live
+              preview twenty times to answer the one question the screen
+              was for.
+
+              The template's own banner picture, not a render of it:
+              nothing on this server can take a screenshot, and a
+              template that ships a photograph has already said what it
+              looks like. A template with no pictures gets its palette
+              instead -- three colours, which is the honest answer, not a
+              stock image standing in for one. #}
+          <td class="col-cover">
+            {% set cover = (template_covers or {}).get(t.id) or {} %}
+            {% if cover.url %}
+            <img class="tpl-cover" src="{{ cover.url }}" alt="" loading="lazy"
+                 title="{{ t.name }} — the picture this template opens with">
+            {% else %}
+            <span class="tpl-cover tpl-cover-swatches"
+                  title="{{ t.name }} — this template ships no pictures, so these are its colours">
+              {% for colour in cover.colours or [] %}<i style="background:{{ colour }}"></i>{% endfor %}
+            </span>
+            {% endif %}
+          </td>
           <td>
             {{ t.name }}
             {% if t.is_active %} <span class="badge">✔ Active</span>{% endif %}

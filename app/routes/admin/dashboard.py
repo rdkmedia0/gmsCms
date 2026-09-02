@@ -45,7 +45,8 @@ def _screen_context(db):
     # and activate_conflict_map tells each "Use This Look" button whether
     # it needs to confirm before it's clicked (see template-panel.js) —
     # activating now loads both look and content in one step.
-    activate_conflict_map, active_content = dashboard_template_maps(db, current_app.static_folder, templates)
+    activate_conflict_map, active_content, template_covers = dashboard_template_maps(
+        db, current_app.static_folder, templates)
 
     return dict(
         pages=pages,
@@ -98,6 +99,7 @@ def _screen_context(db):
         has_sidebar_content=has_sidebar_content,
         active_content=active_content,
         activate_conflict_map=activate_conflict_map,
+        template_covers=template_covers,
     )
 
 

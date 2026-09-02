@@ -2200,8 +2200,9 @@ def _render_page(db, page, post=None, post_content=""):
     footer_sections = [] if page["hide_footer"] else _zone_sections(db, template, "footer", nav_html, breadcrumb_html, dict(SECTION_TYPES))
     theme_css_vars = _theme_override_css(template)
     all_templates = db.execute("SELECT * FROM templates ORDER BY is_builtin DESC, name").fetchall() if editing else []
-    activate_conflict_map, active_content = (
-        dashboard_template_maps(db, current_app.static_folder, all_templates) if editing else ({}, None)
+    activate_conflict_map, active_content, template_covers = (
+        dashboard_template_maps(db, current_app.static_folder, all_templates)
+        if editing else ({}, None, {})
     )
     #  A fresh challenge per page load, so a token cannot be harvested
     #  once and replayed forever — it carries its own issue time.
@@ -2326,4 +2327,5 @@ def _render_page(db, page, post=None, post_content=""):
         has_sidebar_content=bool(sidebar_sections or sidebar_right_sections),
         active_content=active_content,
         activate_conflict_map=activate_conflict_map,
+        template_covers=template_covers,
     )
