@@ -1541,6 +1541,71 @@ for _shape in tg.LAYOUTS:
     check("the design schema offers %s" % _shape, _shape in tg.DESIGN_SCHEMA)
 
 print()
+print("A file somebody opens is read, and only the ones it can read")
+print("-" * 70)
+#  A CV is almost never typed; it is a file. This reads .docx and plain
+#  text and adds no dependency to do it -- a .docx is a zip of XML, which
+#  the standard library opens. PDF is deliberately absent: reading one
+#  needs a real parser in the image, which is a decision for whoever runs
+#  this app.
+import zipfile as _zip
+from app.services import documents as _doc
+
+
+def _docx(paragraphs, declared=None):
+    """A .docx the way Word writes one."""
+    body = "".join('<w:p><w:r><w:t xml:space="preserve">%s</w:t></w:r></w:p>' % t
+                   for t in paragraphs)
+    xml = ('<?xml version="1.0"?><w:document xmlns:w="http://schemas.'
+           'openxmlformats.org/wordprocessingml/2006/main"><w:body>'
+           + body + "</w:body></w:document>")
+    buf = io.BytesIO()
+    with _zip.ZipFile(buf, "w", _zip.ZIP_DEFLATED) as z:
+        z.writestr("word/document.xml", xml)
+    return buf.getvalue()
+
+
+_got = _doc.text_from("cv.docx", _docx(["Alina Ferreira", "",
+                                        "2021 to now &#8212; Lisbon."]))
+check("a .docx gives up its words", "Alina Ferreira" in _got, _got[:40])
+check("...with its paragraph breaks kept",
+      "2021 to now" in _got.split(chr(10))[-1], repr(_got))
+#  Word writes numeric references for anything typographic; five
+#  hand-written entity pairs left "&#8212;" on the page of a real
+#  document.
+check("...and every entity decoded, not five of them",
+      chr(8212) in _got and "&#" not in _got, repr(_got[-30:]))
+check("plain text is read as it stands",
+      _doc.text_from("notes.txt", "Half day 150.".encode()) == "Half day 150.")
+
+for _name, _raw, _says in (
+        ("cv.pdf", b"%PDF-1.4", "PDF"),
+        ("cv.rtf", b"{" + chr(92).encode() + b"rtf1}", "plain text"),
+        ("cv.docx", b"not a zip at all", "docx")):
+    try:
+        _doc.text_from(_name, _raw)
+        check("%s is refused" % _name, False, "it was accepted")
+    except _doc.DocumentError as e:
+        check("%s is refused, in words" % _name, bool(str(e).strip()), str(e)[:50])
+
+#  An ARCHIVE, so it gets the treatment every archive gets here: the
+#  size is capped BEFORE decompressing, because a few hundred kilobytes
+#  of zip is gigabytes of XML and "the upload was small" bounds nothing.
+_bomb = io.BytesIO()
+with _zip.ZipFile(_bomb, "w", _zip.ZIP_DEFLATED) as z:
+    z.writestr("word/document.xml", "<w:t>" + ("a" * (_doc.MAX_TEXT_BYTES + 4096)) + "</w:t>")
+try:
+    _doc.text_from("bomb.docx", _bomb.getvalue())
+    check("a zip that decompresses too far is refused", False, "it was accepted")
+except _doc.DocumentError as e:
+    check("a zip that decompresses too far is refused", True, str(e)[:40])
+check("...and the refusal is by DECLARED size, before reading it",
+      "entry.file_size > MAX_TEXT_BYTES" in
+      io.open("app/services/documents.py", encoding="utf-8").read())
+check("nothing is written to disk to read one",
+      "extractall" not in io.open("app/services/documents.py", encoding="utf-8").read())
+
+print()
 print("  %d ok, %d failed" % (passed, len(failures)))
 for name in failures:
     print("    - " + name)

@@ -111,13 +111,13 @@
             </span>
           </td>
         </tr>
-        {% if t.palette_json and t.is_active %}
-        <tr>
-          <td colspan="3">
-            <p class="hint">🎨 This look's colors — presets and per-color pickers — are set from the 🎨 Colors panel on the edit bar at the top of any page while editing, not here.</p>
-          </td>
-        </tr>
-        {% endif %}
+        {#  A note about where the COLOURS are set used to be spliced in
+            here as an extra row under whichever template is active. It
+            broke the list in half -- a paragraph of prose between two
+            rows of a table nobody was reading for prose -- and it said
+            it on every visit, forever, to answer a question somebody
+            asks once. The Colours panel is on the edit bar where it is
+            used; this screen is for choosing a template. #}
         {% endfor %}
       </tbody>
     </table>

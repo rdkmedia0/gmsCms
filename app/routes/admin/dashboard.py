@@ -281,6 +281,14 @@ def theme_generator():
     """
     db = get_db()
     if request.method == "POST":
+        #  Anything the owner pasted, plus anything they opened. A
+        #  file that cannot be read stops here with a sentence about
+        #  that file: proceeding on the paste alone would make the
+        #  site quietly miss half its content.
+        content_given, content_problem = _content_given(request)
+        if content_problem:
+            flash(content_problem, "error")
+            return redirect(url_for("admin.theme_generator"))
         #  Pictures somebody likes the look of. STYLE only, and nothing
         #  is fetched from anywhere.
         #
@@ -308,7 +316,7 @@ def theme_generator():
             brief=(request.form.get("brief") or "").strip(),
             #  What the owner already has written. In "place" mode it is
             #  the source of every fact on the finished site.
-            source_text=(request.form.get("source_text") or "").strip(),
+            source_text=content_given,
             tone=request.form.get("tone", "warm"),
             voice=request.form.get("voice", "we"),
             reading=request.form.get("reading", "normal"),
@@ -405,6 +413,36 @@ def theme_generator():
                           (request.args["made"],)).fetchone()
     return render_template("admin/theme_generator.html", made=made,
                            **_theme_generator_context(db))
+
+
+def _content_given(request):
+    """What the owner pasted, plus what they opened, in that order.
+
+    BOTH, not one or the other. A file that silently replaced a paste
+    would throw away what somebody typed, and a paste that silently
+    ignored a file would leave them wondering why the upload did
+    nothing. Nobody normally does both, and joining loses neither.
+
+    A file that cannot be read stops the run with a sentence about that
+    file -- rather than proceeding on the paste alone, which would make
+    the site quietly miss half its content.
+    """
+    from ...services import documents
+
+    pasted = (request.form.get("source_text") or "").strip()
+    upload = request.files.get("source_file")
+    if not upload or not (upload.filename or "").strip():
+        return pasted, ""
+    try:
+        from_file = documents.text_from(upload.filename, upload.read())
+    except documents.DocumentError as e:
+        #  RETURNED, not raised. The kit is built before the route's own
+        #  try/except, so raising here would leave a 500 where a
+        #  sentence about the file belongs -- and the sentence is the
+        #  whole value of refusing at all.
+        return "", str(e)
+    joined = (pasted + chr(10) + chr(10) + from_file).strip() if pasted else from_file
+    return joined, ""
 
 
 def _carried_look(form):

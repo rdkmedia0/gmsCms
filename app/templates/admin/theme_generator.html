@@ -247,6 +247,13 @@
     <textarea name="source_text" id="tg-source" rows="10"
               title="Paste what you already have - a CV, an about page, a price list, a menu. Every fact on the site will come from this and nothing will be invented."
               placeholder="Paste a CV, an about page, a price list, a leaflet - whatever you already have written. It does not need tidying: headings, dates, prices and bullet points are all fine, and are what the layout is built around.">{{ form.source_text if form else '' }}</textarea>
+    <p class="hint">
+      <label for="tg-source-file">&hellip;or open a file:</label>
+      <input type="file" name="source_file" id="tg-source-file"
+             accept=".docx,.txt,.md,.markdown,.text"
+             title="A Word document (.docx) or a plain text file. Its words are added to the box above. A PDF has to be pasted in, or saved as Word or text first.">
+      Word (.docx) or plain text. A PDF has to be pasted in.
+    </p>
     <p class="hint">Every name, date and figure on the finished site comes from
       what you paste here, and nothing is invented. You do not need to say what
       the pages should be &mdash; that is worked out from the content, along with
