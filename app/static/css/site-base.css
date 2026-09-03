@@ -2839,25 +2839,25 @@ body.cms-logged-in .cms-basket-link.cms-basket-align-float-top { top: 60px; }
 .cms-banner.cms-has-portrait {
   container-type: inline-size;
   overflow: visible;
-  margin-bottom: clamp(72px, 9cqw, 190px);
+  margin-bottom: clamp(100px, 13cqw, 220px);
 }
-.cms-banner.cms-portrait-size-small  { margin-bottom: clamp(56px, 6cqw, 120px); }
-.cms-banner.cms-portrait-size-large  { margin-bottom: clamp(96px, 12cqw, 210px); }
+.cms-banner.cms-portrait-size-small  { margin-bottom: clamp(74px, 9cqw, 160px); }
+.cms-banner.cms-portrait-size-large  { margin-bottom: clamp(140px, 18cqw, 300px); }
 
 .cms-banner > .cms-banner-portrait {
   position: absolute; bottom: 0; left: 50%;
   transform: translate(-50%, 50%);
   margin: 0; z-index: 3;
   aspect-ratio: 1;
-  height: clamp(120px, 16cqw, 280px);
+  height: clamp(180px, 24cqw, 400px);
   border: 4px solid var(--site-card-bg, #fff);
   box-shadow: var(--site-shadow, 0 8px 24px -10px rgba(0, 0, 0, .4));
   background: var(--site-tint, #eee);
   overflow: hidden;
   display: grid; place-items: center;
 }
-.cms-portrait-size-small  > .cms-banner-portrait { height: clamp(92px, 11cqw, 200px); border-width: 3px; }
-.cms-portrait-size-large  > .cms-banner-portrait { height: clamp(160px, 22cqw, 360px); border-width: 6px; }
+.cms-portrait-size-small  > .cms-banner-portrait { height: clamp(130px, 16cqw, 280px); border-width: 3px; }
+.cms-portrait-size-large  > .cms-banner-portrait { height: clamp(260px, 34cqw, 560px); border-width: 7px; }
 
 .cms-banner > .cms-banner-portrait img {
   width: 100%; height: 100%; object-fit: cover; display: block;
