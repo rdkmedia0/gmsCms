@@ -1768,6 +1768,52 @@ try:
                     if "<h2>Welcome</h2>" in io.open(f, encoding="utf-8").read())
     check("...and no page is headed with a generic word", _welcomes == 0,
           "%d pages headed Welcome" % _welcomes)
+    #  A REAL CV, not a tidy one: ALL-CAPS section titles, no blank
+    #  lines between a section's last line and the next title, the year
+    #  at the END of an entry. This is the shape that only produced a
+    #  page or two and "took a few lines" -- headings_in missed the
+    #  capitals, so every unmatched page fell back to the model.
+    _messy = chr(10).join([
+        "ALINA FERREIRA",
+        "Landscape Architect | Lisbon | alina@example.pt | +351 912 345",
+        "",
+        "PROFILE",
+        "Landscape architect with twelve years designing public gardens.",
+        "PROFESSIONAL EXPERIENCE",
+        "Independent Practice, Lisbon (2021-Present)",
+        "- Completed twelve gardens including the Praca do Rio courtyard",
+        "- Led planting design for two school playgrounds",
+        "Senior Landscape Architect, Verde Atelier (2017-2021)",
+        "- Led the planting design for the Alcantara riverside walk",
+        "EDUCATION",
+        "MA Landscape Architecture, University of Lisbon (2013)",
+        "BA Fine Arts, University of Porto (2010)",
+        "SKILLS",
+        "Planting design, AutoCAD, site supervision, client liaison",
+        "REFERENCES",
+        "Available on request",
+    ])
+    check("a real CV's ALL-CAPS sections are all found",
+          tg.headings_in(_messy) == ["Home", "PROFILE", "PROFESSIONAL EXPERIENCE",
+                                     "EDUCATION", "SKILLS", "REFERENCES"],
+          str(tg.headings_in(_messy)))
+    with app.app_context():
+        _mdb = get_db()
+        _mkit = tg.brand_kit(source_text=_messy, voice="i", brief="A CV site")
+        _mslug = tg.generate(_mdb, static_folder, name="Messy CV", kit=_mkit,
+                             fill_scope="all", use_ai_images=False, mode="scratch")
+        _mdb.commit()
+    _mpages = [json.load(io.open(f, encoding="utf-8")) for f in sorted(
+        glob.glob(os.path.join(static_folder, "themes", _mslug, "pages", "*.json")))]
+    check("...and every section becomes its own page",
+          len(_mpages) == 6, str([p["title"] for p in _mpages]))
+    check("...with almost all of the document's words on the site",
+          tg.content_coverage(_messy, _mpages) >= 0.85,
+          "%.2f" % tg.content_coverage(_messy, _mpages))
+    check("...the experience section laid out as a timeline",
+          any("cms-block-timeline" in sec[2]
+              for p in _mpages for sec in p["sections"]))
+
 finally:
     assistant._call_provider = _before
 

@@ -1536,41 +1536,62 @@ def document_blocks(text):
     """The blocks of one document section, each with the tool it wants.
 
     Split on blank lines first, because that is how people write
-    documents. Then each block is read for what it IS: lines that begin
-    with a year (a range, "2019 to now") are entries in time and become
-    a timeline; three or more short lines with no full stops are a list;
-    anything else is paragraphs. Nothing is dropped -- a block this
-    cannot classify is still paragraphs, which hold anything.
+    documents. Then each block is read for what it IS, in this order:
+
+      * lines that are entries in time -- a year somewhere in them, a CV
+        role or a study -- become a TIMELINE, with any bullets under an
+        entry carried as its text;
+      * a run of bullets or short lines with no full stops becomes a
+        LIST;
+      * anything else stays PARAGRAPHS.
+
+    Nothing is dropped: a block this cannot classify is paragraphs,
+    which hold anything, so every line of the document reaches the page.
     """
+    year = re.compile(r"(?:19|20)\d{2}")
     out = []
     for raw_block in re.split(r"\n\s*\n", (text or "").strip()):
         lines = [l.strip() for l in raw_block.split(chr(10)) if l.strip()]
         if not lines:
             continue
-        dated = [_DATED.match(l) for l in lines]
-        if len(lines) >= 2 and all(dated):
-            out.append(("timeline", [(m.group(1).strip(), m.group(2).strip())
-                                     for m in dated]))
+        bulletish = [l.lstrip().startswith(("-", "\u2022", "*", "\u2013")) for l in lines]
+        has_year = [bool(year.search(l)) for l in lines]
+
+        #  ENTRIES IN TIME. Two or more lines carrying a year -- whether
+        #  the year is at the start ("2019 to now") or the end of the
+        #  line ("Verde Atelier (2017-2021)"), which is how a CV writes
+        #  it -- make this an experience/education section. Each
+        #  year-bearing, non-bullet line starts an entry; the bullets
+        #  under it are its text. Checked BEFORE the plain list below,
+        #  or a dated block of short lines would be flattened to bullets.
+        if sum(has_year) >= 2:
+            rows, cur = [], None
+            for l, yr, bul in zip(lines, has_year, bulletish):
+                clean = l.lstrip("-\u2022*\u2013 ").strip()
+                if yr and not bul:
+                    m = year.search(l)
+                    when = m.group(0) if m else ""
+                    title = year.sub("", l).strip(" ()-\u2013\u2014,.").strip()
+                    cur = [when, title, []]
+                    rows.append(cur)
+                elif cur is not None:
+                    cur[2].append(clean)
+                else:
+                    rows.append(["", clean, []])
+            out.append(("timeline",
+                        [(w, (t + (". " + " ".join(x) if x else "")).strip(". "))
+                         for w, t, x in rows]))
+            continue
+
+        #  A LIST: bullets, or three or more short lines with no full
+        #  stop -- a skills or achievements section.
+        if len(lines) >= 2 and sum(bulletish) * 2 >= len(lines):
+            out.append(("list", [l.lstrip("-\u2022*\u2013 ").strip() for l in lines]))
             continue
         if len(lines) >= 3 and all(len(l) <= 90 and not l.endswith(".") for l in lines):
             out.append(("list", lines))
             continue
-        #  A dated line inside prose: the whole block is still a timeline
-        #  if MOST lines are dated, with the rest carried as the text of
-        #  the entry before them.
-        if len(lines) >= 2 and sum(1 for m in dated if m) * 2 >= len(lines):
-            rows, cur = [], None
-            for l, m in zip(lines, dated):
-                if m:
-                    cur = [m.group(1).strip(), m.group(2).strip(), []]
-                    rows.append(cur)
-                elif cur is not None:
-                    cur[2].append(l)
-                else:
-                    rows.append(["", l, []])
-            out.append(("timeline", [(w, t + (" " + " ".join(x) if x else ""))
-                                     for w, t, x in rows]))
-            continue
+
         out.append(("paragraphs", [" ".join(lines)] if len(lines) == 1
                     else [l for l in lines]))
     return out
@@ -2665,47 +2686,99 @@ def section_under(text, heading):
 
 
 
-def headings_in(text, most=5):
+#  The section titles a real CV actually uses -- so a heading is found
+#  by what it SAYS as well as by how it looks. A person does not write
+#  "PROFESSIONAL EXPERIENCE" in the shape of a sentence, and a document
+#  exported from Word rarely leaves a blank line above it.
+CV_SECTION_WORDS = frozenset((
+    "profile", "summary", "about", "objective", "overview", "bio",
+    "experience", "employment", "work", "history", "career", "roles",
+    "education", "qualifications", "academic", "training", "courses",
+    "skills", "expertise", "competencies", "proficiencies", "strengths",
+    "projects", "portfolio", "selected", "clients", "work",
+    "certifications", "certificates", "licences", "licenses", "accreditations",
+    "awards", "achievements", "honours", "honors", "recognition",
+    "publications", "talks", "press",
+    "references", "referees",
+    "contact", "details", "info", "information",
+    "interests", "hobbies", "activities", "volunteering", "voluntary",
+    "languages", "memberships", "affiliations", "associations",
+))
+
+
+def _looks_like_heading(line, following):
+    """Whether one line reads as a section heading of a document.
+
+    Three ways to be one, and a real CV uses all three: it is written
+    mostly in CAPITALS (PROFILE, WORK EXPERIENCE); or it is one of the
+    words a CV titles a section with (Education, References, Skills); or
+    -- the old rule -- it is a short line with a blank line above it.
+    Any of the three, provided there is something under it and it is not
+    a line of contact details, which look short but are not sections.
+    """
+    if not line or len(line) > 48:
+        return False
+    if line[-1] in ".,;!?":
+        return False
+    words = line.split()
+    if len(words) > 5:
+        return False
+    #  A contact line -- an address, an email, a phone number -- is short
+    #  and title-less but is not a section.
+    if "@" in line or sum(c.isdigit() for c in line) >= 5:
+        return False
+    if not any(following):
+        return False
+    bare = line.rstrip(":").strip()
+    letters = [c for c in bare if c.isalpha()]
+    #  MOSTLY CAPITALS.
+    if letters and sum(1 for c in letters if c.isupper()) / len(letters) >= 0.7:
+        return True
+    #  A KNOWN CV section word -- the whole line, or a short title built
+    #  from one ("Work Experience", "Professional Experience").
+    low = bare.lower()
+    if low in CV_SECTION_WORDS:
+        return True
+    if len(words) <= 3 and any(
+            w.strip(":").lower() in CV_SECTION_WORDS for w in words):
+        return True
+    return False
+
+
+def headings_in(text, most=10):
     """The section headings of a document somebody wrote, as page names.
 
     A document written for people already carries its own structure --
-    "Experience", "Qualifications", "How I work", "Contact" -- and the
-    person who wrote it decided that. It is a better answer than a
-    model's guess about the same document, and it costs nothing.
+    PROFILE, EXPERIENCE, EDUCATION, REFERENCES -- and the person who
+    wrote it decided that. It is a better answer than a model's guess
+    about the same document, and it costs nothing.
 
-    A heading is a SHORT line, on its own, that does not end in
-    punctuation and is followed by something. That is what a heading
-    looks like in every plain-text document and in the text a .docx
-    gives up; anything cleverer would be guessing.
+    What counts as a heading is _looks_like_heading: mostly-capitals, or
+    a known CV section word, or a short line with a blank line above it.
+    The earlier version demanded that blank line for ALL of them, so a
+    CV exported from Word -- which runs a section's last line straight
+    into the next title, in capitals -- came back with one heading and
+    the whole document crammed onto a single page.
 
-    "Home" is always first, because the document has no name for its own
+    The first line is never a heading: it is the document's own name.
+    "Home" is always first, because the document has no name for its
     front page and every site needs one.
     """
     lines = [l.strip() for l in (text or "").split(chr(10))]
     found = []
     for i, line in enumerate(lines):
-        if not line or len(line) > 40 or line[-1] in ".,;:!?-":
+        if i == 0:
             continue
-        #  Four words at most. A whole sentence with no full stop is a
-        #  sentence somebody forgot to finish, not a heading.
-        if len(line.split()) > 4:
-            continue
-        #  A BLANK LINE ABOVE IT. This is what separates a heading
-        #  from a subtitle, and without it a CV's second line --
-        #  "Landscape architect, Lisbon", sitting directly under the
-        #  name -- came back as a page. It also excludes the first
-        #  line, which is the document's title, not a section of it.
-        if i == 0 or lines[i - 1]:
-            continue
-        #  ...and something under it. A heading with nothing after it
-        #  is the end of the document, not a section of it.
-        if not any(lines[i + 1:i + 4]):
-            continue
-        found.append(line)
+        blank_above = (i > 0 and not lines[i - 1])
+        if _looks_like_heading(line, lines[i + 1:i + 4]) or (
+                blank_above and 0 < len(line) <= 40
+                and line[-1] not in ".,;:!?-" and len(line.split()) <= 4
+                and any(lines[i + 1:i + 4])):
+            found.append(line.rstrip(":").strip())
     seen, out = set(), ["Home"]
     for name in found:
         key = name.lower()
-        if key in seen or key == "home":
+        if key in seen or key == "home" or not key:
             continue
         seen.add(key)
         out.append(name)
