@@ -1434,14 +1434,22 @@
         const data = await res.json();
         if (res.ok && data.url) {
           if (btn.classList.contains("cms-change-banner-portrait-btn")) {
-            const figure = scope.querySelector(".cms-banner-portrait");
-            if (figure) {
-              figure.classList.remove("cms-banner-portrait-empty");
-              figure.innerHTML = "";
-              const img = document.createElement("img");
-              img.src = data.url;
-              img.alt = "";
-              figure.appendChild(img);
+            //  The server returns the whole banner DOM, because uploading
+            //  a face may have CREATED the portrait (turned it on) as well
+            //  as set its picture. Applying that adds the frame, its
+            //  classes and the image in one go -- and the same path works
+            //  whether the figure already existed or not.
+            if (data.dom) {
+              applyCardBannerDom(scope, data.dom, true);
+            } else {
+              const figure = scope.querySelector(".cms-banner-portrait");
+              if (figure) {
+                figure.classList.remove("cms-banner-portrait-empty");
+                figure.innerHTML = "";
+                const img = document.createElement("img");
+                img.src = data.url; img.alt = "";
+                figure.appendChild(img);
+              }
             }
           } else {
             setCardImage(scope, data.url, panelIndex);

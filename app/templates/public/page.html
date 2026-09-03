@@ -1352,7 +1352,13 @@
             <option value="right" {{ 'selected' if portrait == 'right' }}>On the right</option>
           </select>
         </label>
-        {% if portrait != 'none' %}
+        {#  Size, Shape and the picture buttons are ALWAYS shown, not
+            revealed once a position is picked. The panel submits by
+            fetch and is never re-rendered, so a control gated on the
+            current portrait state would stay hidden after the state
+            changed -- which is exactly why they went missing. The
+            selects carry their own value and do nothing until a portrait
+            is shown; uploading a face turns one on. #}
         {% set portrait_size = banner_portrait_size_of(cell.content) %}
         {% set portrait_shape = banner_portrait_shape_of(cell.content) %}
         <label>Size
@@ -1373,16 +1379,12 @@
         <span class="cms-config-actions">
           <button type="button" class="cms-pick-library-btn" data-library-pick
                   data-library-for="cms-banner-portrait-file-input" data-library-kinds="image"
-                  title="Choose the portrait from your Media Library">Choose</button>
+                  title="Choose the portrait picture from your Media Library">Choose face</button>
           <button type="button" class="cms-change-banner-portrait-btn"
-                  title="Upload the portrait from your device">&#11014; Upload</button>
+                  title="Upload the portrait picture from your device">&#11014; Portrait</button>
           <input type="file" class="cms-banner-portrait-file-input"
                  data-upload-url="{{ portrait_upload_url }}" accept="image/*" hidden>
         </span>
-        {% endif %}
-        {% else %}
-        <input type="hidden" name="portrait_size" value="{{ banner_portrait_size_of(cell.content) }}">
-        <input type="hidden" name="portrait_shape" value="{{ banner_portrait_shape_of(cell.content) }}">
         {% endif %}
       </div>
     </div>

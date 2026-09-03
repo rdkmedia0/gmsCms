@@ -814,9 +814,20 @@ def section_banner_portrait_upload(section_id, col_index=None):
     url, error = _save_card_image_file()
     if error:
         return jsonify({"error": error[0]}), error[1]
-    where.write(_set_banner_portrait_image(where.read(), url),
-                tool_name="Banner", cell_type="banner")
-    return jsonify({"ok": True, "url": url})
+    content = where.read()
+    #  Uploading a face when no portrait is shown turns one ON -- the
+    #  natural reading of "here is my picture" -- keeping whatever size
+    #  and shape the panel already carries. Otherwise the picture would
+    #  have nowhere to go.
+    if banner_portrait_of(content) == "none":
+        content = _update_banner_portrait(
+            content, "left", banner_portrait_size_of(content),
+            banner_portrait_shape_of(content))
+    content = _set_banner_portrait_image(content, url)
+    where.write(content, tool_name="Banner", cell_type="banner")
+    #  The banner DOM back with it, so the page shows the portrait at
+    #  once -- created or not -- without a reload.
+    return jsonify({"ok": True, "url": url, "dom": _banner_dom_response(content)})
 
 
 @bp.route("/sections/<int:section_id>/banner-portrait-clear", methods=["POST"])

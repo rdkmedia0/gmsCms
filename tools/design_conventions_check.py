@@ -267,6 +267,17 @@ check("...one shape class at a time",
       _sec._update_banner_portrait(_sh, "left", "large", "oval").count("cms-portrait-shape") == 1)
 check("...an unnamed shape is round", _sec.banner_portrait_shape_of(
           _sec._update_banner_portrait(_start, "left")) == "round")
+#  The Size and Shape selects are shown ALWAYS, not revealed once a
+#  position is chosen: the config panel submits by fetch and never
+#  re-renders, so a control gated on the portrait's current state stays
+#  hidden after the state changes -- which is how they went missing.
+_page = open(os.path.join(_here, "app", "templates", "public", "page.html"),
+             encoding="utf-8").read()
+_portrait_block = _page[_page.index('name="portrait"'):_page.index('name="portrait"') + 2000]
+check("the portrait Size and Shape are not gated on the position",
+      "{% if portrait != 'none' %}" not in _portrait_block
+      and 'name="portrait_size"' in _portrait_block
+      and 'name="portrait_shape"' in _portrait_block)
 #  Sized as a fraction of the banner -- cqw, not a fixed pixel -- and
 #  the full-width composition flatten must not square a round portrait.
 _css = open(os.path.join(_here, "app", "static", "css", "site-base.css"),
