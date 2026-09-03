@@ -1719,3 +1719,12 @@ button[aria-busy="true"] { opacity: .75; cursor: progress; }
 .cms-owner-todo strong { color: #614708; }
 .cms-owner-todo a { color: inherit; text-decoration: underline; }
 .cms-owner-todo code { background: rgba(0,0,0,.05); padding: 0 4px; border-radius: 3px; }
+
+
+/*  The format tip under the content box -- a quiet aside, set apart from
+    the surrounding hints so the one piece of advice that saves the most
+    trouble is not lost among them. */
+.cms-source-tip {
+  border-left: 3px solid var(--cms-ui-accent, #4f7cff);
+  padding-left: 10px; background: rgba(79, 124, 255, .04);
+}

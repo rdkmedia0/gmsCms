@@ -41,7 +41,7 @@ MAX_TEXT_BYTES = 8 * 1024 * 1024
 #  private note about the document rather than part of it.
 DOCX_BODY = "word/document.xml"
 
-READS = (".txt", ".md", ".markdown", ".text", ".docx")
+READS = (".txt", ".md", ".markdown", ".text", ".docx", ".pdf")
 
 
 class DocumentError(Exception):
@@ -94,6 +94,13 @@ def _docx_text(raw):
     xml = xml.decode("utf-8", "replace")
     #  A paragraph end and a line break become newlines; a tab becomes a
     #  tab. Every other tag goes.
+    #  A table cell ends with a tab and a row with a newline, so a
+    #  table reads as its rows rather than every cell run into one line
+    #  -- a CV laid out as a two-column table (dates | roles) keeps that
+    #  shape. The rest are paragraph, line and tab breaks; every other
+    #  tag goes.
+    xml = re.sub(r"</w:tc>", chr(9), xml)
+    xml = re.sub(r"</w:tr>", chr(10), xml)
     xml = re.sub(r"</w:p>", chr(10), xml)
     xml = re.sub(r"<w:br[^>]*/?>", chr(10), xml)
     xml = re.sub(r"<w:tab[^>]*/?>", chr(9), xml)
@@ -114,6 +121,54 @@ def _docx_text(raw):
     return chr(10).join(out).strip()
 
 
+def _pdf_text(raw):
+    """The text layer of a PDF, page by page.
+
+    pypdf is pure Python -- no system libraries -- and reads the text a
+    PDF already carries. It does NOT read a SCANNED pdf, which is images
+    of pages with no text in them; there is nothing to extract, and the
+    honest answer is to say so rather than return an empty site. OCR is
+    a much heavier dependency and a separate decision.
+
+    Bounded like the rest: refused if the extracted text would exceed
+    MAX_TEXT_BYTES, checked as it is built rather than after.
+    """
+    try:
+        import pypdf
+    except ImportError:
+        raise DocumentError(
+            "This build cannot read PDFs. Save the document as Word or "
+            "plain text, or paste it in.")
+    try:
+        reader = pypdf.PdfReader(io.BytesIO(raw))
+    except Exception:
+        raise DocumentError("That PDF could not be opened. If it is "
+                            "protected, save an unprotected copy first.")
+    if reader.is_encrypted:
+        try:
+            reader.decrypt("")
+        except Exception:
+            raise DocumentError("That PDF is password-protected. Save an "
+                                "unlocked copy and try again.")
+    parts, size = [], 0
+    for page in reader.pages:
+        try:
+            page_text = page.extract_text() or ""
+        except Exception:
+            page_text = ""
+        parts.append(page_text)
+        size += len(page_text)
+        if size > MAX_TEXT_BYTES:
+            raise DocumentError("That PDF is too big to read. Paste the "
+                                "part you want instead.")
+    text = chr(10).join(parts).strip()
+    if not text:
+        raise DocumentError(
+            "That PDF has no text in it to read -- it looks like a scan or "
+            "images of pages. Paste the text in, or use a Word or text copy.")
+    return text
+
+
 def text_from(filename, raw):
     """(name, bytes) -> the writing in it.
 
@@ -131,6 +186,8 @@ def text_from(filename, raw):
                             "instead, or save it as plain text.")
     if name.endswith(".docx"):
         return _docx_text(raw)
+    if name.endswith(".pdf"):
+        return _pdf_text(raw)
     if any(name.endswith(ext) for ext in READS):
         return _plain_text(raw).strip()
     #  NAME WHAT IS ACCEPTED, and refuse everything else. Calling out
@@ -138,5 +195,5 @@ def text_from(filename, raw):
     #  of things somebody might try is endless (.pages, .odt, .rtf, a
     #  photograph of a page). One list; anything not on it is refused.
     raise DocumentError(
-        "That file type is not accepted. This reads Word documents "
-        "(.docx) and plain text (.txt, .md). Paste anything else in as text.")
+        "That file type is not accepted. This reads Word (.docx), PDF, "
+        "and plain text (.txt, .md). Paste anything else in as text.")

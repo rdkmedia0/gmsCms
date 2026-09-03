@@ -281,11 +281,27 @@
     <p class="hint">
       <label for="tg-source-file">&hellip;or open a file:</label>
       <input type="file" name="source_file" id="tg-source-file"
-             accept=".docx,.txt,.md,.markdown,.text"
-             title="Accepted: Word documents (.docx), plain text (.txt) and Markdown (.md). Its words are added to the box above. Anything else is refused — paste it in as text instead.">
-      <strong>Accepted:</strong> Word <code>.docx</code>, plain text
+             accept=".pdf,.docx,.txt,.md,.markdown,.text"
+             title="Accepted: PDF, Word documents (.docx), plain text (.txt) and Markdown (.md). Its words are added to the box above. Anything else is refused — paste it in as text instead.">
+      <strong>Accepted:</strong> PDF, Word <code>.docx</code>, plain text
       <code>.txt</code>, Markdown <code>.md</code>. Anything else is refused
       &mdash; paste it in as text instead.
+    </p>
+    {#  The tip that saves the most trouble: the tool splits the site by
+        the document's own section headings, so a document that HAS clear
+        headings, one per line, comes out as separate pages; one without
+        comes out as a single page. Said plainly, and pointing at the one
+        format that always keeps its headings -- plain text or Markdown,
+        where what you typed is what the tool reads. A .docx works too,
+        but only its words survive; its tables and columns do not. #}
+    <p class="hint cms-source-tip">
+      <strong>Tip:</strong> the site is split into pages by your document&rsquo;s
+      <em>section headings</em>, so give each section a short heading on its own
+      line (Experience, Prices, About&hellip;). Plain text or Markdown reads most
+      reliably &mdash; what you type is exactly what is read. A Word file works,
+      but only its text comes across. A PDF is read too, as long as it holds
+      real text and is not a scan of a page. A document with no headings
+      becomes a single page.
     </p>
     <p class="hint">Real content that has to appear on the site &mdash; a CV, a
       price list, an about page, a menu. Paste it here or open a file below.

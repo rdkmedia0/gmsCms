@@ -1599,21 +1599,57 @@ check("...with its paragraph breaks kept",
 #  document.
 check("...and every entity decoded, not five of them",
       chr(8212) in _got and "&#" not in _got, repr(_got[-30:]))
+#  PDF, read with pypdf. A real round-trip is proven elsewhere; here the
+#  PATH is guarded -- PDF is accepted, a non-PDF byte string is refused
+#  with a helpful message rather than a stack trace, and the reader is
+#  wired in.
+check("PDF is on the accepted list", ".pdf" in _doc.READS)
+try:
+    _doc.text_from("cv.pdf", b"not a pdf at all")
+    check("a broken PDF is refused", False, "accepted")
+except _doc.DocumentError as e:
+    check("a broken PDF is refused, in words", bool(str(e).strip()), str(e)[:40])
+_src_doc = open("app/services/documents.py", encoding="utf-8").read()
+check("...and pypdf does the reading", "import pypdf" in _src_doc
+      and 'name.endswith(".pdf")' in _src_doc)
+check("...a scanned PDF (no text) is named, not returned empty",
+      "no text in it to read" in _src_doc)
+
+#  A .docx TABLE keeps its cells, rather than running dates and roles
+#  into one line -- richer extraction added alongside PDF.
+def _docx_tbl():
+    import io as _io, zipfile as _z
+    c = lambda t: "<w:tc><w:p><w:r><w:t>" + t + "</w:t></w:r></w:p></w:tc>"
+    body = ("<w:p><w:r><w:t>EXPERIENCE</w:t></w:r></w:p><w:tbl><w:tr>"
+            + c("2017-2021") + c("Verde Atelier") + "</w:tr></w:tbl>")
+    xml = ('<?xml version="1.0"?><w:document xmlns:w="http://schemas.'
+           'openxmlformats.org/wordprocessingml/2006/main"><w:body>'
+           + body + "</w:body></w:document>")
+    buf = _io.BytesIO()
+    with _z.ZipFile(buf, "w") as z:
+        z.writestr("word/document.xml", xml)
+    return buf.getvalue()
+_ttxt = _doc.text_from("t.docx", _docx_tbl())
+check("a .docx table keeps its cell text",
+      "2017-2021" in _ttxt and "Verde Atelier" in _ttxt, repr(_ttxt[:60]))
+
 check("plain text is read as it stands",
       _doc.text_from("notes.txt", "Half day 150.".encode()) == "Half day 150.")
 
 #  A refusal names what IS accepted, never what is not: the list of
 #  things somebody might try is endless, and naming one teaches nothing.
-for _name, _raw, _says in (
-        ("cv.pdf", b"%PDF-1.4", "PDF"),
-        ("cv.rtf", b"{" + chr(92).encode() + b"rtf1}", "plain text"),
+#  A type the tool does not read is refused, naming what it DOES read
+#  (now including PDF). .pdf is no longer here -- it is read.
+for _name, _raw in (
+        ("cv.rtf", b"{" + chr(92).encode() + b"rtf1}"),
+        ("cv.pages", b"PKnope"),
 ):
     try:
         _doc.text_from(_name, _raw)
         check("%s is refused" % _name, False, "it was accepted")
     except _doc.DocumentError as e:
         check("%s is refused, naming what is accepted" % _name,
-              ".docx" in str(e) and ".txt" in str(e), str(e)[:60])
+              ".docx" in str(e) and "PDF" in str(e), str(e)[:60])
 #  A file of the right TYPE that is broken gets a different answer: what
 #  is wrong with that file, not a list of types it already matched.
 try:
