@@ -309,5 +309,25 @@ for _root, _dirs, _files in os.walk(_js):
 check("...and there are exactly two of them", _pickers == 2, str(_pickers))
 
 print()
+print("The top of the admin does not accumulate boxes")
+print("-" * 70)
+#  Two kinds of thing landed there as identical green boxes and stacked:
+#  a transient action confirmation, and up to three standing onboarding
+#  nudges. A success confirmation fades on its own now (the record stays
+#  on the Activity page), and the nudges are one quiet strip.
+_base = open(os.path.join(_tpl, "admin", "base.html"), encoding="utf-8").read()
+check("the onboarding nudges are one strip, not three flash boxes",
+      "cms-owner-todo" in _base
+      and _base.count('flash flash-warning">Your site is still called') == 0
+      and _base.count('flash flash-success">New here') == 0)
+_css = open(os.path.join(_here, "app", "static", "css", "admin.css"),
+            encoding="utf-8").read()
+check("a success confirmation fades and does not persist",
+      "cms-flash-dismiss" in _css and ".flash-list .flash-success {" in _css)
+check("...but a warning or error stays until read",
+      ".flash-warning" not in _css.split("cms-flash-dismiss")[1].split("@keyframes")[0]
+      if "cms-flash-dismiss" in _css else False)
+
+print()
 print("%d checks, %d failed" % (passed + failed, failed))
 sys.exit(1 if failed else 0)

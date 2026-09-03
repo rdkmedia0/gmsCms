@@ -53,20 +53,28 @@
         login screen is not the owner, so none of it is rendered for
         them -- said here as well as in the context processor that
         supplies it, because this is where somebody adds the next one. #}
+    {#  ONE strip for what the OWNER still has to do -- not three boxes.
+
+        These are standing nudges, shown every load until resolved, and
+        they are a different thing from the action confirmation above:
+        that one is transient and fades; these persist because the thing
+        they point at is still true. Rendered as a single quiet bar with
+        the items inline, so three outstanding jobs are one line, not a
+        stack of green. A visitor at the login screen is not the owner,
+        so none of it renders for them. #}
     {% if session.get('user_id') %}
-    {#  The walk-through, offered until it has been finished once. It is
-        the first thing a new owner should see, and the only thing on this
-        bar that is about what to DO next rather than what is wrong. #}
-    {% if setup_offer and not request.endpoint.startswith('admin.setup') %}
-  <p class="flash flash-success">New here? <a href="{{ url_for('admin.setup') }}" title="Six short steps: the site's name, its look, your details, and what you have not set up yet">Let me walk you through setting this up</a> &mdash; six short steps, and you can leave at any point.</p>
-  {% endif %}
-    {% if borrowed_site_name and not request.endpoint.startswith('admin.setup') %}
-  <p class="flash flash-warning">Your site is still called <strong>{{ borrowed_site_name }}</strong> &mdash; the example name from the look it started with. <a href="{{ url_for('admin.dashboard') }}#site-name" title="The site's name is on the Dashboard, under Site Settings">Give it your own</a>.</p>
-  {% endif %}
-    {% if using_generated_password and request.endpoint != 'auth.account' %}
-  <p class="flash flash-warning">You're still using the password this site generated. It is written in plain text in the container log and in <code>data/initial-admin-password.txt</code> &mdash; <a href="{{ url_for('auth.account') }}">set your own</a>, then delete that file.</p>
-  {% endif %}
-  {% endif %}
+    {% set on_setup = request.endpoint.startswith('admin.setup') %}
+    {% set todo = [] %}
+    {% if setup_offer and not on_setup %}{% set _ = todo.append(('<a href="' ~ url_for('admin.setup') ~ '" title="Six short steps: the site&#39;s name, its look, your details, and what you have not set up yet">walk through setting this up</a>', 'setup')) %}{% endif %}
+    {% if borrowed_site_name and not on_setup %}{% set _ = todo.append(('name your site &mdash; it is still <strong>' ~ borrowed_site_name ~ '</strong>, the example from the look it started with (<a href="' ~ url_for('admin.dashboard') ~ '#site-name">Dashboard &rarr; Site name</a>)', 'name')) %}{% endif %}
+    {% if using_generated_password and request.endpoint != 'auth.account' %}{% set _ = todo.append(('<a href="' ~ url_for('auth.account') ~ '">set your own password</a> &mdash; the generated one is in the container log and <code>data/initial-admin-password.txt</code>', 'password')) %}{% endif %}
+    {% if todo %}
+  <p class="cms-owner-todo">
+    <strong>Before you share this site:</strong>
+    {% for item, _key in todo %}{{ item|safe }}{% if not loop.last %} &nbsp;&middot;&nbsp; {% endif %}{% endfor %}
+  </p>
+    {% endif %}
+    {% endif %}
     {% block content %}{% endblock %}
   </main>
   {#  Loaded here rather than per-screen so that an action added to any

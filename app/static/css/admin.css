@@ -1688,3 +1688,34 @@ button[aria-busy="true"] { opacity: .75; cursor: progress; }
   border: 1px solid var(--line, #e4e6ea); background: var(--bg, #f5f6f8); }
 .tpl-cover-swatches { display: flex; overflow: hidden; }
 .tpl-cover-swatches i { flex: 1; }
+
+/*  A success confirmation is TRANSIENT: it says a thing happened, then
+    gets out of the way. It used to sit as a permanent green box at the
+    top of every screen until the next click -- which is the "logging at
+    the top" this was asked to stop. It fades on its own now, a few
+    seconds after the page settles, and the full record is on the
+    Activity page. Warnings and errors do NOT fade: a problem the owner
+    might miss has to wait for them. Reduced motion keeps everything. */
+@keyframes cms-flash-dismiss {
+  to { opacity: 0; max-height: 0; margin: 0; padding-top: 0; padding-bottom: 0;
+       border-width: 0; overflow: hidden; }
+}
+.flash-list .flash-success {
+  animation: cms-flash-dismiss 0.6s ease 6s forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .flash-list .flash-success { animation: none; }
+}
+
+/*  The owner's outstanding jobs, in one quiet strip rather than a stack
+    of coloured boxes. Amber-tinted and low-key -- it is a standing note,
+    not a fresh alert -- with the items separated inline. */
+.cms-owner-todo {
+  margin: 0 0 16px; padding: 10px 16px;
+  border-radius: var(--cms-ui-radius-surface);
+  background: #fbf6ea; color: #7a5a12;
+  border: 1px solid #f0e2c2; font-size: 14px; line-height: 1.6;
+}
+.cms-owner-todo strong { color: #614708; }
+.cms-owner-todo a { color: inherit; text-decoration: underline; }
+.cms-owner-todo code { background: rgba(0,0,0,.05); padding: 0 4px; border-radius: 3px; }
