@@ -2706,6 +2706,16 @@ CV_SECTION_WORDS = frozenset((
 ))
 
 
+def _clean_heading(line):
+    """A heading's own words, without the marks a document decorates it
+    with: Markdown hashes, a leading "1." or "2)" number, a trailing
+    colon. The page is named for what the section IS, not how it was
+    typeset."""
+    line = re.sub(r"^#{1,6}\s+", "", line or "")
+    line = re.sub(r"^\(?\d{1,2}[.)]\s+", "", line)
+    return line.rstrip(":").strip()
+
+
 def _looks_like_heading(line, following):
     """Whether one line reads as a section heading of a document.
 
@@ -2729,7 +2739,10 @@ def _looks_like_heading(line, following):
         return False
     if not any(following):
         return False
-    bare = line.rstrip(":").strip()
+    #  A Markdown heading -- "# About", "## Work" -- is a heading outright.
+    if re.match(r"#{1,6}\s+\S", line):
+        return True
+    bare = _clean_heading(line)
     letters = [c for c in bare if c.isalpha()]
     #  MOSTLY CAPITALS.
     if letters and sum(1 for c in letters if c.isupper()) / len(letters) >= 0.7:
@@ -2770,11 +2783,12 @@ def headings_in(text, most=10):
         if i == 0:
             continue
         blank_above = (i > 0 and not lines[i - 1])
+        _bare = _clean_heading(line)
         if _looks_like_heading(line, lines[i + 1:i + 4]) or (
-                blank_above and 0 < len(line) <= 40
-                and line[-1] not in ".,;:!?-" and len(line.split()) <= 4
+                blank_above and 0 < len(_bare) <= 40
+                and _bare and _bare[-1] not in ".,;:!?-" and len(_bare.split()) <= 4
                 and any(lines[i + 1:i + 4])):
-            found.append(line.rstrip(":").strip())
+            found.append(_clean_heading(line))
     seen, out = set(), ["Home"]
     for name in found:
         key = name.lower()
