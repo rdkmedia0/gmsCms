@@ -472,6 +472,15 @@
 .site-content .cms-section > .block .cms-cta-btn {
   border-radius: var(--site-radius, 8px);
 }
+/*  ...and a PORTRAIT, which is the same kind of exception: a small,
+    deliberately-shaped frame that must keep its round/square/oval
+    corners inside a full-width band. Its shape is chosen in
+    site-base.css, which sets `--portrait-radius`; this puts it back
+    after the flatten above, and equal specificity plus later position
+    is enough. */
+.site-content .cms-section > .block .cms-banner-portrait {
+  border-radius: var(--portrait-radius, 50%);
+}
 /*  And a wide surface anywhere takes the shape as a plain LENGTH --
     `--site-radius-safe` is what CLAUDE.md already prescribes for
     anything that cannot wear a lens or a pill. */

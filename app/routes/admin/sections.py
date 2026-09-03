@@ -23,7 +23,7 @@ from ...services.sections import (
     _columns_section_or_404, _get_columns_cells, _save_columns_cells, _normalize_cell, _cell_slot,
     _update_banner_classes, _update_banner_overlay_style, _card_div, _update_card_classes,
     _update_banner_portrait, _set_banner_portrait_image, banner_portrait_of,
-    banner_portrait_size_of,
+    banner_portrait_size_of, banner_portrait_shape_of,
     _set_card_image, _set_banner_image, _banner_dom_response, _save_card_image_file, _reset_card_style,
     set_card_button, strip_editor_markup,
     IMAGE_WIDTH_PX, BANNER_SIZE_PX, CARD_SIZE_PX, ACCORDION_PANEL_SIZE_PX,
@@ -769,7 +769,8 @@ def section_banner_update(section_id, col_index=None):
     content = _update_banner_classes(where.read(), request.form.get("shape"),
                                      request.form.get("attachment"))
     content = _update_banner_portrait(content, request.form.get("portrait"),
-                                     request.form.get("portrait_size"))
+                                     request.form.get("portrait_size"),
+                                     request.form.get("portrait_shape"))
     content = _update_banner_overlay_style(content, request.form)
     where.write(content, tool_name="Banner", cell_type="banner")
     return where.respond(_banner_dom_response(content))

@@ -2815,51 +2815,78 @@ body.cms-logged-in .cms-basket-link.cms-basket-align-float-top { top: 60px; }
     the portrait hangs below the band, so the room it needs is the room
     the band has to leave. One number for both would put a large
     portrait through the heading under it. */
-.cms-banner.cms-has-portrait { margin-bottom: 92px; overflow: visible; }
-.cms-banner.cms-portrait-size-small { margin-bottom: 64px; }
-.cms-banner.cms-portrait-size-large { margin-bottom: 120px; }
-.cms-portrait-size-small .cms-banner-portrait {
-  width: 120px; height: 120px; bottom: -60px; border-width: 4px;
+/*  A PORTRAIT ON A BANNER -- proportional, anchored, and shaped.
+    -----------------------------------------------------------
+    Three faults fixed here at once, all found on a real page.
+
+    IT HELD ITS POSITION BY A FIXED `bottom: -84px`, which is meaningless
+    on a banner of unknown height -- and composition.css's
+    `.cms-banner > *` (equal specificity, loaded later) forced it back to
+    `position: relative`, so it flowed into the middle of the band. The
+    selector is `.cms-banner > .cms-banner-portrait` now, which outranks
+    that rule, and the frame is anchored to the bottom EDGE
+    (`bottom: 0; translateY(50%)`): its centre sits on the band's lower
+    line whatever its size.
+
+    IT WAS A FIXED PIXEL SIZE, so "40% of the banner" was impossible and
+    Large was still an avatar. The banner is a size container now, and
+    the frame's height is a fraction of the band's width in `cqw` --
+    large is 13cqw, ~40% of a hero's height -- clamped so a tiny banner cannot shrink
+    it to nothing and a huge one cannot let it swallow the band.
+
+    IT WAS ALWAYS A CIRCLE. Round, square and oval are three frames now,
+    a class on the frame; the picture is the same file cropped by it. */
+.cms-banner.cms-has-portrait {
+  container-type: inline-size;
+  overflow: visible;
+  margin-bottom: clamp(72px, 9cqw, 190px);
 }
-.cms-portrait-size-large .cms-banner-portrait {
-  width: 224px; height: 224px; bottom: -112px; border-width: 6px;
-}
-.cms-banner-portrait {
-  position: absolute; bottom: -84px; margin: 0; z-index: 2;
-  width: 168px; height: 168px; border-radius: 50%; overflow: hidden;
+.cms-banner.cms-portrait-size-small  { margin-bottom: clamp(56px, 6cqw, 120px); }
+.cms-banner.cms-portrait-size-large  { margin-bottom: clamp(96px, 12cqw, 210px); }
+
+.cms-banner > .cms-banner-portrait {
+  position: absolute; bottom: 0; left: 50%;
+  transform: translate(-50%, 50%);
+  margin: 0; z-index: 3;
+  aspect-ratio: 1;
+  height: clamp(120px, 16cqw, 280px);
   border: 4px solid var(--site-card-bg, #fff);
-  box-shadow: var(--site-shadow, 0 6px 20px -8px rgba(0, 0, 0, .35));
+  box-shadow: var(--site-shadow, 0 8px 24px -10px rgba(0, 0, 0, .4));
   background: var(--site-tint, #eee);
+  overflow: hidden;
   display: grid; place-items: center;
 }
-.cms-banner-portrait img { width: 100%; height: 100%; object-fit: cover; display: block; }
-/*  Empty until somebody chooses a picture: an <img> with no src is a
-    broken picture on a live page, so the empty state is a plate with a
-    word on it. Only an editor ever sees it -- a visitor who has not been
-    given a portrait is shown no portrait at all. */
+.cms-portrait-size-small  > .cms-banner-portrait { height: clamp(92px, 11cqw, 200px); border-width: 3px; }
+.cms-portrait-size-large  > .cms-banner-portrait { height: clamp(160px, 22cqw, 360px); border-width: 6px; }
+
+.cms-banner > .cms-banner-portrait img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+
+/*  The frame. Round is the profile default, square the CV convention
+    (soft corners, the editor's own surface radius), oval the portrait
+    one -- a little taller than wide so a face fills it. */
+/*  The shape sets a VARIABLE as well as the radius, so composition.css
+    can put the shape back after its full-width band flattens every
+    descendant's corners -- a portrait is a small shaped object in a
+    band, the same exception buttons already get, and this keeps the
+    shape logic in one place. */
+.cms-portrait-shape-round  > .cms-banner-portrait { --portrait-radius: 50%; border-radius: var(--portrait-radius); }
+.cms-portrait-shape-square > .cms-banner-portrait { --portrait-radius: var(--cms-ui-radius-surface, 10px); border-radius: var(--portrait-radius); }
+.cms-portrait-shape-oval   > .cms-banner-portrait { --portrait-radius: 50% / 58%; border-radius: var(--portrait-radius); aspect-ratio: 5 / 6; }
+
+/*  Horizontal placement. The vertical half-below is in the transform
+    above and never changes, so only the horizontal inset moves here --
+    proportional to the band's width, clamped. */
+.cms-has-portrait-left  > .cms-banner-portrait { left: clamp(20px, 4cqw, 64px); transform: translateY(50%); }
+.cms-has-portrait-right > .cms-banner-portrait { left: auto; right: clamp(20px, 4cqw, 64px); transform: translateY(50%); }
+.cms-has-portrait-center > .cms-banner-portrait { left: 50%; transform: translate(-50%, 50%); }
+
+/*  Empty until a picture is chosen: an <img> with no src is a broken
+    picture on a live page, so the empty state is a plate with a word on
+    it. Only an editor sees it. */
 .cms-banner-portrait-hint { display: none; font-size: 12px; text-align: center;
   padding: 0 8px; color: var(--site-ink-soft, #5b6472); }
 .cms-editing .cms-banner-portrait-hint { display: block; }
 .cms-banner-portrait-empty { border-style: dashed; }
 body:not(.cms-editing) .cms-banner-portrait-empty { display: none; }
-
-.cms-has-portrait-left .cms-banner-portrait { left: 40px; }
-.cms-has-portrait-right .cms-banner-portrait { right: 40px; }
-.cms-has-portrait-center .cms-banner-portrait { left: 50%; transform: translateX(-50%); }
-
-@media (max-width: 700px) {
-  /*  One size on a narrow screen, whichever was chosen: a 168px circle
-      is a third of the width of a phone, and the choice was made about
-      how it sits on a wide band. */
-  .cms-banner.cms-has-portrait,
-  .cms-banner.cms-portrait-size-small,
-  .cms-banner.cms-portrait-size-large { margin-bottom: 52px; }
-  .cms-banner-portrait,
-  .cms-portrait-size-small .cms-banner-portrait,
-  .cms-portrait-size-large .cms-banner-portrait {
-    width: 96px; height: 96px; bottom: -48px; border-width: 3px;
-  }
-  .cms-has-portrait-left .cms-banner-portrait,
-  .cms-has-portrait-right .cms-banner-portrait { left: 50%; right: auto;
-    transform: translateX(-50%); }
-}

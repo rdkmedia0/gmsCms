@@ -781,15 +781,22 @@ BANNER_PORTRAITS = ("none", "left", "center", "right")
 
 #  How big. A headshot on a CV wants more presence than the small round
 #  avatar a contact strip wants, and the difference is not something one
-#  number can settle for both.
+#  number can settle for both. Sized as a FRACTION of the banner (see
+#  site-base.css) so it holds its proportion whatever the banner's size.
 BANNER_PORTRAIT_SIZES = ("small", "medium", "large")
 
+#  And what shape. A round photo is the profile default; a square with
+#  soft corners is the CV convention; an oval is the passport/portrait
+#  one. The picture is the same file cropped by the frame, so this is a
+#  class on the frame and nothing about the image itself.
+BANNER_PORTRAIT_SHAPES = ("round", "square", "oval")
 
-def _update_banner_portrait(content, position, size=None):
-    """Where the portrait sits on a banner and how big, or that there is
-    not one.
 
-    Both in one call, because they are one control's worth of answer and
+def _update_banner_portrait(content, position, size=None, shape=None):
+    """Where the portrait sits on a banner, how big, and what shape -- or
+    that there is not one.
+
+    All in one call, because they are one control's worth of answer and
     setting them separately would mean a banner that briefly has a size
     and no position.
     """
@@ -800,7 +807,8 @@ def _update_banner_portrait(content, position, size=None):
     position = position if position in BANNER_PORTRAITS else "none"
     classes = [c for c in (div.get("class") or [])
                if not c.startswith("cms-has-portrait")
-               and not c.startswith("cms-portrait-size-")]
+               and not c.startswith("cms-portrait-size-")
+               and not c.startswith("cms-portrait-shape-")]
     figure = soup.find(class_="cms-banner-portrait")
     if position == "none":
         if figure:
@@ -811,6 +819,8 @@ def _update_banner_portrait(content, position, size=None):
     classes.append("cms-has-portrait-%s" % position)
     size = size if size in BANNER_PORTRAIT_SIZES else "medium"
     classes.append("cms-portrait-size-%s" % size)
+    shape = shape if shape in BANNER_PORTRAIT_SHAPES else "round"
+    classes.append("cms-portrait-shape-%s" % shape)
     div["class"] = classes
     if not figure:
         #  Empty until a picture is chosen: an <img> with no src is a
@@ -856,6 +866,14 @@ def banner_portrait_size_of(content):
         if "cms-portrait-size-%s" % size in (content or ""):
             return size
     return "medium"
+
+
+def banner_portrait_shape_of(content):
+    """What shape a banner's portrait is, for the control to show."""
+    for shape in BANNER_PORTRAIT_SHAPES:
+        if "cms-portrait-shape-%s" % shape in (content or ""):
+            return shape
+    return "round"
 
 
 def banner_portrait_of(content):

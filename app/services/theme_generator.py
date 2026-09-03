@@ -1327,8 +1327,10 @@ def _hero_chunk(headline, subtext, image_url, eyebrow="", buttons=(), ground="",
         #  does not, and the two would collide on a narrow band.
         big = "large" if len(headline or "") < 40 else "medium"
         big = big if big in BANNER_PORTRAIT_SIZES else "medium"
+        #  A generated CV portrait is round -- the profile default --
+        #  and the owner can change it on the Banner panel afterwards.
         face = (" cms-has-portrait cms-has-portrait-%s"
-                " cms-portrait-size-%s") % (where, big)
+                " cms-portrait-size-%s cms-portrait-shape-round") % (where, big)
         slot = ('<figure class="cms-banner-portrait cms-banner-portrait-empty">'
                 '<span class="cms-banner-portrait-hint">Choose a picture</span>'
                 '</figure>')

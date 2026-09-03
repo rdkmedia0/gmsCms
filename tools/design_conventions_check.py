@@ -250,12 +250,33 @@ check("...an unnamed size is the middle one",
 _css = open(os.path.join(_here, "app", "static", "css", "site-base.css"),
             encoding="utf-8").read()
 check("...and the banner leaves room for the size chosen",
-      "cms-portrait-size-large { margin-bottom" in _css
-      and "cms-portrait-size-small { margin-bottom" in _css)
+      "cms-portrait-size-large  { margin-bottom" in _css
+      and "cms-portrait-size-small  { margin-bottom" in _css)
 check("...and a banner with no picture can still carry one",
       _sec.banner_portrait_of(
           _sec._update_banner_portrait('<div class="cms-banner"></div>',
                                        "center")) == "center")
+#  A portrait has a SHAPE too -- round, square, oval -- a frame the same
+#  file is cropped by. Round is the default a CV gets.
+_sh = _sec._update_banner_portrait(_start, "left", "large", "square")
+check("a portrait can be shaped", _sec.banner_portrait_shape_of(_sh) == "square")
+check("...three shapes are offered",
+      set(_sec.BANNER_PORTRAIT_SHAPES) == {"round", "square", "oval"},
+      str(_sec.BANNER_PORTRAIT_SHAPES))
+check("...one shape class at a time",
+      _sec._update_banner_portrait(_sh, "left", "large", "oval").count("cms-portrait-shape") == 1)
+check("...an unnamed shape is round", _sec.banner_portrait_shape_of(
+          _sec._update_banner_portrait(_start, "left")) == "round")
+#  Sized as a fraction of the banner -- cqw, not a fixed pixel -- and
+#  the full-width composition flatten must not square a round portrait.
+_css = open(os.path.join(_here, "app", "static", "css", "site-base.css"),
+            encoding="utf-8").read()
+check("the portrait size is a fraction of the banner (cqw)",
+      "cqw" in _css and "container-type: inline-size" in _css)
+_comp = open(os.path.join(_here, "app", "static", "css", "composition.css"),
+             encoding="utf-8").read()
+check("...and a full-width band keeps the portrait's shape",
+      "border-radius: var(--portrait-radius" in _comp)
 
 print()
 print("Both copies of the picture picker load their tiles lazily")

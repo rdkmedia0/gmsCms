@@ -1354,11 +1354,19 @@
         </label>
         {% if portrait != 'none' %}
         {% set portrait_size = banner_portrait_size_of(cell.content) %}
+        {% set portrait_shape = banner_portrait_shape_of(cell.content) %}
         <label>Size
-          <select name="portrait_size" onchange="this.form.requestSubmit()" title="How big the portrait is. A headshot on a CV wants more presence than a small round avatar beside a contact line.">
+          <select name="portrait_size" onchange="this.form.requestSubmit()" title="How big the portrait is, as a fraction of the banner. A headshot on a CV wants more presence than a small round avatar beside a contact line.">
             <option value="small" {{ 'selected' if portrait_size == 'small' }}>Small</option>
             <option value="medium" {{ 'selected' if portrait_size == 'medium' }}>Medium</option>
             <option value="large" {{ 'selected' if portrait_size == 'large' }}>Large</option>
+          </select>
+        </label>
+        <label>Shape
+          <select name="portrait_shape" onchange="this.form.requestSubmit()" title="The frame the portrait is cropped to. Round for a profile, square for a CV, oval for a portrait.">
+            <option value="round" {{ 'selected' if portrait_shape == 'round' }}>Round</option>
+            <option value="square" {{ 'selected' if portrait_shape == 'square' }}>Square</option>
+            <option value="oval" {{ 'selected' if portrait_shape == 'oval' }}>Oval</option>
           </select>
         </label>
         {% if portrait_upload_url %}
@@ -1374,6 +1382,7 @@
         {% endif %}
         {% else %}
         <input type="hidden" name="portrait_size" value="{{ banner_portrait_size_of(cell.content) }}">
+        <input type="hidden" name="portrait_shape" value="{{ banner_portrait_shape_of(cell.content) }}">
         {% endif %}
       </div>
     </div>
