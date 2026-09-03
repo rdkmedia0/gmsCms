@@ -258,5 +258,24 @@ check("...and a banner with no picture can still carry one",
                                        "center")) == "center")
 
 print()
+print("Both copies of the picture picker load their tiles lazily")
+print("-" * 70)
+#  There are two: admin/image-picker.js and the one inside
+#  inline-editor.js that fills #cms-image-picker-grid. The first was
+#  fixed and the second was the one a person actually opened, so the
+#  screen kept showing blank tiles after the fix. Named here so a third
+#  cannot appear without this noticing, and so the two cannot drift.
+for _name in ("admin/image-picker.js", "inline-editor.js"):
+    _t = open(os.path.join(_js, _name.replace("/", os.sep)), encoding="utf-8").read()
+    check("%s sets loading=lazy on its tiles" % _name, 'loading = "lazy"' in _t)
+    check("...and says when a tile is still loading", 'classList.add("is-loading")' in _t)
+_pickers = 0
+for _root, _dirs, _files in os.walk(_js):
+    for _f in _files:
+        if _f.endswith(".js") and "cms-image-picker-grid" in open(os.path.join(_root, _f), encoding="utf-8").read():
+            _pickers += 1
+check("...and there are exactly two of them", _pickers == 2, str(_pickers))
+
+print()
 print("%d checks, %d failed" % (passed + failed, failed))
 sys.exit(1 if failed else 0)
