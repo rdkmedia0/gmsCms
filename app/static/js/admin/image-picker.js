@@ -98,9 +98,27 @@
         //  The filename is the only thing distinguishing two pictures
         //  that look alike at thumbnail size.
         b.title = img.name || img.filename || "Use this picture";
+        //  LAZY AND ASYNC. The picker lists every picture on the site at
+        //  full size -- measured: 162 of them, 86 MB, 58 over 800 KB --
+        //  as plain <img> tags that all start downloading at once, and a
+        //  tile whose picture has not arrived paints as nothing. That is
+        //  the "some of the images do not load" report: they had not
+        //  loaded YET. Lazy means only the visible rows fetch; async
+        //  means a big one decodes without freezing the rest; and the
+        //  placeholder below says "loading" instead of showing a blank.
+        //  Real thumbnails need Pillow in the image, which is a
+        //  dependency decision for whoever runs this app.
         var thumb = document.createElement("img");
-        thumb.src = img.url;
+        thumb.loading = "lazy";
+        thumb.decoding = "async";
         thumb.alt = "";
+        b.classList.add("is-loading");
+        thumb.addEventListener("load", function () { b.classList.remove("is-loading"); });
+        thumb.addEventListener("error", function () {
+          b.classList.remove("is-loading"); b.classList.add("is-broken");
+          b.title = "This picture could not be loaded";
+        });
+        thumb.src = img.url;
         b.appendChild(thumb);
         b.addEventListener("click", function () { done(img.url); });
         grid.appendChild(b);

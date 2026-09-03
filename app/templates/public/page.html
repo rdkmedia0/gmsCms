@@ -1235,7 +1235,7 @@
         Every group now takes the grid the Text box style already had:
         a heading, then labelled controls in a row. #}
     <div class="cms-banner-text-config">
-      <span class="cms-banner-text-config-label">Banner</span>
+      <span class="cms-banner-text-config-label">Background image</span>
       <div class="cms-banner-text-config-grid">
         <label>Shape
           <select name="shape" onchange="this.form.requestSubmit()" title="Shape / cutout for the banner">
@@ -1269,42 +1269,6 @@
           <button type="button" class="cms-library-pick-btn" data-apply-url="{{ apply_url }}" data-kind="banner" title="Choose an existing image from the Media Library">&#128218; Library</button>
           {% endif %}
         </span>
-        {% endif %}
-      </div>
-    </div>
-    <div class="cms-banner-text-config">
-      <span class="cms-banner-text-config-label">Portrait</span>
-      <div class="cms-banner-text-config-grid">
-        <label>Show
-          <select name="portrait" onchange="this.form.requestSubmit()" title="A round photo of a person, overlapping the bottom of the banner - for a profile, an About page or a CV">
-            <option value="none" {{ 'selected' if portrait == 'none' }}>No portrait</option>
-            <option value="left" {{ 'selected' if portrait == 'left' }}>On the left</option>
-            <option value="center" {{ 'selected' if portrait == 'center' }}>In the centre</option>
-            <option value="right" {{ 'selected' if portrait == 'right' }}>On the right</option>
-          </select>
-        </label>
-        {% if portrait != 'none' %}
-        {% set portrait_size = banner_portrait_size_of(cell.content) %}
-        <label>Size
-          <select name="portrait_size" onchange="this.form.requestSubmit()" title="How big the portrait is. A headshot on a CV wants more presence than a small round avatar beside a contact line.">
-            <option value="small" {{ 'selected' if portrait_size == 'small' }}>Small</option>
-            <option value="medium" {{ 'selected' if portrait_size == 'medium' }}>Medium</option>
-            <option value="large" {{ 'selected' if portrait_size == 'large' }}>Large</option>
-          </select>
-        </label>
-        {% if portrait_upload_url %}
-        <span class="cms-config-actions">
-          <button type="button" class="cms-pick-library-btn" data-library-pick
-                  data-library-for="cms-banner-portrait-file-input" data-library-kinds="image"
-                  title="Choose the portrait from your Media Library">Choose</button>
-          <button type="button" class="cms-change-banner-portrait-btn"
-                  title="Upload the portrait from your device">&#11014; Upload</button>
-          <input type="file" class="cms-banner-portrait-file-input"
-                 data-upload-url="{{ portrait_upload_url }}" accept="image/*" hidden>
-        </span>
-        {% endif %}
-        {% else %}
-        <input type="hidden" name="portrait_size" value="{{ banner_portrait_size_of(cell.content) }}">
         {% endif %}
       </div>
     </div>
@@ -1373,6 +1337,44 @@
             <option value="pill" {{ 'selected' if ov.box_shape == 'pill' }}>Pill</option>
           </select>
         </label>
+      </div>
+    </div>
+    {#  Portrait last: it is the least often used of the three, and
+        it changes a picture rather than the words. #}
+    <div class="cms-banner-text-config">
+      <span class="cms-banner-text-config-label">Portrait</span>
+      <div class="cms-banner-text-config-grid">
+        <label>Show
+          <select name="portrait" onchange="this.form.requestSubmit()" title="A round photo of a person, overlapping the bottom of the banner - for a profile, an About page or a CV">
+            <option value="none" {{ 'selected' if portrait == 'none' }}>No portrait</option>
+            <option value="left" {{ 'selected' if portrait == 'left' }}>On the left</option>
+            <option value="center" {{ 'selected' if portrait == 'center' }}>In the centre</option>
+            <option value="right" {{ 'selected' if portrait == 'right' }}>On the right</option>
+          </select>
+        </label>
+        {% if portrait != 'none' %}
+        {% set portrait_size = banner_portrait_size_of(cell.content) %}
+        <label>Size
+          <select name="portrait_size" onchange="this.form.requestSubmit()" title="How big the portrait is. A headshot on a CV wants more presence than a small round avatar beside a contact line.">
+            <option value="small" {{ 'selected' if portrait_size == 'small' }}>Small</option>
+            <option value="medium" {{ 'selected' if portrait_size == 'medium' }}>Medium</option>
+            <option value="large" {{ 'selected' if portrait_size == 'large' }}>Large</option>
+          </select>
+        </label>
+        {% if portrait_upload_url %}
+        <span class="cms-config-actions">
+          <button type="button" class="cms-pick-library-btn" data-library-pick
+                  data-library-for="cms-banner-portrait-file-input" data-library-kinds="image"
+                  title="Choose the portrait from your Media Library">Choose</button>
+          <button type="button" class="cms-change-banner-portrait-btn"
+                  title="Upload the portrait from your device">&#11014; Upload</button>
+          <input type="file" class="cms-banner-portrait-file-input"
+                 data-upload-url="{{ portrait_upload_url }}" accept="image/*" hidden>
+        </span>
+        {% endif %}
+        {% else %}
+        <input type="hidden" name="portrait_size" value="{{ banner_portrait_size_of(cell.content) }}">
+        {% endif %}
       </div>
     </div>
   {% endmacro %}

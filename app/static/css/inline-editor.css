@@ -1317,7 +1317,11 @@ body.cms-preview-open { overflow: hidden; }
 
 /*  The picture buttons inside a config grid sit as one group, on their
     own row, so a section reads as: settings, then what you can do. */
+/*  On the same row as the selects, not a row of their own: a section
+    with two short controls and five buttons fits in one line, and
+    giving the buttons a line to themselves doubled the panel's height
+    for nothing. They wrap if the panel is narrow. */
 .cms-banner-text-config-grid .cms-config-actions {
-  flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px;
+  display: flex; flex-wrap: wrap; gap: 6px; align-self: flex-end;
 }
 .cms-banner-text-config + .cms-banner-text-config { margin-top: 10px; }

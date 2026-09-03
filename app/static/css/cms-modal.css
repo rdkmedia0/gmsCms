@@ -112,3 +112,23 @@
 }
 .cms-image-picker-grid button:hover { border-color: #4f7cff; }
 .cms-image-picker-grid img { width: 100%; height: 100%; object-fit: cover; }
+
+
+/*  A picker tile before its picture has arrived. Full-size pictures take
+    a moment each, and a blank square reads as a picture that failed;
+    a soft moving band reads as one that is on its way. A tile that
+    really did fail says so. */
+.cms-image-picker-grid button.is-loading {
+  background: linear-gradient(90deg, #eceef2 25%, #f6f7f9 50%, #eceef2 75%);
+  background-size: 200% 100%;
+  animation: cms-picker-shimmer 1.2s linear infinite;
+}
+.cms-image-picker-grid button.is-loading img { opacity: 0; }
+.cms-image-picker-grid button.is-broken { background: #f3e9e9; }
+.cms-image-picker-grid button.is-broken::after {
+  content: "not found"; font-size: 11px; color: #8a4a4a;
+}
+@keyframes cms-picker-shimmer { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .cms-image-picker-grid button.is-loading { animation: none; }
+}

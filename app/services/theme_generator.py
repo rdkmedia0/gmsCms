@@ -31,6 +31,7 @@ picks values rather than writing rules.
 """
 import json
 import os
+import html as _html
 import re
 import shutil
 import tempfile
@@ -773,6 +774,16 @@ def design(db, kit, pages):
         #  So the headings win when the model proposed nothing, and
         #  when it proposed only a front page. Two or more titles is a
         #  real answer and is kept.
+        #  THE DOCUMENT'S OWN HEADINGS ARE ITS PAGES, whenever content
+        #  was given and no pages were typed. The model may propose
+        #  titles, but a document already has a structure and the
+        #  person who wrote it decided it; a proposal that renames the
+        #  sections is a proposal that loses them, because the content
+        #  is placed by heading.
+        if kit.get("source_text"):
+            found = headings_in(kit["source_text"])
+            if len(found) > 1:
+                titles = found
         if len(titles) <= 1:
             titles = headings_in(kit.get("source_text", "")) or titles
         titles = titles or ["Home"]
@@ -1500,8 +1511,164 @@ def _used_the_content(answer, source):
     return bool(marks & _distinctive(said))
 
 
+#  A DOCUMENT, PLACED IN FULL.
+#
+#  The page shapes were written for marketing copy -- a headline, "two
+#  or three sentences", three cards -- so a CV's Experience section with
+#  three dated roles was squeezed into a paragraph, and the check that
+#  the content had been used asked only that SOME fact survive. Neither
+#  is what loading content is for. The owner uploaded it so that it is
+#  used, all of it, and given a structure.
+#
+#  So when content is given, the pages are built from the document:
+#  its headings are the pages, and every block under a heading becomes
+#  the tool that can hold it -- dated lines a timeline, short lines a
+#  list, paragraphs paragraphs. All in the owner's own words. The model
+#  writes only the connective tissue: a headline, an eyebrow, a closing
+#  line. Measured afterwards by content_coverage(), which the run reports
+#  and the checker enforces.
+_DATED = re.compile(r"^\s*((?:19|20)\d{2}(?:\s*(?:-|to|\u2013|\u2014)\s*(?:(?:19|20)\d{2}|now|present|today))?)\b[\s:\-\u2013\u2014.]*(.*)$", re.I)
+
+
+def document_blocks(text):
+    """The blocks of one document section, each with the tool it wants.
+
+    Split on blank lines first, because that is how people write
+    documents. Then each block is read for what it IS: lines that begin
+    with a year (a range, "2019 to now") are entries in time and become
+    a timeline; three or more short lines with no full stops are a list;
+    anything else is paragraphs. Nothing is dropped -- a block this
+    cannot classify is still paragraphs, which hold anything.
+    """
+    out = []
+    for raw_block in re.split(r"\n\s*\n", (text or "").strip()):
+        lines = [l.strip() for l in raw_block.split(chr(10)) if l.strip()]
+        if not lines:
+            continue
+        dated = [_DATED.match(l) for l in lines]
+        if len(lines) >= 2 and all(dated):
+            out.append(("timeline", [(m.group(1).strip(), m.group(2).strip())
+                                     for m in dated]))
+            continue
+        if len(lines) >= 3 and all(len(l) <= 90 and not l.endswith(".") for l in lines):
+            out.append(("list", lines))
+            continue
+        #  A dated line inside prose: the whole block is still a timeline
+        #  if MOST lines are dated, with the rest carried as the text of
+        #  the entry before them.
+        if len(lines) >= 2 and sum(1 for m in dated if m) * 2 >= len(lines):
+            rows, cur = [], None
+            for l, m in zip(lines, dated):
+                if m:
+                    cur = [m.group(1).strip(), m.group(2).strip(), []]
+                    rows.append(cur)
+                elif cur is not None:
+                    cur[2].append(l)
+                else:
+                    rows.append(["", l, []])
+            out.append(("timeline", [(w, t + (" " + " ".join(x) if x else ""))
+                                     for w, t, x in rows]))
+            continue
+        out.append(("paragraphs", [" ".join(lines)] if len(lines) == 1
+                    else [l for l in lines]))
+    return out
+
+
+def _document_chunks(kit, page_title, is_front, hero_image, val):
+    """One page, built from the document's own words -- every one of them.
+
+    Returns the chunks, or None when the document has nothing for this
+    page (then the page is written the ordinary way).
+    """
+    from .sections import build_block
+    text = kit.get("source_text") or ""
+    head = page_title
+    own = section_under(text, page_title)
+    if is_front:
+        title, opening = opening_of(text)
+        head = title or page_title
+        own = opening
+    if not own.strip():
+        return None
+    chunks = []
+    blocks = document_blocks(own)
+
+    #  The front page opens on the document's own title, with the model's
+    #  connective tissue where it gave any -- an eyebrow and a subtext
+    #  are the two things a CV does not write for itself.
+    if is_front:
+        first_para = next((b[1][0] for b in blocks if b[0] == "paragraphs"), "")
+        chunks.append(_piece(_hero_chunk(
+            head, val("hero_subtext", first_para[:160] or ""), hero_image,
+            eyebrow=val("eyebrow", ""),
+            buttons=((val("cta_button", "Get in touch"), "/contact"),),
+            ground=_ink_of(kit),
+            portrait=("left" if wants_portrait(kit) else "")),
+            {"layout_width": "full", "corner_style": "sharp", "bg_position": "center"}))
+        blocks = [b for b in blocks if not (b[0] == "paragraphs" and b[1] and b[1][0] == first_para)]
+        if first_para:
+            chunks.append(_piece(_text_chunk(head, first_para), {"layout_width": "auto"}))
+    else:
+        chunks.append(_piece("<h2>%s</h2>" % escape(head), {"layout_width": "auto"}))
+
+    for kind, rows in blocks:
+        if kind == "timeline":
+            steps = [{"when": w or "", "title": t.split(". ")[0][:80] if t else w,
+                      "text": t} for w, t in rows][:12]
+            laid = _numbered(steps, ("when", "title", "text"), "step")
+            laid["style"] = "vertical"
+            chunks.append(_block_piece("timeline", laid, {"layout_width": "auto"}))
+        elif kind == "list":
+            items = "".join("<li>%s</li>" % escape(l) for l in rows)
+            chunks.append(_piece("<ul>%s</ul>" % items, {"layout_width": "auto"}))
+        else:
+            paras = "".join("<p>%s</p>" % escape(x) for x in rows if x)
+            chunks.append(_piece(paras, {"layout_width": "auto"}))
+    return chunks
+
+
+def content_coverage(source, pages):
+    """How much of the document reached the site: 0..1 over its lines.
+
+    A line counts when its words appear, in order, somewhere on some
+    page -- markup stripped, whitespace squeezed. Lines under four words
+    are not counted, because "Contact" and "2013" prove nothing either
+    way. This is the number the run reports and the checker enforces:
+    the purpose of loading content is that it is used.
+    """
+    said = " ".join(
+        " ".join(re.sub(r"<[^>]+>", " ", sec[2]).split()).lower()
+        for pg in (pages or []) for sec in pg.get("sections", []))
+    said = _html.unescape(said)
+    lines = [" ".join(l.split()).lower() for l in (source or "").split(chr(10))]
+    lines = [l for l in lines if len(l.split()) >= 4]
+    if not lines:
+        return 1.0
+
+    #  A line has REACHED the site when its words have, not when its
+    #  exact run of characters has. A dated line becomes a timeline
+    #  entry -- "2021 to now" in one field, "Independent practice" in
+    #  another -- so the line is on the page and not contiguous, and an
+    #  exact-substring test called three roles missing that the same
+    #  check had just found by name. Words of four letters or more, and
+    #  four in five of them present, is what "on the page" means here.
+    def reached(line):
+        if line in said:
+            return True
+        words = [w.strip(".,;:()") for w in line.split()]
+        words = [w for w in words if len(w) >= 4]
+        if not words:
+            return False
+        found = sum(1 for w in words if w in said)
+        return found >= max(1, int(0.8 * len(words) + 0.999))
+
+    hit = sum(1 for l in lines if reached(l))
+    return hit / float(len(lines))
+
+
+
 def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
-                  want_image=True, page_title="", portrait=""):
+                  want_image=True, page_title="", portrait="", is_front=False):
     """The HTML chunks for one layout. `fill_scope` "none" asks nobody.
 
     Takes the brand KIT rather than a bare brief: the tone, the language
@@ -1644,6 +1811,17 @@ def layout_chunks(db, layout_key, kit, fill_scope, use_ai_images,
         db, _picture_prompt(brief or _signal_text(kit), kit["image_direction"],
                             people=not wants_portrait(kit)),
         use_ai_images and want_image and kit["image_budget"] > 0)
+
+    #  THE DOCUMENT FIRST. When the owner gave content, the page is
+    #  built from it in full -- see _document_chunks -- and the model
+    #  supplies only what a document does not write for itself.
+    if kit.get("source_text"):
+        built = _document_chunks(kit, page_title, is_front, hero, val)
+        if built:
+            for note in list(kit.get("unwritten") or []):
+                if note.get("page") == page_title:
+                    kit["unwritten"].remove(note)
+            return built
 
     #  Every piece carries its own STYLING, and a piece may be a real
     #  block tool rather than markup to be classified.
@@ -2622,7 +2800,8 @@ def generate(db, static_folder, name, kit, fill_scope, use_ai_images,
                 page_title=title,
                 #  THE FRONT PAGE ONLY. A portrait on every page of a
                 #  CV is a contact sheet.
-                portrait=("left" if i == 0 and wants_portrait(kit) else ""))
+                portrait=("left" if i == 0 and wants_portrait(kit) else ""),
+                is_front=(i == 0))
             pages.append({"title": title, "slug_suffix": "",
                           "sections": sections_for(chunks)})
 
@@ -2671,6 +2850,12 @@ def generate(db, static_folder, name, kit, fill_scope, use_ai_images,
         raise ThemeGenError(
             (why or "The AI returned nothing at all.")
             + (" Nothing came back for: %s." % ", ".join(named) if named else ""))
+
+    #  HOW MUCH OF THE DOCUMENT REACHED THE SITE. Reported, so a run
+    #  that used a few lines of a CV says so rather than looking
+    #  finished; enforced by the checker at 95% with the provider mute.
+    if kit.get("source_text") and fill_scope != "none":
+        kit["coverage"] = content_coverage(kit["source_text"], pages)
 
     pkg_dir, slug = build_package(
         db, name, pages,

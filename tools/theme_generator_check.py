@@ -1969,6 +1969,64 @@ check("the layout key is never the subject of a picture",
       "brief or layout_key" not in _src_now and "brief or _signal_text(kit)" in _src_now)
 
 print()
+print("Loaded content is used in full and given a structure")
+print("-" * 70)
+#  The purpose of loading content is that it is used -- all of it -- and
+#  structured, not that a few lines of it are quoted. The page shapes
+#  were written for marketing copy and squeezed a CV's three dated roles
+#  into a paragraph; the check that content had been used asked only
+#  that SOME fact survive.
+_doc = chr(10).join([
+    "Alina Ferreira", "Landscape architect, Lisbon", "",
+    "I design public gardens, courtyards and roof terraces. I work on my own and bring in a planting contractor for the build.",
+    "", "Experience",
+    "2021 to now - Independent practice, Lisbon. Twelve completed gardens.",
+    "2017 to 2021 - Senior landscape architect, Verde Atelier.",
+    "2013 to 2017 - Landscape architect, Campo Studio.",
+    "", "Qualifications",
+    "MA Landscape Architecture, University of Lisbon, 2013",
+    "Registered with the Portuguese Order of Architects",
+    "Chartered member of the Landscape Institute",
+    "", "How I work",
+    "First a site visit and a conversation about how you use the space.",
+    "Then a sketch scheme with planting and materials, usually two weeks.",
+    "", "Contact", "alina@example.pt",
+])
+_kinds = [k for k, _ in tg.document_blocks(tg.section_under(_doc, "Experience"))]
+check("dated lines become a timeline", _kinds == ["timeline"], str(_kinds))
+_kinds = [k for k, _ in tg.document_blocks(tg.section_under(_doc, "Qualifications"))]
+check("short lines become a list", _kinds == ["list"], str(_kinds))
+_kinds = [k for k, _ in tg.document_blocks(tg.section_under(_doc, "How I work"))]
+check("sentences stay paragraphs", _kinds == ["paragraphs"], str(_kinds))
+
+_before = assistant._call_provider
+assistant._call_provider = lambda *a, **k: {"content": "", "tool_calls": []}
+try:
+    with app.app_context():
+        _db = get_db()
+        _kit = tg.brand_kit(source_text=_doc, voice="i", brief="A personal site for my work")
+        _slug = tg.generate(_db, static_folder, name="Whole Document", kit=_kit,
+                            fill_scope="all", use_ai_images=False, mode="scratch")
+        _db.commit()
+    _made = sorted(glob.glob(os.path.join(static_folder, "themes", _slug, "pages", "*.json")))
+    _pages = [json.load(io.open(f, encoding="utf-8")) for f in _made]
+    check("the document's headings are its pages",
+          [pg["title"] for pg in _pages] == ["Home", "Experience", "Qualifications", "How I work", "Contact"],
+          str([pg["title"] for pg in _pages]))
+    _cov = tg.content_coverage(_doc, _pages)
+    check("...and at least 95%% of its lines reach the site (%.0f%%)" % (_cov * 100),
+          _cov >= 0.95, "%.2f" % _cov)
+    check("...and the run reports that number", _kit.get("coverage") is not None)
+    _exp = next(pg for pg in _pages if pg["title"] == "Experience")
+    check("the Experience page carries a timeline block",
+          any("cms-block-timeline" in sec[2] for sec in _exp["sections"]))
+    check("...with every role on it",
+          all(any(w in sec[2] for sec in _exp["sections"])
+              for w in ("Verde Atelier", "Campo Studio", "Twelve completed gardens")))
+finally:
+    assistant._call_provider = _before
+
+print()
 print("  %d ok, %d failed" % (passed, len(failures)))
 for name in failures:
     print("    - " + name)

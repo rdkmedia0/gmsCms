@@ -120,7 +120,24 @@
           b.className = "cms-picker-file";
           b.textContent = name;
         } else {
+          //  LAZY AND ASYNC, and a loading state. This grid lists every
+          //  picture on the site at full size -- measured: 164 of them,
+          //  86 MB, 58 over 800 KB -- and a tile whose picture has not
+          //  arrived paints as nothing, which reads as "did not load".
+          //  It had not loaded YET. Only the visible rows fetch now, a
+          //  big one decodes without freezing the rest, and until it
+          //  arrives the tile says so. Same as admin/image-picker.js,
+          //  which is the other copy of this dialog; real thumbnails
+          //  would need Pillow in the image, a dependency decision.
           const thumb = document.createElement("img");
+          thumb.loading = "lazy";
+          thumb.decoding = "async";
+          b.classList.add("is-loading");
+          thumb.addEventListener("load", () => b.classList.remove("is-loading"));
+          thumb.addEventListener("error", () => {
+            b.classList.remove("is-loading"); b.classList.add("is-broken");
+            b.title = "This picture could not be loaded";
+          });
           thumb.src = img.url;
           thumb.alt = "";
           b.appendChild(thumb);
