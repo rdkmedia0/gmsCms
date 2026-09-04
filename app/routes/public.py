@@ -12,8 +12,17 @@ from .. import icons
 from ..services.sections import (
     MEDIA_IMAGE_EXTS,
     SECTION_TYPES,
-    read_contact_tool, read_contact_layout, read_contact_icon_size, is_contact_tool_block,
-    CONTACT_LAYOUTS, CONTACT_ICON_MIN, CONTACT_ICON_MAX, CONTACT_ICON_DEFAULT, MAX_CONTACT_ROWS,
+    columns_widths_of,
+    section_view_classes, section_hidden_on, section_align_on, section_height_override,
+    PER_VIEW_VIEWS, NON_DESKTOP_VIEWS, column_mobile_positions,
+    tool_allows_heading, heading_level_of, heading_align_of,
+)
+from ..services import translation as _translation
+from ..services.sections import (
+    read_contact_tool, read_contact_layout, read_contact_icon_size, read_contact_align,
+    is_contact_tool_block, read_lang_switcher_opts,
+    LS_STYLES, LS_COLORS, LS_LABELS, LS_ALIGNS,
+    CONTACT_LAYOUTS, CONTACT_ALIGNS, CONTACT_ICON_MIN, CONTACT_ICON_MAX, CONTACT_ICON_DEFAULT, MAX_CONTACT_ROWS,
     accordion_settings, buy_button_settings, faq_settings, shop_settings, table_settings,
     search_settings, SEARCH_STYLES, FAQ_VIEWS,
     faq_sources, resolve_faq_mirror, faq_mirror_items, MAX_FAQ_ITEMS, FAQ_RULES,
@@ -1150,7 +1159,7 @@ def _link_choices(nav_pages):
     return [{"url": _page_href(p), "title": p["title"]} for p in nav_pages]
 
 
-def _build_nav_html(nav_pages, editing=False):
+def _build_nav_html(nav_pages, editing=False, localize=None):
     """
     Builds the site nav as an HTML string so the exact same markup can be
     dropped into both our own default header AND an imported theme's header
@@ -1161,12 +1170,33 @@ def _build_nav_html(nav_pages, editing=False):
     parts = []
     for p in nav_pages:
         href = url_for("public.home") if p["is_home"] else url_for("public.page", slug=p["slug"])
-        label = html_escape(p["title"])
+        label = html_escape(localize(p["title"]) if localize else p["title"])
         parts.append(f'<a href="{href}">{label}</a>')
     return "\n".join(parts)
 
 
-def _build_breadcrumb_html(page, current_title=None, current_url=None):
+def _lang_switcher(db, active_lang, src_lang, next_path):
+    """The Language switcher's options: the source language plus every enabled
+    target, each with its native name, whether it is current, and the URL that
+    switches to it. Empty when the site offers no languages, so the tool can
+    render a hint instead of a lone link."""
+    enabled = _translation.enabled_languages(db)
+    if not enabled:
+        return []
+    out = []
+    for code in [src_lang] + enabled:
+        out.append({
+            "code": code,
+            "native": _translation.language_name(code, native=True),
+            "english": _translation.language_name(code, native=False),
+            "flag_svg": _translation.language_flag_svg(code),
+            "current": code == active_lang,
+            "url": url_for("public.set_language", code=code, next=next_path),
+        })
+    return out
+
+
+def _build_breadcrumb_html(page, current_title=None, current_url=None, localize=None):
     """
     Home > ... > Current. Shown on every page, including Home itself (as a
     single, clickable "Home" self-link) — for consistency, since a
@@ -1182,16 +1212,18 @@ def _build_breadcrumb_html(page, current_title=None, current_url=None):
     """
     if not page:
         return ""
+    _loc = localize or (lambda t: t)
     home_url = url_for("public.home")
+    home_label = html_escape(_loc("Home"))
     if page["is_home"]:
-        return f'<a href="{home_url}" class="cms-breadcrumb-current">Home</a>'
+        return f'<a href="{home_url}" class="cms-breadcrumb-current">{home_label}</a>'
     page_url = url_for("public.page", slug=page["slug"])
-    parts = [f'<a href="{home_url}">Home</a>']
+    parts = [f'<a href="{home_url}">{home_label}</a>']
     parts.append('<span class="cms-breadcrumb-sep">/</span>')
-    parts.append(f'<a href="{page_url}" class="cms-breadcrumb-current">{html_escape(page["title"])}</a>')
+    parts.append(f'<a href="{page_url}" class="cms-breadcrumb-current">{html_escape(_loc(page["title"]))}</a>')
     if current_title:
         parts.append('<span class="cms-breadcrumb-sep">/</span>')
-        parts.append(f'<a href="{current_url}" class="cms-breadcrumb-current">{html_escape(current_title)}</a>')
+        parts.append(f'<a href="{current_url}" class="cms-breadcrumb-current">{html_escape(_loc(current_title))}</a>')
     return "".join(parts)
 
 
@@ -1236,18 +1268,26 @@ def _apply_placeholders(html_text, nav_html, breadcrumb_html="", site_title=""):
 PLACEHOLDER_RE = re.compile(r"%%CMS_[A-Z_]+%%")
 
 
-def _zone_sections(db, template, zone, nav_html, breadcrumb_html="", section_type_labels=None):
+def _zone_sections(db, template, zone, nav_html, breadcrumb_html="", section_type_labels=None,
+                   active_lang=None):
     """Header/footer site chrome, unified into the exact same `sections`
     table and tool architecture body pages use (Divide, Rows, per-cell
     tools, all of it) — scoped by template_id+zone instead of page_id. Used
     to be a separate JSON-blob-on-the-template system (see git history);
-    that's what the now-removed _chunk_list/chunk_* routes worked with."""
+    that's what the now-removed _chunk_list/chunk_* routes worked with.
+
+    `active_lang` swaps each section's prose for its stored translation, the
+    same as a page's own sections — without it the footer stayed in the
+    source language, since it lives here and not under any page."""
     if not template:
         return []
     rows = db.execute(
         "SELECT * FROM sections WHERE template_id = ? AND zone = ? ORDER BY position",
         (template["id"], zone),
     ).fetchall()
+    if active_lang:
+        rows = [{**dict(r), "content": _translation.localized_content(
+            db, r["type"], r["content"], active_lang)} for r in rows]
     return _prepare_sections(rows, section_type_labels, nav_html, breadcrumb_html)
 
 
@@ -1260,6 +1300,30 @@ def home():
     if not page:
         abort(404)
     return _render_page(db, page)
+
+
+@bp.route("/lang/<code>")
+def set_language(code):
+    """Remember a visitor's language choice (the Language switcher) in a
+    cookie, then return to the page they were on. A plain preference, not an
+    account: no login, and the only thing stored is a two-letter code. An
+    unknown or non-enabled code clears the choice, falling the visitor back to
+    their browser locale."""
+    db = get_db()
+    code = (code or "").lower()
+    allowed = set(_translation.enabled_languages(db)) | {_translation.source_language(db)}
+    nxt = request.args.get("next") or url_for("public.home")
+    if not (nxt.startswith("/") and not nxt.startswith("//")):
+        nxt = url_for("public.home")
+    resp = redirect(nxt)
+    if code in allowed:
+        #  A year; a language preference is not sensitive and need not expire
+        #  quickly. SameSite=Lax so a normal navigation carries it.
+        resp.set_cookie(_translation.cookie_name(), code, max_age=31536000,
+                        samesite="Lax", httponly=False)
+    else:
+        resp.delete_cookie(_translation.cookie_name())
+    return resp
 
 
 @bp.route("/page/<slug>")
@@ -1493,6 +1557,10 @@ HTML_SECTION_LABEL_MARKERS = _BLOCK_LABEL_MARKERS + (
     ("cms-menu-buttons", "Menu (Buttons)"),
     ("cms-menu", "Menu"),
     ("cms-breadcrumb", "Breadcrumb"),
+    #  The Language switcher is a marker tool like the rest -- without this
+    #  it fell through to the generic "HTML / Embed" base label, so the tool
+    #  looked and read like a raw Embed even though it is a first-class tool.
+    ("cms-lang-switcher", "Language"),
     ("cms-contact-tool", "Contact Info"),
     ("cms-content-divider", "Divider"),
 )
@@ -1558,6 +1626,28 @@ def _is_editing():
     return bool(session.get("user_id")) and session.get("view_mode", "editing") == "editing"
 
 
+def _heading_fields(d):
+    """The optional-heading state for a prepared section or cell: whether the
+    tool can take one at all (not Text/Card/Banner, and not a nav/structural
+    marker), plus the resolved level/align and the on flag."""
+    d["allow_heading"] = (
+        tool_allows_heading(d.get("type", ""))
+        and d.get("type") not in ("empty", "blank", "rows")
+        and not d.get("is_divider") and not d.get("is_menu")
+        and not d.get("is_breadcrumb") and not d.get("is_wordmark")
+        #  The section path does not set is_wordmark (only the cell path
+        #  does), so read it from the content too -- otherwise Site name
+        #  offered a heading as a section but not as a cell, the one tool
+        #  the parity check flagged. A wordmark is identity, not a place
+        #  for a heading, in either container.
+        and "cms-wordmark" not in (d.get("content") or "")
+        and not d.get("is_lang_switcher") and not d.get("is_basket"))
+    d["title_level_r"] = heading_level_of(d.get("title_level"))
+    d["title_align_r"] = heading_align_of(d.get("title_align"))
+    d["title_on_flag"] = bool(d.get("title_on"))
+    return d
+
+
 def _normalize_column_cell(cell, nav_html="", breadcrumb_html=""):
     """Turns a raw cell value (a dict once a tool's been placed, a bare
     string for legacy content, or "" for never-touched) into the same
@@ -1616,6 +1706,9 @@ def _normalize_column_cell(cell, nav_html="", breadcrumb_html=""):
          d["menu_submenu_style"], d["menu_direction"]) = _parse_menu_meta(d["content"])
     if d["type"] == "html" and "cms-breadcrumb" in d["content"]:
         d["is_breadcrumb"] = True
+    if d["type"] == "html" and "cms-lang-switcher" in d["content"]:
+        d["is_lang_switcher"] = True
+        d["ls_opts"] = read_lang_switcher_opts(d["content"])
     if d["type"] == "html" and "cms-content-divider" in d["content"]:
         d["is_divider"] = True
         m = re.search(r'border-color:\s*(#[0-9a-fA-F]{6})', d["content"])
@@ -1668,6 +1761,7 @@ def _normalize_column_cell(cell, nav_html="", breadcrumb_html=""):
         d["contact"] = read_contact_tool(d["content"])
         d["contact_layout"] = read_contact_layout(d["content"])
         d["contact_icon_size"] = read_contact_icon_size(d["content"])
+        d["contact_align"] = read_contact_align(d["content"])
     if d["type"] == "html" and "cms-blog" in (d["content"] or ""):
         d["is_blog"] = True
         d["blog"] = blog_service.blog_settings(d["content"])
@@ -1705,6 +1799,7 @@ def _normalize_column_cell(cell, nav_html="", breadcrumb_html=""):
         d["table"] = table_settings(d["content"])
     if d["type"] == "rows":
         d["rows_list"] = [_normalize_column_cell(r, nav_html, breadcrumb_html) for r in d.get("rows", [])] or [_normalize_column_cell("", nav_html, breadcrumb_html)]
+    _heading_fields(d)
     return d
 
 
@@ -1742,6 +1837,9 @@ def _prepare_sections(sections, section_type_labels=None, nav_html="", breadcrum
              d["menu_submenu_style"], d["menu_direction"]) = _parse_menu_meta(d["content"])
         if d["type"] == "html" and "cms-breadcrumb" in (d["content"] or ""):
             d["is_breadcrumb"] = True
+        if d["type"] == "html" and "cms-lang-switcher" in (d["content"] or ""):
+            d["is_lang_switcher"] = True
+            d["ls_opts"] = read_lang_switcher_opts(d["content"] or "")
         if d["type"] == "html" and "cms-content-divider" in (d["content"] or ""):
             d["is_divider"] = True
             m = re.search(r'border-color:\s*(#[0-9a-fA-F]{6})', d["content"])
@@ -1783,6 +1881,7 @@ def _prepare_sections(sections, section_type_labels=None, nav_html="", breadcrum
             d["contact"] = read_contact_tool(d["content"])
             d["contact_layout"] = read_contact_layout(d["content"])
             d["contact_icon_size"] = read_contact_icon_size(d["content"])
+            d["contact_align"] = read_contact_align(d["content"])
         if d["type"] == "html" and "cms-blog" in (d["content"] or ""):
             d["is_blog"] = True
             d["blog"] = blog_service.blog_settings(d["content"])
@@ -1812,14 +1911,43 @@ def _prepare_sections(sections, section_type_labels=None, nav_html="", breadcrum
             d["table"] = table_settings(d["content"])
         if d["type"] == "columns":
             try:
-                cols = json.loads(d["content"]).get("columns", [])
+                _cdata = json.loads(d["content"])
+                cols = _cdata.get("columns", [])
+                _cw = _cdata.get("width", "equal")
             except (ValueError, AttributeError):
-                cols = []
+                cols, _cw = [], "equal"
             cols = cols or [""]
             d["columns_list"] = [_normalize_column_cell(c, nav_html, breadcrumb_html) for c in cols]
+            #  How the columns share their width -- read back so the render
+            #  and the control both show what is stored. A dragged RATIO
+            #  (widths) is emitted as an inline grid-template-columns, which
+            #  is genuinely per-section runtime data; a preset falls back to
+            #  a class (see site-base.css).
+            d["columns_width"] = _cw if _cw in ("equal", "wide-left", "wide-right") else "equal"
+            _cws = columns_widths_of(d)
+            d["columns_widths"] = _cws
+            d["columns_grid"] = (" ".join("%gfr" % x for x in _cws)
+                                 if _cws and len(_cws) == len(cols) else "")
+            #  Each column's position in the MOBILE stack (its phone-only CSS
+            #  `order`); natural 0..n-1 unless reordered in Mobile view.
+            d["columns_sm_order"] = column_mobile_positions(s, len(d["columns_list"]))
         d["display_label"] = _section_display_label(
             d["type"], d["content"], section_type_labels.get(d["type"], d["type"])
         )
+        #  Per-view STRUCTURE (show/hide, alignment) for the wrapper class,
+        #  plus the stored values so each control shows the current view's
+        #  state. Read from the raw row `s`, which carries view_overrides.
+        d["view_classes"] = section_view_classes(s)
+        #  Each control shows the CURRENT view's state, so expose all four.
+        d["hidden_by_view"] = {v: section_hidden_on(s, v) for v in PER_VIEW_VIEWS}
+        d["align_by_view"] = {v: section_align_on(s, v) for v in PER_VIEW_VIEWS}
+        #  Per-view dragged heights (non-desktop only; desktop is the base
+        #  content_height_px). The template emits a --cms-content-height-<v>-px
+        #  var for each and the reset button reads the current view's.
+        d["content_height_overrides"] = {
+            v: section_height_override(s, v) for v in NON_DESKTOP_VIEWS
+            if section_height_override(s, v)}
+        _heading_fields(d)
         prepared.append(d)
     return prepared
 
@@ -2152,6 +2280,33 @@ def _render_page(db, page, post=None, post_content=""):
     logged_in = bool(session.get("user_id"))
     view_mode = session.get("view_mode", "editing")
     editing = logged_in and view_mode == "editing"
+    #  Which SCREEN SIZE the edits apply to. Desktop is the base; "mobile"
+    #  edits a narrower view whose changes ride as `cms-sm-*` classes and
+    #  show only at phone widths. Carried in the URL so switching views is
+    #  a reload the server renders with the right values -- no client-side
+    #  guessing about what each control should show for the active view.
+    #  The SCREEN SIZE being looked at, persisted in the session so it
+    #  carries across the editing<->viewing switch and from page to page.
+    #  desktop is the base; laptop/tablet/mobile narrow the canvas (while
+    #  editing, in place) or open an honest device frame (while viewing).
+    #  Only two buckets hold per-view EDITS -- the desktop base and the
+    #  mobile override (cms-sm-*) -- so laptop/tablet reflow the desktop
+    #  layout rather than owning their own stored edits.
+    preview_view = session.get("preview_view", "desktop")
+    if preview_view not in ("desktop", "laptop", "tablet", "mobile"):
+        preview_view = "desktop"
+    #  The bucket the editor writes to: the actual view being edited (all
+    #  four hold their own per-view edits now). Desktop is the base.
+    edit_view = preview_view if preview_view in ("desktop", "laptop", "tablet", "mobile") else "desktop"
+    #  The viewport width to FORCE, and whether to. While editing it is the
+    #  canvas view (a desktop browser ignores the meta, a phone honours it,
+    #  so editing a desktop layout on a phone still lays out at 1280). The
+    #  honest preview iframe sets it too -- see the preview branch below --
+    #  because inside an iframe on a phone `width=device-width` reports the
+    #  PHONE's width, not the iframe's, so every view would collapse to
+    #  mobile; a fixed width is what makes the iframe show the size it says.
+    viewport_view = preview_view
+    force_viewport = editing
     #  ?preview=1 renders this ONE request as a visitor sees it, without
     #  touching the session -- which is what lets the responsive preview
     #  show the real page inside a frame while the editor stays open
@@ -2161,25 +2316,70 @@ def _render_page(db, page, post=None, post_content=""):
     if preview:
         editing = False
         view_mode = "viewing"
+        #  The body-class view stays clean (no cms-view-* narrowing, no
+        #  editing outline) -- inside the frame the honesty comes from the
+        #  page laying out at a real width. That width is FORCED via the
+        #  viewport meta (the ?view the frame passes), so a phone honours it
+        #  instead of collapsing every size to its own width.
+        preview_view = "desktop"
+        edit_view = "desktop"
+        _vv = (request.args.get("view") or "").lower()
+        if _vv in ("laptop", "tablet", "mobile"):
+            viewport_view = _vv
+            force_viewport = True
+        else:
+            viewport_view = "desktop"
+            force_viewport = False
         #  The admin bar is drawn for anybody logged in, not only while
         #  editing -- so a preview has to say "pretend I am not" or it
         #  shows a strip no visitor will ever see, at the top of a frame
         #  whose whole job is to be honest about what they see.
         logged_in = False
-    nav_html = _build_nav_html(nav_pages, editing)
+    #  Which language a VISITOR sees. The owner editing always sees the
+    #  source (you edit the original, not a translation of it); a visitor
+    #  gets their locale's language if the site has been translated into it.
+    #  Only STORED translations are used at render -- never an AI call on a
+    #  page view. The site's own NAME is identity and is never translated.
+    src_lang = _translation.source_language(db)
+    active_lang = src_lang if editing else _translation.active_language(db, request)
+    translating = active_lang != src_lang
+
+    def _tr(text):
+        if not translating:
+            return text
+        return _translation.translate_string(db, text, active_lang, use_ai=False) or text
+
+    nav_html = _build_nav_html(nav_pages, editing, localize=_tr)
     #  A post is one level below the page its blog sits on, and the trail
     #  should say so rather than stopping at the page.
-    breadcrumb_html = _build_breadcrumb_html(page) if not post else _build_breadcrumb_html(
+    breadcrumb_html = _build_breadcrumb_html(page, localize=_tr) if not post else _build_breadcrumb_html(
         page, current_title=post["title"],
         current_url=url_for("public.blog_post",
                             slug=blog_service.get_blog(db, post["blog_id"])["slug"],
                             post_slug=post["slug"]),
+        localize=_tr,
     )
     #  A post replaces the page's own sections with the post itself: the
     #  page around it — header, sidebars, footer — is what it is borrowing.
+    _section_rows = db.execute(
+        "SELECT * FROM sections WHERE page_id = ? ORDER BY position", (page["id"],)).fetchall()
+    if translating and not post:
+        #  Swap each translatable section's source text for its stored
+        #  translation BEFORE preparing it, so everything downstream (a
+        #  Card's overlay, a block's fields) reads the translated copy with
+        #  no per-type translation code. A miss falls back to the original.
+        localized = []
+        for _r in _section_rows:
+            _d = dict(_r)
+            #  Handles a Columns section too, translating each cell — most of
+            #  a site's prose lives in columns, so a top-level-only swap left
+            #  it in the source language ("only one part was translated").
+            _d["content"] = _translation.localized_content(
+                db, _d["type"], _d["content"], active_lang)
+            localized.append(_d)
+        _section_rows = localized
     sections = [] if post else _prepare_sections(
-        db.execute("SELECT * FROM sections WHERE page_id = ? ORDER BY position", (page["id"],)).fetchall(),
-        dict(SECTION_TYPES), nav_html, breadcrumb_html,
+        _section_rows, dict(SECTION_TYPES), nav_html, breadcrumb_html,
     )
     blog_posts = []
     if page["page_type"] == "blog":
@@ -2194,10 +2394,11 @@ def _render_page(db, page, post=None, post_content=""):
                 "ORDER BY published_at DESC, id DESC",
                 (page["id"],),
             ).fetchall()
-    header_sections = _zone_sections(db, template, "header", nav_html, breadcrumb_html, dict(SECTION_TYPES))
-    sidebar_sections = [] if page["hide_sidebar"] else _zone_sections(db, template, "sidebar", nav_html, breadcrumb_html, dict(SECTION_TYPES))
-    sidebar_right_sections = [] if page["hide_sidebar_right"] else _zone_sections(db, template, "sidebar_right", nav_html, breadcrumb_html, dict(SECTION_TYPES))
-    footer_sections = [] if page["hide_footer"] else _zone_sections(db, template, "footer", nav_html, breadcrumb_html, dict(SECTION_TYPES))
+    _zlang = active_lang if translating else None
+    header_sections = _zone_sections(db, template, "header", nav_html, breadcrumb_html, dict(SECTION_TYPES), active_lang=_zlang)
+    sidebar_sections = [] if page["hide_sidebar"] else _zone_sections(db, template, "sidebar", nav_html, breadcrumb_html, dict(SECTION_TYPES), active_lang=_zlang)
+    sidebar_right_sections = [] if page["hide_sidebar_right"] else _zone_sections(db, template, "sidebar_right", nav_html, breadcrumb_html, dict(SECTION_TYPES), active_lang=_zlang)
+    footer_sections = [] if page["hide_footer"] else _zone_sections(db, template, "footer", nav_html, breadcrumb_html, dict(SECTION_TYPES), active_lang=_zlang)
     theme_css_vars = _theme_override_css(template)
     all_templates = db.execute("SELECT * FROM templates ORDER BY is_builtin DESC, name").fetchall() if editing else []
     activate_conflict_map, active_content, template_covers = (
@@ -2265,6 +2466,14 @@ def _render_page(db, page, post=None, post_content=""):
         footer_sections=footer_sections,
         color_css=theme_css_vars,
         editing=editing,
+        edit_view=edit_view,
+        preview_view=preview_view,
+        viewport_view=viewport_view,
+        force_viewport=force_viewport,
+        active_lang=active_lang,
+        active_dir=("rtl" if _translation.is_rtl(active_lang) else "ltr"),
+        page_title_tr=_tr(page["title"]),
+        lang_switcher=_lang_switcher(db, active_lang, src_lang, request.path),
         logged_in=logged_in,
         view_mode=view_mode,
         current_path=request.path,
@@ -2275,6 +2484,11 @@ def _render_page(db, page, post=None, post_content=""):
         faq_formatting_help=FAQ_FORMATTING_HELP,
         max_contact_rows=MAX_CONTACT_ROWS,
         contact_layouts=CONTACT_LAYOUTS if editing else (),
+        contact_aligns=CONTACT_ALIGNS if editing else (),
+        ls_styles=LS_STYLES if editing else (),
+        ls_colors=LS_COLORS if editing else (),
+        ls_labels=LS_LABELS if editing else (),
+        ls_aligns=LS_ALIGNS if editing else (),
         signup_blockers=(signup_blockers(db) if editing else []),
         contact_icon_min=CONTACT_ICON_MIN,
         contact_icon_max=CONTACT_ICON_MAX,

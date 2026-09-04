@@ -312,6 +312,71 @@ def _wordmark_starter_html(size="medium", style="plain", with_tagline=False):
 BLOCK_LIBRARY["wordmark"] = ("html", _wordmark_starter_html())
 
 
+#  How the Language tool is formatted. The languages themselves always come
+#  from the site's settings (the render fills them in); these are only the
+#  LOOK, stored as data-* on the marker so a dropped switcher shows whatever
+#  is enabled and remembers how it was styled.
+LS_STYLES = (("list", "Row of links"), ("dropdown", "Dropdown"), ("buttons", "Buttons"))
+LS_COLORS = (("text", "Text colour"), ("accent", "Accent"), ("subtle", "Subtle"))
+#  What each language reads as -- one OR the other, never a flag glued to a
+#  word ("GB English"): a name in one of three forms, or the flag on its own.
+LS_LABELS = (("native", "Native name"), ("english", "English name"),
+             ("code", "Code"), ("flag", "Flag only"))
+LS_ALIGNS = (("left", "Left"), ("center", "Centre"), ("right", "Right"))
+LS_DEFAULTS = {"style": "list", "color": "text", "labels": "native", "align": "left"}
+
+
+def _ls_valid(opts):
+    o = dict(LS_DEFAULTS)
+    for key, allowed in (("style", LS_STYLES), ("color", LS_COLORS),
+                         ("labels", LS_LABELS), ("align", LS_ALIGNS)):
+        v = (opts.get(key) or "").strip()
+        if v in dict(allowed):
+            o[key] = v
+    return o
+
+
+def read_lang_switcher_opts(content):
+    """The switcher's formatting, read back off the marker's data-* (defaults
+    for anything unset, so a switcher made before these options still works)."""
+    c = content or ""
+    opts = {}
+    for key in ("style", "color", "labels", "align"):
+        m = re.search(r'data-ls-%s="([a-z]+)"' % key, c)
+        if m:
+            opts[key] = m.group(1)
+    return _ls_valid(opts)
+
+
+def build_lang_switcher_marker(opts=None):
+    o = _ls_valid(opts or {})
+    return ('<div class="cms-lang-switcher" data-lang-switcher="1" '
+            'data-ls-style="%(style)s" data-ls-color="%(color)s" '
+            'data-ls-labels="%(labels)s" data-ls-align="%(align)s"></div>' % o)
+
+
+def apply_lang_switcher_form(form):
+    """Rebuild the marker from the tool's own form (which carries every
+    option), the same shape the other marker tools use."""
+    return build_lang_switcher_marker({
+        "style": form.get("ls_style", ""),
+        "color": form.get("ls_color", ""),
+        "labels": form.get("ls_labels", ""),
+        "align": form.get("ls_align", ""),
+    })
+
+
+def _lang_switcher_starter_html():
+    #  A marker the render replaces with the site's actual language links
+    #  (see _lang_switcher in public.py). It carries only its LOOK; the
+    #  languages come from the site's settings, so one dropped anywhere shows
+    #  whatever the owner has enabled -- and stays correct when that changes.
+    return build_lang_switcher_marker()
+
+
+BLOCK_LIBRARY["lang-switcher"] = ("html", _lang_switcher_starter_html())
+
+
 DIVIDER_STYLES = ("solid", "dashed", "dotted", "double")
 DIVIDER_WIDTHS = ("narrow", "medium", "full")
 DIVIDER_SPACINGS = ("small", "medium", "large")
@@ -495,6 +560,10 @@ def _contact_row_html(value, icon, show_text=True):
 
 
 CONTACT_LAYOUTS = (("row", "Side by side"), ("column", "One per line"))
+#  Which way the lines sit in their space. Centre is what every block
+#  written before the choice existed does (the CSS centred them), so it is
+#  the default and a block with no `data-align` reads as it.
+CONTACT_ALIGNS = (("left", "Left"), ("center", "Centre"), ("right", "Right"))
 #  How big the marks read. Off means the block takes whatever the zone
 #  around it already says — which is right nearly everywhere, and is why
 #  it is the default. On, the size is the owner's, in pixels, and applies
@@ -504,15 +573,20 @@ CONTACT_LAYOUTS = (("row", "Side by side"), ("column", "One per line"))
 CONTACT_ICON_MIN, CONTACT_ICON_MAX, CONTACT_ICON_DEFAULT = 12, 48, 20
 
 
-def build_contact_tool(rows, layout="row", icon_size=0):
+def build_contact_tool(rows, layout="row", icon_size=0, align="center"):
     """The whole block, from a list of {value, icon, show} lines.
 
     `layout` is how the lines sit: side by side, which suits a footer
     strip, or one per line, which suits a sidebar or a contact page. It
     rides on the wrapper like everything else this tool remembers,
     because the block is the storage.
+
+    `align` is which way those lines sit in their space -- left, centre or
+    right -- a structural choice the owner makes, stored as a class so the
+    CSS can align both layouts (a row justifies, a column text-aligns).
     """
     layout = layout if layout in dict(CONTACT_LAYOUTS) else "row"
+    align = align if align in dict(CONTACT_ALIGNS) else "center"
     try:
         icon_size = int(icon_size or 0)
     except (TypeError, ValueError):
@@ -533,13 +607,14 @@ def build_contact_tool(rows, layout="row", icon_size=0):
     #  writes nothing at all, which is how the block goes back to
     #  inheriting rather than to some remembered default.
     style = ' style="--cms-contact-icon: %dpx"' % icon_size if icon_size else ""
-    meta = ' data-rows="%d"%s data-layout="%s" data-icon-size="%d"%s' % (
-        shown, (' data-blanks="%s"' % blanks) if blanks else "", layout, icon_size, style)
+    meta = ' data-rows="%d"%s data-layout="%s" data-icon-size="%d" data-align="%s"%s' % (
+        shown, (' data-blanks="%s"' % blanks) if blanks else "", layout, icon_size, align, style)
+    align_class = " cms-contact-align-%s" % align
     if not items:
         return CONTACT_EMPTY_HTML.replace('class="cms-contact-tool',
-                                          '%s class="cms-contact-tool' % meta.strip())
-    return ('<div class="cms-contact-tool cms-contact-%s"%s><div class="cms-contact-details">'
-            % (layout, meta) + "".join(items) + "</div></div>")
+                                          '%s class="cms-contact-tool%s' % (meta.strip(), align_class))
+    return ('<div class="cms-contact-tool cms-contact-%s%s"%s><div class="cms-contact-details">'
+            % (layout, align_class, meta) + "".join(items) + "</div></div>")
 
 
 def read_contact_layout(content):
@@ -550,6 +625,17 @@ def read_contact_layout(content):
         if m and m.group(1) in dict(CONTACT_LAYOUTS):
             return m.group(1)
     return "row"
+
+
+def read_contact_align(content):
+    """Which way this block's lines sit. Defaults to centre, which is what
+    every block written before the choice existed does (the CSS centred
+    them), so an old block reads back correctly."""
+    if content:
+        m = re.search(r'data-align="(\w+)"', content)
+        if m and m.group(1) in dict(CONTACT_ALIGNS):
+            return m.group(1)
+    return "center"
 
 
 def read_contact_icon_size(content):
@@ -650,10 +736,11 @@ def apply_contact_form(content):
     #  filled in) but never written into the page -- build_contact_tool
     #  drops it, so a half-finished row is not published.
     layout = (request.form.get("layout") or "").strip() or read_contact_layout(content)
+    align = (request.form.get("align") or "").strip() or read_contact_align(content)
     #  The slider only counts when the switch beside it is on; off is
     #  zero, which is the block saying nothing about size at all.
     icon_size = request.form.get("icon_size", type=int) or 0         if request.form.get("icon_size_on") == "1" else 0
-    return build_contact_tool(rows, layout, icon_size)
+    return build_contact_tool(rows, layout, icon_size, align)
 
 
 def _resolve_tool_content(db, form):
@@ -692,16 +779,106 @@ def _columns_section_or_404(section_id):
     return db, section
 
 
-def _get_columns_cells(section):
+#  How a Columns section apportions its width. Equal is the default and
+#  what every column layout has always been; "wide-left"/"wide-right"
+#  give one column more room -- a CV's main text beside a narrower
+#  sidebar. A real control on the tool, styled centrally (site-base.css),
+#  never a per-instance style. Only meaningful for two columns; three or
+#  more stay equal.
+COLUMN_WIDTHS = ("equal", "wide-left", "wide-right")
+
+
+def _columns_data(section):
     try:
-        return json.loads(section["content"]).get("columns", [])
+        data = json.loads(section["content"])
+        return data if isinstance(data, dict) else {}
     except (ValueError, AttributeError, TypeError):
-        return []
+        return {}
+
+
+def _get_columns_cells(section):
+    return _columns_data(section).get("columns", [])
+
+
+def columns_width_of(section):
+    """The width preset stored on a Columns section (equal/wide-left/
+    wide-right), for the render's fallback; "equal" when none is set."""
+    w = _columns_data(section).get("width", "equal")
+    return w if w in COLUMN_WIDTHS else "equal"
+
+
+#  A preset maps to a ratio, so the render has one thing to read -- the
+#  drag control stores a ratio directly, and the generator or an older
+#  section may carry a preset instead.
+_PRESET_RATIOS = {"wide-left": [1.7, 1.0], "wide-right": [1.0, 1.7]}
+
+
+def columns_widths_of(section):
+    """The column ratio, as a list of positive numbers (fr units), or
+    None for an equal split. A dragged ratio wins; a preset is turned
+    into one; equal is None, so every existing section is unchanged."""
+    data = _columns_data(section)
+    w = data.get("widths")
+    if isinstance(w, list) and len(w) >= 2 and all(
+            isinstance(x, (int, float)) and x > 0 for x in w):
+        return [float(x) for x in w]
+    return list(_PRESET_RATIOS.get(data.get("width", "equal"), []) or []) or None
+
+
+def _columns_content(cells, width="equal", widths=None):
+    #  Width rides on the same JSON as the cells. Equal is the default and
+    #  is not written down -- an absent key IS equal, which keeps every
+    #  existing section unchanged and the stored form minimal. A dragged
+    #  RATIO (widths) is the precise form; a PRESET (width) is the coarse
+    #  one an older section or the generator may carry.
+    out = {"columns": cells}
+    if isinstance(widths, list) and len(widths) >= 2 and all(
+            isinstance(x, (int, float)) and x > 0 for x in widths):
+        out["widths"] = [round(float(x), 3) for x in widths]
+    elif width in COLUMN_WIDTHS and width != "equal":
+        out["width"] = width
+    return json.dumps(out)
 
 
 def _save_columns_cells(db, section_id, cells):
-    db.execute("UPDATE sections SET content = ? WHERE id = ?", (json.dumps({"columns": cells}), section_id))
+    #  The cells changed; the width choice did not, so it is carried
+    #  through rather than dropped -- editing a cell must not silently
+    #  reset the layout back to equal.
+    row = db.execute("SELECT content FROM sections WHERE id = ?", (section_id,)).fetchone()
+    widths = columns_widths_of(row) if row else None
+    width = columns_width_of(row) if row else "equal"
+    db.execute("UPDATE sections SET content = ? WHERE id = ?",
+               (_columns_content(cells, width, widths), section_id))
     db.commit()
+
+
+def set_columns_widths(db, section_id, widths):
+    """Store a dragged column ratio (a list of fr numbers), keeping the
+    cells. An empty/short list clears it back to an equal split."""
+    section = db.execute(
+        "SELECT * FROM sections WHERE id = ? AND type = 'columns'",
+        (section_id,)).fetchone()
+    if not section:
+        return False
+    cells = _get_columns_cells(section)
+    db.execute("UPDATE sections SET content = ? WHERE id = ?",
+               (_columns_content(cells, "equal", widths), section_id))
+    db.commit()
+    return True
+
+
+def set_columns_width(db, section_id, width):
+    """Store the width choice on a Columns section, keeping its cells."""
+    section = db.execute(
+        "SELECT * FROM sections WHERE id = ? AND type = 'columns'",
+        (section_id,)).fetchone()
+    if not section:
+        return False
+    cells = _get_columns_cells(section)
+    db.execute("UPDATE sections SET content = ? WHERE id = ?",
+               (_columns_content(cells, width), section_id))
+    db.commit()
+    return True
 
 
 def _normalize_cell(cell, type_hint="text"):
@@ -792,9 +969,11 @@ BANNER_PORTRAIT_SIZES = ("small", "medium", "large")
 BANNER_PORTRAIT_SHAPES = ("round", "square", "oval")
 
 
-def _update_banner_portrait(content, position, size=None, shape=None):
+def _update_banner_portrait(content, position, size=None, shape=None, view="desktop"):
     """Where the portrait sits on a banner, how big, and what shape -- or
-    that there is not one.
+    that there is not one. `view` "mobile" stores the answer as a per-view
+    override (cms-sm-*) that only applies at phone widths, over the
+    desktop base.
 
     All in one call, because they are one control's worth of answer and
     setting them separately would mean a banner that briefly has a size
@@ -805,6 +984,25 @@ def _update_banner_portrait(content, position, size=None, shape=None):
     if div is None:
         return content
     position = position if position in BANNER_PORTRAITS else "none"
+    if view in NON_DESKTOP_VIEWS:
+        #  A per-VIEW override -- position/size/shape for one width band
+        #  only, as prefixed classes layered on the desktop base. The
+        #  figure is shared (created on desktop), so nothing is added or
+        #  removed here but this view's classes; "none" hides it for the view.
+        pre = VIEW_PREFIX[view]
+        classes = [c for c in (div.get("class") or [])
+                   if not c.startswith(pre + "has-portrait")
+                   and not c.startswith(pre + "portrait-")]
+        if position == "none":
+            classes.append(pre + "portrait-none")
+        else:
+            classes.append(pre + "has-portrait-%s" % position)
+            if size in BANNER_PORTRAIT_SIZES:
+                classes.append(pre + "portrait-size-%s" % size)
+            if shape in BANNER_PORTRAIT_SHAPES:
+                classes.append(pre + "portrait-shape-%s" % shape)
+        div["class"] = classes
+        return str(soup)
     classes = [c for c in (div.get("class") or [])
                if not c.startswith("cms-has-portrait")
                and not c.startswith("cms-portrait-size-")
@@ -860,28 +1058,289 @@ def _set_banner_portrait_image(content, url):
     return str(soup)
 
 
-def banner_portrait_size_of(content):
-    """How big a banner's portrait is, for the control to show."""
+def banner_portrait_size_of(content, view="desktop"):
+    """How big a banner's portrait is, for the control to show. A non-desktop
+    view's own override (its cms-<prefix>portrait-size-*) wins; with none set
+    the control shows the desktop value it inherits."""
+    c = content or ""
+    if view in NON_DESKTOP_VIEWS:
+        pre = VIEW_PREFIX[view] + "portrait-size-"
+        for size in BANNER_PORTRAIT_SIZES:
+            if pre + size in c:
+                return size
+        return banner_portrait_size_of(content, "desktop")
     for size in BANNER_PORTRAIT_SIZES:
-        if "cms-portrait-size-%s" % size in (content or ""):
+        if "cms-portrait-size-" + size in c:
             return size
     return "medium"
 
 
-def banner_portrait_shape_of(content):
+def banner_portrait_shape_of(content, view="desktop"):
     """What shape a banner's portrait is, for the control to show."""
+    c = content or ""
+    if view in NON_DESKTOP_VIEWS:
+        pre = VIEW_PREFIX[view] + "portrait-shape-"
+        for shape in BANNER_PORTRAIT_SHAPES:
+            if pre + shape in c:
+                return shape
+        return banner_portrait_shape_of(content, "desktop")
     for shape in BANNER_PORTRAIT_SHAPES:
-        if "cms-portrait-shape-%s" % shape in (content or ""):
+        if "cms-portrait-shape-" + shape in c:
             return shape
     return "round"
 
 
-def banner_portrait_of(content):
-    """Which position a banner's portrait is in, for the control to show."""
+def banner_portrait_of(content, view="desktop"):
+    """Which position a banner's portrait is in, for the control to show.
+    A non-desktop view's own override wins; "none" means hidden on that view;
+    otherwise the control shows the desktop position it inherits."""
+    c = content or ""
+    if view in NON_DESKTOP_VIEWS:
+        pre = VIEW_PREFIX[view]
+        if pre + "portrait-none" in c:
+            return "none"
+        for position in BANNER_PORTRAITS[1:]:
+            if pre + "has-portrait-%s" % position in c:
+                return position
+        return banner_portrait_of(content, "desktop")
     for position in BANNER_PORTRAITS[1:]:
-        if "cms-has-portrait-%s" % position in (content or ""):
+        if "cms-has-portrait-%s" % position in c:
             return position
     return "none"
+
+
+# ---------------------------------------------------------------------------
+# Per-view STRUCTURE overrides on a section (see sections.view_overrides in
+# db.py). STRUCTURE and SIZE only -- never fonts or colours, which stay one
+# look at every size. Two kinds so far:
+#   hide  -- a list of views the section is HIDDEN on (independent per view,
+#            not a base+override: "hidden on mobile" leaves desktop alone).
+#   align -- text alignment per view (base + mobile override, like portrait:
+#            mobile inherits desktop when unset).
+# The desktop/mobile split matches the two edit buckets the View selector
+# exposes; laptop/tablet reflow the desktop layout and store nothing of
+# their own.
+# ---------------------------------------------------------------------------
+#  Four buckets now, one per size the View selector offers. Desktop is the
+#  BASE (plain classes / base columns, applying at every width); the other
+#  three are overrides, each scoped by CSS to its own width band (and, while
+#  editing, to its cms-view-* canvas). A non-desktop view inherits the
+#  desktop base for anything it has not set of its own.
+PER_VIEW_VIEWS = ("desktop", "laptop", "tablet", "mobile")
+#  The class prefix each view's overrides ride on. Mobile keeps its historical
+#  cms-sm- prefix so banner content already stored keeps rendering; the two
+#  new views get readable prefixes. Desktop has none -- it is the base.
+VIEW_PREFIX = {"desktop": "", "laptop": "cms-laptop-", "tablet": "cms-tablet-", "mobile": "cms-sm-"}
+NON_DESKTOP_VIEWS = ("laptop", "tablet", "mobile")
+SECTION_ALIGNS = ("left", "center", "right")
+
+
+def view_overrides_of(section):
+    """The section's per-view structure overrides as a plain dict, always
+    with the two known keys present and well-shaped."""
+    raw = None
+    try:
+        raw = section["view_overrides"]
+    except (KeyError, IndexError, TypeError):
+        raw = getattr(section, "view_overrides", None) if not isinstance(section, dict) else section.get("view_overrides")
+    data = {}
+    if raw:
+        try:
+            data = json.loads(raw) or {}
+        except (ValueError, TypeError):
+            data = {}
+    hide = data.get("hide")
+    align = data.get("align")
+    order = data.get("order") or {}
+    mob_order = order.get("mobile")
+    #  A dragged HEIGHT per non-desktop view (desktop's is the base, in the
+    #  content_height_px column). A banner/hero that is right on a wide screen
+    #  is often far too tall on a phone -- this lets each view be shrunk (or
+    #  grown) without changing the others. Clamped the same as the base.
+    height = data.get("height") or {}
+    height_out = {}
+    for v in NON_DESKTOP_VIEWS:
+        px = height.get(v)
+        try:
+            if px and int(px) > 0:
+                height_out[v] = max(60, min(2000, int(px)))
+        except (ValueError, TypeError):
+            pass
+    return {
+        "hide": [v for v in (hide or []) if v in PER_VIEW_VIEWS],
+        "align": {v: a for v, a in (align or {}).items()
+                  if v in PER_VIEW_VIEWS and a in SECTION_ALIGNS},
+        #  A permutation of column indices for the MOBILE stack; validated
+        #  against the real column count where it is read, so an out-of-date
+        #  order (a column added or removed since) falls back to natural.
+        "order": {"mobile": list(mob_order)} if isinstance(mob_order, list) else {},
+        "height": height_out,
+    }
+
+
+def section_hidden_on(section, view):
+    """Is the section hidden on this view? (Independent per view.)"""
+    return view in view_overrides_of(section)["hide"]
+
+
+def section_align_on(section, view):
+    """The section's text alignment for a view; mobile inherits desktop when
+    it has no override of its own. Empty string means 'no override' (the
+    template leaves the theme's own alignment alone)."""
+    align = view_overrides_of(section)["align"]
+    if view in NON_DESKTOP_VIEWS:
+        return align.get(view) or align.get("desktop") or ""
+    return align.get("desktop") or ""
+
+
+def section_view_classes(section):
+    """The cms-sm-* / cms-view class string for a section's wrapper, built
+    from its stored per-view overrides. Desktop values ride as plain classes
+    (they are the base at every size); mobile values ride as cms-sm-* that
+    win only at phone widths and in the Mobile editing canvas."""
+    ov = view_overrides_of(section)
+    out = []
+    #  HIDE is independent per view (not base+override): hidden on one view
+    #  leaves the others alone. Desktop keeps its historical class name.
+    for view in ov["hide"]:
+        out.append("cms-hide-desktop" if view == "desktop" else VIEW_PREFIX[view] + "hide")
+    #  ALIGN and HEIGHT are base+override: desktop is the base class, each
+    #  non-desktop view a prefixed override scoped to its width by CSS.
+    for view, a in ov["align"].items():
+        if not a:
+            continue
+        out.append("cms-align-%s" % a if view == "desktop" else VIEW_PREFIX[view] + "align-%s" % a)
+    #  A dragged per-view height rides as a marker class; the pixel value
+    #  itself travels as an inline --cms-content-height-<view>-px var (the
+    #  template), which the class scopes to that view's width band.
+    for view, px in ov["height"].items():
+        if px:
+            out.append(VIEW_PREFIX[view] + "has-custom-height")
+    return " ".join(out)
+
+
+def _write_view_overrides(db, section_id, data):
+    #  Drop empty keys so a cleared override leaves no trace to read back.
+    clean = {}
+    if data.get("hide"):
+        clean["hide"] = data["hide"]
+    if data.get("align"):
+        clean["align"] = data["align"]
+    if data.get("order", {}).get("mobile"):
+        clean["order"] = {"mobile": data["order"]["mobile"]}
+    height = {v: px for v, px in (data.get("height") or {}).items() if px}
+    if height:
+        clean["height"] = height
+    db.execute("UPDATE sections SET view_overrides = ? WHERE id = ?",
+               (json.dumps(clean) if clean else None, section_id))
+    db.commit()
+
+
+def set_section_hidden(db, section_id, view, hidden):
+    """Hide or show a section on one view, independently of the others."""
+    if view not in PER_VIEW_VIEWS:
+        return
+    row = db.execute("SELECT view_overrides FROM sections WHERE id = ?", (section_id,)).fetchone()
+    if not row:
+        return
+    ov = view_overrides_of({"view_overrides": row["view_overrides"]})
+    hide = set(ov["hide"])
+    hide.discard(view) if not hidden else hide.add(view)
+    ov["hide"] = [v for v in PER_VIEW_VIEWS if v in hide]
+    _write_view_overrides(db, section_id, ov)
+
+
+def set_section_align(db, section_id, view, align):
+    """Set (or clear, with '') a section's text alignment for one view."""
+    if view not in PER_VIEW_VIEWS:
+        return
+    row = db.execute("SELECT view_overrides FROM sections WHERE id = ?", (section_id,)).fetchone()
+    if not row:
+        return
+    ov = view_overrides_of({"view_overrides": row["view_overrides"]})
+    if align in SECTION_ALIGNS:
+        ov["align"][view] = align
+    else:
+        ov["align"].pop(view, None)
+    _write_view_overrides(db, section_id, ov)
+
+
+def section_height_override(section, view):
+    """The section's dragged height override for a non-desktop view (px), or
+    None. Desktop has no override here -- its height is the base
+    content_height_px column."""
+    return view_overrides_of(section)["height"].get(view)
+
+
+#  Kept as an alias: some callers name the mobile one directly.
+def section_mobile_height(section):
+    return section_height_override(section, "mobile")
+
+
+def set_section_height(db, section_id, view, px):
+    """Set (or clear, with a falsy px) a section's dragged height for one view.
+    Desktop is the BASE (the content_height_px column, so nothing about the
+    stored desktop height changes shape); a non-desktop view is an override in
+    view_overrides, applied only at that view's width -- so a tall hero can be
+    cut down for a phone while the wider ones are left exactly as they were."""
+    if view not in PER_VIEW_VIEWS:
+        return
+    row = db.execute("SELECT view_overrides FROM sections WHERE id = ?", (section_id,)).fetchone()
+    if not row:
+        return
+    try:
+        px = max(60, min(2000, int(px))) if px else None
+    except (ValueError, TypeError):
+        px = None
+    if view == "desktop":
+        db.execute("UPDATE sections SET content_height_px = ? WHERE id = ?", (px, section_id))
+        db.commit()
+        return
+    ov = view_overrides_of({"view_overrides": row["view_overrides"]})
+    if px:
+        ov["height"][view] = px
+    else:
+        ov["height"].pop(view, None)
+    _write_view_overrides(db, section_id, ov)
+
+
+def columns_mobile_order(section, n):
+    """The stack order for a columns section on MOBILE, as a permutation of
+    column indices. Natural order (0..n-1) unless the owner reordered it, and
+    it reverts to natural if it no longer matches the column count."""
+    perm = view_overrides_of(section)["order"].get("mobile")
+    if perm and sorted(perm) == list(range(n)):
+        return list(perm)
+    return list(range(n))
+
+
+def column_mobile_positions(section, n):
+    """For each column index 0..n-1, its position in the mobile stack --
+    the value that becomes its CSS `order` at phone widths."""
+    perm = columns_mobile_order(section, n)
+    return [perm.index(i) for i in range(n)]
+
+
+def move_column_mobile_order(db, section_id, col_index, direction, n):
+    """Swap a column one step earlier ('up') or later ('down') in the mobile
+    stack, leaving the desktop left-to-right order untouched."""
+    row = db.execute("SELECT view_overrides FROM sections WHERE id = ?", (section_id,)).fetchone()
+    if not row or n < 2:
+        return
+    ov = view_overrides_of({"view_overrides": row["view_overrides"]})
+    perm = ov["order"].get("mobile")
+    if not (perm and sorted(perm) == list(range(n))):
+        perm = list(range(n))
+    if col_index not in perm:
+        return
+    p = perm.index(col_index)
+    q = p - 1 if direction == "up" else p + 1
+    if 0 <= q < len(perm):
+        perm[p], perm[q] = perm[q], perm[p]
+    #  A natural order carries nothing -- keep the blob empty so "reset" is
+    #  just moving everything back.
+    ov["order"] = {} if perm == list(range(n)) else {"mobile": perm}
+    _write_view_overrides(db, section_id, ov)
 
 
 BANNER_POSITIONS = {
@@ -973,8 +1432,17 @@ def _update_banner_overlay_style(content, form):
     text_align = form.get("text_align", "")
     if text_align in ("left", "center", "right"):
         ov_props["text-align"] = text_align
+        # The button row (.cms-hero-actions) is a flex row, and text-align
+        # cannot move a flex row -- so it reads --site-hero-justify instead
+        # (see composition.css). Set it here, on the overlay the buttons sit
+        # inside, from the SAME control, so the words and the buttons cannot
+        # disagree ("centre the text but not the buttons" is the mismatch).
+        ov_props["--site-hero-justify"] = {
+            "left": "flex-start", "center": "center", "right": "flex-end",
+        }[text_align]
     else:
         ov_props.pop("text-align", None)
+        ov_props.pop("--site-hero-justify", None)
     box_padding = form.get("box_padding", type=int)
     if box_padding:
         padding = max(4, min(80, box_padding))
@@ -1143,6 +1611,42 @@ def _update_card_classes(content, shape, color):
 #  number, and the one other thing that parses as a URL here is a script.
 BUTTON_SCHEMES = ("http://", "https://", "mailto:", "tel:", "/", "#")
 
+#  The optional heading above a tool: how it reads, and which tools get the
+#  choice at all. Text, Card and Banner already carry a heading in their own
+#  body, so they are the exceptions; every other tool can be given one.
+HEADING_LEVELS = ("h2", "h3", "p")
+HEADING_ALIGNS = ("left", "center", "right")
+#  Section TYPES whose body already holds a heading -- no separate one.
+_TYPES_WITH_BODY_HEADER = {"text", "card", "banner"}
+
+
+def heading_level_of(value):
+    return value if value in HEADING_LEVELS else "h2"
+
+
+def heading_align_of(value):
+    return value if value in HEADING_ALIGNS else "left"
+
+
+def tool_allows_heading(section_type):
+    """Whether a tool of this type can be given a separate heading above it
+    -- everything except the three whose own body already has one."""
+    return section_type not in _TYPES_WITH_BODY_HEADER
+
+
+def _normalize_button_href(link):
+    """A button's link, tolerant of a scheme left off. An owner typing
+    "reelpics.win" means https://reelpics.win, not a dead "#" -- the silent
+    reset to "#" is exactly how a banner "lost its button link". A page path
+    (/about), an anchor (#top), an email (mailto:) or a phone (tel:) are kept
+    as they are; empty stays "#". Mirrors how block/CTA links are handled."""
+    href = (link or "").strip()
+    if not href:
+        return "#"
+    if href.startswith(BUTTON_SCHEMES):
+        return href
+    return "https://" + href
+
 
 def card_button_settings(content):
     """Whether this card carries a button, and where it points.
@@ -1183,9 +1687,7 @@ def set_card_button(content, enabled, link):
         if button is not None:
             button.decompose()
         return str(soup)
-    href = (link or "").strip()
-    if not href or not href.startswith(BUTTON_SCHEMES):
-        href = "#"
+    href = _normalize_button_href(link)
     if button is None:
         button = soup.new_tag("a")
         button["class"] = ["cms-btn", "cms-card-btn"]
@@ -1247,6 +1749,50 @@ def _banner_div(content):
     return soup, div
 
 
+def set_banner_button(content, enabled, link):
+    """Adds, updates or removes a banner's button -- the same shape the
+    Card tool's button takes (set_card_button), so a hero the generator
+    made (which ships a `.cms-hero-actions` button) is managed by the same
+    control an owner would use to add one by hand. The label is written on
+    the page like every other word; this governs the link and whether the
+    button is there at all.
+    """
+    soup, div = _banner_div(content)
+    overlay = div.find(class_="cms-banner-overlay") if div is not None else None
+    if overlay is None:
+        return content
+    actions = overlay.find(class_="cms-hero-actions")
+    button = actions.find("a", class_="cms-btn") if actions is not None else None
+    if not enabled:
+        if actions is not None:
+            actions.decompose()
+        return str(soup)
+    href = _normalize_button_href(link)
+    if actions is None:
+        actions = soup.new_tag("p")
+        actions["class"] = ["cms-hero-actions"]
+        overlay.append(actions)
+    if button is None:
+        button = soup.new_tag("a")
+        button["class"] = ["cms-btn"]
+        button.string = "Get in touch"
+        actions.append(button)
+    button["href"] = href
+    return str(soup)
+
+
+def banner_button_settings(content):
+    """Whether a banner carries a button and where it points -- the read
+    side of set_banner_button, so the control shows what is on the page."""
+    _, div = _banner_div(content)
+    button = None
+    if div is not None:
+        actions = div.find(class_="cms-hero-actions")
+        button = actions.find("a", class_="cms-btn") if actions is not None else None
+    return {"has_button": button is not None,
+            "link": button.get("href", "") if button is not None else ""}
+
+
 def _set_banner_image(content, image_url):
     """Same idea as _set_card_image — Banner never had its own image-change
     route before (only ever set once, at creation, to the placeholder), so
@@ -1278,6 +1824,7 @@ def _banner_dom_response(content):
     soup, div = _banner_div(content)
     overlay = div.find(class_="cms-banner-overlay") if div is not None else None
     figure = div.find(class_="cms-banner-portrait") if div is not None else None
+    actions = overlay.find(class_="cms-hero-actions") if overlay is not None else None
     return {
         "class": " ".join(div.get("class") or []) if div is not None else "cms-banner",
         "style": div.get("style", "") if div is not None else "",
@@ -1287,6 +1834,10 @@ def _banner_dom_response(content):
         #  nothing on screen until a refresh. Empty string means "none":
         #  the JS removes what is there.
         "portrait_html": str(figure) if figure is not None else "",
+        #  The button is a child too -- adding, re-pointing or removing it
+        #  did nothing on screen until a refresh for the same reason. Empty
+        #  string means "no button": the JS removes what is there.
+        "actions_html": str(actions) if actions is not None else "",
     }
 
 

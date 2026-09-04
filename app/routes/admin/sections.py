@@ -19,19 +19,23 @@ from ...services.sections import (
     IMAGE_WIDTHS, IMAGE_ANIMATIONS, IMAGE_MASKS, FILE_EXTENSIONS,
     MEDIA_TYPES, VIDEO_EXTENSIONS, AUDIO_EXTENSIONS, FILE_DISPLAYS, MEDIA_IMAGE_EXTS,
     _breadcrumb_starter_html, _divider_starter_html, _resolve_tool_content,
-    apply_contact_form,
+    apply_contact_form, apply_lang_switcher_form, read_lang_switcher_opts,
     _columns_section_or_404, _get_columns_cells, _save_columns_cells, _normalize_cell, _cell_slot,
+    set_columns_width, set_columns_widths, COLUMN_WIDTHS,
     _update_banner_classes, _update_banner_overlay_style, _card_div, _update_card_classes,
     _update_banner_portrait, _set_banner_portrait_image, banner_portrait_of,
     banner_portrait_size_of, banner_portrait_shape_of,
     _set_card_image, _set_banner_image, _banner_dom_response, _save_card_image_file, _reset_card_style,
-    set_card_button, strip_editor_markup,
+    set_card_button, set_banner_button, strip_editor_markup,
     IMAGE_WIDTH_PX, BANNER_SIZE_PX, CARD_SIZE_PX, ACCORDION_PANEL_SIZE_PX,
     _generate_and_save_images, _apply_image_to_slot, _list_media,
     _set_accordion_panel_image, apply_accordion_form,
     build_video_gallery, video_gallery_form_clips, set_video_gallery_clip_src,
     apply_faq_form, apply_buy_button_form, apply_shop_form, apply_search_form,
     check_faq_document,
+    set_section_hidden, set_section_align, set_section_height, PER_VIEW_VIEWS, SECTION_ALIGNS,
+    move_column_mobile_order,
+    heading_level_of, heading_align_of,
 )
 from ...services import blocks
 from . import wants_json, _redirect_next, _undo_snapshot, SHAPE_PRESETS, SHADOW_PRESETS, slugify
@@ -472,7 +476,7 @@ def section_column_split_rows(section_id, col_index):
     if not (0 <= col_index < len(cells)):
         return _section_home(section)
     count = request.form.get("rows", type=int) or 1
-    count = max(1, min(4, count))
+    count = max(1, min(8, count))
     existing = cells[col_index]
     if isinstance(existing, dict) and existing.get("type") == "rows":
         rows = existing.get("rows", [])
@@ -513,6 +517,12 @@ def section_column_update(section_id, col_index):
         cell["content"] = strip_editor_markup(request.form.get("content", ""))
     if "title" in request.form:
         cell["title"] = request.form.get("title", "")
+    if "title_level" in request.form:
+        cell["title_level"] = heading_level_of(request.form.get("title_level"))
+    if "title_align" in request.form:
+        cell["title_align"] = heading_align_of(request.form.get("title_align"))
+    if "title_on" in request.form:
+        cell["title_on"] = 1 if request.form.get("title_on") == "1" else 0
     if "width" in request.form and request.form["width"] in IMAGE_WIDTHS:
         cell["width"] = request.form["width"]
     if "animation" in request.form and request.form["animation"] in IMAGE_ANIMATIONS:
@@ -701,6 +711,34 @@ def section_contact_update(section_id, col_index=None):
     return where.respond({"html": content})
 
 
+@bp.route("/sections/<int:section_id>/lang-switcher-update", methods=["POST"])
+@bp.route("/sections/<int:section_id>/columns/<int:col_index>/lang-switcher-update", methods=["POST"])
+@login_required
+def section_lang_switcher_update(section_id, col_index=None):
+    """Rebuild the Language switcher's marker from its own formatting form,
+    then hand back the freshly-rendered switcher for the live swap -- the same
+    shape Contact uses. The languages always come from the site's settings;
+    the form only sets the LOOK (style, colour, flags, labels, alignment)."""
+    where, bail = _where(section_id, col_index)
+    if bail:
+        return bail
+    content = apply_lang_switcher_form(request.form)
+    where.write(content, tool_name="Language")
+    from ...services import translation as _tr
+    db = get_db()
+    src = _tr.source_language(db)
+    enabled = _tr.enabled_languages(db)
+    nxt = request.form.get("next") or "/"
+    items = [{
+        "code": c, "native": _tr.language_name(c, native=True),
+        "english": _tr.language_name(c, native=False), "flag_svg": _tr.language_flag_svg(c),
+        "current": c == src, "url": url_for("public.set_language", code=c, next=nxt),
+    } for c in ([src] + enabled)] if enabled else []
+    html = render_template("partials/lang_switcher.html",
+                           items=items, opts=read_lang_switcher_opts(content), editing=True)
+    return where.respond({"html": html})
+
+
 @bp.route("/sections/<int:section_id>/faq-update", methods=["POST"])
 @bp.route("/sections/<int:section_id>/columns/<int:col_index>/faq-update", methods=["POST"])
 @login_required
@@ -768,10 +806,21 @@ def section_banner_update(section_id, col_index=None):
         return bail
     content = _update_banner_classes(where.read(), request.form.get("shape"),
                                      request.form.get("attachment"))
+    #  Which view the portrait change is for -- desktop base or a mobile
+    #  override (cms-sm-*). Carried on the form from the edit-view toggle.
+    _view = "mobile" if request.form.get("edit_view") == "mobile" else "desktop"
     content = _update_banner_portrait(content, request.form.get("portrait"),
                                      request.form.get("portrait_size"),
-                                     request.form.get("portrait_shape"))
+                                     request.form.get("portrait_shape"), _view)
     content = _update_banner_overlay_style(content, request.form)
+    #  The button, the same way the Card tool handles its own -- add,
+    #  point or remove it from the one form that carries the banner. The
+    #  link is a page picked from a dropdown, or "Somewhere else" carrying
+    #  a typed address in a companion field (same shape as block/CTA links).
+    _blink = request.form.get("button_link", "")
+    if _blink == "__other__":
+        _blink = request.form.get("button_link__other", "")
+    content = set_banner_button(content, request.form.get("button") == "1", _blink)
     where.write(content, tool_name="Banner", cell_type="banner")
     return where.respond(_banner_dom_response(content))
 
@@ -1167,6 +1216,15 @@ def section_update(section_id):
     if "title" in request.form:
         fields.append("title = ?")
         values.append(request.form.get("title", ""))
+    if "title_level" in request.form:
+        fields.append("title_level = ?")
+        values.append(heading_level_of(request.form.get("title_level")))
+    if "title_align" in request.form:
+        fields.append("title_align = ?")
+        values.append(heading_align_of(request.form.get("title_align")))
+    if "title_on" in request.form:
+        fields.append("title_on = ?")
+        values.append(1 if request.form.get("title_on") == "1" else 0)
     if "content" in request.form:
         fields.append("content = ?")
         values.append(strip_editor_markup(request.form.get("content", "")))
@@ -1247,7 +1305,7 @@ def section_update(section_id):
         if not border or re.match(r"^#[0-9a-fA-F]{6}$", border):
             fields.append("border_color = ?")
             values.append(border or None)
-    if "layout_width" in request.form and request.form["layout_width"] in ("auto", "full", "custom"):
+    if "layout_width" in request.form and request.form["layout_width"] in ("auto", "full", "custom", "custompx"):
         fields.append("layout_width = ?")
         values.append(request.form["layout_width"])
     if "layout_width_pct" in request.form:
@@ -1256,6 +1314,12 @@ def section_update(section_id):
             pct = max(10, min(100, pct))
         fields.append("layout_width_pct = ?")
         values.append(pct)
+    if "layout_width_px" in request.form:
+        px = request.form.get("layout_width_px", type=int)
+        if px is not None:
+            px = max(120, min(2000, px))
+        fields.append("layout_width_px = ?")
+        values.append(px)
     # Sidebar sections reuse layout_width/layout_width_pct for HEIGHT (see
     # site-base.css) since width there is never a free axis for the
     # SECTION itself — but the RAIL's own width (the 240px default) still
@@ -1271,14 +1335,21 @@ def section_update(section_id):
         fields.append("sidebar_width_px = ?")
         values.append(px)
     # Horizontal (non-sidebar) sections: an explicit height set by dragging
-    # the section's bottom edge — empty string clears it back to auto.
+    # the section's bottom edge — empty string clears it back to auto. The
+    # MOBILE view stores its own height override (view_overrides), so a hero
+    # can be shrunk for a phone without touching the desktop one; desktop is
+    # the base column, unchanged.
     if "content_height_px" in request.form:
         raw = request.form.get("content_height_px", "").strip()
         height_px = int(raw) if raw.isdigit() else None
-        if height_px is not None:
-            height_px = max(60, min(2000, height_px))
-        fields.append("content_height_px = ?")
-        values.append(height_px)
+        ev = request.form.get("edit_view")
+        if ev in ("laptop", "tablet", "mobile"):
+            set_section_height(db, section_id, ev, height_px)
+        else:
+            if height_px is not None:
+                height_px = max(60, min(2000, height_px))
+            fields.append("content_height_px = ?")
+            values.append(height_px)
 
     if fields:
         values.append(section_id)
@@ -1289,6 +1360,99 @@ def section_update(section_id):
         return jsonify({"ok": True})
     flash("Section saved.", "success")
     return _redirect_next("admin.page_edit", page_id=section["page_id"])
+
+
+@bp.route("/sections/<int:section_id>/view-override", methods=["POST"])
+@login_required
+def section_view_override(section_id):
+    #  A per-view STRUCTURE change (show/hide, alignment) for the view the
+    #  editor is currently in. `edit_view` is desktop or mobile -- the two
+    #  buckets the View selector edits; laptop/tablet reflow desktop and
+    #  store nothing. Kept deliberately narrow: no font or colour ever
+    #  reaches this route, so a size can never carry its own brand.
+    db = get_db()
+    section = db.execute("SELECT id, page_id FROM sections WHERE id = ?", (section_id,)).fetchone()
+    if not section:
+        return (jsonify({"error": "Section not found."}), 404) if wants_json() else (
+            _redirect_next("admin.dashboard"))
+    ev = request.form.get("edit_view")
+    view = ev if ev in PER_VIEW_VIEWS else "desktop"
+    if "hidden" in request.form:
+        set_section_hidden(db, section_id, view, request.form.get("hidden") == "1")
+    if "align" in request.form:
+        align = request.form.get("align", "")
+        set_section_align(db, section_id, view, align if align in SECTION_ALIGNS else "")
+    if wants_json():
+        return jsonify({"ok": True})
+    return _redirect_next("admin.page_edit", page_id=section["page_id"])
+
+
+@bp.route("/sections/<int:section_id>/columns/<int:col_index>/mobile-order", methods=["POST"])
+@login_required
+def section_column_mobile_order(section_id, col_index):
+    #  Reorder how the columns STACK on mobile, without touching their
+    #  desktop left-to-right order. Structure only -- a permutation of column
+    #  indices, applied as a phone-only CSS `order`.
+    db, section = _columns_section_or_404(section_id)
+    if not section:
+        return (jsonify({"error": "Section not found."}), 404) if wants_json() else redirect(
+            url_for("admin.dashboard"))
+    cells = _get_columns_cells(section)
+    if 0 <= col_index < len(cells):
+        move_column_mobile_order(db, section_id, col_index,
+                                 request.form.get("direction", "up"), len(cells))
+    if wants_json():
+        return jsonify({"ok": True})
+    return redirect(request.form.get("next") or url_for("admin.dashboard"))
+
+
+@bp.route("/sections/<int:section_id>/columns/move", methods=["POST"])
+@login_required
+def section_columns_move(section_id):
+    #  Move a tool from one column cell to another by SWAPPING the two --
+    #  nothing is lost if the target already held a tool, and dropping onto
+    #  an empty cell is just a swap with emptiness (a plain move). Same
+    #  Columns section only.
+    db, section = _columns_section_or_404(section_id)
+    if not section:
+        return (jsonify({"error": "Section not found."}), 404) if wants_json() else redirect(
+            url_for("admin.dashboard"))
+    cells = _get_columns_cells(section)
+    frm = request.form.get("from", type=int)
+    to = request.form.get("to", type=int)
+    if (frm is not None and to is not None and frm != to
+            and 0 <= frm < len(cells) and 0 <= to < len(cells)):
+        cells[frm], cells[to] = cells[to], cells[frm]
+        _save_columns_cells(db, section_id, cells)
+    if wants_json():
+        return jsonify({"ok": True})
+    return redirect(request.form.get("next") or url_for("admin.dashboard"))
+
+
+@bp.route("/sections/<int:section_id>/columns/<int:col_index>/rows/reorder", methods=["POST"])
+@login_required
+def section_column_reorder_rows(section_id, col_index):
+    #  Reorder the stacked rows within one column cell. `order` is the new
+    #  arrangement as a comma-separated list of the current row indices; it
+    #  is applied only when it is a true permutation of them, so a stale
+    #  order (a row added/removed since the drag began) changes nothing.
+    db, section = _columns_section_or_404(section_id)
+    if not section:
+        return (jsonify({"error": "Section not found."}), 404) if wants_json() else redirect(
+            url_for("admin.dashboard"))
+    cells = _get_columns_cells(section)
+    if 0 <= col_index < len(cells):
+        cell = cells[col_index]
+        if isinstance(cell, dict) and cell.get("type") == "rows":
+            rows = cell.get("rows", [])
+            idxs = [int(x) for x in (request.form.get("order", "").split(",")) if x.strip().isdigit()]
+            if sorted(idxs) == list(range(len(rows))):
+                cell["rows"] = [rows[i] for i in idxs]
+                cells[col_index] = cell
+                _save_columns_cells(db, section_id, cells)
+    if wants_json():
+        return jsonify({"ok": True})
+    return redirect(request.form.get("next") or url_for("admin.dashboard"))
 
 
 @bp.route("/sections/<int:section_id>/delete", methods=["POST"])
@@ -1310,6 +1474,40 @@ def section_delete(section_id):
     if wants_json():
         return jsonify({"ok": True})
     return _redirect_next("admin.page_edit", page_id=section["page_id"])
+
+
+@bp.route("/sections/<int:section_id>/columns-width", methods=["POST"])
+@login_required
+def section_columns_width(section_id):
+    """Set how a Columns section apportions its width -- equal, or one
+    column wider than the other. A real control on the tool; the width is
+    stored on the section and read back by the render and the control."""
+    db = get_db()
+    width = (request.form.get("width") or "equal").strip()
+    if width not in COLUMN_WIDTHS:
+        width = "equal"
+    set_columns_width(db, section_id, width)
+    if wants_json():
+        return jsonify({"ok": True, "width": width})
+    return redirect(request.form.get("next") or url_for("admin.dashboard"))
+
+
+@bp.route("/sections/<int:section_id>/columns-widths", methods=["POST"])
+@login_required
+def section_columns_widths(section_id):
+    """Store a column ratio the admin DRAGGED to -- `left` is the left
+    column's fraction of the width (0..1); both columns are kept usable.
+    The precise counterpart of the equal/wide-left/wide-right preset."""
+    db = get_db()
+    try:
+        left = float(request.form.get("left"))
+    except (TypeError, ValueError):
+        left = 0.0
+    left = max(0.15, min(0.85, left))
+    set_columns_widths(db, section_id, [round(left, 3), round(1.0 - left, 3)])
+    if wants_json():
+        return jsonify({"ok": True})
+    return redirect(request.form.get("next") or url_for("admin.dashboard"))
 
 
 @bp.route("/sections/<int:section_id>/divide", methods=["POST"])

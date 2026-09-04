@@ -1,9 +1,28 @@
 <!DOCTYPE html>
-<html lang="en">
+{% import "partials/lang_switcher.html" as langsw %}
+<html lang="{{ active_lang or 'en' }}" dir="{{ active_dir or 'ltr' }}">
 <head>
   <meta charset="UTF-8">
+  {#  Viewport width follows the View selector WHILE EDITING, so the layout
+      can be edited from ANY device at EVERY size. This is the only lever
+      that changes what a media query answers on the real hardware: a fixed
+      width makes the browser lay the page out at that width and zoom to
+      fit, so an admin on a phone editing Desktop sees the desktop layout,
+      and one on a tablet editing Mobile sees a true 390px phone -- not the
+      device's own rendering. Forcing every size (mobile included) is what
+      makes the preview identical regardless of the physical screen.
+      Desktop browsers ignore the viewport meta, so desktop editing is
+      unchanged (it narrows via the cms-view-* class instead). Non-editing
+      renders -- visitors, the honest preview iframe -- keep the real
+      responsive viewport. Widths mirror the cms-view-* canvas widths in
+      site-base.css and the WIDTHS map in view-frame.js; keep the three in
+      step. #}
+  {% if force_viewport %}
+  <meta name="viewport" content="width={{ {'desktop': 1280, 'laptop': 1024, 'tablet': 768, 'mobile': 390}.get(viewport_view, 1280) }}">
+  {% else %}
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ (site_settings.site_title ~ ' — ' ~ site_settings.site_tagline) if (page.is_home and site_settings.site_tagline) else (site_settings.site_title if page.is_home else (page.title ~ ' — ' ~ site_settings.site_title)) }}</title>
+  {% endif %}
+  <title>{{ (site_settings.site_title ~ ' — ' ~ site_settings.site_tagline) if (page.is_home and site_settings.site_tagline) else (site_settings.site_title if page.is_home else ((page_title_tr or page.title) ~ ' — ' ~ site_settings.site_title)) }}</title>
   {% if page.meta_description %}<meta name="description" content="{{ page.meta_description }}">{% elif site_settings.site_tagline %}<meta name="description" content="{{ site_settings.site_tagline }}">{% endif %}
   {% if site_settings.favicon_url %}<link rel="icon" href="{{ site_settings.favicon_url }}">{% endif %}
   <link rel="stylesheet" href="{{ static_url('css/site-base.css') }}">
@@ -63,7 +82,7 @@
     list. A template that has chosen none is untouched by that
     stylesheet, which is how the sixteen shipped templates keep the
     design they were authored with. #}
-<body {% if composition %}data-composition="{{ composition }}"{% endif %} class="{{ 'cms-page-bg cms-page-veil-' ~ (page.bg_overlay or 'none') ~ ' cms-page-surface-' ~ (page.bg_surface or 'plain') if page.bg_image }} {{ 'cms-logged-in' if logged_in }} {{ 'cms-editing' if editing }} nav-layout-{{ nav_layout }} {{ 'has-sidebar' if editing or sidebar_sections }} {{ 'has-sidebar-right' if editing or sidebar_right_sections }} {{ 'sidebar-reach-full' if sidebar_sections and sidebar_sections[0].layout_width == 'full' }} {{ 'sidebar-right-reach-full' if sidebar_right_sections and sidebar_right_sections[0].layout_width == 'full' }}" {% if editing %}data-save-template-url="{{ url_for('admin.template_save_current') }}"{% endif %} {{ ('style="' ~ body_style_parts | join('; ') ~ ';"') | safe if body_style_parts }}>
+<body {% if composition %}data-composition="{{ composition }}"{% endif %} class="{{ 'cms-page-bg cms-page-veil-' ~ (page.bg_overlay or 'none') ~ ' cms-page-surface-' ~ (page.bg_surface or 'plain') if page.bg_image }} {{ 'cms-logged-in' if logged_in }} {{ 'cms-editing' if editing }} {{ ('cms-view-' ~ preview_view) if preview_view != 'desktop' }} nav-layout-{{ nav_layout }} {{ 'has-sidebar' if editing or sidebar_sections }} {{ 'has-sidebar-right' if editing or sidebar_right_sections }} {{ 'sidebar-reach-full' if sidebar_sections and sidebar_sections[0].layout_width == 'full' }} {{ 'sidebar-right-reach-full' if sidebar_right_sections and sidebar_right_sections[0].layout_width == 'full' }}" {% if editing %}data-save-template-url="{{ url_for('admin.template_save_current') }}"{% endif %} {% if logged_in %}data-preview-view="{{ preview_view }}" data-view-reset-url="{{ url_for('auth.set_preview_view', view='desktop', next=current_path) }}"{% endif %} {{ ('style="' ~ body_style_parts | join('; ') ~ ';"') | safe if body_style_parts }}>
   {% if logged_in %}
   <div class="cms-admin-bar">
     <span>{{ '✏️ Editing your site' if editing else '👁 Viewing as a visitor' }}</span>
@@ -85,20 +104,21 @@
       {% endfor %}
     </select>
     {% endif %}
-    {% if editing %}
-    {#  A real preview, not a narrowed wrapper: media queries answer the
-        VIEWPORT, so a page squeezed into a narrow box on a wide screen
-        still lays itself out as a wide one and would lie. This opens the
-        page as a visitor sees it inside a frame of the chosen width,
-        where the queries fire properly. #}
-    <select class="cms-mode-select cms-preview-width"
-            title="See this page at another screen size, exactly as a visitor would">
-      <option value="">📱 Preview at…</option>
-      <option value="390">Phone (390px)</option>
-      <option value="768">Tablet (768px)</option>
-      <option value="1280">Desktop (1280px)</option>
+    {#  ONE view control for both jobs. It sets the screen size you are
+        looking at: while EDITING it narrows the canvas so you edit that
+        view in place (Mobile keeps its own edits as cms-sm-* over the
+        Desktop base); while VIEWING it opens the page in an honest device
+        frame of that width, where media queries fire exactly as on a real
+        device (a narrowed box would lie -- see view-frame.js). The choice
+        persists in the session, so switching Editing->Viewing shows the
+        very view you were editing. #}
+    <select class="cms-mode-select" onchange="if (this.value) location = this.value"
+            title="The screen size you're looking at. It applies while editing and, when you switch to Viewing, shows the page at that size. Mobile keeps its own edits on top of Desktop.">
+      <option value="{{ url_for('auth.set_preview_view', view='desktop', next=current_path) }}" {{ 'selected' if preview_view == 'desktop' }}>🖥 Desktop</option>
+      <option value="{{ url_for('auth.set_preview_view', view='laptop', next=current_path) }}" {{ 'selected' if preview_view == 'laptop' }}>💻 Laptop</option>
+      <option value="{{ url_for('auth.set_preview_view', view='tablet', next=current_path) }}" {{ 'selected' if preview_view == 'tablet' }}>📲 Tablet</option>
+      <option value="{{ url_for('auth.set_preview_view', view='mobile', next=current_path) }}" {{ 'selected' if preview_view == 'mobile' }}>📱 Mobile</option>
     </select>
-    {% endif %}
     <a href="{{ url_for('admin.dashboard') }}">Dashboard</a>
     <a href="{{ url_for('auth.account') }}">Account</a>
     <a href="{{ url_for('auth.logout') }}">Log out</a>
@@ -163,6 +183,11 @@
       <select name="layout" title="How the lines sit: side by side suits a footer strip, one per line suits a sidebar or a contact page.">
         {% for key, label in contact_layouts %}
         <option value="{{ key }}" {{ 'selected' if (block.contact_layout or 'row') == key }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <select name="align" title="Which way the lines line up — left, centred or right.">
+        {% for key, label in contact_aligns %}
+        <option value="{{ key }}" {{ 'selected' if (block.contact_align or 'center') == key }}>{{ label }}</option>
         {% endfor %}
       </select>
       {# Off, the icons take whatever size the zone around them already
@@ -846,8 +871,8 @@
 
         <label for="cms-contact-answer">{{ captcha_question }}</label>
         <input type="text" id="cms-contact-answer" name="captcha_answer" required
-               autocomplete="off" inputmode="numeric" size="8"
-               title="A quick check that you're a person — answer in digits or words">
+               autocomplete="off" size="16"
+               title="A quick check that you're a person — type the answer to the question above">
         <input type="hidden" name="captcha_token" value="{{ captcha_token }}">
         {% if request.args.get('again') %}
         <p class="cms-contact-error">That wasn't the right answer — please try again.</p>
@@ -1226,9 +1251,9 @@
     <input type="color" name="divider_color" value="{{ cell.divider_color or '#e2e4e9' }}" onchange="this.form.requestSubmit()" title="Line color">
   {% endmacro %}
 
-  {% macro banner_config_fields(cell, generate_url=none, apply_url=none, image_upload_url=none, image_clear_url=none, portrait_upload_url=none) %}
+  {% macro banner_config_fields(cell, generate_url=none, apply_url=none, image_upload_url=none, image_clear_url=none, portrait_upload_url=none, edit_view="desktop") %}
     {% set ov = banner_overlay_settings(cell.content) %}
-    {% set portrait = banner_portrait_of(cell.content) %}
+    {% set portrait = banner_portrait_of(cell.content, edit_view) %}
     {#  THREE SECTIONS, ONE LAYOUT. The panel was a stack of full-width
         controls -- two selects, then two more, then six buttons, then a
         grid -- and nothing said which button belonged to which picture.
@@ -1340,9 +1365,14 @@
       </div>
     </div>
     {#  Portrait last: it is the least often used of the three, and
-        it changes a picture rather than the words. #}
+        it changes a picture rather than the words. Its position, size and
+        shape are PER-VIEW (the background and text box above are not): so a
+        headshot can be large on the left on a wide screen and small in the
+        centre on a phone. The label says which view you are setting, and the
+        Mobile one keeps its own answer over the Desktop one. #}
     <div class="cms-banner-text-config">
-      <span class="cms-banner-text-config-label">Portrait</span>
+      <span class="cms-banner-text-config-label">Portrait — {{ edit_view }}</span>
+      <p class="hint" style="margin: 0 0 6px;">Position, size and shape for {{ 'wide screens (the base). Switch the view in the top bar to size it for laptop, tablet or phone' if edit_view == 'desktop' else edit_view ~ ' — kept separately, so you can shrink or move it here without changing the other views (it starts from the desktop one)' }}.</p>
       <div class="cms-banner-text-config-grid">
         <label>Show
           <select name="portrait" onchange="this.form.requestSubmit()" title="A round photo of a person, overlapping the bottom of the banner - for a profile, an About page or a CV">
@@ -1359,8 +1389,8 @@
             changed -- which is exactly why they went missing. The
             selects carry their own value and do nothing until a portrait
             is shown; uploading a face turns one on. #}
-        {% set portrait_size = banner_portrait_size_of(cell.content) %}
-        {% set portrait_shape = banner_portrait_shape_of(cell.content) %}
+        {% set portrait_size = banner_portrait_size_of(cell.content, edit_view) %}
+        {% set portrait_shape = banner_portrait_shape_of(cell.content, edit_view) %}
         <label>Size
           <select name="portrait_size" onchange="this.form.requestSubmit()" title="How big the portrait is, as a fraction of the banner. A headshot on a CV wants more presence than a small round avatar beside a contact line.">
             <option value="small" {{ 'selected' if portrait_size == 'small' }}>Small</option>
@@ -1386,6 +1416,40 @@
                  data-upload-url="{{ portrait_upload_url }}" accept="image/*" hidden>
         </span>
         {% endif %}
+      </div>
+    </div>
+    {# The button. Like the Card tool's: the checkbox adds or removes it,
+       the field points it; its words are written on the page like the
+       rest of the banner. Submits with the one banner form. #}
+    {% set bb = banner_button_settings(cell.content) %}
+    {% set bb_link = bb.link if bb.link != '#' else '' %}
+    {% set bb_known = link_pages | map(attribute='url') | list %}
+    {% set bb_is_other = bb_link and bb_link not in bb_known %}
+    <div class="cms-banner-text-config">
+      <span class="cms-banner-text-config-label">Button</span>
+      <div class="cms-banner-text-config-grid">
+        <label title="Add a button to the banner. Click it on the page to change what it says.">
+          <input type="checkbox" name="button" value="1" {{ 'checked' if bb.has_button }}
+                 onchange="this.form.requestSubmit()"> Show a button
+        </label>
+        {# Where it goes: pick a page on this site, or "Somewhere else" for an
+           address off it. Choosing anything turns the button on. Same control
+           and JS the block/CTA links use (select.cms-link-select). #}
+        <label class="cms-block-label" title="Where the button goes: a page on this site, or Somewhere else for an address off it (a web address, an email like mailto:you@example.com, or a phone tel:...).">Goes to
+          <select name="button_link" class="cms-link-select"
+                  onchange="if (this.value) { this.form.querySelector('[name=button]').checked = true; }">
+            <option value="" {{ 'selected' if not bb_link }}>Nowhere yet</option>
+            {% for lp in link_pages %}
+            <option value="{{ lp.url }}" {{ 'selected' if bb_link == lp.url }}>{{ lp.title }}</option>
+            {% endfor %}
+            <option value="__other__" {{ 'selected' if bb_is_other }}>Somewhere else…</option>
+          </select>
+        </label>
+        <input type="text" class="cms-link-other" name="button_link__other"
+               value="{{ bb_link if bb_is_other else '' }}"
+               placeholder="example.com/book or mailto:you@example.com"
+               title="The full address to link to, off this site."
+               {{ 'hidden' if not bb_is_other }}>
       </div>
     </div>
   {% endmacro %}
@@ -1442,7 +1506,8 @@
         suffix. Both chains carried this list until the routes
         underneath them became one -- see BOW.md, "One list of tool
         controls". -#}
-          {%- if item.type == 'html' and not item.is_menu and not item.is_breadcrumb and not item.is_divider and not item.is_image_accordion and not item.is_video_gallery and not item.is_faq and not item.is_faq_reader and not item.is_search and not item.is_blog and not item.is_basket and not item.is_contact_form and not item.is_contact_info and not item.is_buy_button and not item.is_shop and not item.is_block -%}
+          {{ heading_controls(item, save_url) }}
+          {%- if item.type == 'html' and not item.is_menu and not item.is_breadcrumb and not item.is_lang_switcher and not item.is_divider and not item.is_image_accordion and not item.is_video_gallery and not item.is_faq and not item.is_faq_reader and not item.is_search and not item.is_blog and not item.is_basket and not item.is_contact_form and not item.is_contact_info and not item.is_buy_button and not item.is_shop and not item.is_block -%}
           {# A Table keeps the rich-text ribbon (its cells are real text) but
              loses the raw-HTML button: every part of its shape now has a real
              control of its own (see table_config_fields), so the escape hatch
@@ -1553,6 +1618,30 @@
             {{ contact_config_fields(item) }}
           </form>
           {%- endif %}
+          {%- if item.is_lang_switcher -%}
+          {# The Language tool's formatting -- style, colour, flags, labels,
+             alignment. The languages themselves come from Design → Languages;
+             this is only the look. Same block-config-form swap the other
+             marker tools use. #}
+          {% set o = item.ls_opts or {} %}
+          <form method="post" action="{{ url_for('admin.section_lang_switcher_update', section_id=section.id, col_index=col_index) }}{{ row_qs }}" class="cms-inline-form cms-block-config-form cms-lang-switcher-form">
+            <input type="hidden" name="next" value="{{ current_path }}">
+            <div class="cms-config-row">
+              <label>Style
+                <select name="ls_style" title="A row of links, a dropdown, or buttons">{% for k, l in ls_styles %}<option value="{{ k }}" {{ 'selected' if (o.style or 'list') == k }}>{{ l }}</option>{% endfor %}</select>
+              </label>
+              <label>Colour
+                <select name="ls_color" title="How the links are coloured — all follow your theme's palette">{% for k, l in ls_colors %}<option value="{{ k }}" {{ 'selected' if (o.color or 'text') == k }}>{{ l }}</option>{% endfor %}</select>
+              </label>
+              <label>Show as
+                <select name="ls_labels" title="Native name (Español), English name (Spanish), code (ES), or the country flag on its own">{% for k, l in ls_labels %}<option value="{{ k }}" {{ 'selected' if (o.labels or 'native') == k }}>{{ l }}</option>{% endfor %}</select>
+              </label>
+              <label>Align
+                <select name="ls_align" title="Which way the languages line up">{% for k, l in ls_aligns %}<option value="{{ k }}" {{ 'selected' if (o.align or 'left') == k }}>{{ l }}</option>{% endfor %}</select>
+              </label>
+            </div>
+          </form>
+          {%- endif %}
           {%- if item.is_search -%}
           <form method="post" action="{{ url_for('admin.section_search_update', section_id=section.id, col_index=col_index) }}{{ row_qs }}" class="cms-inline-form cms-search-config-form">
             <input type="hidden" name="next" value="{{ current_path }}">
@@ -1583,12 +1672,14 @@
           {%- if item.type == 'banner' -%}
           <form method="post" action="{{ url_for('admin.section_banner_update', section_id=section.id, col_index=col_index) }}{{ row_qs }}" class="cms-inline-form cms-banner-config-form">
             <input type="hidden" name="next" value="{{ current_path }}">
+            <input type="hidden" name="edit_view" value="{{ edit_view }}">
             {{ banner_config_fields(item,
                  url_for('admin.section_banner_image_generate', section_id=section.id, col_index=col_index) ~ row_qs,
                  url_for('admin.section_image_apply', section_id=section.id, col_index=col_index) ~ row_qs,
                  url_for('admin.section_banner_image_upload', section_id=section.id, col_index=col_index) ~ row_qs,
                  url_for('admin.section_banner_image_clear', section_id=section.id, col_index=col_index) ~ row_qs,
-                 url_for('admin.section_banner_portrait_upload', section_id=section.id, col_index=col_index) ~ row_qs) }}
+                 url_for('admin.section_banner_portrait_upload', section_id=section.id, col_index=col_index) ~ row_qs,
+                 edit_view=edit_view) }}
           </form>
           {%- endif %}
           {%- if item.type == 'card' -%}
@@ -1599,6 +1690,54 @@
           {%- endif %}
   {%- endmacro %}
 
+  {# The Language switcher is rendered from a shared partial (imported as
+     `langsw` at the top), so the same markup serves the page and the config
+     route's live swap. `opts` is the tool's own formatting, read off its
+     marker in public.py; `lang_switcher` is the site's enabled languages. #}
+  {% macro lang_switcher_markup(opts) %}{{ langsw.render_lang_switcher(lang_switcher, opts, editing) }}{% endmacro %}
+
+  {#  An optional heading for ANY tool that has no heading in its own body
+      (everything but Text/Card/Banner). It is TWO pieces, linked by a shared
+      data-save-url so heading-zone.js can pair them:
+        - heading_controls(): the tick (on/off), the level (H2/H3/Paragraph)
+          and the alignment -- these live in the TOOL'S TOOLBAR, beside its
+          other controls (see tool_config_forms).
+        - heading_anchor(): the heading itself, ABOVE the tool, typed into
+          in place. A visitor sees only a heading that has words in it. #}
+  {% macro heading_controls(d, save_url) %}
+    {% if d.allow_heading and editing %}
+      {% set lvl = d.title_level_r %}{% set aln = d.title_align_r %}
+      <span class="cms-heading-controls" data-save-url="{{ save_url }}">
+        <label class="cms-th-toggle" title="Show a heading above this tool"><input type="checkbox" class="cms-th-on" {{ 'checked' if d.title_on_flag }}> Heading</label>
+        <select class="cms-th-level" title="How the heading reads: a heading, a smaller subheading, or plain text"{{ ' hidden' | safe if not d.title_on_flag }}>
+          <option value="h2" {{ 'selected' if lvl == 'h2' }}>Heading</option>
+          <option value="h3" {{ 'selected' if lvl == 'h3' }}>Subheading</option>
+          <option value="p" {{ 'selected' if lvl == 'p' }}>Paragraph</option>
+        </select>
+        <select class="cms-th-align" title="Which way the heading lines up"{{ ' hidden' | safe if not d.title_on_flag }}>
+          <option value="left" {{ 'selected' if aln == 'left' }}>Left</option>
+          <option value="center" {{ 'selected' if aln == 'center' }}>Centre</option>
+          <option value="right" {{ 'selected' if aln == 'right' }}>Right</option>
+        </select>
+      </span>
+    {% endif %}
+  {% endmacro %}
+
+  {% macro heading_anchor(d, save_url) %}
+    {% if d.allow_heading %}
+      {% set lvl = d.title_level_r %}{% set aln = d.title_align_r %}
+      {% if editing %}
+      <div class="cms-tool-heading" data-save-url="{{ save_url }}">
+        {% if d.title_on_flag %}
+        <{{ lvl }} class="cms-tool-title cms-th-align-{{ aln }}" data-field="title" data-save-url="{{ save_url }}" data-placeholder="Type a heading…" contenteditable="true">{{ d.title }}</{{ lvl }}>
+        {% endif %}
+      </div>
+      {% elif d.title_on_flag and d.title %}
+      <{{ lvl }} class="cms-tool-title cms-th-align-{{ aln }}">{{ d.title }}</{{ lvl }}>
+      {% endif %}
+    {% endif %}
+  {% endmacro %}
+
   {% macro render_cell(cell, s, col_index, row_index) %}
     {% set row_qs = ('?row=' ~ row_index) if row_index is not none else '' %}
     {% set cell_save_url = url_for('admin.section_column_update', section_id=s.id, col_index=col_index) ~ row_qs %}
@@ -1608,9 +1747,10 @@
       {% if editing %}<div class="cms-cell-empty-hint">Drop a tool here</div>{% endif %}
 
     {% elif cell.type == 'rows' %}
-      <div class="cms-column-rows cms-column-rows-{{ cell.rows_list | length }}">
+      <div class="cms-column-rows cms-column-rows-{{ cell.rows_list | length }}"{% if editing %} data-rows-reorder-url="{{ url_for('admin.section_column_reorder_rows', section_id=s.id, col_index=col_index) }}"{% endif %}>
         {% for row_cell in cell.rows_list %}
         <div class="cms-row-cell"{% if editing %} data-row-index="{{ loop.index0 }}" data-set-tool-url="{{ url_for('admin.section_column_set_tool', section_id=s.id, col_index=col_index) }}?row={{ loop.index0 }}"{% endif %} {{ ('data-corner-style="' ~ row_cell.corner_style ~ '"') | safe if row_cell.corner_style }}>
+          {% if editing %}<span class="cms-row-drag-handle" draggable="true" title="Drag to reorder this row">⠿</span>{% endif %}
           {{ render_cell(row_cell, s, col_index, loop.index0) }}
         </div>
         {% endfor %}
@@ -1710,6 +1850,15 @@
       {% endif %}
       <div class="cms-column-body">{{ cell.display_content | safe }}</div>
 
+    {% elif cell.is_lang_switcher %}
+      {% if editing %}
+      {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+      {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
+      {% endcall %}
+      {% endif %}
+      <div class="cms-column-body cms-block-host">{{ lang_switcher_markup(cell.ls_opts) }}</div>
+
     {% elif cell.is_buy_button %}
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
@@ -1726,6 +1875,7 @@
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
+      {{ heading_anchor(cell, cell_save_url) }}
       <div class="cms-column-body cms-block-host" {{ ('data-save-url="' ~ cell_save_url ~ '"') | safe if editing }}>{{ cell.display_content | safe }}</div>
 
     {% elif cell.is_shop %}
@@ -1929,6 +2079,7 @@
       {% endif %}
       {% if s.border_color %}{% set _ = section_style_parts.append('border: 2px solid ' ~ s.border_color) %}{% endif %}
       {% if effective_width == 'custom' %}{% set _ = section_style_parts.append('--cms-width-pct:' ~ effective_pct) %}{% endif %}
+      {% if effective_width == 'custompx' %}{% set _ = section_style_parts.append('--cms-width-px:' ~ (s.layout_width_px or 800) ~ 'px') %}{% endif %}
       {% set is_sidebar_zone = s.zone in ('sidebar', 'sidebar_right') %}
       {# The height constraint goes on --cms-content-height-px (a custom
          property) plus a marker class, applied by CSS to .cms-section's
@@ -1941,7 +2092,8 @@
          content, so it can scroll independently while the toolbar stays
          fully outside and unclipped. #}
       {% if not is_sidebar_zone and s.content_height_px %}{% set _ = section_style_parts.append('--cms-content-height-px:' ~ s.content_height_px ~ 'px') %}{% endif %}
-      <div class="cms-section{{ ' cms-has-custom-height' if not is_sidebar_zone and s.content_height_px }}{{ ' cms-section-bg cms-bg-' ~ (s.bg_overlay or 'medium') ~ ' cms-bg-pos-' ~ (s.bg_position or 'center') if s.bg_image }}" id="section-{{ s.id }}" data-layout-width="{{ effective_width }}" data-corner-style="{{ s.corner_style or '' }}" data-shadow-style="{{ s.shadow_style or '' }}"{% if editing %} data-section-id="{{ s.id }}" data-type="{{ s.type }}" data-save-url="{{ url_for('admin.section_update', section_id=s.id) }}" data-bg-color="{{ s.bg_color or '' }}" data-border-color="{{ s.border_color or '' }}" data-bg-image="{{ s.bg_image or '' }}" data-bg-overlay="{{ s.bg_overlay or '' }}" data-bg-position="{{ s.bg_position or '' }}" data-supports-corner="1" data-style-label="This section"{% endif %} {{ ('style="' ~ section_style_parts | join('; ') ~ ';"') | safe if section_style_parts }}>
+      {% if not is_sidebar_zone %}{% for _v, _px in (s.content_height_overrides or {}).items() %}{% set _ = section_style_parts.append('--cms-content-height-' ~ _v ~ '-px:' ~ _px ~ 'px') %}{% endfor %}{% endif %}
+      <div class="cms-section{{ ' cms-has-custom-height' if not is_sidebar_zone and s.content_height_px }}{{ ' cms-section-bg cms-bg-' ~ (s.bg_overlay or 'medium') ~ ' cms-bg-pos-' ~ (s.bg_position or 'center') if s.bg_image }}{{ (' ' ~ s.view_classes) if s.view_classes }}" id="section-{{ s.id }}" data-layout-width="{{ effective_width }}" data-corner-style="{{ s.corner_style or '' }}" data-shadow-style="{{ s.shadow_style or '' }}"{% if editing %} data-section-id="{{ s.id }}" data-type="{{ s.type }}" data-save-url="{{ url_for('admin.section_update', section_id=s.id) }}" data-bg-color="{{ s.bg_color or '' }}" data-border-color="{{ s.border_color or '' }}" data-bg-image="{{ s.bg_image or '' }}" data-bg-overlay="{{ s.bg_overlay or '' }}" data-bg-position="{{ s.bg_position or '' }}" data-supports-corner="1" data-style-label="This section"{% endif %} {{ ('style="' ~ section_style_parts | join('; ') ~ ';"') | safe if section_style_parts }}>
         {% if editing %}
         {% if is_sidebar_zone %}
         <div class="cms-resize-handle cms-resize-handle-w {{ 'cms-resize-handle-w-right' if s.zone == 'sidebar_right' }}" data-axis="width" data-save-url="{{ url_for('admin.section_update', section_id=s.id) }}" title="Drag to resize the rail's width"></div>
@@ -1974,6 +2126,41 @@
               </select>
             </label>
           </form>
+          {# PER-VIEW structure for this section, for whichever view is being
+             edited (the View selector up top). STRUCTURE and SIZE only --
+             show/hide and alignment -- never fonts or colours, so a size can
+             never carry its own look. A reload posts each change so the
+             control comes back showing the state for the current view. In
+             Desktop view it sets the base; in Mobile it overrides just the
+             phone. #}
+          {% set _pv_hidden = s.hidden_by_view[edit_view] %}
+          {% set _pv_align = s.align_by_view[edit_view] %}
+          <form method="post" action="{{ url_for('admin.section_view_override', section_id=s.id) }}" class="cms-inline-form cms-per-view-form">
+            <input type="hidden" name="next" value="{{ current_path }}">
+            <input type="hidden" name="edit_view" value="{{ edit_view }}">
+            <label title="Text alignment for this section on {{ edit_view }} — structure only, not fonts or colour.">Align ({{ edit_view }})
+              <select name="align" onchange="this.form.submit()" title="How text in this section lines up on {{ edit_view }}.">
+                <option value="" {{ 'selected' if not _pv_align }}>Theme default</option>
+                <option value="left" {{ 'selected' if _pv_align == 'left' }}>Left</option>
+                <option value="center" {{ 'selected' if _pv_align == 'center' }}>Centre</option>
+                <option value="right" {{ 'selected' if _pv_align == 'right' }}>Right</option>
+              </select>
+            </label>
+          </form>
+          <form method="post" action="{{ url_for('admin.section_view_override', section_id=s.id) }}" class="cms-inline-form cms-per-view-form">
+            <input type="hidden" name="next" value="{{ current_path }}">
+            <input type="hidden" name="edit_view" value="{{ edit_view }}">
+            <input type="hidden" name="hidden" value="{{ '0' if _pv_hidden else '1' }}">
+            <button type="submit" class="cms-per-view-hide{{ ' is-hidden' if _pv_hidden }}"
+                    title="{{ 'Show this section again on ' if _pv_hidden else 'Hide this section on ' }}{{ edit_view }}. Structure only — the section still exists, it just doesn't show on this size.">
+              {{ '🚫 Hidden on ' if _pv_hidden else '👁 Shown on ' }}{{ edit_view }}
+            </button>
+          </form>
+          {# Two columns are resized by DRAGGING the centre line between
+             them (the .cms-col-resizer handle inside the grid, driven by
+             column-resize.js) rather than picking a preset from a menu --
+             a wide main column beside a narrower sidebar, to taste. Three
+             or more columns stay equal. #}
           {# The select always shows what's literally stored (s.layout_width),
              not effective_width — "Auto" stays shown/selected even when it's
              currently resolving to Full/Custom via the site-wide default, so
@@ -1995,8 +2182,14 @@
             <option value="auto" {{ 'selected' if s.layout_width == 'auto' }}>Auto{{ '' if is_sidebar_zone else (' (site default: ' ~ default_section_width ~ ')' if default_section_width != 'auto') }}{{ header_layout_note }}</option>
             <option value="full" {{ 'selected' if s.layout_width == 'full' }}>{{ 'Full height' if is_sidebar_zone else 'Full width' }}{{ header_layout_note }}</option>
             <option value="custom" {{ 'selected' if s.layout_width == 'custom' }}>Custom %{{ header_layout_note }}</option>
+            {% if not is_sidebar_zone %}
+            <option value="custompx" {{ 'selected' if s.layout_width == 'custompx' }}>Custom px</option>
+            {% endif %}
           </select>
           <input type="number" class="cms-layout-width-pct-input" min="10" max="100" value="{{ effective_pct }}" title="{{ 'Height as a % of the full viewport (100% = same as Full height)' if is_sidebar_zone else 'Width as a % of the full viewport (100% = same as Full width)' }}" data-save-url="{{ url_for('admin.section_update', section_id=s.id) }}" {{ 'hidden' if s.layout_width != 'custom' }}>
+          {% if not is_sidebar_zone %}
+          <input type="number" class="cms-layout-width-px-input" min="120" max="2000" step="10" value="{{ s.layout_width_px or 800 }}" title="Width in pixels — an exact size, centred, and never wider than the screen" data-save-url="{{ url_for('admin.section_update', section_id=s.id) }}" {{ 'hidden' if s.layout_width != 'custompx' }}>
+          {% endif %}
           {% if is_sidebar_zone %}
           {# The rail's own width — separate from the Height control above,
              which reuses layout_width/pct for a different axis entirely.
@@ -2012,8 +2205,12 @@
           {% if not is_sidebar_zone %}
           {# A dragged custom height (content_height_px) is separate from
              the Width select above and has no other UI — this is the only
-             way back to auto/content-driven height once it's been set. #}
-          <button type="button" class="cms-content-height-reset" data-save-url="{{ url_for('admin.section_update', section_id=s.id) }}" title="Reset height back to Auto" {{ 'hidden' if not s.content_height_px }}>⟲ height</button>
+             way back to auto/content-driven height once it's been set. Its
+             visibility follows the CURRENT view: on Mobile it reflects the
+             per-view override, on Desktop the base — so "Reset height" acts
+             on the height you can actually see. #}
+          {% set _pv_height = s.content_height_px if edit_view == 'desktop' else s.content_height_overrides.get(edit_view) %}
+          <button type="button" class="cms-content-height-reset" data-save-url="{{ url_for('admin.section_update', section_id=s.id) }}" title="Reset the height of this view back to Auto" {{ 'hidden' if not _pv_height }}>⟲ height ({{ edit_view }})</button>
           {% endif %}
           {# Corners, on the section's own toolbar rather than only inside the
              Colors panel. It is a section property like Width beside it, and
@@ -2110,6 +2307,7 @@
         </div>
         {% endif %}
 
+        {{ heading_anchor(s, url_for("admin.section_update", section_id=s.id)) }}
         {% if s.type == 'blank' %}
           <section class="block block-blank">
             {% if editing %}<div class="cms-cell-empty-hint">Drop a tool here</div>{% endif %}
@@ -2158,18 +2356,43 @@
         {% elif s.type == 'columns' %}
           <section class="block block-columns" {{ ('data-corner-style="' ~ s.tool_corner_style ~ '"') | safe if s.tool_corner_style }} {{ ('data-shadow-style="' ~ s.tool_shadow_style ~ '"') | safe if s.tool_shadow_style }}>
             {% if editing %}<div class="cms-active-tool-header-slot"></div>{% endif %}
-            <div class="cms-columns cms-columns-{{ s.columns_list | length }}">
+            <div class="cms-columns cms-columns-{{ s.columns_list | length }}{% if not s.columns_grid and s.columns_width and s.columns_width != 'equal' %} cms-columns-w-{{ s.columns_width }}{% endif %}{% if editing and (s.columns_list | length) == 2 %} cms-columns-resizable{% endif %}"
+                 {%- if s.columns_grid %} style="--cms-cols: {{ s.columns_grid }}"{% endif %}
+                 {%- if editing %} data-cell-move-url="{{ url_for('admin.section_columns_move', section_id=s.id) }}"{% endif %}
+                 {%- if editing and (s.columns_list | length) == 2 %} data-col-resize-url="{{ url_for('admin.section_columns_widths', section_id=s.id) }}" data-next="{{ current_path }}"{% endif %}>
               {% for cell in s.columns_list %}
               {% set col_index = loop.index0 %}
-              <div class="cms-column"{% if editing %} data-col-index="{{ col_index }}" data-set-tool-url="{{ url_for('admin.section_column_set_tool', section_id=s.id, col_index=col_index) }}"{% endif %} {{ ('data-corner-style="' ~ cell.corner_style ~ '"') | safe if cell.corner_style }}>
+              <div class="cms-column"{% if editing %} data-col-index="{{ col_index }}" data-set-tool-url="{{ url_for('admin.section_column_set_tool', section_id=s.id, col_index=col_index) }}"{% endif %} {{ ('data-corner-style="' ~ cell.corner_style ~ '"') | safe if cell.corner_style }} {{ ('style="--sm-order: ' ~ s.columns_sm_order[col_index] ~ '"') | safe if s.columns_sm_order and s.columns_sm_order[col_index] != col_index }}>
                 {% if editing %}
                 <div class="cms-column-tools">
+                  {% if (s.columns_list | length) > 1 %}
+                  <span class="cms-cell-drag-handle" draggable="true" title="Drag this tool onto another cell to move it there">⠿</span>
+                  {% endif %}
+                  {#  Reorder how the columns STACK on mobile, in Mobile view
+                      only (desktop shows them side by side, so their order is
+                      just left-to-right). Structure only -- it moves the
+                      column in the phone stack, nothing about its look. #}
+                  {% if edit_view == 'mobile' and (s.columns_list | length) > 1 %}
+                  {% set _pos = s.columns_sm_order[col_index] if s.columns_sm_order else col_index %}
+                  <span class="cms-col-order-arrows" title="Move this column earlier or later in the mobile stack">
+                    <form method="post" action="{{ url_for('admin.section_column_mobile_order', section_id=s.id, col_index=col_index) }}" class="cms-inline-form">
+                      <input type="hidden" name="next" value="{{ current_path }}">
+                      <input type="hidden" name="direction" value="up">
+                      <button type="submit" class="cms-move-btn" title="Move this column up in the mobile stack"{{ ' disabled' | safe if _pos == 0 }}>▲</button>
+                    </form>
+                    <form method="post" action="{{ url_for('admin.section_column_mobile_order', section_id=s.id, col_index=col_index) }}" class="cms-inline-form">
+                      <input type="hidden" name="next" value="{{ current_path }}">
+                      <input type="hidden" name="direction" value="down">
+                      <button type="submit" class="cms-move-btn" title="Move this column down in the mobile stack"{{ ' disabled' | safe if _pos == (s.columns_list | length) - 1 }}>▼</button>
+                    </form>
+                  </span>
+                  {% endif %}
                   <form method="post" action="{{ url_for('admin.section_column_split_rows', section_id=s.id, col_index=col_index) }}" class="cms-inline-form">
                     <input type="hidden" name="next" value="{{ current_path }}">
                     <label title="Split this column into stacked rows">Rows
                       <select name="rows" onchange="this.form.requestSubmit()" title="Number of rows">
                         {% set current_rows = cell.rows_list | length if cell.type == 'rows' else 1 %}
-                        {% for n in range(1, 5) %}<option value="{{ n }}" {{ 'selected' if n == current_rows }}>{{ n }}</option>{% endfor %}
+                        {% for n in range(1, 9) %}<option value="{{ n }}" {{ 'selected' if n == current_rows }}>{{ n }}</option>{% endfor %}
                       </select>
                     </label>
                   </form>
@@ -2178,16 +2401,24 @@
                 {{ render_cell(cell, s, col_index, none) }}
               </div>
               {% endfor %}
+              {# The centre line is a drag handle: pull it to resize the two
+                 columns. column-resize.js positions it on the boundary and
+                 saves the ratio on drop. Two columns only -- three or more
+                 stay equal. #}
+              {% if editing and (s.columns_list | length) == 2 %}
+              <div class="cms-col-resizer" title="Drag to resize the columns" aria-hidden="true"></div>
+              {% endif %}
             </div>
           </section>
         {% elif s.type == 'html' %}
           <section class="block block-html" {{ ('data-corner-style="' ~ s.tool_corner_style ~ '"') | safe if s.tool_corner_style }} {{ ('data-shadow-style="' ~ s.tool_shadow_style ~ '"') | safe if s.tool_shadow_style }}>
-            {% if s.title %}<h2>{{ s.title }}</h2>{% endif %}
             {% if s.is_block %}
             {# Structure comes from the toolbar, words come from here: the
                editable bits carry data-field, and inline-editor.js saves
                the whole block back when one of them changes. #}
             <div class="cms-html-preview cms-block-host" {{ ('data-save-url="' ~ url_for('admin.section_update', section_id=s.id) ~ '"') | safe if editing }}>{{ s.display_content | safe }}</div>
+            {% elif s.is_lang_switcher %}
+            <div class="cms-html-preview cms-block-host">{{ lang_switcher_markup(s.ls_opts) }}</div>
             {% elif s.is_shop %}
             {# Built at render time, never stored: a storefront frozen into
                markup would go on advertising last month's prices. #}
@@ -2213,7 +2444,17 @@
             {% else %}
             {{ wysiwyg_body(s.display_content, url_for('admin.section_update', section_id=s.id), 'cms-html-preview') }}
             {% endif %}
+            {#  The raw-HTML editor is the Embed tool's affordance, and it
+                belongs ONLY to a real Embed (the else branch above) and to a
+                dynamic placeholder block (whose wrapper it styles). A marker
+                tool — Language switcher, Menu, Shop, a declared block — renders
+                from live data and must NOT expose a raw-HTML box, or it becomes
+                an Embed by the back door. This mirrors the cell branches, where
+                only the catch-all cell gets it. #}
+            {% set is_marker_tool = s.is_block or s.is_lang_switcher or s.is_shop or s.is_contact_form or s.is_menu or s.is_breadcrumb or s.is_divider or s.is_image_accordion or s.is_video_gallery or s.is_faq or s.is_faq_reader or s.is_search or s.is_blog or s.is_basket or s.is_buy_button or s.is_contact_info or s.is_wordmark %}
+            {% if s.is_dynamic or not is_marker_tool %}
             {{ embed_code_editor(url_for('admin.section_update', section_id=s.id), s.raw) }}
+            {% endif %}
           </section>
         {% elif s.type == 'banner' %}
           <section class="block block-banner" {{ ('data-corner-style="' ~ s.tool_corner_style ~ '"') | safe if s.tool_corner_style }} {{ ('data-shadow-style="' ~ s.tool_shadow_style ~ '"') | safe if s.tool_shadow_style }}>
@@ -2372,6 +2613,10 @@
     <video id="cms-lightbox-video" class="cms-lightbox-video" controls playsinline hidden></video>
   </div>
   <script src="{{ static_url('js/site.js') }}"></script>
+  {#  Wrapping the text under a banner around a side portrait -- pure geometry
+      that has to be measured, see the script's own note. Progressive: with it
+      off the picture keeps its full reserve and the text sits below it. #}
+  <script src="{{ static_url('js/portrait-wrap.js') }}"></script>
   {#  Adding to the basket without leaving the shop. The form works
       without it -- see the script's own note. #}
   <script src="{{ static_url('js/cart-add.js') }}"></script>
@@ -2395,15 +2640,6 @@
     </div>
   </div>
 
-  <div id="cms-preview-frame" class="cms-preview-frame" hidden>
-    <div class="cms-preview-bar">
-      <span class="cms-preview-size"></span>
-      <button type="button" id="cms-preview-close" class="cms-action-btn"
-              title="Close the preview and go back to editing">Close preview</button>
-    </div>
-    <iframe title="Preview" class="cms-preview-viewport"></iframe>
-  </div>
-
   <div id="cms-toast" class="cms-toast" hidden></div>
 
   {# One shared picker for every "Insert Icon" button on the page (every
@@ -2419,8 +2655,28 @@
   <script src="{{ static_url('js/admin/image-picker.js') }}"></script>
   <script src="{{ static_url('js/wysiwyg-commands.js') }}"></script>
   <script src="{{ static_url('js/inline-editor.js') }}"></script>
-  <script src="{{ static_url('js/admin/preview-width.js') }}"></script>
+  <script src="{{ static_url('js/admin/column-resize.js') }}"></script>
+  <script src="{{ static_url('js/admin/column-dnd.js') }}"></script>
+  <script src="{{ static_url('js/admin/heading-zone.js') }}"></script>
+  <script src="{{ static_url('js/admin/icon-search.js') }}"></script>
   <script src="{{ static_url('js/admin/faq-editor.js') }}"></script>
+  {% endif %}
+
+  {#  The honest device frame is VIEWING-only: while editing you edit the
+      narrowed canvas in place, but to VIEW a non-desktop size the page is
+      loaded as a visitor sees it (?preview=1) inside an iframe of that
+      width, where media queries fire for real. view-frame.js auto-opens
+      it from the session view; the editing canvas never needs it. #}
+  {% if logged_in and not editing %}
+  <div id="cms-preview-frame" class="cms-preview-frame" hidden>
+    <div class="cms-preview-bar">
+      <span class="cms-preview-size"></span>
+      <button type="button" id="cms-preview-close" class="cms-action-btn"
+              title="Back to the full desktop size">Back to full size</button>
+    </div>
+    <iframe title="Preview" class="cms-preview-viewport"></iframe>
+  </div>
+  <script src="{{ static_url('js/admin/view-frame.js') }}"></script>
   {% endif %}
 </body>
 </html>

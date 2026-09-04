@@ -21,10 +21,12 @@ Run inside the container:
 
     docker compose exec -T web python tools/abuse_check.py
 """
+import base64
 import os
 import shutil
 import sys
 import tempfile
+import time
 
 sys.path.insert(0, "/app")
 
@@ -136,6 +138,46 @@ with app.app_context():
     check("the sign-up form checks the honeypot",
           "captcha.HONEYPOT_FIELD" in public
           and public.count("captcha.HONEYPOT_FIELD") >= 2)
+
+    print()
+    print("The human check is varied, and only the right answer passes")
+    print("-" * 70)
+    #  A FIXED question is a question you write a parser for once. The
+    #  weakness of the old sum was that it was always a sum -- so what is
+    #  asserted here is that the KIND rotates, and that whichever kind
+    #  comes up, the right answer passes and a wrong one does not.
+    kinds = set()
+    for _ in range(60):
+        kinds.add(" ".join(captcha.challenge()[0].split()[:2]))
+    check("the question is not always the same shape", len(kinds) >= 2,
+          "a single fixed question is a single parser away from beaten")
+
+    def _token(answer, age=5):
+        #  Backdated past MIN_SECONDS so timing is not what passes/fails it.
+        issued = int(time.time()) - age
+        sig = captcha._sign(issued, answer)
+        return base64.urlsafe_b64encode(("%d.%s" % (issued, sig)).encode()).decode()
+
+    for gen in captcha._QUESTIONS:
+        q, ans = gen()
+        tok = _token(ans)
+        ok, _r = captcha.verify(tok, ans)
+        bad, _r = captcha.verify(tok, ans + "x")
+        kind = gen.__name__[3:]  # drop the "_q_" prefix
+        check("%s: the right answer passes" % kind, ok, q)
+        check("%s: a wrong answer does not" % kind, not bad)
+
+    #  A word answer that happens to be a number word ("one") must still
+    #  match -- the raw word is signed, not its digit.
+    check("a number-word answer ('one') still matches",
+          captcha.verify(_token("one"), "one")[0])
+    #  ...and a sum signing the digit still accepts the word.
+    check("a sum accepts the word or the digit",
+          captcha.verify(_token("7"), "seven")[0] and captcha.verify(_token("7"), "7")[0])
+    check("answered instantly, it is refused",
+          not captcha.verify(_token("7", age=0), "7")[0])
+    check("honeypot filled, it is refused",
+          not captcha.verify(_token("7"), "7", honeypot="x")[0])
 
     print()
     print("A WhatsApp link is built, or refused — never silently wrong")

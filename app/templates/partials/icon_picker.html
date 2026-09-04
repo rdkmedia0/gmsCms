@@ -11,6 +11,8 @@
    (inserting into text, where there's nothing to "clear"). #}
 {% macro icon_picker_grid(include_none=true) %}
   <div class="cms-icon-grid-view" hidden>
+    <input type="text" class="cms-icon-search" placeholder="Search icons…"
+           title="Type to filter the icons by name" autocomplete="off">
     <div class="cms-icon-grid">
       {% if include_none %}
       <button type="button" class="cms-icon-grid-btn cms-icon-grid-none" data-icon-key="" title="No icon">∅</button>

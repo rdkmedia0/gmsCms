@@ -647,10 +647,14 @@
     return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); };
   }
 
-  async function saveField(url, field, value) {
+  async function saveField(url, field, value, extra) {
     if (!url) return;
     const body = new URLSearchParams();
     body.set(field, value);
+    //  Extra form fields to send alongside (e.g. edit_view, so a per-view
+    //  save lands in the right bucket). One request, so the field and the
+    //  view it belongs to can never be saved apart.
+    if (extra) for (const k in extra) body.set(k, extra[k]);
     try {
       const res = await fetch(url, {
         method: "POST",
@@ -797,12 +801,22 @@
   // saving the whole block round-trips exactly. Each editable is a leaf
   // holding text, which is what keeps the structure safe: there is no
   // contenteditable wrapping a whole card for somebody to delete.
-  bindEach(".cms-block-host[data-save-url]", (host) => {
+  //  Make every field in a block editable. Extracted and idempotent so it
+  //  can run again after a block re-renders: a toolbar change (add a tag,
+  //  pick a colour) REPLACES the host's innerHTML, and the fresh fields
+  //  inside carry none of the wiring the old ones had. bindEach tracks the
+  //  HOST, which does not change, so on its own it would never re-wire them
+  //  -- which is exactly why a tag could not be typed into after one was
+  //  added. So this is called both from bindEach AND right after the swap
+  //  (see .cms-block-config-form), and each field guards itself.
+  function makeBlockFieldsEditable(host) {
+    if (!host || !host.dataset || !host.dataset.saveUrl) return;
     const url = host.dataset.saveUrl;
-    const block = host.querySelector(".cms-block");
-    if (!block) return;
+    if (!host.querySelector(".cms-block")) return;
+    const currentBlock = () => host.querySelector(".cms-block");
     host.querySelectorAll("[data-field]").forEach((el) => {
       if (el.tagName === "IMG") return;           // pictures come from the toolbar
+      if (el.classList && el.classList.contains("cms-block-editable")) return; // already wired
       //  A caret cannot go inside a <button>, and clicking an <a> follows
       //  it — so marking either one contenteditable produced a field that
       //  looked editable and was not. The builders put the words in a span
@@ -854,9 +868,9 @@
           sel.addRange(range);
         });
       }
-      const push = () => saveField(url, "content", block.outerHTML);
+      const push = () => { const b = currentBlock(); if (b) saveField(url, "content", b.outerHTML); };
       el.addEventListener("blur", push);
-      el.addEventListener("input", () => debouncedSave(url, "content", block.outerHTML));
+      el.addEventListener("input", () => { const b = currentBlock(); if (b) debouncedSave(url, "content", b.outerHTML); });
       // Enter inside a one-line field would otherwise plant a <div> in the
       // middle of a heading; a list is the one place it should work.
       el.addEventListener("keydown", (e) => {
@@ -866,7 +880,29 @@
         }
       });
     });
-  });
+  }
+  bindEach(".cms-block-host[data-save-url]", makeBlockFieldsEditable);
+
+  //  Write each stepper's count from what the block actually renders now.
+  //  A stepper's "+" carries value="add_<prefix>"; the rendered items carry
+  //  data-field="<prefix><n>_...", so the number of distinct <n> is the
+  //  count to show.
+  function syncBlockStepperCounts(form, host) {
+    if (!form || !host) return;
+    form.querySelectorAll(".cms-stepper").forEach((stepper) => {
+      const addBtn = stepper.querySelector('[name="op"][value^="add_"]');
+      const countEl = stepper.querySelector(".cms-stepper-count");
+      if (!addBtn || !countEl) return;
+      const prefix = addBtn.value.slice(4);
+      const re = new RegExp("^" + prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(\\d+)_");
+      const seen = new Set();
+      host.querySelectorAll("[data-field]").forEach((el) => {
+        const m = re.exec(el.getAttribute("data-field") || "");
+        if (m) seen.add(m[1]);
+      });
+      countEl.textContent = String(seen.size);
+    });
+  }
 
   // ---------- WYSIWYG toolbar (formatting buttons + font/color pickers) ----------
   // A section can contain more than one editable body (Columns has one per
@@ -1133,28 +1169,33 @@
       findBody: (el) => currentWysiwygBody(el),
       afterCommand: (body) => { if (body) saveWysiwygBody(body); },
       say: (message) => toast(message),
-      askForLink: (done, body) => {
+      askForLink: (done, body, current) => {
         const hasTextSelection = (window.getSelection()?.toString() || "").length > 0;
         const linkingImage = !hasTextSelection && lastClickedImage && body?.contains(lastClickedImage);
         cmsModal({
-          message: linkingImage ? "Link URL for this image:" : "Link URL:",
+          message: current ? "Edit this link:" : (linkingImage ? "Link URL for this image:" : "Link URL:"),
           showInput: true,
-          confirmLabel: "Add Link",
+          defaultValue: (current && current.url) || "",
+          showInput2: true,
+          input2Placeholder: "Tooltip on hover (optional)",
+          input2Default: (current && current.title) || "",
+          confirmLabel: current ? "Update link" : "Add Link",
           danger: false,
-        }).then(({ confirmed, value: url }) => done(confirmed ? url : null));
+        }).then(({ confirmed, value: url, value2: title }) =>
+          done(confirmed ? url : null, confirmed ? title : ""));
       },
       //  A link on a picture is not a link in the words: with nothing
       //  selected, createLink would do nothing at all, so the anchor is
       //  put around the image by hand.
-      onLinkImage: (body, url) => {
+      onLinkImage: (body, url, title) => {
         const hasTextSelection = (window.getSelection()?.toString() || "").length > 0;
         if (hasTextSelection || !lastClickedImage || !body?.contains(lastClickedImage)) return false;
         const existingLink = lastClickedImage.closest("a");
-        if (existingLink) {
-          existingLink.href = url;
-        } else {
-          const a = document.createElement("a");
-          a.href = url;
+        const a = existingLink || document.createElement("a");
+        a.href = url;
+        if ((title || "").trim()) a.setAttribute("title", title.trim());
+        else a.removeAttribute("title");
+        if (!existingLink) {
           lastClickedImage.replaceWith(a);
           a.appendChild(lastClickedImage);
         }
@@ -1617,6 +1658,16 @@
           target.insertAdjacentHTML("afterbegin", data.portrait_html);
         }
       }
+      //  The button is a child of the overlay for the same reason -- so
+      //  adding, re-pointing or removing it changed nothing on screen
+      //  until a refresh. Applied live now; an empty answer removes it.
+      if (overlay && "actions_html" in data) {
+        const oldActions = overlay.querySelector(".cms-hero-actions");
+        if (oldActions) oldActions.remove();
+        if (data.actions_html) {
+          overlay.insertAdjacentHTML("beforeend", data.actions_html);
+        }
+      }
     }
   }
 
@@ -1706,7 +1757,18 @@
         const data = await res.json();
         if (res.ok && data.ok) {
           const target = host();
-          if (target) target.innerHTML = data.html;
+          if (target) {
+            target.innerHTML = data.html;
+            //  The new fields carry none of the editing wiring the old ones
+            //  had (bindEach tracks the host, which did not change) -- so
+            //  re-apply it, or a tag just added cannot be typed into.
+            makeBlockFieldsEditable(target);
+            //  The steppers live in THIS form, not in the host that was
+            //  just swapped, so their counts would otherwise stay stale:
+            //  add three tags and the number still reads what it did. Read
+            //  the true counts back from the new markup and write them in.
+            syncBlockStepperCounts(form, target);
+          }
           document.dispatchEvent(new CustomEvent("cms:site-refreshed"));
         } else {
           toast(data.error || "Couldn't save — please try again");
@@ -2237,13 +2299,18 @@
     select.addEventListener("change", async () => {
       const section = select.closest(".cms-section");
       const pctInput = section.querySelector(":scope > .cms-section-toolbar .cms-layout-width-pct-input");
+      const pxInput = section.querySelector(":scope > .cms-section-toolbar .cms-layout-width-px-input");
       if (pctInput) pctInput.hidden = select.value !== "custom";
+      if (pxInput) pxInput.hidden = select.value !== "custompx";
       // "auto" resolves to whatever the site-wide default currently is —
-      // everything else (full/custom) is exactly what was just picked.
+      // everything else (full/custom/custompx) is exactly what was picked.
       const effective = select.value === "auto" ? defaultSectionWidth : select.value;
       section.dataset.layoutWidth = effective;
       if (effective === "custom" && pctInput) {
         section.style.setProperty("--cms-width-pct", pctInput.value);
+      }
+      if (effective === "custompx" && pxInput) {
+        section.style.setProperty("--cms-width-px", pxInput.value + "px");
       }
       await saveField(select.dataset.saveUrl, "layout_width", select.value);
       // In the sidebar this same control also decides page-wide reach
@@ -2259,6 +2326,13 @@
       const section = input.closest(".cms-section");
       section.style.setProperty("--cms-width-pct", input.value);
       await saveField(input.dataset.saveUrl, "layout_width_pct", input.value);
+    });
+  });
+  bindEach(".cms-layout-width-px-input", (input) => {
+    input.addEventListener("change", async () => {
+      const section = input.closest(".cms-section");
+      section.style.setProperty("--cms-width-px", input.value + "px");
+      await saveField(input.dataset.saveUrl, "layout_width_px", input.value);
     });
   });
 
@@ -2302,6 +2376,15 @@
     handle.addEventListener("mousedown", (e) => {
       e.preventDefault();
       const section = handle.closest(".cms-section");
+      //  Which bucket a height drag writes: every non-desktop view keeps its
+      //  own (var + marker class), desktop is the base. The names must match
+      //  section_view_classes (Python) and the CSS.
+      const editView = document.body.dataset.previewView || "desktop";
+      const perView = ({
+        mobile: { v: "--cms-content-height-mobile-px", c: "cms-sm-has-custom-height" },
+        laptop: { v: "--cms-content-height-laptop-px", c: "cms-laptop-has-custom-height" },
+        tablet: { v: "--cms-content-height-tablet-px", c: "cms-tablet-has-custom-height" },
+      })[editView] || null;
       const startX = e.clientX, startY = e.clientY;
       const startWidth = parseInt(getComputedStyle(document.body).getPropertyValue(widthVar)) || section.getBoundingClientRect().width;
       const startHeight = section.getBoundingClientRect().height;
@@ -2319,8 +2402,16 @@
           // .cms-section itself — see .cms-has-custom-height in
           // site-base.css. Keeping .cms-section unconstrained is what
           // stops its own toolbar/resize-handle from being clipped.
-          section.style.setProperty("--cms-content-height-px", pending + "px");
-          section.classList.add("cms-has-custom-height");
+          //
+          // A non-desktop view writes its own var/class, so that view shrinks
+          // (or grows) independently and the others are left untouched.
+          if (perView) {
+            section.style.setProperty(perView.v, pending + "px");
+            section.classList.add(perView.c);
+          } else {
+            section.style.setProperty("--cms-content-height-px", pending + "px");
+            section.classList.add("cms-has-custom-height");
+          }
         }
       }
       function onUp() {
@@ -2332,7 +2423,8 @@
           saveField(handle.dataset.saveUrl, "sidebar_width", "custom");
           saveField(handle.dataset.saveUrl, "sidebar_width_px", String(pending));
         } else {
-          saveField(handle.dataset.saveUrl, "content_height_px", String(pending));
+          saveField(handle.dataset.saveUrl, "content_height_px", String(pending),
+                    perView ? { edit_view: editView } : null);
           const resetBtn = section.querySelector(":scope > .cms-section-toolbar .cms-content-height-reset");
           if (resetBtn) resetBtn.hidden = false;
         }
@@ -2344,10 +2436,25 @@
   bindEach(".cms-content-height-reset", (btn) => {
     btn.addEventListener("click", async () => {
       const section = btn.closest(".cms-section");
-      section.classList.remove("cms-has-custom-height");
-      section.style.removeProperty("--cms-content-height-px");
+      const editView = document.body.dataset.previewView || "desktop";
+      const perView = ({
+        mobile: { v: "--cms-content-height-mobile-px", c: "cms-sm-has-custom-height" },
+        laptop: { v: "--cms-content-height-laptop-px", c: "cms-laptop-has-custom-height" },
+        tablet: { v: "--cms-content-height-tablet-px", c: "cms-tablet-has-custom-height" },
+      })[editView] || null;
+      //  Reset clears the height for the CURRENT view only: a non-desktop
+      //  view drops back to inheriting the desktop height; desktop clears the
+      //  base back to auto.
+      if (perView) {
+        section.classList.remove(perView.c);
+        section.style.removeProperty(perView.v);
+      } else {
+        section.classList.remove("cms-has-custom-height");
+        section.style.removeProperty("--cms-content-height-px");
+      }
       btn.hidden = true;
-      await saveField(btn.dataset.saveUrl, "content_height_px", "");
+      await saveField(btn.dataset.saveUrl, "content_height_px", "",
+                      perView ? { edit_view: editView } : null);
     });
   });
 

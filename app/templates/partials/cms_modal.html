@@ -5,6 +5,10 @@
     <p id="cms-modal-message"></p>
     <input type="text" id="cms-modal-input" hidden
            title="Type your answer to the question above.">
+    {#  An optional second line, for a question that has two parts -- e.g. a
+        link's address and its hover tooltip. Hidden unless the caller asks. #}
+    <input type="text" id="cms-modal-input2" class="cms-modal-input2" hidden
+           title="An optional second answer.">
     <label id="cms-modal-count-label" class="cms-modal-count-label" hidden>How many to generate?
       <select id="cms-modal-count" title="How many to add.">
         <option value="1">1</option>

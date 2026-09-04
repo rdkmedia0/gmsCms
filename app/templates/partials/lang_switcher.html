@@ -1,0 +1,42 @@
+{#  The Language switcher, rendered from the site's enabled languages plus
+    the tool's own formatting options. Content, not chrome -- a visitor uses
+    it -- so it wears the site's look and follows the palette.
+
+    ONE definition, two callers: page.html imports the macro; the config
+    route renders THIS file directly (the {{ ... }} call at the bottom) so a
+    style change swaps in place, exactly like the other marker tools. The
+    dropdown is a native <details>, so it needs no JavaScript and works with
+    the keyboard. #}
+{% macro _ls_label(l, opts) -%}
+  {%- if opts.labels == 'flag' %}{{ l.flag_svg | safe }}
+  {%- elif opts.labels == 'code' %}{{ l.code | upper }}
+  {%- elif opts.labels == 'english' %}{{ l.english }}
+  {%- else %}{{ l.native }}{% endif -%}
+{%- endmacro %}
+
+{% macro render_lang_switcher(items, opts, editing=False) %}
+  {%- set opts = opts or {'style':'list','color':'text','flags':'0','labels':'native','align':'left'} -%}
+  {%- if items %}
+  {%- if opts.style == 'dropdown' %}
+    {%- set current = (items | selectattr('current') | list | first) or items[0] %}
+    <details class="cms-lang-switcher cms-ls-dropdown cms-ls-color-{{ opts.color }} cms-ls-align-{{ opts.align }}">
+      <summary class="cms-lang-link cms-ls-current" title="Choose a language" aria-label="Language: {{ current.native }}">{{ _ls_label(current, opts) }}</summary>
+      <div class="cms-ls-menu">
+        {%- for l in items %}
+        <a href="{{ l.url }}" class="cms-lang-link{{ ' is-current' if l.current }}" hreflang="{{ l.code }}" lang="{{ l.code }}"{{ ' aria-current="true"' | safe if l.current }} title="View this site in {{ l.native }}" aria-label="{{ l.native }}">{{ _ls_label(l, opts) }}</a>
+        {%- endfor %}
+      </div>
+    </details>
+  {%- else %}
+    <nav class="cms-lang-switcher cms-ls-{{ opts.style }} cms-ls-color-{{ opts.color }} cms-ls-align-{{ opts.align }}" aria-label="Language">
+      {%- for l in items %}
+      <a href="{{ l.url }}" class="cms-lang-link{{ ' is-current' if l.current }}" hreflang="{{ l.code }}" lang="{{ l.code }}"{{ ' aria-current="true"' | safe if l.current }} title="View this site in {{ l.native }}" aria-label="{{ l.native }}">{{ _ls_label(l, opts) }}</a>
+      {%- endfor %}
+    </nav>
+  {%- endif %}
+  {%- elif editing %}
+    <div class="cms-lang-switcher cms-lang-switcher-empty"><span class="hint">No languages enabled yet — turn some on in Design → Languages and run Translate. This will show them.</span></div>
+  {%- endif %}
+{% endmacro %}
+
+{{ render_lang_switcher(items, opts, editing) }}

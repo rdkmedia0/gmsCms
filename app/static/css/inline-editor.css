@@ -212,6 +212,10 @@ body.cms-placing-tool .cms-editing .cms-column:hover {
   font-size: 13px; cursor: pointer; font-weight: 600; line-height: 1.4;
 }
 .cms-section-toolbar button.cms-danger { background: #fca5a5; color: #7f1d1d; }
+/*  Per-view show/hide toggle: white "Shown" state, muted amber "Hidden"
+    state so the current setting reads at a glance. Chrome -- pins its own
+    colour, never the site's. */
+.cms-section-toolbar button.cms-per-view-hide.is-hidden { background: #fde68a; color: #78350f; }
 /* Everything else in this toolbar (the "Divide" label text, the
    background-color swatch's "▧" glyph) is plain unstyled text sitting
    directly on the toolbar's dark background — without an explicit color
@@ -227,8 +231,9 @@ body.cms-placing-tool .cms-editing .cms-column:hover {
    strip of buttons. */
 .cms-section-label { padding-right: 6px; border-right: 1px solid rgba(255,255,255,0.15); margin-right: 2px; }
 .cms-inline-form { display: inline; }
-.cms-section-move-arrows { display: inline-flex; gap: 2px; }
-.cms-section-move-arrows .cms-move-btn { padding: 2px 6px; font-size: 10px; line-height: 1; }
+.cms-section-move-arrows, .cms-col-order-arrows { display: inline-flex; gap: 2px; }
+.cms-section-move-arrows .cms-move-btn, .cms-col-order-arrows .cms-move-btn { padding: 2px 6px; font-size: 10px; line-height: 1; }
+.cms-col-order-arrows .cms-move-btn[disabled] { opacity: .35; cursor: default; }
 
 .cms-section-label {
   color: #93c5fd; font-size: 11px; font-weight: 700; text-transform: uppercase;
@@ -304,6 +309,14 @@ body.cms-placing-tool .cms-editing .cms-column:hover {
   padding: 4px 10px; cursor: pointer; font-size: 14px;
 }
 .cms-wysiwyg-toolbar button:hover { border-color: #2563eb; }
+/*  Lit when the formatting under the caret is already applied -- bold on
+    bold text, the H2 button in a heading, the current alignment, the link
+    button inside a link. */
+.cms-wysiwyg-toolbar button.is-active {
+  background: var(--cms-ui-accent, #2563eb); border-color: var(--cms-ui-accent, #2563eb); color: #fff;
+}
+.cms-wysiwyg-toolbar button.is-active b, .cms-wysiwyg-toolbar button.is-active i,
+.cms-wysiwyg-toolbar button.is-active u { color: #fff; }
 .cms-toolbar-select {
   border: 1px solid #e2e4e9; background: #fff; border-radius: var(--cms-ui-radius-control);
   padding: 4px 8px; font-size: 13px; cursor: pointer;
@@ -1325,3 +1338,47 @@ body.cms-preview-open { overflow: hidden; }
   display: flex; flex-wrap: wrap; gap: 6px; align-self: flex-end;
 }
 .cms-banner-text-config + .cms-banner-text-config { margin-top: 10px; }
+
+/* Drag handles for moving a tool between column cells, and reordering the
+   rows inside a column. Chrome -- the editor's own controls. */
+.cms-cell-drag-handle, .cms-row-drag-handle {
+  cursor: grab; color: var(--cms-ui-muted, #6b7280); font-size: 12px; line-height: 1;
+  user-select: none; padding: 0 2px;
+}
+.cms-cell-drag-handle:active, .cms-row-drag-handle:active { cursor: grabbing; }
+.cms-row-cell { position: relative; }
+.cms-row-drag-handle {
+  position: absolute; top: 2px; left: 2px; z-index: 2;
+  background: rgba(255,255,255,.85); border-radius: var(--cms-ui-radius-control, 4px);
+  opacity: 0; transition: opacity .12s;
+}
+.cms-row-cell:hover > .cms-row-drag-handle { opacity: .8; }
+.cms-column.cms-cell-drop-target {
+  outline: 2px dashed var(--cms-ui-accent, #2563eb); outline-offset: 2px;
+}
+.cms-column-rows.cms-rows-dragging .cms-row-cell { transition: none; }
+
+/* Optional heading above any tool (see block-html in page.html). While
+   editing, an empty one shows a prompt so it can be filled; a visitor
+   never sees the empty state (it is gated on `editing` in the template). */
+.cms-editing .cms-tool-title:empty::before {
+  content: attr(data-placeholder);
+  opacity: .4; font-weight: inherit;
+}
+.cms-editing .cms-tool-title:empty { min-height: 1em; cursor: text; }
+
+/* The heading controls (tick + level + alignment) -- they live in the
+   tool's own toolbar, beside its other controls. The heading itself sits
+   above the tool (.cms-tool-heading, its own margin). Chrome. */
+.cms-heading-controls { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.cms-heading-controls .cms-th-toggle { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; white-space: nowrap; }
+.cms-heading-controls .cms-th-on { margin: 0; }
+.cms-heading-controls select[hidden] { display: none; }
+.cms-tool-heading:not(:empty) { margin-bottom: 8px; }
+
+/* Icon-picker search box. */
+.cms-icon-search {
+  display: block; width: 100%; box-sizing: border-box; margin-bottom: 6px;
+  padding: 5px 8px; font: inherit; font-size: 13px;
+  border: 1px solid var(--cms-ui-border, #d7dbe0); border-radius: var(--cms-ui-radius-control, 4px);
+}

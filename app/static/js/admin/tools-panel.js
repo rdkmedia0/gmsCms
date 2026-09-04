@@ -83,6 +83,45 @@
     }
   }
 
+  //  Place a tool WITHOUT a full page navigation. A plain form submit here
+  //  had two costs: it reloaded the whole page and jumped to the #section
+  //  anchor the server redirected to (which read as "it pushed me to the
+  //  top"), and on a header/footer section -- whose row has no page_id --
+  //  the redirect fell back to the DASHBOARD, so dropping a tool into the
+  //  bottom (footer) section "loaded the admin page". Posting with
+  //  X-Inline-Edit gets a JSON answer instead of a redirect (so it can
+  //  never land on the dashboard), then cmsRefreshSite re-renders the site
+  //  in place -- keeping scroll position and the dock exactly as they were.
+  function placeTool(action, toolId) {
+    if (!action) return;
+    var body = new URLSearchParams();
+    body.set("tool_id", toolId);
+    body.set("next", currentPath);
+    fetch(action, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "X-Inline-Edit": "1", "Content-Type": "application/x-www-form-urlencoded" },
+      body: body,
+    })
+      .then(function (res) {
+        if (!res.ok) throw new Error("failed");
+        if (window.cmsRefreshSite) return window.cmsRefreshSite();
+        location.reload();
+      })
+      .catch(function () {
+        //  Last resort so a drop never silently does nothing: the old
+        //  full-page submit.
+        var form = document.createElement("form");
+        form.method = "post"; form.action = action; form.hidden = true;
+        var t = document.createElement("input");
+        t.type = "hidden"; t.name = "tool_id"; t.value = toolId;
+        var n = document.createElement("input");
+        n.type = "hidden"; n.name = "next"; n.value = currentPath;
+        form.appendChild(t); form.appendChild(n);
+        document.body.appendChild(form); form.submit();
+      });
+  }
+
   panel.querySelectorAll(".cms-tool-chip").forEach((chip) => {
     chip.addEventListener("click", () => {
       if (armedTool && armedTool.id === chip.dataset.toolId) {
@@ -131,18 +170,9 @@
       }
       if (!action) return;
       e.preventDefault();
-      const form = document.createElement("form");
-      form.method = "post";
-      form.action = action;
-      form.hidden = true;
-      const toolInput = document.createElement("input");
-      toolInput.type = "hidden"; toolInput.name = "tool_id"; toolInput.value = armedTool.id;
-      const nextInput = document.createElement("input");
-      nextInput.type = "hidden"; nextInput.name = "next"; nextInput.value = currentPath;
-      form.appendChild(toolInput);
-      form.appendChild(nextInput);
-      document.body.appendChild(form);
-      form.submit();
+      const toolId = armedTool.id;
+      setArmed(null);
+      placeTool(action, toolId);
     });
   });
 
@@ -204,18 +234,7 @@
         action = newSectionUrl(sectionsList);
       }
       if (!action) return;
-      const form = document.createElement("form");
-      form.method = "post";
-      form.action = action;
-      form.hidden = true;
-      const toolInput = document.createElement("input");
-      toolInput.type = "hidden"; toolInput.name = "tool_id"; toolInput.value = toolId;
-      const nextInput = document.createElement("input");
-      nextInput.type = "hidden"; nextInput.name = "next"; nextInput.value = currentPath;
-      form.appendChild(toolInput);
-      form.appendChild(nextInput);
-      document.body.appendChild(form);
-      form.submit();
+      placeTool(action, toolId);
     });
   });
 

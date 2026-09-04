@@ -25,11 +25,67 @@
     document.execCommand(cmd, false, value || null);
   }
 
+  var ALIGN = {
+    justifyLeft: "left", justifyCenter: "center",
+    justifyRight: "right", justifyFull: "justify",
+  };
+
+  //  The editable a command should act on, found from the current
+  //  selection when the caller could not supply it -- the floating
+  //  toolbar is not inside the section, so `findBody(button)` comes back
+  //  empty, which is exactly why aligning did nothing and did not save.
+  function bodyFromSelection() {
+    var sel = document.getSelection();
+    if (!sel || !sel.rangeCount) return null;
+    var node = sel.getRangeAt(0).startContainer;
+    var el = node.nodeType === 3 ? node.parentElement : node;
+    return (el && el.closest)
+      ? el.closest('.cms-wysiwyg-body,[contenteditable=""],[contenteditable="true"]')
+      : null;
+  }
+
+  //  Align every top-level block in the editable. The style has to sit on
+  //  a CHILD, not the editable itself -- the save stores the editable's
+  //  innerHTML, so a text-align on the editable would be thrown away.
+  //  Bare text with no block gets wrapped in one so it has somewhere to
+  //  carry the alignment. Returns the editable it acted on, so the caller
+  //  can save that one.
+  function applyAlign(body, align) {
+    body = body || bodyFromSelection();
+    if (!body) return null;
+    var blocks = Array.prototype.filter.call(body.children, function (c) {
+      return c.nodeType === 1;
+    });
+    if (!blocks.length) {
+      var wrap = document.createElement("div");
+      while (body.firstChild) wrap.appendChild(body.firstChild);
+      body.appendChild(wrap);
+      blocks = [wrap];
+    }
+    blocks.forEach(function (b) { b.style.textAlign = align; });
+    return body;
+  }
+
+  //  The anchor the caret is in or around -- used to hang a tooltip on the
+  //  link createLink just made.
+  function _linkFromSelection() {
+    var s = window.getSelection();
+    if (!s || !s.rangeCount) return null;
+    var c = s.getRangeAt(0).commonAncestorContainer;
+    var el = c.nodeType === 1 ? c : c.parentElement;
+    if (!el) return null;
+    if (el.closest) {
+      var a = el.closest("a[href]");
+      if (a) return a;
+    }
+    return el.querySelector ? el.querySelector("a[href]") : null;
+  }
+
   function bindToolbar(root, options) {
     var findBody = options.findBody;
     var afterCommand = options.afterCommand || function () {};
-    var askForLink = options.askForLink || function (done) {
-      var url = window.prompt("Link to which web address?", "https://");
+    var askForLink = options.askForLink || function (done, body, current) {
+      var url = window.prompt("Link to which web address?", (current && current.url) || "https://");
       done(url || null);
     };
     var onLinkImage = options.onLinkImage || null;
@@ -47,19 +103,69 @@
         var cmd = btn.dataset.cmd;
         var value = btn.dataset.value || null;
         var body = findBody(btn);
+        //  Alignment set DIRECTLY on the block, not via execCommand.
+        //  execCommand("justifyCenter") is unreliable on an editable that
+        //  is a single block (it may style the wrong node, or nothing),
+        //  which is exactly what a Text tool holding one paragraph is --
+        //  so "centre this" appeared to do nothing. Writing text-align on
+        //  the block the caret sits in always lands, and saves like any
+        //  other edit.
+        if (ALIGN[cmd]) {
+          //  Save whichever editable it actually aligned -- which may be
+          //  the one found from the selection when `body` came back empty.
+          afterCommand(applyAlign(body, ALIGN[cmd]) || body);
+          setTimeout(function () { root.__cmsRefreshState && root.__cmsRefreshState(); }, 0);
+          return;
+        }
         if (cmd === "createLink") {
-          askForLink(function (url) {
+          //  Asking for the URL means a prompt/modal with its own input,
+          //  and giving that focus COLLAPSES the text selection this link
+          //  is meant to wrap -- so by the time createLink runs there is
+          //  nothing selected and it silently does nothing. Capture the
+          //  range now (the button's mousedown-preventDefault kept it
+          //  alive to here) and put it back, in the editable, right before
+          //  wrapping it.
+          var linkSel = window.getSelection();
+          var savedLinkRange = (linkSel && linkSel.rangeCount)
+            ? linkSel.getRangeAt(0).cloneRange() : null;
+          //  If the caret is already in a link, this EDITS it: the prompt
+          //  opens pre-filled with its address and tooltip, and the same
+          //  anchor is updated rather than a second one being made inside it.
+          var existing = _linkFromSelection();
+          var current = existing
+            ? { url: existing.getAttribute("href") || "", title: existing.getAttribute("title") || "" }
+            : null;
+          askForLink(function (url, title) {
             if (url) {
-              if (!(onLinkImage && onLinkImage(body, url))) {
+              if (existing) {
+                existing.setAttribute("href", url);
+                if ((title || "").trim()) existing.setAttribute("title", (title + "").trim());
+                else existing.removeAttribute("title");
+              } else if (!(onLinkImage && onLinkImage(body, url, title))) {
+                if (body && body.focus) body.focus();
+                if (savedLinkRange) {
+                  var s2 = window.getSelection();
+                  s2.removeAllRanges();
+                  s2.addRange(savedLinkRange);
+                }
                 document.execCommand("createLink", false, url);
+                //  The optional hover tooltip goes on the anchor createLink
+                //  just made -- found from the selection, which now sits
+                //  inside it.
+                var made = _linkFromSelection();
+                if (made) {
+                  if (title) made.setAttribute("title", (title + "").trim());
+                  else made.removeAttribute("title");
+                }
               }
             }
             afterCommand(body);
-          }, body);
+          }, body, current);
           return;
         }
         run(cmd, value);
         afterCommand(body);
+        setTimeout(function () { root.__cmsRefreshState && root.__cmsRefreshState(); }, 0);
       });
     });
 
@@ -72,6 +178,59 @@
         afterCommand(findBody(ctrl));
       });
     });
+
+    //  Show what is ALREADY applied where the caret is: the B/I/U buttons
+    //  light up on bold/italic/underlined text, the H2/H3/¶ button for the
+    //  block the caret sits in lights up, and so does the current alignment.
+    //  A toolbar that never reflects the state makes you guess whether text
+    //  is already bold, and toggle it off by accident.
+    var STATE_CMDS = { bold: 1, italic: 1, underline: 1, strikeThrough: 1,
+                       insertUnorderedList: 1, insertOrderedList: 1 };
+    var ALIGN_STATE = { justifyLeft: "left", justifyCenter: "center",
+                        justifyRight: "right", justifyFull: "justify" };
+    var BLOCK_TAGS = /^(P|H1|H2|H3|H4|H5|H6|LI|DIV|BLOCKQUOTE|PRE)$/;
+
+    function caretBlock(body) {
+      var sel = window.getSelection();
+      if (!sel || !sel.rangeCount) return body.firstElementChild || body;
+      var node = sel.getRangeAt(0).startContainer;
+      var el = node.nodeType === 1 ? node : node.parentElement;
+      while (el && el !== body && !BLOCK_TAGS.test(el.tagName)) el = el.parentElement;
+      return (el && el !== body) ? el : (body.firstElementChild || body);
+    }
+
+    function refreshState() {
+      var body = findBody(root);
+      if (!body) return;
+      var sel = window.getSelection();
+      //  Only when the caret is actually inside the body THIS toolbar drives.
+      if (!sel || !sel.anchorNode || !body.contains(sel.anchorNode)) return;
+      var blockTag = "";
+      try { blockTag = (document.queryCommandValue("formatBlock") || "").toLowerCase(); } catch (e) {}
+      var block = caretBlock(body);
+      var align = block ? getComputedStyle(block).textAlign : "";
+      root.querySelectorAll("button[data-cmd]").forEach(function (btn) {
+        var cmd = btn.dataset.cmd;
+        var active = false;
+        if (STATE_CMDS[cmd]) {
+          try { active = document.queryCommandState(cmd); } catch (e) {}
+        } else if (cmd === "formatBlock") {
+          active = blockTag === (btn.dataset.value || "").toLowerCase();
+        } else if (cmd === "createLink") {
+          //  Lit when the caret is inside a link -- the cue that clicking
+          //  will EDIT it, not make a new one.
+          active = !!_linkFromSelection();
+        } else if (ALIGN_STATE[cmd]) {
+          var want = ALIGN_STATE[cmd];
+          active = align === want || (want === "left" && (align === "start" || align === "" || align === "-moz-left"));
+        }
+        btn.classList.toggle("is-active", !!active);
+      });
+    }
+    root.__cmsRefreshState = refreshState;
+    document.addEventListener("selectionchange", refreshState);
+    root.addEventListener("mouseup", refreshState);
+    root.addEventListener("keyup", refreshState);
 
     //  A picture inside the words. Shared for the same reason the
     //  commands are: the live page and an admin form upload to the same

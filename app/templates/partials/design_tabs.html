@@ -6,5 +6,6 @@
   ("Templates", url_for('admin.templates_screen'), request.endpoint == 'admin.templates_screen'),
   ("Layout", url_for('admin.layout_screen'), request.endpoint == 'admin.layout_screen'),
   ("Theme Generator", url_for('admin.theme_generator'), request.endpoint == 'admin.theme_generator'),
+  ("Languages", url_for('admin.languages_screen'), request.endpoint == 'admin.languages_screen'),
 ] %}
 {% include "partials/tabs.html" %}

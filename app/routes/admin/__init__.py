@@ -83,19 +83,45 @@ def wants_json():
 
 def _redirect_next(default_endpoint, anchor=None, **default_kwargs):
     next_url = request.form.get("next")
-    if not (next_url and next_url.startswith("/")):
-        # Header/footer sections have no page_id (they belong to a template
-        # via template_id/zone instead) — page_edit needs a real page_id, so
-        # fall back to the dashboard instead of building a broken URL. In
-        # practice this rarely triggers: every section form/JS call already
-        # sets `next` to the live public page being edited.
-        if "page_id" in default_kwargs and default_kwargs["page_id"] is None:
-            next_url = url_for("admin.dashboard")
-        else:
-            next_url = url_for(default_endpoint, **default_kwargs)
+    if not (next_url and next_url.startswith("/") and not next_url.startswith("//")):
+        # `next` is missing/unsafe. These actions come from the LIVE editor
+        # (View Site), so landing on the admin dashboard is jarring and reads
+        # as a bug — a header/footer section has no page_id, which used to
+        # fall straight to the dashboard and was exactly how "dropping a tool
+        # into the footer opened the admin page" happened. Prefer the public
+        # page the request came FROM, and only fall back to an admin screen
+        # when there is no safe referrer at all.
+        next_url = _safe_editor_referrer()
+        if not next_url:
+            if "page_id" in default_kwargs and default_kwargs["page_id"] is None:
+                next_url = url_for("admin.dashboard")
+            else:
+                next_url = url_for(default_endpoint, **default_kwargs)
     if anchor:
         next_url = f"{next_url}#{anchor}"
     return redirect(next_url)
+
+
+def _safe_editor_referrer():
+    """The path the request came from, if it is a same-origin, non-admin page
+    (i.e. the live editor). Used so a section action never dumps the admin on
+    the dashboard when its `next` is missing. Returns None if there is no such
+    referrer."""
+    ref = request.referrer
+    if not ref:
+        return None
+    try:
+        from urllib.parse import urlparse
+        here = urlparse(request.host_url)
+        there = urlparse(ref)
+    except ValueError:
+        return None
+    if (there.scheme, there.netloc) != (here.scheme, here.netloc):
+        return None
+    path = there.path or "/"
+    if path.startswith("/admin"):
+        return None
+    return path + (("?" + there.query) if there.query else "")
 
 
 

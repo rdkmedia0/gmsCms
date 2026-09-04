@@ -53,13 +53,65 @@ def _sign(issued_at, answer):
     return hmac.new(secret, payload, hashlib.sha256).hexdigest()[:32]
 
 
+#  The check is one of SEVERAL kinds of question, chosen at random, so a
+#  bot author cannot write "find two digits and add them" once and beat it
+#  forever -- the weakness of a fixed sum was the FIXED part, not the sum.
+#  Every kind is answerable from words alone (no image, no JS, reads aloud
+#  for a screen reader) and its answer is known to the server so the token
+#  can sign it. This does not stop a determined attacker who reads the page
+#  -- nothing local and readable can -- it stops the untargeted automation
+#  that fills every form on the internet, backed by the route's rate limit.
+
+#  Small odd-one-out pools. "language" is drawn from the translation
+#  feature's own set of languages, so the human-readable items rotate with
+#  what the app already knows about.
+_CATEGORIES = {
+    "colour": ["red", "green", "blue", "yellow", "orange", "purple", "pink"],
+    "animal": ["dog", "cat", "horse", "rabbit", "fox", "bird", "sheep"],
+    "fruit": ["apple", "banana", "grape", "lemon", "peach", "cherry", "pear"],
+    "language": ["English", "French", "German", "Spanish", "Italian",
+                 "Portuguese", "Dutch", "Polish"],
+}
+_PHRASES = ("the quick brown fox", "a calm and quiet sea", "one small green apple",
+            "the tall old oak tree", "a warm cup of tea")
+_ORDINALS = ("first", "second", "third", "fourth", "fifth")
+
+
+def _q_sum():
+    a, b = random.randint(1, 9), random.randint(1, 9)
+    return f"What is {WORDS[a]} plus {WORDS[b]}?", str(a + b)
+
+
+def _q_category():
+    cat = random.choice(list(_CATEGORIES))
+    answer = random.choice(_CATEGORIES[cat])
+    #  A distractor must NOT also belong to the target category, or the
+    #  question would have two right answers (orange is a colour AND a
+    #  fruit) -- so exclude every member of the target category from the
+    #  pool, however it is listed elsewhere.
+    target = set(_CATEGORIES[cat])
+    pool = [w for c, ws in _CATEGORIES.items() if c != cat for w in ws if w not in target]
+    options = [answer] + random.sample(pool, 2)
+    random.shuffle(options)
+    article = "an" if cat[0] in "aeiou" else "a"
+    return ("Which of these is %s %s: %s?" % (article, cat, ", ".join(options))), answer.lower()
+
+
+def _q_nth_word():
+    phrase = random.choice(_PHRASES)
+    words = phrase.split()
+    i = random.randint(0, min(len(words), len(_ORDINALS)) - 1)
+    return ("In the phrase “%s”, type the %s word." % (phrase, _ORDINALS[i])), words[i].lower()
+
+
+_QUESTIONS = (_q_sum, _q_category, _q_nth_word)
+
+
 def challenge():
-    """(question, token) — a fresh sum, and proof of what it should be."""
-    left = random.randint(1, 9)
-    right = random.randint(1, 9)
-    answer = left + right
+    """(question, token) — a fresh question of a random kind, and proof of
+    what its answer should be."""
+    question, answer = random.choice(_QUESTIONS)()
     issued_at = int(time.time())
-    question = f"What is {WORDS[left]} plus {WORDS[right]}?"
     token = base64.urlsafe_b64encode(
         f"{issued_at}.{_sign(issued_at, answer)}".encode()
     ).decode()
@@ -67,13 +119,16 @@ def challenge():
 
 
 def _accepts(answer):
-    """Digits or the word — someone typing "seven" is not a robot."""
+    """Every form the typed answer could take. The raw text is always a
+    candidate; a number word ALSO stands for its digit ("seven" == "7"), so
+    a sum accepts either -- and a word-answer challenge whose answer happens
+    to be a number word ("one") still matches, because the raw word is tried
+    too (the sum signs the digit, a phrase challenge signs the word)."""
     answer = (answer or "").strip().lower()
-    if answer.isdigit():
-        return [answer]
+    candidates = [answer]
     if answer in WORDS:
-        return [str(WORDS.index(answer))]
-    return [answer]
+        candidates.append(str(WORDS.index(answer)))
+    return candidates
 
 
 def verify(token, answer, honeypot=""):

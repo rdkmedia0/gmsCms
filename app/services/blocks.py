@@ -186,6 +186,31 @@ def build_logos(values):
                  muted=muted)
 
 
+#  The pill palettes. Every one routes through the site's own colour
+#  variables (--primary/--accent), never a hard-coded hex, so tags follow
+#  the template like the rest of the content -- see .cms-tag-color-* in
+#  site-base.css.
+TAG_COLORS = ("accent", "primary", "neutral", "outline")
+
+
+def build_tags(values):
+    """A row of short labels, each a pill -- skills, topics, categories.
+
+    The labels are words on the page, so they are edited on the page:
+    click a pill and type. How many there are is the toolbar stepper,
+    like every other repeated group. There is no HTML anywhere in it --
+    which is the whole point of it being a tool rather than an Embed.
+    """
+    tags = _items(values, "tag", 24, ("label",))
+    color = values.get("color") or "accent"
+    if color not in TAG_COLORS:
+        color = "accent"
+    items = "".join(
+        f'<span class="cms-tag" data-field="tag{i}_label">{esc(t["label"])}</span>'
+        for i, t in enumerate(tags, start=1))
+    return _wrap("tags", f'<div class="cms-tag-row cms-tag-color-{color}">{items}</div>', color=color)
+
+
 def build_team(values):
     people = _items(values, "person", 6, ("photo", "name", "role", "bio"))
     cards = []
@@ -392,6 +417,24 @@ BLOCKS = {
         ],
         "defaults": {"muted": "1"},
     },
+    "tags": {
+        "name": "Tags", "icon": "🔖",
+        "blurb": "A row of short labels — skills, topics, what you work with.",
+        "build": build_tags,
+        "fields": [
+            _field("color", "Colour", "select", options=[
+                ("accent", "Accent"), ("primary", "Primary"),
+                ("neutral", "Neutral"), ("outline", "Outline")]),
+            _group("tag", "Tag", 24, [
+                _field("label", "Tag", placeholder="Skill"),
+            ]),
+        ],
+        "defaults": {
+            "color": "accent",
+            "tag1_label": "First skill", "tag2_label": "Second skill",
+            "tag3_label": "Third skill",
+        },
+    },
     "team": {
         "name": "The team", "icon": "👥",
         "blurb": "Who people will actually be dealing with.",
@@ -429,6 +472,9 @@ BLOCKS = {
             "step2_text": "You get it in writing, with what it costs, before anything starts.",
             "step3_when": "Step three", "step3_title": "The work",
             "step3_text": "We get on with it, and you always know where it stands.",
+            "step4_when": "", "step4_title": "", "step4_text": "",
+            "step5_when": "", "step5_title": "", "step5_text": "",
+            "step6_when": "", "step6_title": "", "step6_text": "",
             "style": "vertical",
         },
     },

@@ -185,6 +185,12 @@ def create_app():
         get_db().commit()
         if restored:
             app.logger.info("Put opening hours back on %d page(s).", restored)
+    #  The translation worker is a thread in a web process, so a restart
+    #  kills it and leaves its run flagged active. Clear that here, or the
+    #  Languages screen shows a phantom "translating…" and refuses a new run.
+    with app.app_context():
+        from .services import translation as _translation
+        _translation.reset_stuck_run(get_db())
     with app.app_context():
         db = get_db()
         outcome = bootstrap.apply_password_login_policy(db)
@@ -402,7 +408,7 @@ def create_app():
 
     from .services.sections import (
         banner_overlay_settings, banner_portrait_of, banner_portrait_size_of,
-        banner_portrait_shape_of, card_style_settings, card_button_settings,
+        banner_portrait_shape_of, banner_button_settings, card_style_settings, card_button_settings,
         TABLE_STYLE_CHOICES, VIDEO_GALLERY_LAYOUTS, MAX_VIDEO_GALLERY_CLIPS,
         ACCORDION_STYLES, FAQ_STYLES, MAX_FAQ_ITEMS,
     )
@@ -412,6 +418,7 @@ def create_app():
     app.jinja_env.globals["banner_portrait_shape_of"] = banner_portrait_shape_of
     app.jinja_env.globals["card_style_settings"] = card_style_settings
     app.jinja_env.globals["card_button_settings"] = card_button_settings
+    app.jinja_env.globals["banner_button_settings"] = banner_button_settings
     app.jinja_env.globals["table_style_choices"] = TABLE_STYLE_CHOICES
     app.jinja_env.globals["video_gallery_layouts"] = VIDEO_GALLERY_LAYOUTS
     app.jinja_env.globals["max_video_gallery_clips"] = MAX_VIDEO_GALLERY_CLIPS

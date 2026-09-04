@@ -125,7 +125,12 @@
 .cms-wysiwyg-body h3, .cms-banner-overlay h3 { line-height: var(--site-h3-line, 1.3); }
 /*  A hero heading is the one place the h1 scale should actually be felt. */
 .cms-banner-overlay h2 {
-  font-size: var(--site-h1-size, 42px); font-weight: var(--site-heading-weight, 700);
+  /*  Responsive to the BANNER's width (a query container -- see
+      site-base.css). On a wide banner the theme's own size wins; on a
+      narrow one (a phone, or the mobile preview) it is capped at a
+      fraction of the banner so a long name never wraps mid-word or spills
+      past the edge. min(), so nothing here enlarges the theme's size. */
+  font-size: min(var(--site-h1-size, 42px), 8cqw); font-weight: var(--site-heading-weight, 700);
   max-width: var(--site-hero-text, 22ch);
   margin-inline: var(--site-hero-margin, auto);
   /*  Measured at 16px and 7px: headline, standfirst and buttons read as
@@ -229,7 +234,15 @@
     a page that already had three. The measure belongs to the TEXT, not
     to the section: the section stays the page's own width and the words
     stop at --site-measure. */
-.site-content .block-text > .cms-wysiwyg-body { max-width: var(--site-measure, 66ch); }
+/*  The Text tool fills its section -- the editable is the section's own
+    content area, so it takes the full width and follows the section's
+    size. Width is controlled by the SECTION (its layout-width control),
+    not by a reading cap the tool imposes on itself: a narrow reading
+    column is a narrow section, not a narrow box inside a wide one. This
+    replaced a fixed --site-measure (66ch) cap that left the words in a
+    box that did not fill the space and could not be widened from the
+    tool. */
+.site-content .block-text > .cms-wysiwyg-body { max-width: 100%; }
 
 /*  What a card is made of. Left-aligned, on the page's own ground with
     one hairline -- the grey fill was the only grey object on the page

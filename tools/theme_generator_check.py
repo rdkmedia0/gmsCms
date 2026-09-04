@@ -1959,10 +1959,66 @@ with app.app_context():
     _db = get_db()
     _kit = tg.brand_kit(source_text=_cv2, voice="i", image_budget="3")
     _p = tg.plan(_db, _kit, "CV", pages_wanted=[], use_ai_images=True, fill_scope="all")
-    check("the plan lists the document's pages when none were typed",
-          [pg["title"] for pg in _p["pages"]] == ["Home", "Experience", "Qualifications", "Contact"],
+    #  A DOCUMENT IS ONE PAGE, rendered whole and in the order it was
+    #  written (its headings become the page's own sections, not separate
+    #  pages that re-slice and mis-attribute it). The plan shows the one
+    #  page the run will make -- what the plan shows is what gets made.
+    check("a document is one page, rendered whole",
+          [pg["title"] for pg in _p["pages"]] == ["Home"],
           str([pg["title"] for pg in _p["pages"]]))
-    check("...and counts the pictures asked for", _p["pictures"] == 3, str(_p["pictures"]))
+    check("...and it takes one picture", _p["pictures"] == 1, str(_p["pictures"]))
+    #  ...and the document's own headings survive as sections OF that page.
+    _one = tg.generate(_db, "/app/app/static", name="CV one", kit=_kit,
+                       fill_scope="all", use_ai_images=False, mode="scratch")
+    import glob as _glob, json as _json
+    _pages = _glob.glob("/app/app/static/themes/" + _one + "/pages/*.json")
+    check("a document renders as a single page", len(_pages) == 1, str(len(_pages)))
+    _html = " ".join(s[2] for s in _json.load(open(_pages[0], encoding="utf-8"))["sections"])
+    check("...carrying the document's own headings",
+          "Experience" in _html and "Qualifications" in _html)
+    #  A document that carries its own COLUMNS is laid out as those
+    #  columns, built from the Columns tool -- the page reflects the
+    #  format it was given. General: two columns in, two cells out, and
+    #  no markup the tool did not make.
+    _lay = {"columns": [
+        "Profile\nA landscape architect of twelve years.\n\n"
+        "Experience\nVerde Atelier (2017-2021)\nLed the planting design.",
+        "Skills\n- Planting design\n- AutoCAD\n\nLanguages\nPortuguese, English"]}
+    _kc = tg.brand_kit(source_text=chr(10).join(_lay["columns"]),
+                       source_layout=_lay, voice="i")
+    _cs = tg.generate(_db, "/app/app/static", name="CV cols", kit=_kc,
+                      fill_scope="all", use_ai_images=False, mode="scratch")
+    _csec = _json.load(open(_glob.glob(
+        "/app/app/static/themes/" + _cs + "/pages/*.json")[0],
+        encoding="utf-8"))["sections"]
+    _cols = [s for s in _csec if s[0] == "columns"]
+    check("a document's columns become a Columns section", len(_cols) == 1,
+          str([s[0] for s in _csec]))
+    if _cols:
+        _cells = _json.loads(_cols[0][2])["columns"]
+        check("...one cell per column", len(_cells) == 2, str(len(_cells)))
+        check("...each carrying its own column's content",
+              "AutoCAD" in _cells[1] and "planting" in _cells[0].lower())
+    #  BANDS: a layout is a stack of bands, each with its OWN column
+    #  count -- two down the body, three across the references row. The
+    #  page reflects the format it was given, so a two-band layout makes
+    #  two Columns sections, one with two cells and one with three.
+    _bl = {"bands": [
+        {"columns": ["Profile\nA landscape architect.",
+                     "Skills\n- Planting\n- AutoCAD"]},
+        {"columns": ["References\nA. Referee\nabc@x.com",
+                     "B. Referee\ndef@x.com",
+                     "Links\nexample.com"]}]}
+    _kb = tg.brand_kit(source_text="Profile\nA landscape architect.",
+                       source_layout=_bl, voice="i")
+    _bs = tg.generate(_db, "/app/app/static", name="CV bands", kit=_kb,
+                      fill_scope="all", use_ai_images=False, mode="scratch")
+    _bsec = _json.load(open(_glob.glob(
+        "/app/app/static/themes/" + _bs + "/pages/*.json")[0],
+        encoding="utf-8"))["sections"]
+    _bcols = [_json.loads(s[2])["columns"] for s in _bsec if s[0] == "columns"]
+    check("each band is its own Columns section with its own column count",
+          [len(c) for c in _bcols] == [2, 3], str([len(c) for c in _bcols]))
 #  ...and the titles it worked out survive to the run.
 check("the plan carries its page titles to the run",
       'name="look_title"' in io.open("/app/app/templates/admin/theme_generator.html",

@@ -391,6 +391,22 @@ def set_view_mode(mode):
     return redirect(url_for("public.home"))
 
 
+@bp.route("/admin/preview-view/<view>")
+@login_required
+def set_preview_view(view):
+    #  The screen size the admin is looking at, kept in the session so it
+    #  survives the editing<->viewing switch and page-to-page navigation:
+    #  pick Mobile, then switch to Viewing, and the page is shown at that
+    #  size (see the view selector in public/page.html). Desktop is the
+    #  base; mobile carries its own per-view edits on top of it.
+    if view in ("desktop", "laptop", "tablet", "mobile"):
+        session["preview_view"] = view
+    next_url = request.args.get("next")
+    if next_url:
+        return redirect(_safe_next(next_url))
+    return redirect(url_for("public.home"))
+
+
 @bp.route("/admin/login/google-check", methods=["POST"])
 def google_check():
     """"Google isn't working — let me in another way", verified rather than

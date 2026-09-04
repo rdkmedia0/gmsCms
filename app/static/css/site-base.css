@@ -489,15 +489,31 @@ body.has-sidebar-right > .site-sidebar.site-sidebar-right.site-sidebar-empty { f
   .site-sidebar-right .site-sidebar-zone { padding-left: 24px; padding-right: 24px; }
 }
 
-/* A horizontal section's dragged/custom height (content_height_px) is
-   applied to its .block child, NOT to .cms-section itself — the section
-   stays overflow:visible so its own toolbar and resize handle (both
-   absolutely-positioned direct children sitting slightly outside the
-   box) are never clipped by the scroll container. */
+/* A horizontal section's dragged/custom height (content_height_px) is a
+   MINIMUM, not a fixed size, and it goes on the .block child, not
+   .cms-section itself. min-height (never height) is what keeps it
+   responsive: text reflows with width, so a FIXED height that fit at one
+   resolution clips and grows a scrollbar at a narrower one -- exactly the
+   break this fixes. As a floor, the section is at least the dragged height
+   and simply grows to fit whatever the content needs, at every width. No
+   overflow/scroll box, so nothing is ever clipped and the section's own
+   toolbar/handle (absolute children just outside the box) stay visible. */
 .cms-section.cms-has-custom-height > .block {
-  height: var(--cms-content-height-px);
-  overflow: auto;
+  min-height: var(--cms-content-height-px);
 }
+
+/*  The MOBILE height override: a height dragged for phone widths only (see
+    set_section_height). It wins over the desktop base at phone widths and in
+    the Mobile editing canvas, so a tall hero can be cut down for a phone
+    while the desktop height is left exactly as it was. Declared after the
+    base so it wins at equal specificity under the media query; the
+    view-mobile rules outrank it for the editing canvas. */
+@media (max-width: 640px) {
+  .cms-section.cms-sm-has-custom-height > .block { min-height: var(--cms-content-height-mobile-px); }
+  .cms-section.cms-sm-has-custom-height > .block-banner { overflow: visible; }
+}
+body.cms-view-mobile .cms-section.cms-sm-has-custom-height > .block { min-height: var(--cms-content-height-mobile-px); }
+body.cms-view-mobile .cms-section.cms-sm-has-custom-height > .block-banner { overflow: visible; }
 
 /* "Full width" breaks a section out of .site-content's max-width to span
    the full viewport, using the standard negative-margin full-bleed trick
@@ -521,6 +537,16 @@ body.has-sidebar-right > .site-sidebar.site-sidebar-right.site-sidebar-empty { f
   margin-left: calc(50% - (var(--cms-width-pct, 100) * 0.5vw));
   margin-right: calc(50% - (var(--cms-width-pct, 100) * 0.5vw));
 }
+/*  Custom px: an ABSOLUTE width the owner types, centred, and capped at the
+    viewport so it can never cause a sideways scroll on a screen narrower
+    than the number. Same negative-margin centring as Custom %, so a width
+    wider than the content column breaks out symmetrically. */
+.cms-section[data-layout-width="custompx"] {
+  width: min(var(--cms-width-px, 800px), 100vw);
+  max-width: 100vw;
+  margin-left: calc(50% - min(var(--cms-width-px, 800px), 100vw) / 2);
+  margin-right: calc(50% - min(var(--cms-width-px, 800px), 100vw) / 2);
+}
 /*  A custom width is a share of the VIEWPORT, so it means something quite
     different on a phone: 25% is a comfortable 360px column on a desktop
     and 98px on a 390px screen -- narrow enough to break a menu into one
@@ -533,7 +559,8 @@ body.has-sidebar-right > .site-sidebar.site-sidebar-right.site-sidebar-empty { f
       whole rule with it, which is why the first attempt changed nothing.
       The sidebar zone needs no exclusion: its own rule governs height
       there, and a rail section already spans the rail. */
-  .cms-section[data-layout-width="custom"] {
+  .cms-section[data-layout-width="custom"],
+  .cms-section[data-layout-width="custompx"] {
     /*  width:auto is not enough: the header zone is a flex container, so
         an auto-width item shrinks to its contents and the open menu is
         still squeezed. It has to claim the row. */
@@ -731,6 +758,20 @@ body.has-sidebar-right > .site-sidebar.site-sidebar-right.site-sidebar-empty { f
   position: relative; background-size: cover; background-position: center;
   min-height: var(--site-hero-min, 280px); display: flex; align-items: center; justify-content: center;
   overflow: hidden;
+  /* A query container, so the headline and portrait size themselves to
+     the BANNER's width -- which is what makes a hero responsive in the
+     editor's mobile preview (a narrow container, not a narrow viewport)
+     as well as on a real phone. Only the inline axis is contained, so the
+     min-height and flex centring are untouched. */
+  container-type: inline-size;
+}
+/*  The headline must never wrap mid-word or overflow -- it has to scale
+    to the banner it sits in. On a narrow banner (a phone, or the mobile
+    preview) it steps down with the container; on a wide one it keeps the
+    theme's own size. Balanced wrapping and break-word stop a long name
+    from splitting into "Stevens / on". */
+.cms-banner-overlay h1, .cms-banner-overlay h2, .cms-banner-overlay h3 {
+  overflow-wrap: break-word; text-wrap: balance;
 }
 /* The Banner tool's starter background before an admin uploads/generates
    a real image (see db.py's BANNER_TOOL_STARTER) — a fixed asset, not
@@ -857,6 +898,13 @@ body.has-sidebar-right > .site-sidebar.site-sidebar-right.site-sidebar-empty { f
 .cms-contact-detail .cms-icon-drawn {
   font-size: var(--cms-contact-icon, 1.25em); width: 1em; height: 1em;
 }
+/*  In a contact/footer row the icons read as ONE set with the text, so a
+    drawn mark takes the text's colour (currentColor) rather than its own
+    brand colour -- otherwise a blue LinkedIn and a yellow IMDb fight a
+    monochrome theme. Overrides the inline brand fill (CSS beats the SVG's
+    fill attribute). Brand colours still apply everywhere else these marks
+    are used. */
+.cms-contact-detail .cms-icon-drawn svg { fill: currentColor; }
 .cms-contact-detail .cms-icon { display: inline-flex; align-items: center; line-height: 1; }
 .cms-contact-detail .cms-icon svg { width: 1em; height: 1em; }
 .cms-contact-detail span[aria-hidden] { font-size: 14px; }
@@ -1396,11 +1444,55 @@ video, .cms-media video, .cms-video {
 /* Generic 1-4 column layout — any content: text, images, embeds */
 .cms-columns { display: grid; gap: 24px; }
 .cms-columns-1 { grid-template-columns: 1fr; }
-.cms-columns-2 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
-.cms-columns-3 { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
-.cms-columns-4 { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
-.cms-columns-5 { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
-.cms-columns-6 { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); }
+/*  A dragged/generated RATIO rides as the --cms-cols custom property, not
+    as an inline grid-template-columns -- so a mobile media query can still
+    override it. An inline property cannot be beaten by a stylesheet, which
+    is why the two columns stayed side by side and squashed on a phone. The
+    fallback is the equal auto-fit that already stacked on its own. */
+.cms-columns-2 { grid-template-columns: var(--cms-cols, repeat(auto-fit, minmax(220px, 1fr))); }
+.cms-columns-3 { grid-template-columns: var(--cms-cols, repeat(auto-fit, minmax(180px, 1fr))); }
+.cms-columns-4 { grid-template-columns: var(--cms-cols, repeat(auto-fit, minmax(150px, 1fr))); }
+.cms-columns-5 { grid-template-columns: var(--cms-cols, repeat(auto-fit, minmax(120px, 1fr))); }
+.cms-columns-6 { grid-template-columns: var(--cms-cols, repeat(auto-fit, minmax(100px, 1fr))); }
+/*  On a phone every multi-column band stacks to one, whatever ratio was
+    set -- two columns of a CV squashed into 180px each is unreadable. */
+@media (max-width: 640px) {
+  .cms-columns-2, .cms-columns-3, .cms-columns-4,
+  .cms-columns-5, .cms-columns-6 { grid-template-columns: 1fr; }
+}
+/* Uneven two-column width — a wide main column beside a narrower one, for
+   a CV's body-and-sidebar. Two classes, so it beats the plain .cms-columns-2
+   above; only for two columns, which is the only place it is offered. It
+   stacks to one column on a narrow screen, the same as the equal layout. */
+.cms-columns-2.cms-columns-w-wide-left { grid-template-columns: 1.7fr 1fr; }
+.cms-columns-2.cms-columns-w-wide-right { grid-template-columns: 1fr 1.7fr; }
+@media (max-width: 640px) {
+  .cms-columns-2.cms-columns-w-wide-left,
+  .cms-columns-2.cms-columns-w-wide-right { grid-template-columns: 1fr; }
+}
+/* Drag-to-resize handle on the boundary of a two-column section, EDITING
+   only. Chrome, so it wears the editor's own accent, not the site's. It
+   is absolutely positioned (out of the grid flow, so it occupies no
+   track); column-resize.js places it on the boundary and drives it. */
+.cms-columns-resizable { position: relative; }
+.cms-col-resizer {
+  position: absolute; top: 0; bottom: 0; width: 18px; margin: 0;
+  transform: translateX(-50%); cursor: col-resize; z-index: 6;
+  display: flex; align-items: center; justify-content: center; touch-action: none;
+}
+/* A clear central line down the whole gap, with a grip in the middle so
+   it reads as a handle you can pull -- not a stray mark on one cell. */
+.cms-col-resizer::before {
+  content: ""; width: 2px; height: 100%; border-radius: 999px;
+  background: var(--cms-ui-accent, #3b82f6); opacity: .45; transition: opacity .15s, width .15s;
+}
+.cms-col-resizer::after {
+  content: ""; position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%); width: 8px; height: 34px; border-radius: 999px;
+  background: var(--cms-ui-accent, #3b82f6); opacity: .55; transition: opacity .15s;
+}
+.cms-col-resizer:hover::before, .cms-col-resizer.dragging::before { opacity: .85; width: 3px; }
+.cms-col-resizer:hover::after, .cms-col-resizer.dragging::after { opacity: 1; }
 /* Centered by default (the align buttons in the WYSIWYG toolbar override
    this per-column, same as any other text alignment). */
 .cms-column { display: flex; flex-direction: column; min-width: 0; align-items: center; text-align: center; }
@@ -2102,6 +2194,17 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
 .cms-logo-row.is-muted img { filter: grayscale(1); opacity: .65; transition: opacity .2s, filter .2s; }
 .cms-logo-row.is-muted img:hover { filter: none; opacity: 1; }
 
+/* Tags block — short labels as pills. Follows the palette (a light accent
+   tint), styled centrally like every tool, never per-instance; the pill
+   is the shape a tag has, the same as the search tool's pill option. */
+.cms-tag-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.cms-tag {
+  display: inline-block; padding: 5px 13px; border-radius: 999px;
+  background: var(--accent-100, #eef1ee);
+  border: 1px solid var(--accent-300, rgba(0, 0, 0, .08));
+  color: inherit; font-size: .9em; line-height: 1.35;
+}
+
 /* --- Team ---------------------------------------------------------- */
 .cms-team-grid { display: grid; gap: 24px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
 .cms-person { display: grid; gap: 6px; }
@@ -2641,6 +2744,12 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
   }
   .site-header-zone > .cms-section:has(.cms-menu) { flex: 1 1 auto; }
   .site-header-zone > .cms-section:has(.cms-basket-link) { flex: 0 0 auto; margin: 0; }
+  /*  A language switcher (or any content section that is neither the menu
+      nor the basket) is not one of the two small controls the row is for --
+      shrink-wrapped beside them it sat hard-left, so its own centre/right
+      alignment had no room to act. Give it a full-width row of its own, and
+      the switcher's Align control works here exactly as it does elsewhere. */
+  .site-header-zone > .cms-section:has(.cms-lang-switcher) { flex: 1 0 100%; }
 }
 
 /*  A floating basket. Lifted out of the page and pinned to a corner, so
@@ -2836,28 +2945,84 @@ body.cms-logged-in .cms-basket-link.cms-basket-align-float-top { top: 60px; }
 
     IT WAS ALWAYS A CIRCLE. Round, square and oval are three frames now,
     a class on the frame; the picture is the same file cropped by it. */
+/*  The portrait's size/position AND the room the banner reserves for it are
+    both in cqw. They MUST resolve against the same width or the reserve won't
+    match the overhang -- so the container is the .block-banner (the section
+    block), the ancestor of both the portrait and the .cms-banner whose margin
+    does the reserving. (An element's own cqw resolves against its ancestor
+    container, never itself, which is why the container cannot sit on
+    .cms-banner.) */
+.block-banner { container-type: inline-size; }
 .cms-banner.cms-has-portrait {
-  container-type: inline-size;
   overflow: visible;
-  margin-bottom: clamp(100px, 13cqw, 220px);
+  /*  The portrait straddles the banner's bottom edge, hanging half its own
+      height BELOW the banner (translateY 50%). The banner reserves exactly
+      that much space beneath it (per size, just below) plus a small gap, so
+      the picture sits in its own room and never covers the section under it.
+      A flat 12px was the old value and it let a large portrait fall right
+      through the text below -- the bug this replaces. */
+  margin-bottom: 14px;
+  position: relative;
+  z-index: 2;
 }
-.cms-banner.cms-portrait-size-small  { margin-bottom: clamp(74px, 9cqw, 160px); }
-.cms-banner.cms-portrait-size-large  { margin-bottom: clamp(140px, 18cqw, 300px); }
+/*  Reserve = half the portrait height + a 14px gap. The half-height clamps
+    mirror the size clamps on .cms-banner-portrait below. */
+.cms-banner.cms-has-portrait.cms-portrait-size-small  { margin-bottom: calc(clamp(32px, 8cqw, 140px) + 14px); }
+.cms-banner.cms-has-portrait.cms-portrait-size-medium { margin-bottom: calc(clamp(48px, 12cqw, 200px) + 14px); }
+.cms-banner.cms-has-portrait.cms-portrait-size-large  { margin-bottom: calc(clamp(55px, 17cqw, 280px) + 14px); }
+/*  Once the owner drags the banner's OWN height, they are deciding the space
+    beneath it -- so the automatic portrait reserve steps aside (down to a
+    hair) instead of forcing a floor the drag cannot beat. The gap can then be
+    closed under any portrait size; a large picture simply floats over what
+    follows, which is the owner's call. Without this, a large portrait's
+    reserve (~half its height) pinned the banner tall and "drag it up" did
+    nothing. */
+.cms-section.cms-has-custom-height .cms-banner.cms-has-portrait { margin-bottom: 14px; }
+
+/*  Text wraps AROUND a side portrait, instead of the whole picture pushing it
+    below. A side portrait is absolutely positioned in the banner and overhangs
+    the bottom-outer corner into the section beneath -- but HOW FAR it reaches
+    (and where its round edge sits relative to the centred text column) depends
+    on the banner's height, the portrait's size, the gap between the two
+    sections and the viewport width, none of which static CSS can read across
+    the section boundary. So the geometry is measured in JS (portrait-wrap.js):
+    it reserves a float of exactly the portrait's footprint, with a shape-outside
+    ELLIPSE so the text hugs the actual curve rather than a bounding box, and it
+    reserves NOTHING below the portrait's bottom. The classes and the --cms-pw-*
+    values below are set by that script and only when a wrap is actually wanted
+    (a side portrait, shown, that reaches the text, on a column wide enough --
+    phones stack). With no JS the float never appears and the banner keeps its
+    full reserve (above), so the text simply sits below the picture -- safe. */
+.cms-section.cms-portrait-wrapping { display: flow-root; }
+.cms-section.cms-portrait-wrapping::before {
+  content: ""; display: block;
+  /*  Sized to the WHOLE portrait and pulled up by JS-set margins so the box
+      overlays the picture exactly; only its lower arc reaches into the text,
+      the rest hangs up in the banner. shape-outside gives the text the real
+      curve to hug; below the picture the reservation ends and text is full
+      width. */
+  width: var(--cms-pw-w, 0); height: var(--cms-pw-h, 0);
+  margin-top: var(--cms-pw-mt, 0);
+  shape-outside: var(--cms-pw-shape, none);
+  shape-margin: var(--cms-pw-margin, 14px);
+}
+.cms-section.cms-portrait-wrapping-left::before  { float: left;  margin-left: var(--cms-pw-ml, 0); }
+.cms-section.cms-portrait-wrapping-right::before { float: right; margin-right: var(--cms-pw-mr, 0); }
 
 .cms-banner > .cms-banner-portrait {
   position: absolute; bottom: 0; left: 50%;
   transform: translate(-50%, 50%);
   margin: 0; z-index: 3;
   aspect-ratio: 1;
-  height: clamp(180px, 24cqw, 400px);
+  height: clamp(96px, 24cqw, 400px);
   border: 4px solid var(--site-card-bg, #fff);
   box-shadow: var(--site-shadow, 0 8px 24px -10px rgba(0, 0, 0, .4));
   background: var(--site-tint, #eee);
   overflow: hidden;
   display: grid; place-items: center;
 }
-.cms-portrait-size-small  > .cms-banner-portrait { height: clamp(130px, 16cqw, 280px); border-width: 3px; }
-.cms-portrait-size-large  > .cms-banner-portrait { height: clamp(260px, 34cqw, 560px); border-width: 7px; }
+.cms-portrait-size-small  > .cms-banner-portrait { height: clamp(64px, 16cqw, 280px); border-width: 3px; }
+.cms-portrait-size-large  > .cms-banner-portrait { height: clamp(110px, 34cqw, 560px); border-width: 7px; }
 
 .cms-banner > .cms-banner-portrait img {
   width: 100%; height: 100%; object-fit: cover; display: block;
@@ -2890,3 +3055,324 @@ body.cms-logged-in .cms-basket-link.cms-basket-align-float-top { top: 60px; }
 .cms-editing .cms-banner-portrait-hint { display: block; }
 .cms-banner-portrait-empty { border-style: dashed; }
 body:not(.cms-editing) .cms-banner-portrait-empty { display: none; }
+
+/* =========================================================================
+   PER-VIEW EDITING. One View selector (Desktop/Laptop/Tablet/Mobile) sets
+   `cms-view-<size>` on the body. While EDITING it narrows the canvas here,
+   in place, so you edit that size -- container-query faithful (banner cqw
+   still resolves against the narrowed box), and the one viewport media
+   query we have (column stacking at <=640) is MIRRORED under the class,
+   because a narrowed box does not trip a viewport query. While VIEWING,
+   the page is shown in an honest iframe of that width instead (view-frame.js),
+   so nothing here has to lie about arbitrary media queries.
+
+   A control edited in the Mobile view stores its choice as a `cms-sm-*`
+   class over the desktop base; that override applies at real phone widths
+   (@media <=640) AND under `cms-view-mobile` so the editor shows it on a
+   wide screen. Every mobile rule is therefore written for both contexts.
+   ========================================================================= */
+
+/*  Canvas widths -- the page reads as that device while editing. A faint
+    outline says "this is a smaller screen", not "the content is just
+    narrow". `outline` is used deliberately: it takes no layout space. */
+body.cms-view-laptop .site-content { max-width: 1024px; margin-inline: auto; }
+body.cms-view-tablet .site-content { max-width: 768px;  margin-inline: auto; }
+body.cms-view-mobile .site-content { max-width: 390px;  margin-inline: auto; }
+/*  A full-bleed section (a banner, a full-width band) breaks out to the real
+    100vw viewport -- correct for a live page, wrong in a NARROWED preview,
+    where it would still stretch the whole desktop window while everything
+    else is phone-width. In a preview view it fills the narrowed canvas
+    instead, so the chosen size is honoured edge to edge. */
+body.cms-view-laptop .site-content .cms-section[data-layout-width="full"],
+body.cms-view-laptop .site-content .cms-section[data-layout-width="custom"],
+body.cms-view-tablet .site-content .cms-section[data-layout-width="full"],
+body.cms-view-tablet .site-content .cms-section[data-layout-width="custom"],
+body.cms-view-mobile .site-content .cms-section[data-layout-width="full"],
+body.cms-view-mobile .site-content .cms-section[data-layout-width="custom"] {
+  /*  Reach the canvas EDGES, not just its content box: on a real phone a
+      full-bleed banner runs edge to edge, breaking out of .site-content's
+      24px gutter, so the preview does the same. */
+  width: calc(100% + 48px); max-width: calc(100% + 48px);
+  margin-left: -24px; margin-right: -24px;
+}
+body.cms-view-laptop.cms-editing .site-content,
+body.cms-view-tablet.cms-editing .site-content,
+body.cms-view-mobile.cms-editing .site-content {
+  outline: 1px solid rgba(120, 130, 150, .35);
+  outline-offset: 8px;
+}
+
+/*  Mobile: columns stack, and a column-resize handle is meaningless on a
+    stacked (single-column) layout, so it is hidden. */
+body.cms-view-mobile .cms-columns-2, body.cms-view-mobile .cms-columns-3,
+body.cms-view-mobile .cms-columns-4, body.cms-view-mobile .cms-columns-5,
+body.cms-view-mobile .cms-columns-6 { grid-template-columns: 1fr; }
+body.cms-view-mobile .cms-col-resizer { display: none; }
+@media (max-width: 640px) { .cms-col-resizer { display: none; } }
+
+/*  Portrait position/size/shape set for MOBILE only -- real phones. */
+@media (max-width: 640px) {
+  .cms-sm-has-portrait-left > .cms-banner-portrait   { left: clamp(16px, 4cqw, 64px); right: auto; transform: translateY(50%); }
+  .cms-sm-has-portrait-center > .cms-banner-portrait { left: 50%; right: auto; transform: translate(-50%, 50%); }
+  .cms-sm-has-portrait-right > .cms-banner-portrait  { left: auto; right: clamp(16px, 4cqw, 64px); transform: translateY(50%); }
+  .cms-sm-portrait-size-small  > .cms-banner-portrait { height: clamp(64px, 16cqw, 280px); }
+  .cms-sm-portrait-size-medium > .cms-banner-portrait { height: clamp(96px, 24cqw, 400px); }
+  .cms-sm-portrait-size-large  > .cms-banner-portrait { height: clamp(110px, 34cqw, 560px); }
+  .cms-sm-portrait-shape-round  > .cms-banner-portrait { --portrait-radius: 50%; border-radius: 50%; aspect-ratio: 1; }
+  .cms-sm-portrait-shape-square > .cms-banner-portrait { --portrait-radius: var(--cms-ui-radius-surface, 10px); border-radius: var(--cms-ui-radius-surface, 10px); aspect-ratio: 1; }
+  .cms-sm-portrait-shape-oval   > .cms-banner-portrait { --portrait-radius: 50% / 58%; border-radius: 50% / 58%; aspect-ratio: 5 / 6; }
+  .cms-sm-portrait-none > .cms-banner-portrait { display: none; }
+  .cms-sm-portrait-none.cms-has-portrait { margin-bottom: 0; }
+}
+/*  ...and the same, shown in the editor's narrowed Mobile canvas. */
+body.cms-view-mobile .cms-sm-has-portrait-left > .cms-banner-portrait   { left: clamp(16px, 4cqw, 64px); right: auto; transform: translateY(50%); }
+body.cms-view-mobile .cms-sm-has-portrait-center > .cms-banner-portrait { left: 50%; right: auto; transform: translate(-50%, 50%); }
+body.cms-view-mobile .cms-sm-has-portrait-right > .cms-banner-portrait  { left: auto; right: clamp(16px, 4cqw, 64px); transform: translateY(50%); }
+body.cms-view-mobile .cms-sm-portrait-size-small  > .cms-banner-portrait { height: clamp(64px, 16cqw, 280px); }
+body.cms-view-mobile .cms-sm-portrait-size-medium > .cms-banner-portrait { height: clamp(96px, 24cqw, 400px); }
+body.cms-view-mobile .cms-sm-portrait-size-large  > .cms-banner-portrait { height: clamp(110px, 34cqw, 560px); }
+body.cms-view-mobile .cms-sm-portrait-shape-round  > .cms-banner-portrait { border-radius: 50%; aspect-ratio: 1; }
+body.cms-view-mobile .cms-sm-portrait-shape-square > .cms-banner-portrait { border-radius: var(--cms-ui-radius-surface, 10px); aspect-ratio: 1; }
+body.cms-view-mobile .cms-sm-portrait-shape-oval   > .cms-banner-portrait { border-radius: 50% / 58%; aspect-ratio: 5 / 6; }
+body.cms-view-mobile .cms-sm-portrait-none > .cms-banner-portrait { display: none; }
+
+/* -- Per-view SECTION show/hide -------------------------------------------
+   A section can be hidden on one view independently of the other (structure,
+   not a base+override). For a VISITOR (and the honest viewing iframe, a real
+   viewport) it is simply gone on that view. While EDITING it is never truly
+   hidden -- it stays visible, dimmed and dashed, so it can be toggled back;
+   the toolbar button says which view it is hidden on. */
+/*  Four width bands, one per view (mobile ≤640, tablet 641–1024, laptop
+    1025–1440, desktop ≥1441). "Hidden on X" removes the section only in X's
+    band for a visitor. */
+@media (max-width: 640px) { body:not(.cms-editing) .cms-sm-hide { display: none; } }
+@media (min-width: 641px) and (max-width: 1023px) { body:not(.cms-editing) .cms-tablet-hide { display: none; } }
+@media (min-width: 1024px) and (max-width: 1440px) { body:not(.cms-editing) .cms-laptop-hide { display: none; } }
+@media (min-width: 1441px) { body:not(.cms-editing) .cms-hide-desktop { display: none; } }
+/*  While EDITING, a hidden section is never truly gone -- it stays visible,
+    dimmed and dashed, so it can be toggled back. It is dimmed only in the
+    canvas of the view it is hidden on, so editing another view shows it
+    normally (it really does appear there). Desktop is the canvas with no
+    cms-view-* class. */
+body.cms-editing.cms-view-mobile .cms-sm-hide,
+body.cms-editing.cms-view-tablet .cms-tablet-hide,
+body.cms-editing.cms-view-laptop .cms-laptop-hide,
+body.cms-editing:not(.cms-view-mobile):not(.cms-view-tablet):not(.cms-view-laptop) .cms-hide-desktop {
+  opacity: .5;
+  outline: 2px dashed rgba(120, 130, 150, .6);
+  outline-offset: 4px;
+}
+
+/* -- Per-view SECTION alignment -------------------------------------------
+   Desktop values are the base at every size; a mobile value overrides it at
+   phone widths and in the Mobile editing canvas. Structure only -- text-align
+   inherits to headings, copy and buttons; it carries no font or colour. */
+.cms-section.cms-align-left   { text-align: left; }
+.cms-section.cms-align-center { text-align: center; }
+.cms-section.cms-align-right  { text-align: right; }
+@media (max-width: 640px) {
+  .cms-section.cms-sm-align-left   { text-align: left; }
+  .cms-section.cms-sm-align-center { text-align: center; }
+  .cms-section.cms-sm-align-right  { text-align: right; }
+}
+body.cms-view-mobile .cms-section.cms-sm-align-left   { text-align: left; }
+body.cms-view-mobile .cms-section.cms-sm-align-center { text-align: center; }
+body.cms-view-mobile .cms-section.cms-sm-align-right  { text-align: right; }
+
+/* == TABLET (641–1024) and LAPTOP (1025–1440) per-view overrides ===========
+   The same portrait / height / alignment overrides mobile has, for the two
+   middle views, so every size the View selector offers holds its own edits.
+   Each rule set appears twice: once in the view's width band (for a real
+   visitor and the honest viewing iframe) and once under its cms-view-*
+   editing canvas (which a desktop browser needs, since the media query does
+   not fire there). Clamp values are shared -- the portrait is sized as a
+   fraction of the banner, so one set of sizes holds at every width. */
+
+/* ---- TABLET ---- */
+@media (min-width: 641px) and (max-width: 1023px) {
+  .cms-tablet-has-portrait-left > .cms-banner-portrait   { left: clamp(16px, 4cqw, 64px); right: auto; transform: translateY(50%); }
+  .cms-tablet-has-portrait-center > .cms-banner-portrait { left: 50%; right: auto; transform: translate(-50%, 50%); }
+  .cms-tablet-has-portrait-right > .cms-banner-portrait  { left: auto; right: clamp(16px, 4cqw, 64px); transform: translateY(50%); }
+  .cms-tablet-portrait-size-small  > .cms-banner-portrait { height: clamp(64px, 16cqw, 280px); }
+  .cms-tablet-portrait-size-medium > .cms-banner-portrait { height: clamp(96px, 24cqw, 400px); }
+  .cms-tablet-portrait-size-large  > .cms-banner-portrait { height: clamp(110px, 34cqw, 560px); }
+  .cms-tablet-portrait-shape-round  > .cms-banner-portrait { border-radius: 50%; aspect-ratio: 1; }
+  .cms-tablet-portrait-shape-square > .cms-banner-portrait { border-radius: var(--cms-ui-radius-surface, 10px); aspect-ratio: 1; }
+  .cms-tablet-portrait-shape-oval   > .cms-banner-portrait { border-radius: 50% / 58%; aspect-ratio: 5 / 6; }
+  .cms-tablet-portrait-none > .cms-banner-portrait { display: none; }
+  .cms-tablet-portrait-none.cms-has-portrait { margin-bottom: 0; }
+  .cms-section.cms-tablet-has-custom-height > .block { min-height: var(--cms-content-height-tablet-px); }
+  .cms-section.cms-tablet-has-custom-height > .block-banner { overflow: visible; }
+  .cms-section.cms-tablet-align-left   { text-align: left; }
+  .cms-section.cms-tablet-align-center { text-align: center; }
+  .cms-section.cms-tablet-align-right  { text-align: right; }
+}
+body.cms-view-tablet .cms-tablet-has-portrait-left > .cms-banner-portrait   { left: clamp(16px, 4cqw, 64px); right: auto; transform: translateY(50%); }
+body.cms-view-tablet .cms-tablet-has-portrait-center > .cms-banner-portrait { left: 50%; right: auto; transform: translate(-50%, 50%); }
+body.cms-view-tablet .cms-tablet-has-portrait-right > .cms-banner-portrait  { left: auto; right: clamp(16px, 4cqw, 64px); transform: translateY(50%); }
+body.cms-view-tablet .cms-tablet-portrait-size-small  > .cms-banner-portrait { height: clamp(64px, 16cqw, 280px); }
+body.cms-view-tablet .cms-tablet-portrait-size-medium > .cms-banner-portrait { height: clamp(96px, 24cqw, 400px); }
+body.cms-view-tablet .cms-tablet-portrait-size-large  > .cms-banner-portrait { height: clamp(110px, 34cqw, 560px); }
+body.cms-view-tablet .cms-tablet-portrait-shape-round  > .cms-banner-portrait { border-radius: 50%; aspect-ratio: 1; }
+body.cms-view-tablet .cms-tablet-portrait-shape-square > .cms-banner-portrait { border-radius: var(--cms-ui-radius-surface, 10px); aspect-ratio: 1; }
+body.cms-view-tablet .cms-tablet-portrait-shape-oval   > .cms-banner-portrait { border-radius: 50% / 58%; aspect-ratio: 5 / 6; }
+body.cms-view-tablet .cms-tablet-portrait-none > .cms-banner-portrait { display: none; }
+body.cms-view-tablet .cms-section.cms-tablet-has-custom-height > .block { min-height: var(--cms-content-height-tablet-px); }
+body.cms-view-tablet .cms-section.cms-tablet-has-custom-height > .block-banner { overflow: visible; }
+body.cms-view-tablet .cms-section.cms-tablet-align-left   { text-align: left; }
+body.cms-view-tablet .cms-section.cms-tablet-align-center { text-align: center; }
+body.cms-view-tablet .cms-section.cms-tablet-align-right  { text-align: right; }
+
+/* ---- LAPTOP ---- */
+@media (min-width: 1024px) and (max-width: 1440px) {
+  .cms-laptop-has-portrait-left > .cms-banner-portrait   { left: clamp(16px, 4cqw, 64px); right: auto; transform: translateY(50%); }
+  .cms-laptop-has-portrait-center > .cms-banner-portrait { left: 50%; right: auto; transform: translate(-50%, 50%); }
+  .cms-laptop-has-portrait-right > .cms-banner-portrait  { left: auto; right: clamp(16px, 4cqw, 64px); transform: translateY(50%); }
+  .cms-laptop-portrait-size-small  > .cms-banner-portrait { height: clamp(64px, 16cqw, 280px); }
+  .cms-laptop-portrait-size-medium > .cms-banner-portrait { height: clamp(96px, 24cqw, 400px); }
+  .cms-laptop-portrait-size-large  > .cms-banner-portrait { height: clamp(110px, 34cqw, 560px); }
+  .cms-laptop-portrait-shape-round  > .cms-banner-portrait { border-radius: 50%; aspect-ratio: 1; }
+  .cms-laptop-portrait-shape-square > .cms-banner-portrait { border-radius: var(--cms-ui-radius-surface, 10px); aspect-ratio: 1; }
+  .cms-laptop-portrait-shape-oval   > .cms-banner-portrait { border-radius: 50% / 58%; aspect-ratio: 5 / 6; }
+  .cms-laptop-portrait-none > .cms-banner-portrait { display: none; }
+  .cms-laptop-portrait-none.cms-has-portrait { margin-bottom: 0; }
+  .cms-section.cms-laptop-has-custom-height > .block { min-height: var(--cms-content-height-laptop-px); }
+  .cms-section.cms-laptop-has-custom-height > .block-banner { overflow: visible; }
+  .cms-section.cms-laptop-align-left   { text-align: left; }
+  .cms-section.cms-laptop-align-center { text-align: center; }
+  .cms-section.cms-laptop-align-right  { text-align: right; }
+}
+body.cms-view-laptop .cms-laptop-has-portrait-left > .cms-banner-portrait   { left: clamp(16px, 4cqw, 64px); right: auto; transform: translateY(50%); }
+body.cms-view-laptop .cms-laptop-has-portrait-center > .cms-banner-portrait { left: 50%; right: auto; transform: translate(-50%, 50%); }
+body.cms-view-laptop .cms-laptop-has-portrait-right > .cms-banner-portrait  { left: auto; right: clamp(16px, 4cqw, 64px); transform: translateY(50%); }
+body.cms-view-laptop .cms-laptop-portrait-size-small  > .cms-banner-portrait { height: clamp(64px, 16cqw, 280px); }
+body.cms-view-laptop .cms-laptop-portrait-size-medium > .cms-banner-portrait { height: clamp(96px, 24cqw, 400px); }
+body.cms-view-laptop .cms-laptop-portrait-size-large  > .cms-banner-portrait { height: clamp(110px, 34cqw, 560px); }
+body.cms-view-laptop .cms-laptop-portrait-shape-round  > .cms-banner-portrait { border-radius: 50%; aspect-ratio: 1; }
+body.cms-view-laptop .cms-laptop-portrait-shape-square > .cms-banner-portrait { border-radius: var(--cms-ui-radius-surface, 10px); aspect-ratio: 1; }
+body.cms-view-laptop .cms-laptop-portrait-shape-oval   > .cms-banner-portrait { border-radius: 50% / 58%; aspect-ratio: 5 / 6; }
+body.cms-view-laptop .cms-laptop-portrait-none > .cms-banner-portrait { display: none; }
+body.cms-view-laptop .cms-section.cms-laptop-has-custom-height > .block { min-height: var(--cms-content-height-laptop-px); }
+body.cms-view-laptop .cms-section.cms-laptop-has-custom-height > .block-banner { overflow: visible; }
+body.cms-view-laptop .cms-section.cms-laptop-align-left   { text-align: left; }
+body.cms-view-laptop .cms-section.cms-laptop-align-center { text-align: center; }
+body.cms-view-laptop .cms-section.cms-laptop-align-right  { text-align: right; }
+
+/* -- Per-view COLUMN stack order ------------------------------------------
+   Columns stack only at phone widths; --sm-order (set per column when the
+   owner reordered the mobile stack) becomes each column's CSS `order` there
+   and in the Mobile editing canvas. On wider views it is ignored, so the
+   desktop left-to-right order is untouched. Structure only. */
+@media (max-width: 640px) { .cms-columns > .cms-column { order: var(--sm-order, 0); } }
+body.cms-view-mobile .cms-columns > .cms-column { order: var(--sm-order, 0); }
+
+/* -- Language switcher (the Language tool) --------------------------------
+   Content, not chrome -- a visitor uses it -- so it follows the site's own
+   colours (--primary) and fonts, like the Menu tool. A plain inline row of
+   the site's languages; the current one is marked. */
+/* -- Language switcher --------------------------------------------------
+   Three styles (a row of links, buttons, or a dropdown), three colour
+   schemes (all follow the theme's palette -- it is CONTENT), flags on/off,
+   and alignment. The dropdown is a native <details>, so it needs no JS. */
+.cms-lang-switcher {
+  display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center;
+  font-size: 0.95em;
+}
+.cms-lang-switcher .cms-lang-link {
+  text-decoration: none; padding: 2px 4px;
+  border-radius: var(--site-radius-safe, 4px); white-space: nowrap;
+}
+.cms-lang-switcher .cms-lang-link:hover { text-decoration: underline; }
+.cms-lang-switcher .cms-lang-link.is-current { font-weight: 700; cursor: default; text-decoration: none; }
+/*  Inline SVG flag: sized to the text around it, a hair of border so a
+    white or pale flag still reads as a tile on any ground. */
+.cms-ls-flag {
+  display: inline-block; width: 1.5em; height: 1em; vertical-align: -0.15em;
+  border-radius: 2px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .12);
+}
+.cms-lang-link:hover .cms-ls-flag { box-shadow: 0 0 0 1px rgba(0, 0, 0, .25); }
+.cms-lang-switcher-empty { opacity: .8; }
+
+/* Alignment (row/buttons use justify-content; the dropdown is a block). */
+.cms-ls-align-left  { justify-content: flex-start; }
+.cms-ls-align-center { justify-content: center; }
+.cms-ls-align-right { justify-content: flex-end; }
+.cms-ls-dropdown.cms-ls-align-center { margin-inline: auto; }
+.cms-ls-dropdown.cms-ls-align-right  { margin-left: auto; }
+
+/* Colour schemes. */
+.cms-ls-color-text   .cms-lang-link { color: inherit; }
+.cms-ls-color-accent .cms-lang-link { color: var(--primary, #2563eb); }
+.cms-ls-color-subtle .cms-lang-link { color: var(--primary, #2563eb); opacity: .65; }
+.cms-ls-color-subtle .cms-lang-link:hover,
+.cms-ls-color-subtle .cms-lang-link.is-current { opacity: 1; }
+
+/* Buttons: pills that carry the scheme colour as border + fill-on-current. */
+.cms-ls-buttons .cms-lang-link {
+  border: 1px solid currentColor; padding: 3px 12px;
+  border-radius: 999px; opacity: 1;
+}
+.cms-ls-buttons .cms-lang-link:hover { text-decoration: none; background: color-mix(in srgb, currentColor 12%, transparent); }
+.cms-ls-buttons .cms-lang-link.is-current { background: var(--primary, #2563eb); color: var(--site-card-bg, #fff); border-color: var(--primary, #2563eb); }
+
+/* Dropdown: a native <details>, summary shows the current language. */
+.cms-ls-dropdown { position: relative; display: inline-flex; width: fit-content; }
+.cms-ls-dropdown > summary {
+  cursor: pointer; list-style: none; position: relative;
+  padding: 4px 24px 4px 10px; border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+  border-radius: var(--site-radius-safe, 6px); font-weight: 600;
+}
+.cms-ls-dropdown > summary::-webkit-details-marker { display: none; }
+.cms-ls-dropdown > summary::after {
+  content: "▾"; position: absolute; right: 9px; top: 50%; transform: translateY(-50%); font-size: .8em; opacity: .7;
+}
+.cms-ls-dropdown[open] > summary::after { transform: translateY(-50%) rotate(180deg); }
+.cms-ls-menu {
+  position: absolute; top: calc(100% + 4px); left: 0; min-width: 100%; z-index: 30;
+  display: flex; flex-direction: column; padding: 4px;
+  background: var(--site-card-bg, #fff); color: inherit;
+  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+  border-radius: var(--site-radius-surface, 8px);
+  box-shadow: var(--site-shadow, 0 8px 24px -10px rgba(0,0,0,.35));
+}
+.cms-ls-dropdown.cms-ls-align-right .cms-ls-menu { left: auto; right: 0; }
+.cms-ls-menu .cms-lang-link { display: block; padding: 6px 14px; border-radius: var(--site-radius-safe, 4px); }
+.cms-ls-menu .cms-lang-link:hover { text-decoration: none; background: color-mix(in srgb, currentColor 10%, transparent); }
+
+/* -- Contact Info alignment ----------------------------------------------
+   Left / centre / right, a structural choice on the Contacts tool. It has
+   to reach three things: the tool wrapper (which positions the whole block),
+   the "side by side" row (justify-content, the main axis), and the "one per
+   line" column (align-items, the cross axis). Centre is the default and what
+   an old block with no class already does. */
+.cms-contact-tool.cms-contact-align-left { align-items: flex-start; }
+.cms-contact-tool.cms-contact-align-left .cms-contact-details { justify-content: flex-start; }
+.cms-contact-column.cms-contact-align-left .cms-contact-details { align-items: flex-start; }
+.cms-contact-tool.cms-contact-align-center { align-items: center; }
+.cms-contact-tool.cms-contact-align-center .cms-contact-details { justify-content: center; }
+.cms-contact-column.cms-contact-align-center .cms-contact-details { align-items: center; }
+.cms-contact-tool.cms-contact-align-right { align-items: flex-end; }
+.cms-contact-tool.cms-contact-align-right .cms-contact-details { justify-content: flex-end; }
+.cms-contact-column.cms-contact-align-right .cms-contact-details { align-items: flex-end; }
+
+/* -- Tag pill colours ----------------------------------------------------
+   A choice on the Tags tool. Every variant routes through the site's own
+   palette variables, never a hard-coded hex, so pills follow the template.
+   "accent" is the default and matches the base .cms-tag above. */
+.cms-tag-color-primary .cms-tag {
+  background: var(--primary, #2563eb); border-color: var(--primary, #2563eb); color: #fff;
+}
+.cms-tag-color-neutral .cms-tag {
+  background: rgba(120, 130, 150, .14); border-color: rgba(120, 130, 150, .28); color: inherit;
+}
+.cms-tag-color-outline .cms-tag {
+  background: transparent; border-color: currentColor; color: inherit;
+}
+
+/* -- Tool heading (the optional heading above a tool) ---------------------
+   The heading itself is content and follows the site's type. Alignment is a
+   structural choice; H2/H3/Paragraph pick the tag, so size follows the
+   theme's own scale. */
+.cms-tool-title.cms-th-align-left   { text-align: left; }
+.cms-tool-title.cms-th-align-center { text-align: center; }
+.cms-tool-title.cms-th-align-right  { text-align: right; }

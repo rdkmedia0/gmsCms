@@ -134,10 +134,13 @@ def normalise(html):
     html = re.sub(r'id="(section|tool-panel)-\d+"',
                   lambda m: 'id="' + m.group(1) + '-N"', html)
     html = re.sub(r"#section-\d+", "#section-N", html)
-    #  The Contact Form mints a fresh captcha per request — a different
-    #  arithmetic question and a timestamped token. Genuinely per-request,
-    #  so it is normalised rather than treated as the renderer moving.
-    html = re.sub(r"What is \w+ plus \w+\?", "What is N plus N?", html)
+    #  The Contact Form mints a fresh captcha per request — a random kind
+    #  of question and a timestamped token. Genuinely per-request, so the
+    #  question label and the token are normalised rather than treated as
+    #  the renderer moving. The label carries the whole question, so
+    #  normalise its content rather than each question shape in turn.
+    html = re.sub(r'(<label for="cms-contact-answer">).*?(</label>)',
+                  lambda m: m.group(1) + "CAPTCHA" + m.group(2), html)
     html = re.sub(r'(name="captcha_token" value=")[^"]*"',
                   lambda m: m.group(1) + 'N"', html)
     #  Stylesheets are linked with ?v=<mtime> so a browser picks up an

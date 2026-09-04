@@ -1,0 +1,92 @@
+{% extends "admin/base.html" %}
+{% block title %}Languages — My Site Admin{% endblock %}
+{% block content %}
+{% include "partials/design_tabs.html" %}
+<h1>Languages</h1>
+
+<p class="hint" style="max-width: 60ch;">
+  Offer your site in other languages. Turn the ones you want on, then press
+  <strong>Translate</strong> once — your site is translated and stored, so
+  visitors are served their own language instantly. Your business
+  <strong>name</strong> is never translated. A visitor's language is chosen
+  from their browser, and they can switch it with the
+  <strong>Language</strong> tool (add it to your header from the Tools menu).
+</p>
+
+<div class="card">
+  <h2>1. Choose languages</h2>
+  <p class="hint">Your site is written in <strong>{{ source_name }}</strong>. Tick the languages to offer alongside it.</p>
+  <form method="post">
+    <input type="hidden" name="action" value="save">
+    <div class="cms-lang-grid">
+      {% for l in languages %}
+      <label class="cms-lang-choice" title="Offer the site in {{ l.name }} ({{ l.native }}){{ ' — right-to-left script' if l.rtl }}">
+        <input type="checkbox" name="langs" value="{{ l.code }}" {{ 'checked' if l.enabled }}>
+        <span class="cms-lang-native" lang="{{ l.code }}"{{ ' dir="rtl"' | safe if l.rtl }}>{{ l.native }}</span>
+        <span class="cms-lang-en">{{ l.name }}</span>
+      </label>
+      {% endfor %}
+    </div>
+    <button type="submit" class="btn" title="Save which languages your site offers">Save languages</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>2. Translate the site</h2>
+  {% if not ai_ready %}
+  <p class="hint">Translation uses your AI provider, which isn't set up yet.
+     Add one under <a href="{{ url_for('admin.settings_ai') }}">Settings → AI</a>, then come back here.</p>
+  {% elif status.languages %}
+  <p class="hint">Press Translate when your site is finished. It translates every public page
+     into each language you enabled and stores the result. Re-running only fills what's
+     missing (and refreshes pages you've edited since), so it's cheap to run again.
+     <strong>This can take a few minutes</strong> — leave the tab open. You'll see each
+     language's progress below, and can retry a single one if it doesn't finish.</p>
+  <table class="cms-lang-status" id="cms-translate-table" data-status-url="{{ url_for('admin.languages_status') }}">
+    <thead><tr><th>Language</th><th>Translated</th><th></th></tr></thead>
+    <tbody>
+      {% for l in status.languages %}
+      <tr data-lang="{{ l.code }}" data-total="{{ l.total }}">
+        <td><span lang="{{ l.code }}">{{ l.native }}</span> <span class="hint">({{ l.name }})</span></td>
+        <td>
+          <span class="cms-lang-bar" aria-hidden="true"><span class="cms-lang-bar-fill" style="width: {{ (100 * l.done / l.total) if l.total else 0 }}%"></span></span>
+          <span class="cms-lang-count">{{ l.done }} / {{ l.total }}</span>
+        </td>
+        <td class="cms-lang-actions">
+          <span class="cms-lang-tick icon-state" title="Fully translated"{{ '' if l.complete else ' hidden' | safe }}>✓</span>
+          {#  A real form, so it works with no JavaScript; translate.js
+              intercepts it to translate just this language in place. #}
+          <form method="post" class="cms-translate-one-form">
+            <input type="hidden" name="action" value="translate_one">
+            <input type="hidden" name="lang" value="{{ l.code }}">
+            <button type="submit" class="btn btn-small cms-translate-one"
+                    title="Translate {{ l.name }} now — fills anything missing, or retries what didn't finish">{{ 'Retry' if (l.done > 0 and not l.complete) else 'Translate' }}</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="cms-translate-progress hint" role="status" aria-live="polite" hidden></p>
+  <form method="post" class="cms-translate-all-form" style="display:inline">
+    <input type="hidden" name="action" value="translate">
+    <button type="submit" class="btn btn-primary cms-translate-all" title="Translate the whole site into every enabled language and store it">Translate the site</button>
+  </form>
+  {#  Shown by translate.js only while a run is going; its own form so it never
+      collides with the Translate action. Stops after the current item (a slow
+      model call can't be cut mid-flight). #}
+  <form method="post" class="cms-translate-cancel-form" style="display:inline">
+    <input type="hidden" name="action" value="cancel">
+    <button type="submit" class="btn btn-small cms-translate-cancel" title="Stop the running translation after it finishes the current item" hidden>Cancel</button>
+  </form>
+  <form method="post" style="margin-top: 8px;">
+    <input type="hidden" name="action" value="clear">
+    <button type="submit" class="btn btn-small" title="Delete all stored translations (does not change your site's own text)">Clear stored translations</button>
+  </form>
+  <script src="{{ static_url('js/admin/elapsed-timer.js') }}"></script>
+  <script src="{{ static_url('js/admin/translate.js') }}"></script>
+  {% else %}
+  <p class="hint">Enable a language above first, then translate.</p>
+  {% endif %}
+</div>
+{% endblock %}

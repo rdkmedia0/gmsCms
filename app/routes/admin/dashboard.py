@@ -1,6 +1,7 @@
 import json
 import re
-from flask import request, flash, redirect, url_for, render_template, current_app
+import threading
+from flask import request, flash, redirect, url_for, render_template, current_app, jsonify
 
 from . import bp
 from ..auth import login_required
@@ -8,6 +9,7 @@ from ...db import get_db
 from ...services import blog as blog_service
 from ... import assistant, ai_image
 from ...services import theme_generator as theme_generator_mod
+from ...services import translation as translation_mod
 from ...services import look_from_picture
 from ...services.design import COMPOSITION_PRESETS, FONT_PAIRINGS, SHAPE_PRESETS, SHADOW_PRESETS
 from ...services.palette import _match_palette_roles, color_scheme_choices
@@ -285,7 +287,7 @@ def theme_generator():
         #  file that cannot be read stops here with a sentence about
         #  that file: proceeding on the paste alone would make the
         #  site quietly miss half its content.
-        content_given, content_problem = _content_given(request)
+        content_given, content_layout, content_problem = _content_given(request)
         if content_problem:
             flash(content_problem, "error")
             return redirect(url_for("admin.theme_generator"))
@@ -317,6 +319,9 @@ def theme_generator():
             #  What the owner already has written. In "place" mode it is
             #  the source of every fact on the finished site.
             source_text=content_given,
+            #  The document's own columns, so the page can be laid out the
+            #  way the document is (see the generator's column path).
+            source_layout=content_layout,
             tone=request.form.get("tone", "warm"),
             voice=request.form.get("voice", "we"),
             reading=request.form.get("reading", "normal"),
@@ -383,9 +388,12 @@ def theme_generator():
             except theme_generator_mod.ThemeGenError as e:
                 flash(str(e), "error")
                 return redirect(url_for("admin.theme_generator"))
+            import json as _json
             return render_template("admin/theme_generator.html",
                                    plan=shown, form=request.form,
                                    carried_content=content_given,
+                                   carried_layout=(_json.dumps(content_layout)
+                                                   if content_layout else ""),
                                    signals=signals, kit=kit, looked=looked,
                                    spent=spent, **_theme_generator_context(db))
 
@@ -428,6 +436,126 @@ def theme_generator():
                            **_theme_generator_context(db))
 
 
+def _spawn_translation_worker(langs):
+    """Run the translate off the request, in a daemon thread with its own app
+    context and DB connection. Heartbeats through translate_site's per-string
+    progress so a stalled run is detectable; always clears the active flag on
+    the way out, success or failure, so the next run is never blocked."""
+    app = current_app._get_current_object()
+
+    def worker():
+        with app.app_context():
+            wdb = get_db()
+            try:
+                translation_mod.translate_site(
+                    wdb, langs=langs,
+                    progress=lambda *_a: translation_mod.run_heartbeat(wdb),
+                    should_stop=lambda: translation_mod.cancel_requested(wdb))
+            except Exception as e:  # noqa: BLE001 -- must never leave it flagged
+                translation_mod.finish_run(wdb, error=str(e)[:200])
+                return
+            translation_mod.finish_run(wdb)
+
+    threading.Thread(target=worker, daemon=True).start()
+
+
+@bp.route("/languages/status")
+@login_required
+def languages_status():
+    """The background run's live state plus the true per-language counts, read
+    from the cache -- what the screen polls so its progress is accurate and
+    survives a refresh (the run is server-side; this just reports it)."""
+    db = get_db()
+    st = translation_mod.run_state(db)
+    return jsonify({
+        "active": bool(st.get("active")),
+        "error": st.get("error"),
+        "status": translation_mod.translation_status(db),
+    })
+
+
+@bp.route("/languages", methods=["GET", "POST"])
+@login_required
+def languages_screen():
+    """Turn languages on, then translate the finished site into them once.
+
+    The translate is the whole point: a stored, one-off render into each
+    enabled language (see services/translation.py), so a visitor is served
+    their own language with no AI call, no wait and no data leaving this
+    server. The site's NAME is never translated -- that is identity.
+    """
+    db = get_db()
+    if request.method == "POST":
+        action = request.form.get("action")
+        if action == "save":
+            chosen = request.form.getlist("langs")
+            kept = translation_mod.set_enabled_languages(db, chosen)
+            #  A language turned OFF keeps no stored translations -- they are
+            #  cheap to remake and stale ones would resurface if it were
+            #  turned back on after an edit.
+            for code, _e, _n, _r in translation_mod.LANGUAGES:
+                if code not in kept:
+                    translation_mod.clear_translations(db, code)
+            flash("Languages updated." if kept else "All languages turned off.", "success")
+            return redirect(url_for("admin.languages_screen"))
+        if action in ("translate", "translate_one"):
+            #  Kick off a BACKGROUND run and return at once. A whole-site
+            #  translate is minutes of slow provider calls: held in the
+            #  request it timed out, and driven from the browser a refresh
+            #  killed it and the progress was a guess. Now a server thread
+            #  does the work, its state lives in one settings row, and the
+            #  screen polls translation_status (the true, cache-based count)
+            #  -- so a refresh just re-attaches to a run that never stopped.
+            ajax = request.headers.get("X-Requested-With") == "cms-translate"
+
+            def _fail(msg, code=400):
+                if ajax:
+                    return jsonify({"ok": False, "error": msg}), code
+                flash(msg, "error")
+                return redirect(url_for("admin.languages_screen"))
+
+            if not assistant.is_configured(db):
+                return _fail("Set up an AI provider first (Settings → AI) — translation uses it.")
+            enabled = translation_mod.enabled_languages(db)
+            if not enabled:
+                return _fail("Turn on at least one language first.")
+            if action == "translate_one":
+                lang = (request.form.get("lang") or "").strip()
+                if lang not in enabled:
+                    return _fail("That language isn't enabled — turn it on and save first.")
+                langs = [lang]
+            else:
+                langs = enabled
+            started = translation_mod.claim_translation_run(db, langs)
+            if started:
+                _spawn_translation_worker(langs)
+            if ajax:
+                return jsonify({"ok": True, "started": started, "active": True})
+            flash("Translation started — it runs in the background, so you can leave this "
+                  "page and come back; reload to see progress."
+                  if started else "A translation run is already in progress.", "success")
+            return redirect(url_for("admin.languages_screen"))
+        if action == "cancel":
+            ajax = request.headers.get("X-Requested-With") == "cms-translate"
+            stopped = translation_mod.request_cancel(db)
+            if ajax:
+                return jsonify({"ok": True, "cancelling": stopped})
+            flash("Stopping the translation — it finishes the current item first."
+                  if stopped else "No translation was running.", "success")
+            return redirect(url_for("admin.languages_screen"))
+        if action == "clear":
+            translation_mod.clear_translations(db)
+            flash("Stored translations cleared.", "success")
+            return redirect(url_for("admin.languages_screen"))
+    return render_template(
+        "admin/languages.html",
+        languages=translation_mod.available_languages(db),
+        source_name=translation_mod.language_name(translation_mod.source_language(db)),
+        status=translation_mod.translation_status(db),
+        ai_ready=assistant.is_configured(db),
+        **_screen_context(db))
+
+
 def _content_given(request):
     """What the owner pasted, plus what they opened, in that order.
 
@@ -441,6 +569,7 @@ def _content_given(request):
     the site quietly miss half its content.
     """
     from ...services import documents
+    import json as _json
 
     pasted = (request.form.get("source_text") or "").strip()
     #  What a previous press already read out of a file. A file input
@@ -449,19 +578,39 @@ def _content_given(request):
     carried = (request.form.get("source_carried") or "").strip()
     if carried and carried not in pasted:
         pasted = (pasted + chr(10) + chr(10) + carried).strip() if pasted else carried
+    #  The document's columns travel the same way -- as JSON, because the
+    #  file that revealed them cannot be re-read on the second press.
+    layout = None
+    carried_layout = (request.form.get("source_layout") or "").strip()
+    if carried_layout:
+        try:
+            got = _json.loads(carried_layout)
+            if isinstance(got, dict) and got.get("columns"):
+                layout = got
+        except ValueError:
+            layout = None
     upload = request.files.get("source_file")
     if not upload or not (upload.filename or "").strip():
-        return pasted, ""
+        return pasted, layout, ""
+    raw = upload.read()
     try:
-        from_file = documents.text_from(upload.filename, upload.read())
+        from_file = documents.text_from(upload.filename, raw)
     except documents.DocumentError as e:
         #  RETURNED, not raised. The kit is built before the route's own
         #  try/except, so raising here would leave a 500 where a
         #  sentence about the file belongs -- and the sentence is the
         #  whole value of refusing at all.
-        return "", str(e)
+        return "", None, str(e)
+    #  A file may carry columns; a paste never does. Reading it here, from
+    #  the same bytes, is the one place the layout is available.
+    try:
+        found = documents.columns_from(upload.filename, raw)
+        if found:
+            layout = found
+    except Exception:
+        layout = layout
     joined = (pasted + chr(10) + chr(10) + from_file).strip() if pasted else from_file
-    return joined, ""
+    return joined, layout, ""
 
 
 def _carried_look(form):

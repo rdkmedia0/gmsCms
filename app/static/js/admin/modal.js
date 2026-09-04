@@ -14,6 +14,7 @@
 
   const modalMessage = document.getElementById("cms-modal-message");
   const modalInput = document.getElementById("cms-modal-input");
+  const modalInput2 = document.getElementById("cms-modal-input2");
   const modalCancel = document.getElementById("cms-modal-cancel");
   const modalConfirm = document.getElementById("cms-modal-confirm");
   const modalAlt = document.getElementById("cms-modal-alt");
@@ -22,11 +23,16 @@
   const modalSnapshotLabel = document.getElementById("cms-modal-snapshot-label");
   const modalSnapshot = document.getElementById("cms-modal-snapshot");
 
-  function cmsModal({ message, showInput = false, defaultValue = "", confirmLabel = "Confirm", danger = true, showCount = false, showSnapshotOption = false, altLabel = "", showConfirm = true }) {
+  function cmsModal({ message, showInput = false, defaultValue = "", confirmLabel = "Confirm", danger = true, showCount = false, showSnapshotOption = false, altLabel = "", showConfirm = true, showInput2 = false, input2Placeholder = "", input2Default = "" }) {
     return new Promise((resolve) => {
       modalMessage.textContent = message;
       modalInput.hidden = !showInput;
       modalInput.value = defaultValue;
+      if (modalInput2) {
+        modalInput2.hidden = !showInput2;
+        modalInput2.value = input2Default;
+        modalInput2.placeholder = input2Placeholder;
+      }
       if (modalCountLabel) {
         modalCountLabel.hidden = !showCount;
         if (showCount) modalCount.value = "1";
@@ -60,6 +66,7 @@
         cleanup({
           confirmed: true, value: modalInput.value, count: showCount ? parseInt(modalCount.value, 10) : 1,
           saveSnapshot: showSnapshotOption ? modalSnapshot.checked : false,
+          value2: modalInput2 ? modalInput2.value : "",
         });
       }
       function onCancel() { cleanup({ confirmed: false, alt: false, value: null, count: 1, saveSnapshot: false }); }

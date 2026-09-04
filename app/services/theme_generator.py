@@ -230,7 +230,7 @@ def brand_kit(brief="", tone="warm", voice="we", reading="normal",
               language="English", palette=None, fonts="", shape="", shadow="",
               image_budget="1", ref_colours=None, colour_note="",
               banner_per_page=False, ref_feel="", composition="", ref_ink="",
-              source_text=""):
+              source_text="", source_layout=None):
     """One kit, resolved once, read by every prompt and every picture.
 
     Returns plain data -- no db, no request -- so a checker, a script and
@@ -248,6 +248,11 @@ def brand_kit(brief="", tone="warm", voice="we", reading="normal",
         #  reads across the site -- which means a long paste
         #  multiplies. See MAX_SOURCE_CHARS.
         "source_text": (source_text or "").strip()[:MAX_SOURCE_CHARS],
+        #  The document's own columns, when it has them (see documents.
+        #  columns_from) -- so the page can be laid out the way the
+        #  document is. None for a one-column document; then the ordinary
+        #  single-column path renders it.
+        "source_layout": source_layout if isinstance(source_layout, dict) else None,
         "tone": tone if tone in dict(TONES) else "warm",
         "tone_label": dict(TONES).get(tone, dict(TONES)["warm"]),
         "voice": voice if voice in dict(VOICES) else "we",
@@ -952,13 +957,18 @@ def plan(db, kit, name, mode="scratch", pages_wanted=None, looked=None,
     if len(wanted) <= 1:
         wanted = headings_in(kit.get("source_text", "")) if kit.get("source_text") else wanted
     wanted = wanted or ["Home"]
+    #  A DOCUMENT IS ONE PAGE, rendered whole and in order -- so the plan
+    #  shows one page, which is what generate() will make. (The headings
+    #  still structure that page; they are just not separate pages.)
+    if kit.get("source_text") and not pages_wanted:
+        wanted = [wanted[0]]
     #  The look is decided HERE, not when the run starts, so what the
     #  plan shows is what gets made -- and so the owner can look at the
     #  colours and the shapes before anything is written. `looked` is
     #  handed back to `generate` for exactly that reason.
     keys = [k for k in (looked or {}).get("pages") or []]
     if len(keys) != len(wanted):
-        keys = [layout_for(title, i, _signal_text(kit))
+        keys = [layout_for(title, i, _signal_text(kit))
                 for i, title in enumerate(wanted)]
 
     writes = bool(kit["brief"]) and fill_scope != "none"
@@ -1532,6 +1542,32 @@ def _used_the_content(answer, source):
 _DATED = re.compile(r"^\s*((?:19|20)\d{2}(?:\s*(?:-|to|\u2013|\u2014)\s*(?:(?:19|20)\d{2}|now|present|today))?)\b[\s:\-\u2013\u2014.]*(.*)$", re.I)
 
 
+#  A date on a CV role line is usually a SPAN -- "2017-2021", "2020 -
+#  Present", "Jan 2019 to Mar 2021" -- not a bare year. Pulling only the
+#  year out ("2020") and leaving the rest ("(-Present)") in the title
+#  read badly AND made the line miss its own coverage check, because the
+#  token "2020-Present" was then nowhere on the page. This lifts the
+#  whole span, exactly as written, into the when field.
+_DATE_SPAN = re.compile(
+    r"\(?\b((?:19|20)\d{2})\s*(?:[-–—]|to)\s*"
+    r"(present|now|current|(?:19|20)\d{2})\b\)?", re.I)
+_ONE_YEAR = re.compile(r"\(?\b((?:19|20)\d{2})\b\)?")
+
+
+def _when_and_title(line):
+    """A dated line split into (when, what) -- the span verbatim, and the
+    line with that span lifted out and tidied."""
+    m = _DATE_SPAN.search(line)
+    if not m:
+        m = _ONE_YEAR.search(line)
+    if not m:
+        return "", line.strip(" ()-–—,.").strip()
+    when = m.group(0).strip("()").strip()
+    title = (line[:m.start()] + " " + line[m.end():])
+    title = re.sub(r"\s{2,}", " ", title).strip(" ()-–—,.·|").strip()
+    return when, title
+
+
 def document_blocks(text):
     """The blocks of one document section, each with the tool it wants.
 
@@ -1569,9 +1605,7 @@ def document_blocks(text):
             for l, yr, bul in zip(lines, has_year, bulletish):
                 clean = l.lstrip("-\u2022*\u2013 ").strip()
                 if yr and not bul:
-                    m = year.search(l)
-                    when = m.group(0) if m else ""
-                    title = year.sub("", l).strip(" ()-\u2013\u2014,.").strip()
+                    when, title = _when_and_title(l)
                     cur = [when, title, []]
                     rows.append(cur)
                 elif cur is not None:
@@ -1597,56 +1631,309 @@ def document_blocks(text):
     return out
 
 
-def _document_chunks(kit, page_title, is_front, hero_image, val):
-    """One page, built from the document's own words -- every one of them.
-
-    Returns the chunks, or None when the document has nothing for this
-    page (then the page is written the ordinary way).
+def _doc_hero_bits(text):
+    """The name and any intro the document opens with, before its first
+    heading. A CV's opening is a name -- often split across boxes ("Keith"
+    / "Stevenson") -- and sometimes a line of role under it; those short
+    lines are joined into one headline, and anything longer is the intro.
     """
-    from .sections import build_block
-    text = kit.get("source_text") or ""
-    head = page_title
-    own = section_under(text, page_title)
-    if is_front:
-        title, opening = opening_of(text)
-        head = title or page_title
-        own = opening
-    if not own.strip():
-        return None
-    chunks = []
-    blocks = document_blocks(own)
+    title, rest = opening_of(text)
+    lines = [l.strip() for l in ([title] + rest.split(chr(10))) if l.strip()]
+    name_parts, i = [], 0
+    while i < len(lines) and i < 3 and len(lines[i].split()) <= 3:
+        name_parts.append(lines[i])
+        i += 1
+    name = " ".join(name_parts) if name_parts else (lines[0] if lines else "")
+    intro = chr(10).join(lines[i:]).strip()
+    return name, intro
 
-    #  The front page opens on the document's own title, with the model's
-    #  connective tissue where it gave any -- an eyebrow and a subtext
-    #  are the two things a CV does not write for itself.
-    if is_front:
-        first_para = next((b[1][0] for b in blocks if b[0] == "paragraphs"), "")
-        chunks.append(_piece(_hero_chunk(
-            head, val("hero_subtext", first_para[:160] or ""), hero_image,
-            eyebrow=val("eyebrow", ""),
-            buttons=((val("cta_button", "Get in touch"), "/contact"),),
-            ground=_ink_of(kit),
-            portrait=("left" if wants_portrait(kit) else "")),
-            {"layout_width": "full", "corner_style": "sharp", "bg_position": "center"}))
-        blocks = [b for b in blocks if not (b[0] == "paragraphs" and b[1] and b[1][0] == first_para)]
-        if first_para:
-            chunks.append(_piece(_text_chunk(head, first_para), {"layout_width": "auto"}))
-    else:
-        chunks.append(_piece("<h2>%s</h2>" % escape(head), {"layout_width": "auto"}))
 
+def _first_sentence(text, least=8):
+    """The first real sentence in a document -- the hero's subtitle when
+    the opening is only a name. Read LINE by line, not by blank-line
+    blocks: a boxed CV runs its name straight into its profile with no
+    blank between, so a block starts "Keith Stevenson Professional
+    Profile ..." and is not a sentence about anything. A line of real
+    prose -- eight words or more, not a heading and not a bullet -- is."""
+    for line in (text or "").split(chr(10)):
+        line = line.strip()
+        if (len(line.split()) >= least and not line[:1] in "-•▪‣*·"
+                and _looks_like_heading(line, ["x"]) == 0):
+            return re.split(r"(?<=[.!?])\s", line)[0][:180]
+    return ""
+
+
+def _render_doc_blocks(blocks):
+    """Document blocks (paragraphs / list / timeline) as page chunks.
+    One place, so the intro and every section render the same way."""
+    out = []
     for kind, rows in blocks:
         if kind == "timeline":
             steps = [{"when": w or "", "title": t.split(". ")[0][:80] if t else w,
-                      "text": t} for w, t in rows][:12]
-            laid = _numbered(steps, ("when", "title", "text"), "step")
-            laid["style"] = "vertical"
-            chunks.append(_block_piece("timeline", laid, {"layout_width": "auto"}))
+                      "text": t} for w, t in rows]
+            #  The timeline block holds six entries; a longer run of
+            #  roles becomes several timelines rather than crashing on a
+            #  seventh or dropping it.
+            for start in range(0, len(steps), 6):
+                laid = _numbered(steps[start:start + 6],
+                                 ("when", "title", "text"), "step")
+                laid["style"] = "vertical"
+                out.append(_block_piece("timeline", laid,
+                                        {"layout_width": "auto"}))
         elif kind == "list":
             items = "".join("<li>%s</li>" % escape(l) for l in rows)
-            chunks.append(_piece("<ul>%s</ul>" % items, {"layout_width": "auto"}))
+            out.append(_piece("<ul>%s</ul>" % items, {"layout_width": "auto"}))
         else:
             paras = "".join("<p>%s</p>" % escape(x) for x in rows if x)
-            chunks.append(_piece(paras, {"layout_width": "auto"}))
+            if paras:
+                out.append(_piece(paras, {"layout_width": "auto"}))
+    return out
+
+
+_SOCIAL_NETS = ("linkedin", "facebook", "instagram", "youtube",
+                "tiktok", "pinterest", "github")
+
+
+def _guess_contact_icon(value):
+    """The icon a contact line implies, read from what it says -- so a
+    LinkedIn address gets the LinkedIn mark, an email an envelope. The
+    same reading the Contacts tool does; "" for a line that is not one."""
+    v = (value or "").strip()
+    low = v.lower()
+    for net in _SOCIAL_NETS:
+        if net in low:
+            return "brand:" + net
+    if "twitter.com" in low or low.startswith("x.com/"):
+        return "brand:x"
+    if "@" in v and "/" not in v:
+        return "✉️"
+    if re.match(r"^[\d\s+()./-]{5,}$", v):
+        return "\U0001F4DE"
+    if low.startswith("http") or ("." in v and " " not in v):
+        return "\U0001F310"
+    return ""
+
+
+#  Sections whose content is a set of short labels rather than prose --
+#  the ones a person would build with the Tags tool. Read from the
+#  heading, so an Awards or Achievements section (real sentences with
+#  dates) stays a list and is not forced into pills.
+TAG_SECTIONS = frozenset((
+    "skills", "competencies", "expertise", "proficiencies", "strengths",
+    "technologies", "tools", "specialties", "specialisms", "interests",
+    "hobbies", "languages",
+))
+
+
+def _maybe_tags_html(heading, text):
+    """A skills/competencies/interests section as a Tags BLOCK -- the same
+    tool a person would reach for -- when its heading says it is labels
+    and its lines are short. None otherwise, so prose stays prose."""
+    words = set(w.strip(":").lower() for w in (heading or "").split())
+    if not (words & TAG_SECTIONS):
+        return None
+    lines = [l.strip().lstrip("-•*– ").strip()
+             for l in (text or "").split(chr(10)) if l.strip()]
+    lines = [l for l in lines if l]
+    if len(lines) < 3:
+        return None
+    #  Short labels: a few words, no sentence punctuation. A line that
+    #  runs on like a sentence means this is not really a tag list.
+    if not all(0 < len(l) <= 44 and l[-1] not in ".!?" and len(l.split()) <= 6
+               for l in lines):
+        return None
+    from . import blocks
+    values = {}
+    for i, label in enumerate(lines[:24], start=1):
+        values["tag%d_label" % i] = label
+    return blocks.build("tags", values)
+
+
+def _maybe_contact_html(text):
+    """A section that is a list of contact and social lines rendered as a
+    Contacts BLOCK -- icons and all -- instead of plain text. It is the
+    right tool for the job (phone, email, a LinkedIn address), and the
+    only way those items carry their marks. None when the lines are not
+    mostly contact details, so a prose section is untouched.
+    """
+    lines = [l.strip() for l in (text or "").split(chr(10)) if l.strip()]
+    if not lines or len(lines) > 12:
+        return None
+    rows = [{"value": l, "icon": _guess_contact_icon(l), "show": True}
+            for l in lines]
+    hits = sum(1 for r in rows if r["icon"])
+    #  Mostly contact lines, and no more than one stray -- a heading's
+    #  worth of prose with an email in it is not a contact block.
+    if hits < max(1, int(0.6 * len(lines) + 0.999)) or (len(lines) - hits) > 1:
+        return None
+    from .sections import build_contact_tool
+    return build_contact_tool(rows, layout="column")
+
+
+def _column_html(coltext):
+    """One document column rendered as a single block of HTML -- headings
+    and their content, in order -- to drop into a Columns cell. A cell
+    holds rich text exactly as a hand-built Columns section does, so this
+    is the Text tool's own markup and stays editable.
+    """
+    out = []
+
+    def blocks_html(text):
+        for kind, rows in document_blocks(text):
+            if kind == "list":
+                out.append("<ul>%s</ul>" % "".join(
+                    "<li>%s</li>" % escape(x) for x in rows))
+            elif kind == "timeline":
+                for when, what in rows:
+                    out.append("<p><strong>%s</strong> %s</p>"
+                               % (escape(when), escape(what)) if when
+                               else "<p>%s</p>" % escape(what))
+            else:
+                out.append("".join("<p>%s</p>" % escape(x) for x in rows if x))
+
+    #  headings_in treats the FIRST line as the document's own title and
+    #  never a heading -- right for the page as a whole (the name), wrong
+    #  for a column, whose first line is usually a heading ("Profile",
+    #  "Skills"). A blank line in front means the column's real first line
+    #  is line two, so its opening heading is found and its section kept.
+    coltext = chr(10) + (coltext or "")
+    heads = headings_in(coltext)
+    for heading in heads[1:]:
+        own = section_under(coltext, heading)
+        if not own.strip():
+            continue
+        out.append("<h2>%s</h2>" % escape(heading))
+        #  The right tool for the section: a contacts/social list as the
+        #  Contacts tool (icons and all); a skills/competencies list as
+        #  the Tags tool (pills); everything else as document blocks. All
+        #  three are tools a person could have reached for by hand.
+        contact = _maybe_contact_html(own)
+        tags = None if contact else _maybe_tags_html(heading, own)
+        if contact:
+            out.append(contact)
+        elif tags:
+            out.append(tags)
+        else:
+            blocks_html(own)
+    #  A column with no heading of its own still renders -- nothing a
+    #  document says is dropped for want of a heading over it.
+    if not out:
+        blocks_html(coltext)
+    return "".join(out)
+
+
+def _columns_document_chunks(kit, hero_image, val):
+    """A document with a column LAYOUT as the page it already is: a
+    full-width hero, then one Columns section per band of the document.
+
+    The bands come from the document's own geometry (documents.
+    columns_from / _docx_bands), so a two-column body followed by a
+    three-column references row comes back as a two-column section then a
+    three-column one -- the page reflects the format it was given, built
+    from the Banner, Columns and Text tools, nothing new. A band that is
+    a single column is a plain section; a band of two or more is a
+    Columns section, one cell per column.
+    """
+    import json as _json
+    layout = kit.get("source_layout") or {}
+    bands = layout.get("bands")
+    if not bands and layout.get("columns"):
+        bands = [{"columns": layout["columns"]}]
+    bands = [b for b in (bands or []) if (b.get("columns") or [])]
+    if not any(len([c for c in (b.get("columns") or []) if (c or "").strip()]) >= 2
+               for b in bands):
+        return None
+    text = kit.get("source_text") or ""
+    name, _intro = _doc_hero_bits(text)
+    subtitle = _first_sentence(text) or val("hero_subtext", "")
+    chunks = [_piece(_hero_chunk(
+        name or "Home", subtitle, hero_image,
+        eyebrow=val("eyebrow", ""),
+        buttons=((val("cta_button", "Get in touch"), "/contact"),),
+        ground=_ink_of(kit),
+        portrait=("left" if wants_portrait(kit) else "")),
+        {"layout_width": "full", "corner_style": "sharp", "bg_position": "center"})]
+    for band in bands:
+        cells = [_column_html(c) for c in (band.get("columns") or [])
+                 if (c or "").strip()]
+        cells = [c for c in cells if c.strip()]
+        if len(cells) >= 2:
+            #  A TWO-column band is a main column beside a narrower one --
+            #  a CV's body and sidebar -- so it takes the Columns tool's
+            #  "wide-left" width. Three or more (a references row) stay
+            #  equal. Both are the real width control, nothing bespoke.
+            content = {"columns": cells}
+            if len(cells) == 2:
+                content["width"] = "wide-left"
+            chunks.append({"type": "columns",
+                           "content": _json.dumps(content),
+                           "style": {"layout_width": "wide"}})
+        elif cells:
+            #  A one-column band is a plain full-width section, not a
+            #  Columns of one.
+            chunks.append(_piece(cells[0], {"layout_width": "wide"}))
+    return chunks if len(chunks) > 1 else None
+
+
+def _document_chunks(kit, page_title, is_front, hero_image, val):
+    """The WHOLE document as one page, in the order it was written.
+
+    A CV is read top to bottom -- name, profile, experience, education,
+    skills, references -- and the person who wrote it chose that order.
+    So the front page is the whole document: a hero with the name and
+    what they do, the opening intro, then every section under its own
+    heading, each rendered as the tool that fits it (dated roles become a
+    timeline, a bulleted list becomes a list, prose becomes paragraphs).
+
+    This replaced a page-per-heading split that re-sliced the document by
+    reading order and mis-paired it -- "Education" showing a phone number,
+    the front page a row of "Panel 1" placeholders. One ordered page
+    cannot mis-attribute a section to the wrong page, and never falls
+    through to generic filler. Non-front pages return None: a document is
+    one page, so there are no others.
+    """
+    text = kit.get("source_text") or ""
+    if not is_front:
+        return None
+    if not text.strip():
+        return None
+
+    #  A document that carries its own columns is laid out as those
+    #  columns; one that does not falls through to the single ordered
+    #  page below.
+    if kit.get("source_layout"):
+        columned = _columns_document_chunks(kit, hero_image, val)
+        if columned:
+            return columned
+
+    name, intro = _doc_hero_bits(text)
+    #  The DOCUMENT'S own first sentence is the subtitle -- on a CV that
+    #  is the profile line, which says what the person does. The model's
+    #  guess is only a fallback: asked for a subtitle it tends to echo
+    #  the name ("Stevenson"), and the whole point of loading a document
+    #  is that its words win over a guess about them.
+    subtitle = _first_sentence(text) or val("hero_subtext", "")
+    chunks = [_piece(_hero_chunk(
+        name or page_title, subtitle, hero_image,
+        eyebrow=val("eyebrow", ""),
+        buttons=((val("cta_button", "Get in touch"), "/contact"),),
+        ground=_ink_of(kit),
+        portrait=("left" if wants_portrait(kit) else "")),
+        {"layout_width": "full", "corner_style": "sharp", "bg_position": "center"})]
+
+    #  The opening intro (anything before the first heading that was not
+    #  part of the name) as its own words.
+    if intro.strip():
+        chunks += _render_doc_blocks(document_blocks(intro))
+
+    #  Then each section, in the document's own order, under its heading.
+    for heading in headings_in(text)[1:]:
+        own = section_under(text, heading)
+        if not own.strip():
+            continue
+        chunks.append(_piece("<h2>%s</h2>" % escape(heading),
+                             {"layout_width": "auto"}))
+        chunks += _render_doc_blocks(document_blocks(own))
     return chunks
 
 
@@ -2716,46 +3003,71 @@ def _clean_heading(line):
     return line.rstrip(":").strip()
 
 
-def _looks_like_heading(line, following):
+def _looks_like_heading(line, following, blank_above=False):
     """Whether one line reads as a section heading of a document.
 
-    Three ways to be one, and a real CV uses all three: it is written
-    mostly in CAPITALS (PROFILE, WORK EXPERIENCE); or it is one of the
-    words a CV titles a section with (Education, References, Skills); or
-    -- the old rule -- it is a short line with a blank line above it.
-    Any of the three, provided there is something under it and it is not
-    a line of contact details, which look short but are not sections.
+    A Markdown heading is one outright. Otherwise a heading is a line
+    that is NONE of the things a heading never is -- and then one of the
+    things a heading is.
+
+    Never a heading: a bullet or dash-led line; a line that ends like a
+    sentence or a parenthetical ("Work Permit (C)"); a contact fragment
+    (an email, a phone number, a year in brackets); a slash-separated
+    pair, which is how a template writes "Qualification / Institution".
+    These exclusions are the whole reason a box-built CV stopped turning
+    its own phone number and its dates into pages.
+
+    Then a heading IS one of: a known CV section word (Education,
+    References, Skills), whole or in a short title ("Work Experience");
+    mostly CAPITALS with enough letters to be a word and not initials;
+    or -- only when a blank line sits above it -- a short line, which is
+    how an unconventional heading ("Where I have worked") is caught.
+    Always provided there is something under it to be the heading OF.
     """
-    if not line or len(line) > 48:
-        return False
-    if line[-1] in ".,;!?":
-        return False
+    if not line:
+        return 0
+    #  A Markdown heading is unambiguous and bypasses the shape tests.
+    if re.match(r"#{1,6}\s+\S", line):
+        return 2
+    if len(line) > 48:
+        return 0
+    if line[0] in "-•▪‣⁃*·∙":
+        return 0
+    if line[-1] in ".,;:!?)]–—-":
+        return 0
     words = line.split()
     if len(words) > 5:
-        return False
-    #  A contact line -- an address, an email, a phone number -- is short
-    #  and title-less but is not a section.
-    if "@" in line or sum(c.isdigit() for c in line) >= 5:
-        return False
+        return 0
+    #  Contact fragments and dated content: an email, a phone number, a
+    #  year in brackets -- short and title-less, but not sections.
+    if "@" in line or sum(c.isdigit() for c in line) >= 4:
+        return 0
+    #  "A / B" is a content pair a template lays out, not a heading.
+    if " / " in line or "://" in line:
+        return 0
     if not any(following):
-        return False
-    #  A Markdown heading -- "# About", "## Work" -- is a heading outright.
-    if re.match(r"#{1,6}\s+\S", line):
-        return True
+        return 0
     bare = _clean_heading(line)
-    letters = [c for c in bare if c.isalpha()]
-    #  MOSTLY CAPITALS.
-    if letters and sum(1 for c in letters if c.isupper()) / len(letters) >= 0.7:
-        return True
-    #  A KNOWN CV section word -- the whole line, or a short title built
-    #  from one ("Work Experience", "Professional Experience").
     low = bare.lower()
+    #  STRONG (2): a known CV section word -- whole, or in a short title
+    #  ("Work Experience") -- or mostly CAPITALS with enough letters to
+    #  be a word and not a monogram ("KS"). A document with several of
+    #  these is telling us its own structure, and headings_in trusts it.
     if low in CV_SECTION_WORDS:
-        return True
+        return 2
     if len(words) <= 3 and any(
             w.strip(":").lower() in CV_SECTION_WORDS for w in words):
-        return True
-    return False
+        return 2
+    letters = [c for c in bare if c.isalpha()]
+    if len(letters) >= 4 and sum(1 for c in letters if c.isupper()) / len(letters) >= 0.7:
+        return 2
+    #  WEAK (1): a short line with a blank line above it. This catches an
+    #  unconventional heading ("Where I have worked") -- but it also
+    #  catches a referee's name, so headings_in leans on these only when
+    #  the strong headings are too few to structure the document alone.
+    if blank_above and 0 < len(words) <= 4 and len(letters) >= 3:
+        return 1
+    return 0
 
 
 def headings_in(text, most=10):
@@ -2783,14 +3095,21 @@ def headings_in(text, most=10):
         if i == 0:
             continue
         blank_above = (i > 0 and not lines[i - 1])
-        _bare = _clean_heading(line)
-        if _looks_like_heading(line, lines[i + 1:i + 4]) or (
-                blank_above and 0 < len(_bare) <= 40
-                and _bare and _bare[-1] not in ".,;:!?-" and len(_bare.split()) <= 4
-                and any(lines[i + 1:i + 4])):
-            found.append(_clean_heading(line))
+        strength = _looks_like_heading(line, lines[i + 1:i + 4], blank_above)
+        if strength:
+            found.append((strength, _clean_heading(line)))
+    #  STRONG HEADINGS WIN. A document that marks its sections clearly --
+    #  a box-built CV with Education, Experience, References in plain
+    #  words -- is not helped by also promoting every short line with a
+    #  gap above it, because those are its referees' names and its job
+    #  titles. So the weak, blank-line-above headings are kept only when
+    #  the strong ones are too few (under three) to structure it alone --
+    #  which is exactly the unconventional document that has no section
+    #  words at all and needs them.
+    strong = [name for s, name in found if s >= 2]
+    picked = [name for s, name in found] if len(strong) < 3 else strong
     seen, out = set(), ["Home"]
-    for name in found:
+    for name in picked:
         key = name.lower()
         if key in seen or key == "home" or not key:
             continue
@@ -2865,10 +3184,19 @@ def generate(db, static_folder, name, kit, fill_scope, use_ai_images,
         #  never replaced, because `titles` only fills when empty.
         if not pages_wanted and decided.get("page_titles"):
             wanted = decided["page_titles"]
+        #  A DOCUMENT IS ONE PAGE. When the owner gave content, it is
+        #  rendered whole and in order on the front page (see
+        #  _document_chunks), so the per-heading pages the design
+        #  proposed would each re-render a slice of the same document and
+        #  mis-attribute it. The headings still structure that one page;
+        #  they are just not separate pages. A page the owner TYPED is
+        #  still honoured -- this only overrides the proposal.
+        if kit.get("source_text") and not pages_wanted:
+            wanted = [wanted[0] if wanted else "Home"]
         chosen = decided.get("pages") or []
         pages = []
         for i, title in enumerate(wanted):
-            key = (chosen[i] if i < len(chosen)
+            key = (chosen[i] if i < len(chosen)
                    else layout_for(title, i, _signal_text(kit)))
             #  Pictures are the slow, paid part of a run, so how many
             #  there are is the owner's answer and not a default.

@@ -945,11 +945,17 @@ def template_promote(template_id):
         return redirect(url_for("admin.dashboard"))
 
     #  Built from the LIVE template, so what is frozen is what is on
-    #  screen -- not whatever the folder happened to be left holding.
+    #  screen -- not whatever the folder happened to be left holding. That
+    #  includes the site's PAGES: promotion used to pass page_ids=None, so a
+    #  template built from a palette-only look (no theme.css) came out with
+    #  neither pages nor CSS and was refused as "it would do nothing" -- even
+    #  though the site it was saved from was full of content. Capture every
+    #  page, the same way "Save current site as a new template" does.
+    page_ids = [p["id"] for p in db.execute("SELECT id FROM pages").fetchall()]
     work_dir = tempfile.mkdtemp(prefix="promote-")
     try:
         pkg_dir = packages._build_package_dir(
-            db, tpl, current_app.static_folder, None, work_dir, tpl["slug"],
+            db, tpl, current_app.static_folder, page_ids, work_dir, tpl["slug"],
             capture_layout=True)
         problems = lifecycle.completeness(pkg_dir)
         if problems:

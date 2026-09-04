@@ -1728,3 +1728,42 @@ button[aria-busy="true"] { opacity: .75; cursor: progress; }
   border-left: 3px solid var(--cms-ui-accent, #4f7cff);
   padding-left: 10px; background: rgba(79, 124, 255, .04);
 }
+
+/* Languages screen (Design -> Languages). */
+.cms-lang-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px; margin: 12px 0 16px;
+}
+.cms-lang-choice {
+  display: flex; align-items: baseline; gap: 8px;
+  padding: 8px 10px; border: 1px solid var(--cms-ui-border, #d7dbe0);
+  border-radius: var(--cms-ui-radius-control, 4px); cursor: pointer;
+}
+.cms-lang-choice:hover { border-color: var(--cms-ui-accent); }
+.cms-lang-choice input { margin: 0; }
+.cms-lang-native { font-weight: 600; }
+.cms-lang-en { color: var(--cms-ui-muted, #6b7280); font-size: 13px; }
+.cms-lang-status { width: 100%; border-collapse: collapse; margin: 12px 0; }
+.cms-lang-status th, .cms-lang-status td {
+  text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--cms-ui-border, #eceef1);
+  font-size: 14px;
+}
+.cms-lang-bar {
+  display: inline-block; width: 120px; height: 8px; vertical-align: middle;
+  background: var(--cms-ui-border, #e5e7eb); border-radius: 999px; overflow: hidden; margin-right: 8px;
+}
+.cms-lang-bar > span { display: block; height: 100%; background: var(--cms-ui-accent, #2563eb); transition: width .3s ease; }
+.cms-lang-actions { white-space: nowrap; }
+.cms-lang-actions .cms-translate-one-form { display: inline; }
+.cms-lang-actions .cms-lang-tick { margin-right: 6px; }
+/*  A language that did not finish -- so the row that carries a Retry stands
+    out from the ones that are done. */
+.cms-lang-failed > td:first-child { box-shadow: inset 3px 0 0 var(--cms-ui-danger, #dc2626); }
+.cms-translate-progress { margin: 8px 0; font-weight: 600; }
+
+/* Icon-picker search box. */
+.cms-icon-search {
+  display: block; width: 100%; box-sizing: border-box; margin-bottom: 6px;
+  padding: 5px 8px; font: inherit; font-size: 13px;
+  border: 1px solid var(--cms-ui-border, #d7dbe0); border-radius: var(--cms-ui-radius-control, 4px);
+}

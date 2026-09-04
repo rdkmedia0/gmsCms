@@ -150,6 +150,10 @@ DEFAULT_TOOLS = [
     ("Embed", "</>", "html", None),
     ("Menu", "📋", "html", None),
     ("Breadcrumb", "🧭", "html", None),
+    #  Lets a visitor switch the site's language; shows whatever languages
+    #  the owner has enabled (Design -> Languages). A marker resolved at
+    #  render, like the Menu -- see services/translation.py.
+    ("Language", "🌐", "html", "lang-switcher"),
     #  The site's own name, wherever somebody wants it -- usually the
     #  header, which is the one zone that could not show it.
     ("Site name", "🔤", "html", "wordmark"),
@@ -178,6 +182,7 @@ DEFAULT_TOOLS = [
     ("Numbers", "📊", "html", "block:stats"),
     ("Logo row", "🏷️", "html", "block:logos"),
     ("The team", "👥", "html", "block:team"),
+    ("Tags", "🔖", "html", "block:tags"),
     ("Timeline", "🕓", "html", "block:timeline"),
     ("Call to action", "📣", "html", "block:cta"),
     ("Email sign-up", "✉️", "html", "block:newsletter"),
@@ -316,6 +321,10 @@ def _migrate(db):
     _add_column(db, "sections", "bg_color", "TEXT")
     _add_column(db, "sections", "layout_width", "TEXT NOT NULL DEFAULT 'auto'")
     _add_column(db, "sections", "layout_width_pct", "INTEGER")
+    #  An absolute pixel width, for the "Custom px" width choice (layout_width
+    #  = 'custompx'). Separate from the % value so switching between % and px
+    #  keeps each one's last setting.
+    _add_column(db, "sections", "layout_width_px", "INTEGER")
     _add_column(db, "sections", "sidebar_width", "TEXT NOT NULL DEFAULT 'auto'")
     _add_column(db, "sections", "sidebar_width_px", "INTEGER")
     _add_column(db, "sections", "content_height_px", "INTEGER")
@@ -514,6 +523,39 @@ def _migrate(db):
     _add_column(db, "sections", "bg_overlay", "TEXT")
     _add_column(db, "sections", "bg_position", "TEXT")
     _add_column(db, "sections", "shadow_style", "TEXT")
+    #  Per-view STRUCTURE overrides (not fonts or colours -- those stay one
+    #  look across every size). A JSON blob so a new structural flag is a
+    #  key, not a column: {"hide": ["mobile"], "align": {"mobile": "center"}}.
+    #  Read/written through services.sections.view_overrides_of / set_view_*.
+    _add_column(db, "sections", "view_overrides", "TEXT")
+
+    #  An optional HEADING above any tool that cannot take one in its own
+    #  body (everything but Text/Card/Banner). title already exists; these
+    #  say how it reads. level: h2/h3/p. align: left/center/right. on: 0/1,
+    #  the tick that shows or hides it. Cells keep the same keys in their
+    #  own JSON. See services.sections heading helpers / the heading zone in
+    #  public/page.html.
+    _add_column(db, "sections", "title_level", "TEXT")
+    _add_column(db, "sections", "title_align", "TEXT")
+    _add_column(db, "sections", "title_on", "INTEGER NOT NULL DEFAULT 0")
+
+    #  Stored translations, content-addressed: one row per (target language,
+    #  sha256 of the source string). Identical strings anywhere on the site
+    #  share a row, and editing a string changes its hash -- a cache miss that
+    #  falls back to the original until the owner's next "Translate" run. See
+    #  services/translation.py. Not tied to a page or section by id on purpose:
+    #  the translation of "Read more" outlives the paragraph it came from.
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS translations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            lang TEXT NOT NULL,
+            source_hash TEXT NOT NULL,
+            source_text TEXT NOT NULL,
+            translated TEXT NOT NULL,
+            created_at TEXT DEFAULT (datetime('now')),
+            UNIQUE(lang, source_hash)
+        )
+    """)
 
     #  ---- Commerce -----------------------------------------------------
     #  Stripe owns money and the payer's details; this side owns what the

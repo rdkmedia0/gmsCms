@@ -275,6 +275,10 @@
         picture's answers are carried as hidden fields. #}
     {% if carried_content %}<input type="hidden" name="source_carried"
            value="{{ carried_content }}">{% endif %}
+    {# The document's columns, carried the same way: a file cannot be
+       re-read on the second press, so its layout travels as JSON. #}
+    {% if carried_layout %}<input type="hidden" name="source_layout"
+           value="{{ carried_layout }}">{% endif %}
     <textarea name="source_text" id="tg-source" rows="10"
               title="Paste what you already have - a CV, an about page, a price list, a menu. Every fact on the site will come from this and nothing will be invented."
               placeholder="Paste a CV, an about page, a price list, a leaflet - whatever you already have written. It does not need tidying: headings, dates, prices and bullet points are all fine, and are what the layout is built around.">{{ form.source_text if form else '' }}</textarea>
