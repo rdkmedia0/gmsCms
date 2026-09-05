@@ -568,6 +568,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--c
 .support-wallet-qr svg { display: block; width: 100%; height: auto; }
 .support-wallet-address { display: flex; gap: 6px; align-items: center; }
 .support-wallet-address input { flex: 1; min-width: 0; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+.support-wallet-note { margin: 8px 0 0; }
 
 .inline-form { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
 .inline-form input, .inline-form select { width: auto; flex: 1; min-width: 180px; }

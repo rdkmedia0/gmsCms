@@ -17,7 +17,7 @@
 {% if wallets %}
 <div class="card">
   <h2>Or send crypto</h2>
-  <p>Any amount, to any of these. Scan the code with your wallet, or copy the address. These addresses are part of the software itself &mdash; nothing on this site can change them &mdash; and there is no way to reverse a transfer, so check the first and last characters before you send.</p>
+  <p>Any amount, to any of these. Scan the code with your wallet, or copy the address. These are the project&rsquo;s Coinbase addresses, baked into the software &mdash; nothing on this site can change them &mdash; and there is no way to reverse a transfer, so check the first and last characters, and the network, before you send.</p>
   <div class="support-wallets">
     {% for w in wallets %}
     <div class="support-wallet">
@@ -27,6 +27,7 @@
         <input type="text" value="{{ w.address }}" readonly spellcheck="false" title="The {{ w.name }} address. Select it, or press Copy.">
         <button type="button" class="btn btn-small support-copy" data-copy="{{ w.address }}" title="Copy the {{ w.name }} address to your clipboard">Copy</button>
       </div>
+      {% if w.note %}<p class="hint support-wallet-note">{{ w.note }}</p>{% endif %}
     </div>
     {% endfor %}
   </div>
