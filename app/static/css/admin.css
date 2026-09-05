@@ -1920,3 +1920,9 @@ button[aria-busy="true"] { opacity: .75; cursor: progress; }
 .order-actions { white-space: nowrap; }
 .order-actions .btn { margin: 0 2px 2px 0; }
 .order-actions .integration-result { display: block; margin-top: 4px; }
+
+/* Keep the date field and the Sync button together as one aligned group:
+   the .inline-form default stretches inputs (flex:1), which pushed the
+   button off to the right and out of line with the date. */
+.orders-sync-form { align-items: center; }
+.orders-sync-form input[type="date"] { flex: 0 0 auto; min-width: 0; }
