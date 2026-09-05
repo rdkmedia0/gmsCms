@@ -7975,3 +7975,9 @@ uploaded before names were kept), the disk name is `secure_filename`'s
 made unique by a numeric suffix rather than a hex one, and the Library
 draws a file by its TYPE -- a page outline with PDF/DOC/XLS inside,
 `icons.file_type_icon` -- instead of the same 📄 for all of them.
+
+Amended the same day: the key is ONE-OFF, not a period. A date on it
+made "support" mean a subscription, which is not what is being asked;
+a supporter pays once and the line is gone for good on that site, a
+second site is a second key, and giving again is a choice. The key is
+a signed random nonce now, with no date to run out.

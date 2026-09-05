@@ -31,9 +31,9 @@ def support_key():
             flash("There was no key to remove.", "success")
     else:
         try:
-            until = support.install_key(request.form.get("key", ""))
+            support.install_key(request.form.get("key", ""))
         except ValueError as e:
             flash(str(e), "error")
         else:
-            flash(f"Thank you. The line under your footer is gone until {until:%d %B %Y}.", "success")
+            flash("Thank you. The line under your footer is gone.", "success")
     return redirect(url_for("admin.support_screen"))

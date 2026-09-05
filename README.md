@@ -314,11 +314,12 @@ gmsCms is free. Every site it builds shows one small line under its
 footer — *"Built with gmsCms, which is free to use. Site owners can
 remove this line by supporting the project."* — and that is the one
 thing it asks for. **Admin → ♥ Support** has the link to say thanks and
-a box for the supporter's key that removes the line for the period the
-support covers. The key is checked on your own server (`data/
+a box for the supporter's key that removes the line — once, for good.
+A key is one-off, not a subscription, and never runs out; it is for one
+site, so a second site is a second key, and giving again afterwards is
+welcome and optional. The key is checked on your own server (`data/
 license.json`, beside the database, so it survives an upgrade); nothing
-is sent anywhere. When the key runs out the line comes back by itself.
-The same screen removes a key again.
+is sent anywhere. The same screen removes a key again.
 
 ---
 
