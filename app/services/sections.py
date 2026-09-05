@@ -116,6 +116,47 @@ def tool_color_valid(value):
     return value == "" or value in _TOOL_COLOR_VARS
 
 
+#  A Banner/Card BUTTON's own colour, from the palette. Their background,
+#  overlay and text are already coloured directly, so the tool-wide colour
+#  is not offered on them (see page.html) -- but the button, which follows
+#  --primary, had no control of its own. A role slug carried as a
+#  `cms-btn-c-<role>` class on the button; site-base.css maps each class to
+#  --btn-accent, which `.cms-btn` reads.
+BUTTON_COLORS = (
+    ("", "Button: default"),
+    ("primary", "Button: primary"),
+    ("secondary", "Button: secondary"),
+    ("accent", "Button: accent"),
+    ("ink", "Button: dark"),
+)
+_BUTTON_ROLES = {k for k, _ in BUTTON_COLORS if k}
+
+
+def button_color_valid(value):
+    return value == "" or value in _BUTTON_ROLES
+
+
+def _apply_button_color(button, color):
+    """Set (or clear) a button's palette colour class, in place."""
+    if button is None:
+        return
+    classes = [c for c in (button.get("class") or []) if not c.startswith("cms-btn-c-")]
+    if color in _BUTTON_ROLES:
+        classes.append("cms-btn-c-" + color)
+    button["class"] = classes
+
+
+def _read_button_color(button):
+    if button is None:
+        return ""
+    for c in button.get("class") or []:
+        if c.startswith("cms-btn-c-"):
+            role = c[len("cms-btn-c-"):]
+            if role in _BUTTON_ROLES:
+                return role
+    return ""
+
+
 def tool_accent_style(value):
     """The `--tool-accent` declaration for a chosen palette role, or "" for
     the default. Goes into a wrapper's inline style; the tool's own CSS
@@ -1931,10 +1972,11 @@ def card_button_settings(content):
         "link": (button.get("href") or "") if button is not None else "",
         "text": button.get_text(strip=True) if button is not None else "",
         "new_tab": link_opens_new_tab(button),
+        "color": _read_button_color(button),
     }
 
 
-def set_card_button(content, enabled, link, new_tab=False):
+def set_card_button(content, enabled, link, new_tab=False, color=None):
     """Adds, updates or removes a card's button.
 
     A card could already hold a link -- the WYSIWYG toolbar makes one --
@@ -1964,6 +2006,8 @@ def set_card_button(content, enabled, link, new_tab=False):
         div.append(button)
     button["href"] = href
     apply_link_target(button, new_tab)
+    if color is not None:
+        _apply_button_color(button, color)
     return str(soup)
 
 def _set_card_image(content, image_url):
@@ -2019,7 +2063,7 @@ def _banner_div(content):
     return soup, div
 
 
-def set_banner_button(content, enabled, link, new_tab=False):
+def set_banner_button(content, enabled, link, new_tab=False, color=None):
     """Adds, updates or removes a banner's button -- the same shape the
     Card tool's button takes (set_card_button), so a hero the generator
     made (which ships a `.cms-hero-actions` button) is managed by the same
@@ -2049,6 +2093,8 @@ def set_banner_button(content, enabled, link, new_tab=False):
         actions.append(button)
     button["href"] = href
     apply_link_target(button, new_tab)
+    if color is not None:
+        _apply_button_color(button, color)
     return str(soup)
 
 
@@ -2062,7 +2108,8 @@ def banner_button_settings(content):
         button = actions.find("a", class_="cms-btn") if actions is not None else None
     return {"has_button": button is not None,
             "link": button.get("href", "") if button is not None else "",
-            "new_tab": link_opens_new_tab(button)}
+            "new_tab": link_opens_new_tab(button),
+            "color": _read_button_color(button)}
 
 
 def _set_banner_image(content, image_url):

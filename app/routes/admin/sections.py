@@ -27,7 +27,7 @@ from ...services.sections import (
     _update_banner_portrait, _set_banner_portrait_image, banner_portrait_of,
     banner_portrait_size_of, banner_portrait_shape_of,
     _set_card_image, _set_banner_image, _banner_dom_response, _save_card_image_file, _reset_card_style,
-    set_card_button, set_banner_button, _form_new_tab, strip_editor_markup,
+    set_card_button, set_banner_button, button_color_valid, _form_new_tab, strip_editor_markup,
     IMAGE_WIDTH_PX, BANNER_SIZE_PX, CARD_SIZE_PX, ACCORDION_PANEL_SIZE_PX,
     _generate_and_save_images, _apply_image_to_slot, _list_media,
     _set_accordion_panel_image, apply_accordion_form,
@@ -855,7 +855,8 @@ def section_banner_update(section_id, col_index=None):
     if _blink == "__other__":
         _blink = request.form.get("button_link__other", "")
     content = set_banner_button(content, request.form.get("button") == "1", _blink,
-                                new_tab=_form_new_tab(request.form))
+                                new_tab=_form_new_tab(request.form),
+                                color=request.form.get("button_color", "") if button_color_valid(request.form.get("button_color", "")) else "")
     where.write(content, tool_name="Banner", cell_type="banner")
     return where.respond(_banner_dom_response(content))
 
@@ -938,7 +939,8 @@ def section_card_update(section_id, col_index=None):
                                    request.form.get("color", ""))
     content = set_card_button(content, request.form.get("button"),
                               request.form.get("button_link", ""),
-                              new_tab=_form_new_tab(request.form))
+                              new_tab=_form_new_tab(request.form),
+                              color=request.form.get("button_color", "") if button_color_valid(request.form.get("button_color", "")) else "")
     where.write(content, tool_name="Card", cell_type="card")
     _, div = _card_div(content)
     return where.respond({

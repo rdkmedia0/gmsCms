@@ -1509,6 +1509,13 @@
         <label title="Open the link in a NEW browser tab instead of the current one.">
           <input type="checkbox" name="new_tab" value="1" {{ 'checked' if bb.new_tab }} onchange="this.form.requestSubmit()"> Open in new tab
         </label>
+        {#  The button's own colour, from the palette -- the one part of a
+            banner that had no colour control of its own. #}
+        <select name="button_color" title="The button's colour, from your template palette" onchange="this.form.requestSubmit()">
+          {% for key, label in button_colors %}
+          <option value="{{ key }}" {{ 'selected' if (bb.color or '') == key }}>{{ label }}</option>
+          {% endfor %}
+        </select>
       </div>
     </div>
   {% endmacro %}
@@ -1537,6 +1544,11 @@
     <label title="Open the link in a NEW browser tab instead of the current one." {{ 'hidden' if not cb.has_button }}>
       <input type="checkbox" name="new_tab" value="1" {{ 'checked' if cb.new_tab }} onchange="this.form.requestSubmit()"> Open in new tab
     </label>
+    <select name="button_color" title="The button's colour, from your template palette" onchange="this.form.requestSubmit()" {{ 'hidden' if not cb.has_button }}>
+      {% for key, label in button_colors %}
+      <option value="{{ key }}" {{ 'selected' if (cb.color or '') == key }}>{{ label }}</option>
+      {% endfor %}
+    </select>
     {% if image_upload_url %}
     <button type="button" class="cms-pick-library-btn" data-library-pick
             data-library-for="cms-card-image-file-input" data-library-kinds="image"
@@ -1800,7 +1812,7 @@
     {#  Where the palette-colour control saves -- the cell's own URL, but
         withheld from tools that already carry their own colour picker (the
         Tags block), so a tool never shows two "Colour" controls. #}
-    {% set cell_color_url = none if (cell.is_block and cell.block_key == 'tags') else cell_save_url %}
+    {% set cell_color_url = none if (cell.type in ('banner', 'card') or (cell.is_block and cell.block_key == 'tags')) else cell_save_url %}
 
     {% if cell.type == 'empty' %}
       {% if editing %}<div class="cms-cell-empty-hint">Drop a tool here</div>{% endif %}
@@ -2383,9 +2395,15 @@
               On a tool with no palette accent (a plain picture) it simply
               has nothing to re-point; on the many that do, it is the
               control the owner asked for. #}
-          {#  ...except a tool that carries its own colour picker (the Tags
-              block), which must not sprout a second "Colour" control. #}
-          {% set tool_can_be_colored = tool_can_be_shaped and not (s.is_block and s.block_key == 'tags') %}
+          {#  ...except tools that already have colour of their own: the
+              Tags block (its own Colour field), and Banner/Card (their
+              background, overlay and now rich text are all coloured
+              directly, and their BUTTON has its own colour control). A
+              generic tool colour on those would be a second, confusing
+              one. #}
+          {% set tool_can_be_colored = tool_can_be_shaped
+                                       and s.type not in ('banner', 'card')
+                                       and not (s.is_block and s.block_key == 'tags') %}
           {# Remove sits in the panel's corner here too. A tool in a Columns
              cell has always had it; a tool that is its own section had it
              only on the bar above, so the same × was in two different

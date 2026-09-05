@@ -2514,11 +2514,27 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
 .cms-btn {
   display: inline-block; text-align: center; padding: 12px 18px;
   border-radius: var(--site-radius, 8px);
-  background: var(--primary, #2563eb);
+  background: var(--btn-accent, var(--primary, #2563eb));
   text-decoration: none; font-weight: 600; line-height: 1.2;
 }
 .cms-btn { color: var(--primary-on, #fff); }
-.cms-btn:hover { background: var(--primary-700, #1d4ed8); color: var(--primary-on, #fff); }
+.cms-btn:hover { background: var(--btn-accent, var(--primary-700, #1d4ed8)); color: var(--primary-on, #fff); filter: brightness(0.94); }
+/*  A Banner/Card button's own palette colour (its config's "Button
+    colour"): the class sets --btn-accent, which the button reads.
+    See services/sections.py BUTTON_COLORS. The colour class is only
+    present when the owner has DELIBERATELY chosen one, so it wins over a
+    theme's own banner-button colour with !important -- otherwise a theme
+    that paints its hero button a fixed colour (some do) would ignore the
+    choice. Applies to background only; the text-on colour is left to the
+    theme so the label stays readable. */
+.cms-btn-c-primary { --btn-accent: var(--primary); }
+.cms-btn-c-secondary { --btn-accent: var(--secondary); }
+.cms-btn-c-accent { --btn-accent: var(--accent); }
+.cms-btn-c-ink { --btn-accent: var(--site-ink); }
+.cms-btn[class*="cms-btn-c-"], .cms-btn[class*="cms-btn-c-"]:hover {
+  background: var(--btn-accent) !important;
+}
+.cms-btn[class*="cms-btn-c-"]:hover { filter: brightness(0.94); }
 /*  margin-top: auto pins it to the bottom of the card, which is what makes
     a row of cards line their buttons up however much text each one holds
     -- the thing that used to be the pricing grid's alone. */
