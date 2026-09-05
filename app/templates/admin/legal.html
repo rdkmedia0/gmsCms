@@ -37,12 +37,13 @@
         WhatsApp to nobody, silently. So the number is formatted here,
         once, and offered to paste wherever they want it. #}
     {% if whatsapp %}
-    <p class="hint">Your WhatsApp link:
+    <p class="hint">Your WhatsApp link (built from the number above &mdash; <strong>save first</strong>, then copy, or it copies the last saved number):
       <code>{{ whatsapp }}</code>
       <button type="button" class="btn btn-small" data-copy="{{ whatsapp }}"
               title="Copy this, then paste it into a Button or a Menu item wherever you want people to message you.">Copy</button>
       <br>Paste it into a Button or a Menu item. It opens a chat with you
-      on whatever device the visitor is using.</p>
+      on whatever device the visitor is using.
+      <br><strong>Keep your number private:</strong> this link contains your phone number &mdash; that is simply how WhatsApp&rsquo;s click-to-chat works, there is no way to hide it in a <code>wa.me/&lt;number&gt;</code> link. To hide it, open the WhatsApp Business app &rarr; Settings &rarr; Business tools &rarr; <em>Short link</em>; WhatsApp gives you a link like <code>wa.me/message/&hellip;</code> that opens a chat with you <em>without</em> showing your number. Paste that into a Button instead.</p>
     {% elif settings.phone %}
     <p class="hint">To offer a WhatsApp link, write the number internationally &mdash;
       starting <code>+</code> and its country code, like <code>+41 79 123 45 67</code>.
