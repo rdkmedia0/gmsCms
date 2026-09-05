@@ -1921,8 +1921,21 @@ button[aria-busy="true"] { opacity: .75; cursor: progress; }
 .order-actions .btn { margin: 0 2px 2px 0; }
 .order-actions .integration-result { display: block; margin-top: 4px; }
 
-/* Keep the date field and the Sync button together as one aligned group:
-   the .inline-form default stretches inputs (flex:1), which pushed the
-   button off to the right and out of line with the date. */
+/* Keep the label, date field and Sync button aligned as one group. Two
+   things fought it: the .inline-form default stretches inputs (flex:1),
+   which pushed the button off to the right -- so the date takes its natural
+   width instead; and the label and button each carry a 14px top margin (a
+   general form rule) that the date lacks, so align-items:center lined up
+   their margin-boxes and left the date sitting higher. Zero those margins
+   and all three share one baseline. On a phone the button already goes
+   full-width on its own line, so the label and date match it and the three
+   stack as one aligned, full-width column. */
 .orders-sync-form { align-items: center; }
+.orders-sync-form label,
+.orders-sync-form input[type="date"],
+.orders-sync-form .btn { margin: 0; }
 .orders-sync-form input[type="date"] { flex: 0 0 auto; min-width: 0; }
+@media (max-width: 480px) {
+  .orders-sync-form label,
+  .orders-sync-form input[type="date"] { flex: 1 1 100%; }
+}
