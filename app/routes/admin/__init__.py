@@ -1049,7 +1049,8 @@ def get_email_settings(db):
     return settings
 
 
-SITE_SETTINGS_KEYS = ("site_title", "site_tagline", "favicon_url")
+SITE_SETTINGS_KEYS = ("site_title", "site_tagline", "favicon_url",
+                      "maintenance_mode", "maintenance_message")
 
 
 def get_site_settings(db):

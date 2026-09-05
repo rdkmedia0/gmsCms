@@ -12,6 +12,7 @@ from .. import icons
 from .. import version as _version
 from ..services import support
 from ..services import analytics
+from ..services import maintenance
 from ..services import patterns as _patterns
 from ..services.sections import (
     MEDIA_IMAGE_EXTS,
@@ -1083,6 +1084,37 @@ def healthz():
         return Response("unhealthy\n", status=503, mimetype="text/plain")
     return Response("ok\n", status=200, mimetype="text/plain",
                     headers={"Cache-Control": "no-store"})
+
+
+@bp.before_request
+def _maintenance_gate():
+    """While maintenance mode is on, a visitor sees the holding page (503,
+    so a crawler treats it as temporary); the owner, signed in, sees the
+    real site and can switch it off. See services/maintenance.py.
+
+    healthz is never gated -- monitoring must still see the process is up.
+    The admin and the login page live in OTHER blueprints, so this gate
+    (public only) never traps the owner out of the controls that turn it
+    back off. Best-effort: if reading the flag itself fails, the site is
+    served rather than sealed shut by a maintenance switch nobody set.
+    """
+    if request.endpoint == "public.healthz":
+        return
+    if session.get("user_id"):
+        return
+    try:
+        db = get_db()
+        if not maintenance.is_on(db):
+            return
+        msg = maintenance.message(db)
+        paragraphs = [p.strip() for p in msg.split("\n\n") if p.strip()] or [msg]
+        html = render_template(
+            "public/maintenance.html", paragraphs=paragraphs,
+            site_title=(get_site_settings(db) or {}).get("site_title") or "This site")
+        return Response(html, status=503, mimetype="text/html",
+                        headers={"Retry-After": "3600", "Cache-Control": "no-store"})
+    except Exception:  # noqa: BLE001 - never let the gate itself take the site down
+        return
 
 
 #  Count a visitor's page view -- only a real one, and only as an

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {#  A holding page has no business being indexed, and it is served 503
+      besides -- both say "not now" to a crawler. #}
+  <meta name="robots" content="noindex">
+  <title>{{ site_title }}</title>
+  {#  Self-contained on purpose: a maintenance page must render even if the
+      theme, the fonts or the static server are the very thing being worked
+      on. System fonts, inline styles, no external anything. #}
+  <style>
+    :root { color-scheme: light dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #f5f4f1; color: #24262b; padding: 24px; line-height: 1.6;
+    }
+    .card {
+      background: #fff; max-width: 560px; width: 100%; padding: 46px 40px;
+      border-radius: 16px; box-shadow: 0 12px 44px rgba(0,0,0,.09); text-align: center;
+    }
+    .badge {
+      display: inline-block; font-size: .72rem; letter-spacing: .09em; text-transform: uppercase;
+      color: #8a8f98; margin-bottom: 20px;
+    }
+    h1 { margin: 0 0 14px; font-size: 1.45rem; }
+    .msg { font-size: 1.06rem; }
+    .msg p { margin: 0 0 .8em; }
+    .msg p:last-child { margin-bottom: 0; }
+    @media (prefers-color-scheme: dark) {
+      body { background: #14161b; color: #e7e9ee; }
+      .card { background: #1e2128; box-shadow: 0 12px 44px rgba(0,0,0,.5); }
+      .badge { color: #9aa0aa; }
+    }
+  </style>
+</head>
+<body>
+  <main class="card" role="main">
+    <div class="badge">Under maintenance</div>
+    <h1>{{ site_title }}</h1>
+    <div class="msg">
+      {% for para in paragraphs %}<p>{{ para }}</p>{% endfor %}
+    </div>
+  </main>
+</body>
+</html>

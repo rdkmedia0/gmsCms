@@ -46,6 +46,29 @@ def settings_site():
     return redirect(url_for("admin.dashboard"))
 
 
+@bp.route("/settings/maintenance", methods=["POST"])
+@login_required
+def settings_maintenance():
+    """Turn the visitor-facing holding page on or off, and set its words.
+
+    While it is on, visitors get the message and a 503; the owner, being
+    signed in, keeps seeing the real site (see services/maintenance.py and
+    the public maintenance gate). Blank message falls back to the default.
+    """
+    db = get_db()
+    on = "1" if request.form.get("maintenance_mode") == "1" else "0"
+    message = (request.form.get("maintenance_message") or "").strip()[:1000]
+    _set_setting(db, "maintenance_mode", on)
+    _set_setting(db, "maintenance_message", message)
+    db.commit()
+    if on == "1":
+        flash("Maintenance mode is ON — visitors see your holding page. "
+              "You still see the site while you're signed in.", "success")
+    else:
+        flash("Maintenance mode is off — the site is live again.", "success")
+    return redirect(url_for("admin.dashboard"))
+
+
 FAVICON_EMOJI_CHOICES = (
     "☕", "🍕", "🍔", "🍰", "🍺", "🌿", "🌸", "🏠", "🏡", "🏢", "🏋️", "🎨",
     "🎵", "🎬", "📷", "📚", "✂️", "🔧", "⚖️", "🩺", "🐾", "🚗", "✈️", "⛵",

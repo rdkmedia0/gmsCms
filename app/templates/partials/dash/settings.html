@@ -101,6 +101,19 @@
       </form>
     </details>
   </div>
+  <p class="muted" style="margin-top:16px;">Maintenance mode — put up a holding page for visitors while you work on the site. Only signed-out visitors see it; you keep seeing the real site while you're signed in, so you can switch it back off. Search engines are told it's temporary (a 503), so your ranking isn't affected.</p>
+  {% if site_settings.maintenance_mode == '1' %}
+  <p class="hint" style="color:#b45309; font-weight:600;">⚠ Maintenance mode is ON right now — visitors see your holding page.</p>
+  {% endif %}
+  <form method="post" action="{{ url_for('admin.settings_maintenance') }}" style="display:flex; flex-direction:column; align-items:stretch; gap:8px; max-width:520px;">
+    <label title="When on, signed-out visitors see the message below instead of your site. You still see the real site while signed in.">
+      <input type="checkbox" name="maintenance_mode" value="1" {{ 'checked' if site_settings.maintenance_mode == '1' }}>
+      Turn maintenance mode on
+    </label>
+    <textarea name="maintenance_message" rows="3" maxlength="1000" placeholder="{{ maintenance_default }}" title="What visitors read on the holding page. Leave blank to use the default message." style="width:100%; font-family:inherit; padding:8px;">{{ site_settings.maintenance_message or '' }}</textarea>
+    <p class="hint" style="margin:0;">Leave the message blank to use the default: &ldquo;{{ maintenance_default }}&rdquo;</p>
+    <button type="submit" class="btn btn-small btn-primary" title="Save whether maintenance mode is on, and the message visitors see." style="align-self:flex-start;">Save maintenance setting</button>
+  </form>
   <p class="muted" style="margin-top:16px;">Default Section Width — applies to any section that hasn't had its own width set (via the section's own "Section width" control) — that's every section until it's touched individually.</p>
   <form method="post" action="{{ url_for('admin.settings_layout') }}" class="inline-form">
     <select name="default_section_width" id="default-width-select" title="How wide new sections start out. Every section can still be changed on its own afterwards.">

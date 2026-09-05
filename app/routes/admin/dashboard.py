@@ -7,6 +7,7 @@ from . import bp
 from ..auth import login_required
 from ...db import get_db
 from ...services import blog as blog_service
+from ...services import maintenance as maintenance_mod
 from ... import assistant, ai_image
 from ...services import theme_generator as theme_generator_mod
 from ...services import translation as translation_mod
@@ -88,6 +89,7 @@ def _screen_context(db):
         detected_base=site.normalize(request.host_url),
         site_is_public=site.is_public_host(site.public_base(db, request.host_url)),
         favicon_emoji_choices=FAVICON_EMOJI_CHOICES,
+        maintenance_default=maintenance_mod.DEFAULT_MESSAGE,
         nav_layouts=NAV_LAYOUTS,
         nav_layout=get_nav_layout(db),
         sidebar_layout_presets=SIDEBAR_LAYOUT_PRESETS,
