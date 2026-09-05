@@ -1533,6 +1533,31 @@ video, .cms-media video, .cms-video {
   clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
 }
 
+/*  A tool's optional palette colour (the "Colour" control in its header).
+    When chosen, the tool's wrapper carries an inline --tool-accent, and
+    this re-points the accent ROLES for that subtree -- so every link,
+    button and accent inside that follows the palette recolours, with no
+    per-tool CSS to keep in step. Scoped by the inline var itself, so it
+    applies ONLY to a tool that has been given a colour; a tool with none
+    is untouched, which is what keeps the control from ever reading as
+    dead. Only the base roles move (not the derived --primary-NN tint
+    ramp), so a soft/tinted style keeps its tint while the solid accent --
+    the visible, legibility-deciding part -- takes the chosen colour. The
+    text-on-accent colours are left alone so a button stays readable.
+
+    The re-point is on the wrapper's DESCENDANTS, not the wrapper itself:
+    --tool-accent is defined as var(--<role>) on the wrapper, so if the
+    wrapper also re-pointed that same role a cycle forms and both resolve
+    to nothing. Keeping the role intact on the wrapper lets --tool-accent
+    take a concrete value there, which the descendants then inherit and
+    re-point cleanly. */
+[style*="--tool-accent"] * {
+  --primary: var(--tool-accent);
+  --primary-dark: var(--tool-accent);
+  --accent: var(--tool-accent);
+  --accent-dark: var(--tool-accent);
+}
+
 /* File / download section */
 .block-file { display: flex; justify-content: center; }
 .block-file > .cms-block-host { width: 100%; }
@@ -1559,10 +1584,6 @@ video, .cms-media video, .cms-video {
 /*  The download's icon is a drawn SVG now (icon_svg), not an emoji, so it is
     sized in px/em here rather than by font-size, and follows the text colour
     (currentColor) so it fits the theme -- the same move the contact icons made. */
-/*  --tool-accent is the tool's optional palette colour (Colour control in
-    its header). Unset, each falls back to its usual --primary, so nothing
-    changes until an owner picks a colour to make a hard-to-read link
-    legible. See services/sections.py tool_accent_style. */
 .cms-file-icon { display: inline-flex; flex: 0 0 auto; color: var(--tool-accent, var(--primary, #2563eb)); }
 .cms-file-icon svg { width: 30px; height: 30px; }
 .cms-file-info { display: flex; flex-direction: column; flex: 1; min-width: 0; }
