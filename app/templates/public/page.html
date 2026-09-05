@@ -171,7 +171,6 @@
              value="{{ block.contact_icon_size or contact_icon_default }}"
              title="How big the icons are, in pixels. Only used when the box beside it is ticked.">
     </div>
-    <p class="hint">Each line shows its own icon and is clickable — an email opens the visitor's mail app, a number dials, a link opens that page. Untick to show the icon on its own, with the address on hover.</p>
     {% for i in range(row_count) %}
     {% set row = rows[i] if i < rows | length else {} %}
     <div class="cms-config-row cms-contact-row cms-rows-row">
