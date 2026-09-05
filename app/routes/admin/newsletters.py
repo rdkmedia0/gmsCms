@@ -400,7 +400,13 @@ def _editor_context(db, row):
     carries the tool at its top, and a link straight to an issue still
     opens it. Two copies of this list is how the two come to differ in
     which controls they offer.
+
+    `row` is None when the site has no draft to open -- the page then shows
+    an empty-state button instead of the editor (the editor is hard-wired
+    to a saved id), so there is nothing to draw here.
     """
+    if row is None:
+        return dict(item=None)
     line, has_address = newsletter.sender_line(
         legal.settings_for(db), (get_site_settings(db) or {}).get("site_title"))
     look = _look(db)
@@ -458,12 +464,14 @@ def _editor_context(db, row):
 
 
 def _tool_newsletter(db, wanted=None):
-    """Which newsletter the creation tool is holding.
+    """Which newsletter the creation tool is holding, or None.
 
-    The one asked for, or the newest draft, or a fresh one. The page IS
-    the tool now, so it always has something in it -- and a site with no
-    drafts gets exactly one blank, which is the tool being ready rather
-    than litter.
+    The one asked for, or the newest unsent draft, or NOTHING. It used to
+    make a fresh blank when a site had no drafts -- but that created a
+    database row just for VISITING the page, and deleting it only made the
+    next page load create another, so it could not be got rid of. A
+    newsletter is created when the owner starts one (the empty-state button
+    posts to issue/new) or saves, never merely by looking at the screen.
     """
     if wanted:
         row = newsletter.get_composed(db, wanted)
@@ -472,11 +480,7 @@ def _tool_newsletter(db, wanted=None):
     for row in newsletter.list_composed(db):
         if not newsletter.last_send(db, "newsletter", row["id"]):
             return row
-    made = newsletter.create_composed(db, "letter", "")
-    newsletter.save_blocks(db, made, "", email_layouts.starting_blocks("letter", db),
-                           layout="letter")
-    db.commit()
-    return newsletter.get_composed(db, made)
+    return None
 
 
 @bp.route("/newsletters/issue/<int:newsletter_id>/canvas", methods=["POST"])

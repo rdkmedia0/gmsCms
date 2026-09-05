@@ -18,6 +18,12 @@
     now. Edit or copy in the list below loads that newsletter straight
     into it, so moving between "which one" and "writing it" is not
     moving between screens. #}
+{#  The editor is hard-wired to a saved newsletter (its Save/Send/Delete
+    URLs carry the id), so it only shows when there IS one. With no draft,
+    an empty-state button starts one on purpose -- visiting this page no
+    longer creates a row you then cannot delete, because the next load
+    would just recreate it. #}
+{% if item %}
 <div class="card cms-tool-card">
   <div class="integration-head">
     <h2>{% if item.subject %}{{ item.subject }}{% else %}New newsletter{% endif %}</h2>
@@ -25,6 +31,17 @@
   </div>
   {% include "partials/newsletter_editor.html" %}
 </div>
+{% else %}
+<div class="card cms-tool-card">
+  <div class="integration-head">
+    <h2>Write a newsletter</h2>
+    <span class="hint">Nothing is created just by opening this page &mdash; a newsletter appears only once you start one.</span>
+  </div>
+  <form method="post" action="{{ url_for('admin.newsletter_issue_new') }}">
+    <button type="submit" class="btn btn-primary" title="Start a new newsletter and open it for writing. You can change its layout while writing.">✍️ Start a newsletter</button>
+  </form>
+</div>
+{% endif %}
 
 {#  ONE table.
 
