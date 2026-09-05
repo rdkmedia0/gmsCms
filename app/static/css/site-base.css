@@ -1542,7 +1542,11 @@ video, .cms-media video, .cms-video {
   padding: var(--site-radius-pad-row, 16px 20px);
   border: 1px solid rgba(0,0,0,0.12); border-radius: var(--site-radius, 12px); max-width: 420px; width: 100%;
 }
-.cms-file-icon { font-size: 28px; }
+/*  The download's icon is a drawn SVG now (icon_svg), not an emoji, so it is
+    sized in px/em here rather than by font-size, and follows the text colour
+    (currentColor) so it fits the theme -- the same move the contact icons made. */
+.cms-file-icon { display: inline-flex; flex: 0 0 auto; color: var(--primary, #2563eb); }
+.cms-file-icon svg { width: 30px; height: 30px; }
 .cms-file-info { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 .cms-file-name { font-weight: 700; }
 .cms-file-size { font-size: 13px; color: var(--site-ink-soft, #5b6472); }
@@ -1552,16 +1556,22 @@ video, .cms-media video, .cms-video {
 }
 .cms-file-placeholder { color: var(--site-ink-soft, #5b6472); font-size: 14px; }
 
-/* File display variants: button, plain text link, icon-only */
+/* File display variants: button, plain text link, icon-only. Each pairs the
+   icon with its label; the icon takes the text colour and sits on the line. */
 .cms-file-btn {
-  display: inline-block; background: var(--primary, #2563eb); color: #fff; text-decoration: none;
+  display: inline-flex; align-items: center; gap: 9px;
+  background: var(--primary, #2563eb); color: #fff; text-decoration: none;
   font-weight: 700; padding: 12px 28px; border-radius: var(--site-radius, 8px);
 }
 .cms-file-btn:hover { background: var(--primary-dark, #1d4ed8); }
+.cms-file-btn svg, .cms-file-textlink svg { width: 1.1em; height: 1.1em; flex: 0 0 auto; }
+.cms-file-btn .cms-icon, .cms-file-textlink .cms-icon { margin: 0; }
 .cms-file-textlink {
+  display: inline-flex; align-items: center; gap: 7px;
   color: var(--primary, #2563eb); text-decoration: underline; font-size: 15px; word-break: break-all;
 }
-.cms-file-icon-only { font-size: 36px; text-decoration: none; display: inline-block; }
+.cms-file-icon-only { text-decoration: none; display: inline-flex; color: var(--primary, #2563eb); }
+.cms-file-icon-only svg { width: 40px; height: 40px; }
 
 /* Media player: YouTube embed, uploaded video, uploaded audio.
    Sized/resizable the same way images are (small/medium/large/full); at
@@ -3019,6 +3029,11 @@ body.cms-logged-in .cms-basket-link.cms-basket-align-float-top { top: 60px; }
   box-shadow: var(--site-shadow, 0 8px 24px -10px rgba(0, 0, 0, .4));
   background: var(--site-tint, #eee);
   overflow: hidden;
+  /*  Round by default -- round is the default shape, and this is the safety
+      net: if the shape-class rule below is ever dropped or its variable comes
+      through empty, the portrait is still a circle rather than a bare square.
+      Square/oval override this. */
+  border-radius: 50%;
   display: grid; place-items: center;
 }
 .cms-portrait-size-small  > .cms-banner-portrait { height: clamp(64px, 16cqw, 280px); border-width: 3px; }
@@ -3036,9 +3051,17 @@ body.cms-logged-in .cms-basket-link.cms-basket-align-float-top { top: 60px; }
     descendant's corners -- a portrait is a small shaped object in a
     band, the same exception buttons already get, and this keeps the
     shape logic in one place. */
-.cms-portrait-shape-round  > .cms-banner-portrait { --portrait-radius: 50%; border-radius: var(--portrait-radius); }
-.cms-portrait-shape-square > .cms-banner-portrait { --portrait-radius: var(--cms-ui-radius-surface, 10px); border-radius: var(--portrait-radius); }
-.cms-portrait-shape-oval   > .cms-banner-portrait { --portrait-radius: 50% / 58%; border-radius: var(--portrait-radius); aspect-ratio: 5 / 6; }
+/*  border-radius is set DIRECTLY, not through var(--portrait-radius): a
+    var() that resolves empty is "invalid at computed-value time", which
+    unsets border-radius to 0 (a square) rather than falling back -- and on a
+    build without composition.css the variable came through empty, so every
+    round portrait went square. The variable is still published for
+    composition.css to read; the shape no longer DEPENDS on it resolving.
+    (The per-view rules below already set the radius directly, for the same
+    reason -- this makes the base desktop rule match them.) */
+.cms-portrait-shape-round  > .cms-banner-portrait { --portrait-radius: 50%; border-radius: 50%; }
+.cms-portrait-shape-square > .cms-banner-portrait { --portrait-radius: var(--cms-ui-radius-surface, 10px); border-radius: var(--cms-ui-radius-surface, 10px); }
+.cms-portrait-shape-oval   > .cms-banner-portrait { --portrait-radius: 50% / 58%; border-radius: 50% / 58%; aspect-ratio: 5 / 6; }
 
 /*  Horizontal placement. The vertical half-below is in the transform
     above and never changes, so only the horizontal inset moves here --

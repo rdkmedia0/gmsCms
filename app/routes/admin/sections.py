@@ -17,7 +17,7 @@ from ...services.tools import export_tools, export_all_custom_tools, import_tool
 from ...services.sections import (
     _generate_and_save_video,
     IMAGE_WIDTHS, IMAGE_ANIMATIONS, IMAGE_MASKS, FILE_EXTENSIONS,
-    MEDIA_TYPES, VIDEO_EXTENSIONS, AUDIO_EXTENSIONS, FILE_DISPLAYS, MEDIA_IMAGE_EXTS,
+    MEDIA_TYPES, VIDEO_EXTENSIONS, AUDIO_EXTENSIONS, FILE_DISPLAYS, FILE_ICONS, MEDIA_IMAGE_EXTS,
     _breadcrumb_starter_html, _divider_starter_html, _resolve_tool_content,
     apply_contact_form, apply_lang_switcher_form, read_lang_switcher_opts,
     _columns_section_or_404, _get_columns_cells, _save_columns_cells, _normalize_cell, _cell_slot,
@@ -26,7 +26,7 @@ from ...services.sections import (
     _update_banner_portrait, _set_banner_portrait_image, banner_portrait_of,
     banner_portrait_size_of, banner_portrait_shape_of,
     _set_card_image, _set_banner_image, _banner_dom_response, _save_card_image_file, _reset_card_style,
-    set_card_button, set_banner_button, strip_editor_markup,
+    set_card_button, set_banner_button, _form_new_tab, strip_editor_markup,
     IMAGE_WIDTH_PX, BANNER_SIZE_PX, CARD_SIZE_PX, ACCORDION_PANEL_SIZE_PX,
     _generate_and_save_images, _apply_image_to_slot, _list_media,
     _set_accordion_panel_image, apply_accordion_form,
@@ -533,6 +533,8 @@ def section_column_update(section_id, col_index):
         cell["media_type"] = request.form["media_type"]
     if "link_url" in request.form:
         cell["link_url"] = request.form.get("link_url", "").strip()
+    if "link_new_tab" in request.form:
+        cell["link_new_tab"] = 1 if request.form.get("link_new_tab") == "1" else 0
     #  A caption is part of the Image tool wherever it stands. The field
     #  existed for a section and not for a cell, which is why the same
     #  tool offered it in one place and not the other.
@@ -540,6 +542,8 @@ def section_column_update(section_id, col_index):
         cell["caption"] = request.form.get("caption", "").strip()
     if "file_display" in request.form and request.form["file_display"] in FILE_DISPLAYS:
         cell["file_display"] = request.form["file_display"]
+    if "file_icon" in request.form and request.form["file_icon"] in FILE_ICONS:
+        cell["file_icon"] = request.form["file_icon"]
     #  A cell holds a tool, so it gets the tool level of Corners too.
     if "corner_style" in request.form:
         value = request.form["corner_style"]
@@ -820,7 +824,8 @@ def section_banner_update(section_id, col_index=None):
     _blink = request.form.get("button_link", "")
     if _blink == "__other__":
         _blink = request.form.get("button_link__other", "")
-    content = set_banner_button(content, request.form.get("button") == "1", _blink)
+    content = set_banner_button(content, request.form.get("button") == "1", _blink,
+                                new_tab=_form_new_tab(request.form))
     where.write(content, tool_name="Banner", cell_type="banner")
     return where.respond(_banner_dom_response(content))
 
@@ -902,7 +907,8 @@ def section_card_update(section_id, col_index=None):
     content = _update_card_classes(where.read(), request.form.get("shape"),
                                    request.form.get("color", ""))
     content = set_card_button(content, request.form.get("button"),
-                              request.form.get("button_link", ""))
+                              request.form.get("button_link", ""),
+                              new_tab=_form_new_tab(request.form))
     where.write(content, tool_name="Card", cell_type="card")
     _, div = _card_div(content)
     return where.respond({
@@ -1243,6 +1249,9 @@ def section_update(section_id):
     if "link_url" in request.form:
         fields.append("link_url = ?")
         values.append(request.form.get("link_url", "").strip())
+    if "link_new_tab" in request.form:
+        fields.append("link_new_tab = ?")
+        values.append(1 if request.form.get("link_new_tab") == "1" else 0)
     #  Stored as plain words and rendered escaped: a caption is one line
     #  of description, never markup, so there is nothing here that has to
     #  survive as HTML.
@@ -1263,6 +1272,9 @@ def section_update(section_id):
     if "file_display" in request.form and request.form["file_display"] in FILE_DISPLAYS:
         fields.append("file_display = ?")
         values.append(request.form["file_display"])
+    if "file_icon" in request.form and request.form["file_icon"] in FILE_ICONS:
+        fields.append("file_icon = ?")
+        values.append(request.form["file_icon"])
     #  A picture behind the section, with how much to dim it and where to
     #  anchor it. Chosen from the Image Library rather than uploaded here,
     #  so there is one place files live.
@@ -1705,11 +1717,13 @@ def section_file_upload(section_id, col_index=None):
         return where.fail(error)
     size = os.path.getsize(os.path.join(current_app.config["UPLOAD_FOLDER"],
                                         os.path.basename(url)))
-    #  The name it arrived under becomes the label, unless this tool has
-    #  already been given one -- somebody who titled the download does not
-    #  want that replaced by "final-v3-FINAL.pdf".
+    #  The name it arrived under is the file's OWN name (file_name) -- the
+    #  fallback shown when no custom label is typed. It is NOT the title:
+    #  title is the heading above the tool now, like every other tool. A
+    #  custom label the owner typed (caption) is left untouched; only the
+    #  fallback filename is (re)set on each upload.
     where.write(url, tool_name="File / Download", cell_type="file",
-                title=where.get("title") or filename, file_size=size)
+                file_name=filename, file_size=size)
     if wants_json():
         return jsonify({"ok": True, "url": url, "filename": filename, "size": size})
     flash("File uploaded!", "success")

@@ -420,6 +420,7 @@
     const customUrl = builder.querySelector(".cms-menu-custom-url");
     const customIconPick = builder.querySelector(".cms-menu-custom-icon-pick");
     const customAddBtn = builder.querySelector(".cms-menu-custom-add-btn");
+    const customNewTab = builder.querySelector(".cms-menu-custom-newtab");
     customAddBtn?.addEventListener("click", () => {
       const url = customUrl.value.trim();
       if (!url) { customUrl.focus(); return; }
@@ -427,8 +428,10 @@
         key: randomKey("c"), type: "custom", url,
         label: customLabel.value.trim() || url,
         icon: pendingCustomIcon, parent: null,
+        new_tab: !!(customNewTab && customNewTab.checked),
       });
       customLabel.value = ""; customUrl.value = ""; pendingCustomIcon = "";
+      if (customNewTab) customNewTab.checked = false;
       if (customIconPick) customIconPick.querySelector(".cms-icon-pick-preview").innerHTML = "";
       sessionStorage.setItem(openKey, "1");
       commit();
@@ -1179,15 +1182,18 @@
           showInput2: true,
           input2Placeholder: "Tooltip on hover (optional)",
           input2Default: (current && current.title) || "",
+          showCheck: true,
+          checkLabel: "Open in a new tab",
+          checkDefault: !!(current && current.newTab),
           confirmLabel: current ? "Update link" : "Add Link",
           danger: false,
-        }).then(({ confirmed, value: url, value2: title }) =>
-          done(confirmed ? url : null, confirmed ? title : ""));
+        }).then(({ confirmed, value: url, value2: title, checked }) =>
+          done(confirmed ? url : null, confirmed ? title : "", confirmed ? checked : false));
       },
       //  A link on a picture is not a link in the words: with nothing
       //  selected, createLink would do nothing at all, so the anchor is
       //  put around the image by hand.
-      onLinkImage: (body, url, title) => {
+      onLinkImage: (body, url, title, newTab) => {
         const hasTextSelection = (window.getSelection()?.toString() || "").length > 0;
         if (hasTextSelection || !lastClickedImage || !body?.contains(lastClickedImage)) return false;
         const existingLink = lastClickedImage.closest("a");
@@ -1195,6 +1201,8 @@
         a.href = url;
         if ((title || "").trim()) a.setAttribute("title", title.trim());
         else a.removeAttribute("title");
+        if (newTab) { a.setAttribute("target", "_blank"); a.setAttribute("rel", "noopener noreferrer"); }
+        else { a.removeAttribute("target"); a.removeAttribute("rel"); }
         if (!existingLink) {
           lastClickedImage.replaceWith(a);
           a.appendChild(lastClickedImage);
@@ -2463,6 +2471,29 @@
     select.addEventListener("change", async () => {
       await saveField(select.dataset.saveUrl, "file_display", select.value);
       location.reload(); // display styles differ structurally (card/button/link/icon)
+    });
+  });
+
+  //  The File tool's optional custom label (saved to `caption`; blank falls
+  //  back to the file's own name) and which icon it wears.
+  bindEach(".cms-file-name-input", (input) => {
+    const save = debounce(() => saveField(input.dataset.saveUrl, "caption", input.value), 500);
+    input.addEventListener("input", save);
+  });
+  bindEach(".cms-file-icon-select", (select) => {
+    select.addEventListener("change", async () => {
+      await saveField(select.dataset.saveUrl, "file_icon", select.value);
+      location.reload(); // re-render the download with the new icon
+    });
+  });
+
+  //  A generic "open in new tab" tick for tools whose link is a column (the
+  //  Image tool): saves 1/0 to the field named on it, then reloads so the
+  //  rendered <a> picks up (or drops) target=_blank.
+  bindEach(".cms-newtab-check", (cb) => {
+    cb.addEventListener("change", async () => {
+      await saveField(cb.dataset.saveUrl, cb.dataset.field || "link_new_tab", cb.checked ? "1" : "0");
+      location.reload();
     });
   });
 

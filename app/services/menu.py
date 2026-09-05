@@ -128,6 +128,8 @@ def _parse_menu_form(form, default_direction="horizontal"):
                 entry["label"] = (it.get("label") or "").strip() or "Link"
                 if not entry["url"]:
                     continue
+                if it.get("new_tab"):
+                    entry["new_tab"] = True
             if item_type != "divider":
                 icon = (it.get("icon") or "").strip()
                 # Icons are chosen from a fixed <select> (menu_icon_options in
@@ -260,6 +262,11 @@ def _build_menu_links_html(db, items, style="plain", size="medium", bg_color="",
     def _icon_span(it):
         return icons.render_icon(it.get("icon"))
 
+    def _tgt(it):
+        #  A menu link the owner chose to open in a new tab. Same target/rel
+        #  convention as every other link tool (apply_link_target).
+        return ' target="_blank" rel="noopener noreferrer"' if it.get("new_tab") else ""
+
     items_json = html_escape(json.dumps(resolved))
     highlight_attr = ' data-highlight-current="1"' if highlight_current else ""
     align_class = f" cms-menu-align-{align}"
@@ -285,10 +292,10 @@ def _build_menu_links_html(db, items, style="plain", size="medium", bg_color="",
                 continue
             href, label = _href_label(it)
             kids = children_of.get(it["key"], [])
-            link_html = f'<a href="{html_escape(href)}" data-menu-key="{html_escape(it["key"])}">{_icon_span(it)}{html_escape(label)}</a>'
+            link_html = f'<a href="{html_escape(href)}" data-menu-key="{html_escape(it["key"])}"{_tgt(it)}>{_icon_span(it)}{html_escape(label)}</a>'
             if kids:
                 sub_items = "".join(
-                    f'<li><a href="{html_escape(_href_label(k)[0])}" data-menu-key="{html_escape(k["key"])}">{_icon_span(k)}{html_escape(_href_label(k)[1])}</a></li>'
+                    f'<li><a href="{html_escape(_href_label(k)[0])}" data-menu-key="{html_escape(k["key"])}"{_tgt(k)}>{_icon_span(k)}{html_escape(_href_label(k)[1])}</a></li>'
                     for k in kids
                 )
                 parts.append(f'<li class="cms-menu-has-submenu" data-menu-key="{html_escape(it["key"])}">{link_html}<ul class="cms-submenu">{sub_items}</ul></li>')
@@ -310,7 +317,7 @@ def _build_menu_links_html(db, items, style="plain", size="medium", bg_color="",
             parts.append(f'<span class="cms-menu-divider" data-menu-key="{html_escape(it["key"])}" aria-hidden="true"></span>')
             continue
         href, label = _href_label(it)
-        parts.append(f'<a href="{html_escape(href)}" data-menu-key="{html_escape(it["key"])}"{link_class}>{_icon_span(it)}{html_escape(label)}</a>')
+        parts.append(f'<a href="{html_escape(href)}" data-menu-key="{html_escape(it["key"])}"{link_class}{_tgt(it)}>{_icon_span(it)}{html_escape(label)}</a>')
     button_style_class = f" cms-menu-btnstyle-{button_style}" if draws_buttons else ""
     #  A badge menu is plain links plus a mark on the one you are on. It
     #  carries no button class at all, so nothing about it can inherit

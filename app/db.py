@@ -292,6 +292,26 @@ def _migrate(db):
     _add_column(db, "sections", "animation", "TEXT NOT NULL DEFAULT 'none'")
     _add_column(db, "sections", "file_size", "INTEGER")
     _add_column(db, "sections", "file_display", "TEXT NOT NULL DEFAULT 'card'")
+    #  The File tool used to keep the uploaded file's name in `title` -- which
+    #  is the HEADING every tool wears (see caption's note below), so a file
+    #  could not have both a heading AND a name, and turning the heading on did
+    #  nothing. Its name lives in its own column now, `file_name` (the fallback
+    #  shown when the owner types no custom label), leaving `title` free to be
+    #  the conventional heading. `file_icon` is which drawn mark it shows.
+    _add_column(db, "sections", "file_name", "TEXT")
+    _add_column(db, "sections", "file_icon", "TEXT")
+    #  Whether a tool whose link lives in a COLUMN (the Image tool's link_url)
+    #  opens that link in a new tab. Tools whose link is an <a> in their own
+    #  content (buttons, inline text links) carry the choice on the <a> itself;
+    #  this is only for the ones that build the <a> at render time.
+    _add_column(db, "sections", "link_new_tab", "INTEGER NOT NULL DEFAULT 0")
+    #  Move any existing file's name off `title` and into `file_name`, once --
+    #  after which `file_name IS NOT NULL` keeps it from running again. Its
+    #  `title` is cleared so it starts with no heading rather than a heading
+    #  that is really the file's name.
+    db.execute(
+        "UPDATE sections SET file_name = title, title = NULL "
+        "WHERE type = 'file' AND file_name IS NULL AND title IS NOT NULL AND title != ''")
     _add_column(db, "sections", "mask_shape", "TEXT NOT NULL DEFAULT 'none'")
     #  A line under a picture, saying what it is. Its own column rather
     #  than part of `content` (which for an image section IS the file's

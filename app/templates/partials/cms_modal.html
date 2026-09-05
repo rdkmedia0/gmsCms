@@ -20,6 +20,11 @@
     <label id="cms-modal-snapshot-label" class="cms-modal-count-label" hidden>
       <input type="checkbox" id="cms-modal-snapshot" title="Save the site as a new template first, so this can be undone by activating it again."> Save the current setup as a new template first
     </label>
+    {# A generic tick the caller can label — used by the link dialog for "open
+       in a new tab". #}
+    <label id="cms-modal-check-label" class="cms-modal-count-label" hidden>
+      <input type="checkbox" id="cms-modal-check"> <span id="cms-modal-check-text"></span>
+    </label>
     <div class="cms-modal-actions">
       <button type="button" id="cms-modal-cancel" title="Leave everything as it is.">Cancel</button>
       {# A third answer, for the questions that genuinely have one — see

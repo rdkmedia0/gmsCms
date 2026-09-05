@@ -264,6 +264,10 @@
     <input type="text" class="cms-link-input" placeholder="Link URL (optional)"
            value="{{ item.link_url or '' }}" data-save-url="{{ save_url }}" data-field="link_url"
            title="Make the image a link">
+    <label title="Open the image's link in a NEW browser tab instead of the current one." {{ 'hidden' if not item.link_url }}>
+      <input type="checkbox" class="cms-newtab-check" data-save-url="{{ save_url }}" data-field="link_new_tab"
+             value="1" {{ 'checked' if item.link_new_tab }}> Open in new tab
+    </label>
     <select class="cms-anim-select" title="Animation" data-save-url="{{ save_url }}">
       <option value="none" {{ 'selected' if not item.animation or item.animation == 'none' }}>No animation</option>
       <option value="fade-in" {{ 'selected' if item.animation == 'fade-in' }}>Fade in</option>
@@ -321,7 +325,7 @@
            caption, no wrapper — an existing site's markup does not change
            just because the field exists. #}
         {% if item.caption %}<figure class="cms-image-figure">{% endif %}
-        {% if item.link_url %}<a href="{{ item.link_url }}">{% endif %}
+        {% if item.link_url %}<a href="{{ item.link_url }}"{{ ' target="_blank" rel="noopener noreferrer"' | safe if item.link_new_tab }}>{% endif %}
         <img src="{{ item.content }}" alt="{{ title or '' }}" class="cms-managed-image">
         {% if item.link_url %}</a>{% endif %}
         {% if item.caption %}<figcaption>{{ item.caption }}</figcaption></figure>{% endif %}
@@ -555,6 +559,9 @@
                      title="The words this menu item shows.">
               <input type="text" class="cms-menu-custom-url" placeholder="URL or #anchor"
                      title="Where it goes — another website, or #something to jump to a place on this page.">
+              <label class="cms-menu-align-label" title="Open this link in a NEW browser tab.">
+                <input type="checkbox" class="cms-menu-custom-newtab"> new tab
+              </label>
               <button type="button" class="cms-menu-icon-pick cms-menu-custom-icon-pick" data-target-label="this link" title="Choose icon"><span class="cms-icon-pick-preview"></span></button>
               <button type="button" class="cms-menu-custom-add-btn"
                       title="Add the link above to this menu.">+ Link</button>
@@ -1279,6 +1286,24 @@
             <option value="fixed" {{ 'selected' if 'cms-banner-fixed' in cell.content }}>Fixed</option>
           </select>
         </label>
+        {#  Framing the background picture: fill vs fit, where its focal point
+            sits, and how tall the banner stands -- so an off-centre or taller
+            image can be positioned within the frame without editing CSS. #}
+        <label>Image fit
+          <select name="bg_fit" onchange="this.form.requestSubmit()" title="Fill the banner (cropping to cover it) or fit the whole picture in view">
+            <option value="cover" {{ 'selected' if ov.bg_fit == 'cover' }}>Fill (may crop)</option>
+            <option value="contain" {{ 'selected' if ov.bg_fit == 'contain' }}>Fit whole image</option>
+          </select>
+        </label>
+        <label>Focus &#8596;
+          <input type="range" name="bg_pos_x" min="0" max="100" value="{{ ov.bg_pos_x }}" onchange="this.form.requestSubmit()" title="Move the picture's focal point left or right within the frame">
+        </label>
+        <label>Focus &#8597;
+          <input type="range" name="bg_pos_y" min="0" max="100" value="{{ ov.bg_pos_y }}" onchange="this.form.requestSubmit()" title="Move the picture's focal point up or down within the frame">
+        </label>
+        <label>Banner height
+          <input type="number" name="hero_height" min="120" max="1200" placeholder="auto" value="{{ ov.hero_height }}" onchange="this.form.requestSubmit()" title="How tall the banner stands, in pixels — blank uses the theme default. Increase it to fit a taller image.">
+        </label>
         {% if image_upload_url %}
         <span class="cms-config-actions">
           <button type="button" class="cms-pick-library-btn" data-library-pick
@@ -1450,6 +1475,9 @@
                placeholder="example.com/book or mailto:you@example.com"
                title="The full address to link to, off this site."
                {{ 'hidden' if not bb_is_other }}>
+        <label title="Open the link in a NEW browser tab instead of the current one.">
+          <input type="checkbox" name="new_tab" value="1" {{ 'checked' if bb.new_tab }} onchange="this.form.requestSubmit()"> Open in new tab
+        </label>
       </div>
     </div>
   {% endmacro %}
@@ -1475,6 +1503,9 @@
     <input type="text" class="cms-link-input" name="button_link" value="{{ cb.link if cb.link != '#' else '' }}" placeholder="Button goes to"
            onchange="this.form.requestSubmit()" title="Where the button goes: a page on this site (/contact), a full web address, an email (mailto:you@example.com) or a phone number (tel:...)"
            {{ 'hidden' if not cb.has_button }}>
+    <label title="Open the link in a NEW browser tab instead of the current one." {{ 'hidden' if not cb.has_button }}>
+      <input type="checkbox" name="new_tab" value="1" {{ 'checked' if cb.new_tab }} onchange="this.form.requestSubmit()"> Open in new tab
+    </label>
     {% if image_upload_url %}
     <button type="button" class="cms-pick-library-btn" data-library-pick
             data-library-for="cms-card-image-file-input" data-library-kinds="image"
@@ -1531,6 +1562,17 @@
             <option value="button" {{ 'selected' if item.file_display == 'button' }}>Button</option>
             <option value="text-link" {{ 'selected' if item.file_display == 'text-link' }}>Plain text link</option>
             <option value="icon" {{ 'selected' if item.file_display == 'icon' }}>Icon only</option>
+          </select>
+          {#  The name is optional: blank shows the file's own name (the
+              placeholder), or type your own -- e.g. "Download a physical CV".
+              Its own field, not the heading: the heading tick above is the
+              conventional one every tool has. #}
+          <input type="text" class="cms-file-name-input" name="caption" value="{{ item.caption or '' }}"
+                 placeholder="{{ item.file_name or 'File name (optional)' }}" data-save-url="{{ save_url }}"
+                 title="An optional label for the download. Leave blank to use the file's own name.">
+          <select class="cms-file-icon-select" title="Which icon the download shows" data-save-url="{{ save_url }}">
+            <option value="document" {{ 'selected' if not item.file_icon or item.file_icon == 'document' }}>Document icon</option>
+            <option value="resume" {{ 'selected' if item.file_icon == 'resume' }}>CV / résumé icon</option>
           </select>
           <button type="button" class="cms-change-file-btn" title="Change file">📎 Change File</button>
           <button type="button" class="cms-pick-library-btn" data-library-pick
@@ -1793,19 +1835,21 @@
       {% endcall %}
       {% endif %}
       <div class="cms-column-body">
+        {%- set f_icon = 'ui:' ~ (cell.file_icon or 'document') -%}
+        {%- set f_name = cell.caption or cell.file_name or ('' if cell.title_on_flag else (cell.title or '')) -%}
         {% if not cell.content %}
           {% if editing %}<div class="cms-image-placeholder">Click "Change File" above to upload</div>{% endif %}
         {% elif cell.file_display == 'button' %}
-          <a href="{{ cell.content }}" download class="cms-file-btn">{{ cell.title or 'Download' }}</a>
+          <a href="{{ cell.content }}" download class="cms-file-btn">{{ icon_svg(f_icon) | safe }}<span>{{ f_name or 'Download' }}</span></a>
         {% elif cell.file_display == 'text-link' %}
-          <a href="{{ cell.content }}" download class="cms-file-textlink">{{ cell.content }}</a>
+          <a href="{{ cell.content }}" download class="cms-file-textlink">{{ icon_svg(f_icon) | safe }}<span>{{ f_name or 'Download' }}</span></a>
         {% elif cell.file_display == 'icon' %}
-          <a href="{{ cell.content }}" download class="cms-file-icon-only" title="{{ cell.title or 'Download' }}">📄</a>
+          <a href="{{ cell.content }}" download class="cms-file-icon-only" title="{{ f_name or 'Download' }}">{{ icon_svg(f_icon) | safe }}</a>
         {% else %}
           <div class="cms-file-card">
-            <span class="cms-file-icon">📄</span>
+            <span class="cms-file-icon">{{ icon_svg(f_icon) | safe }}</span>
             <div class="cms-file-info">
-              <span {{ edit_field('title', cell_save_url) }} class="cms-file-name">{{ cell.title or 'Untitled file' }}</span>
+              <span {{ edit_field('caption', cell_save_url) }} class="cms-file-name" data-placeholder="{{ cell.file_name or 'File name' }}">{{ cell.caption if editing else (f_name or 'Untitled file') }}</span>
               {% if cell.file_size_display %}<span class="cms-file-size">{{ cell.file_size_display }}</span>{% endif %}
             </div>
             <a href="{{ cell.content }}" download class="cms-file-download">Download</a>
@@ -2330,20 +2374,25 @@
           {{ image_tool(s, url_for('admin.section_update', section_id=s.id), title=s.title,
                         corner_style=s.tool_corner_style, shadow_style=s.tool_shadow_style) }}
         {% elif s.type == 'file' %}
+          {%- set f_icon = 'ui:' ~ (s.file_icon or 'document') -%}
+          {#  The download's name: an optional custom label (caption), else the
+              uploaded file's own name. `title` is NOT used -- it is the heading
+              above the tool now, drawn by heading_anchor like every tool. #}
+          {%- set f_name = s.caption or s.file_name -%}
           <section class="block block-file" {{ ('data-corner-style="' ~ s.tool_corner_style ~ '"') | safe if s.tool_corner_style }} {{ ('data-shadow-style="' ~ s.tool_shadow_style ~ '"') | safe if s.tool_shadow_style }}>
             {% if not s.content %}
               {% if editing %}<div class="cms-image-placeholder">Click "Change File" above to upload</div>{% endif %}
             {% elif s.file_display == 'button' %}
-              <a href="{{ s.content }}" download class="cms-file-btn">{{ s.title or 'Download' }}</a>
+              <a href="{{ s.content }}" download class="cms-file-btn">{{ icon_svg(f_icon) | safe }}<span>{{ f_name or 'Download' }}</span></a>
             {% elif s.file_display == 'text-link' %}
-              <a href="{{ s.content }}" download class="cms-file-textlink">{{ s.content }}</a>
+              <a href="{{ s.content }}" download class="cms-file-textlink">{{ icon_svg(f_icon) | safe }}<span>{{ f_name or 'Download' }}</span></a>
             {% elif s.file_display == 'icon' %}
-              <a href="{{ s.content }}" download class="cms-file-icon-only" title="{{ s.title or 'Download' }}">📄</a>
+              <a href="{{ s.content }}" download class="cms-file-icon-only" title="{{ f_name or 'Download' }}">{{ icon_svg(f_icon) | safe }}</a>
             {% else %}
               <div class="cms-file-card">
-                <span class="cms-file-icon">📄</span>
+                <span class="cms-file-icon">{{ icon_svg(f_icon) | safe }}</span>
                 <div class="cms-file-info">
-                  <span {{ edit_field('title', url_for('admin.section_update', section_id=s.id)) }} class="cms-file-name">{{ s.title or 'Untitled file' }}</span>
+                  <span {{ edit_field('caption', url_for('admin.section_update', section_id=s.id)) }} class="cms-file-name" data-placeholder="{{ s.file_name or 'File name' }}">{{ s.caption if editing else (f_name or 'Untitled file') }}</span>
                   {% if s.file_size_display %}<span class="cms-file-size">{{ s.file_size_display }}</span>{% endif %}
                 </div>
                 <a href="{{ s.content }}" download class="cms-file-download">Download</a>

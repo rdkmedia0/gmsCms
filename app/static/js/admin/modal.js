@@ -22,8 +22,11 @@
   const modalCount = document.getElementById("cms-modal-count");
   const modalSnapshotLabel = document.getElementById("cms-modal-snapshot-label");
   const modalSnapshot = document.getElementById("cms-modal-snapshot");
+  const modalCheckLabel = document.getElementById("cms-modal-check-label");
+  const modalCheck = document.getElementById("cms-modal-check");
+  const modalCheckText = document.getElementById("cms-modal-check-text");
 
-  function cmsModal({ message, showInput = false, defaultValue = "", confirmLabel = "Confirm", danger = true, showCount = false, showSnapshotOption = false, altLabel = "", showConfirm = true, showInput2 = false, input2Placeholder = "", input2Default = "" }) {
+  function cmsModal({ message, showInput = false, defaultValue = "", confirmLabel = "Confirm", danger = true, showCount = false, showSnapshotOption = false, altLabel = "", showConfirm = true, showInput2 = false, input2Placeholder = "", input2Default = "", showCheck = false, checkLabel = "", checkDefault = false }) {
     return new Promise((resolve) => {
       modalMessage.textContent = message;
       modalInput.hidden = !showInput;
@@ -40,6 +43,13 @@
       if (modalSnapshotLabel) {
         modalSnapshotLabel.hidden = !showSnapshotOption;
         if (showSnapshotOption) modalSnapshot.checked = false;
+      }
+      if (modalCheckLabel) {
+        modalCheckLabel.hidden = !showCheck;
+        if (showCheck) {
+          modalCheck.checked = !!checkDefault;
+          if (modalCheckText) modalCheckText.textContent = checkLabel || "";
+        }
       }
       modalConfirm.textContent = confirmLabel;
       modalConfirm.classList.toggle("cms-danger", danger);
@@ -67,6 +77,7 @@
           confirmed: true, value: modalInput.value, count: showCount ? parseInt(modalCount.value, 10) : 1,
           saveSnapshot: showSnapshotOption ? modalSnapshot.checked : false,
           value2: modalInput2 ? modalInput2.value : "",
+          checked: (showCheck && modalCheck) ? modalCheck.checked : false,
         });
       }
       function onCancel() { cleanup({ confirmed: false, alt: false, value: null, count: 1, saveSnapshot: false }); }

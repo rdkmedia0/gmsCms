@@ -81,6 +81,19 @@
     return el.querySelector ? el.querySelector("a[href]") : null;
   }
 
+  //  Open a link in a new tab, or the current one. Kept in step with the
+  //  server-side apply_link_target: target=_blank plus a safe rel.
+  function _setLinkTarget(a, newTab) {
+    if (!a) return;
+    if (newTab) {
+      a.setAttribute("target", "_blank");
+      a.setAttribute("rel", "noopener noreferrer");
+    } else {
+      a.removeAttribute("target");
+      a.removeAttribute("rel");
+    }
+  }
+
   function bindToolbar(root, options) {
     var findBody = options.findBody;
     var afterCommand = options.afterCommand || function () {};
@@ -133,15 +146,17 @@
           //  anchor is updated rather than a second one being made inside it.
           var existing = _linkFromSelection();
           var current = existing
-            ? { url: existing.getAttribute("href") || "", title: existing.getAttribute("title") || "" }
+            ? { url: existing.getAttribute("href") || "", title: existing.getAttribute("title") || "",
+                newTab: existing.getAttribute("target") === "_blank" }
             : null;
-          askForLink(function (url, title) {
+          askForLink(function (url, title, newTab) {
             if (url) {
               if (existing) {
                 existing.setAttribute("href", url);
                 if ((title || "").trim()) existing.setAttribute("title", (title + "").trim());
                 else existing.removeAttribute("title");
-              } else if (!(onLinkImage && onLinkImage(body, url, title))) {
+                _setLinkTarget(existing, newTab);
+              } else if (!(onLinkImage && onLinkImage(body, url, title, newTab))) {
                 if (body && body.focus) body.focus();
                 if (savedLinkRange) {
                   var s2 = window.getSelection();
@@ -156,6 +171,7 @@
                 if (made) {
                   if (title) made.setAttribute("title", (title + "").trim());
                   else made.removeAttribute("title");
+                  _setLinkTarget(made, newTab);
                 }
               }
             }

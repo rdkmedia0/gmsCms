@@ -110,8 +110,8 @@ def _items(values, prefix, count, keys, flags=()):
 
 def build_pricing(values):
     tiers = _items(values, "tier", 4,
-                   ("name", "price", "period", "features", "cta", "link", "featured"),
-                   flags=("featured",))
+                   ("name", "price", "period", "features", "cta", "link", "featured", "new_tab"),
+                   flags=("featured", "new_tab"))
     cards = []
     for i, tier in enumerate(tiers, start=1):
         featured = (values.get(f"tier{i}_featured") or "") == "1"
@@ -121,8 +121,10 @@ def build_pricing(values):
         button = ""
         if tier["cta"]:
             href = esc(tier["link"] or "#")
+            nt = (f' target="_blank" rel="noopener noreferrer" data-flag="tier{i}_new_tab"'
+                  if tier.get("new_tab") == "1" else "")
             button = (f'<a class="cms-price-btn" href="{href}" '
-                      f'data-href-field="tier{i}_link">'
+                      f'data-href-field="tier{i}_link"{nt}>'
                       f'<span data-field="tier{i}_cta">{esc(tier["cta"])}</span></a>')
         #  The highlight is carried as a flag as well as a class, because a
         #  class is styling and the form has to be able to read the answer
@@ -165,7 +167,7 @@ def build_stats(values):
 
 
 def build_logos(values):
-    logos = _items(values, "logo", 6, ("image", "name", "link"))
+    logos = _items(values, "logo", 6, ("image", "name", "link", "new_tab"), flags=("new_tab",))
     items = []
     for i, logo in enumerate(logos, start=1):
         if logo["image"]:
@@ -179,7 +181,8 @@ def build_logos(values):
             #  it, which is what the tool used to render.
             inner = f'<span class="cms-logo-name" data-field="logo{i}_name">{esc(logo["name"])}</span>'
         if logo["link"]:
-            inner = (f'<a href="{esc(logo["link"])}" rel="noopener" data-href-field="logo{i}_link">{inner}</a>')
+            nt = f' target="_blank" data-flag="logo{i}_new_tab"' if logo.get("new_tab") == "1" else ""
+            inner = (f'<a href="{esc(logo["link"])}" rel="noopener noreferrer" data-href-field="logo{i}_link"{nt}>{inner}</a>')
         items.append(f'<div class="cms-logo">{inner}</div>')
     muted = "1" if (values.get("muted") or "") == "1" else "0"
     return _wrap("logos", f'<div class="cms-logo-row{" is-muted" if muted == "1" else ""}">{"".join(items)}</div>',
@@ -245,7 +248,10 @@ def build_cta(values):
     #  The words in a span inside the link, not on the link itself: the
     #  editor makes each [data-field] a caret target, and a control is a
     #  poor one. See parse_block for how the two facts are read now.
-    button = (f'<a class="cms-cta-btn" href="{href}" data-href-field="link">'
+    #  data-flag="new_tab" so the tick round-trips (parse_block reads flags off
+    #  the markup); target/rel do the actual opening-away.
+    nt = ' target="_blank" rel="noopener noreferrer" data-flag="new_tab"' if values.get("new_tab") == "1" else ""
+    button = (f'<a class="cms-cta-btn" href="{href}" data-href-field="link"{nt}>'
               f'<span data-field="cta">{esc(values.get("cta"))}</span></a>') if values.get("cta") else ""
     tone = values.get("tone") or "solid"
     return _wrap(
@@ -354,6 +360,7 @@ BLOCKS = {
                 _field("features", "What's included", "textarea", help="One per line"),
                 _field("cta", "Button text", help="Leave blank for no button"),
                 _field("link", "Button goes to", "link"),
+                _field("new_tab", "Open link in new tab", "checkbox"),
                 _field("featured", "Highlight this one", "checkbox"),
             ]),
         ],
@@ -411,6 +418,7 @@ BLOCKS = {
                 _field("image", "Picture", "image"),
                 _field("name", "Whose it is", help="Used as the description for screen readers"),
                 _field("link", "Links to", "link"),
+                _field("new_tab", "Open link in new tab", "checkbox"),
             ]),
             _field("muted", "Show them greyed out", "checkbox",
                    help="Keeps a row of mismatched logos from fighting your own colours"),
@@ -487,6 +495,7 @@ BLOCKS = {
             _field("text", "A line underneath", "textarea"),
             _field("cta", "Button text"),
             _field("link", "Button goes to", "link"),
+            _field("new_tab", "Open link in new tab", "checkbox"),
             _field("tone", "How it looks", "select",
                    options=[("solid", "Solid colour"), ("soft", "Soft tint"), ("outline", "Outlined")]),
         ],

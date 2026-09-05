@@ -95,6 +95,9 @@ MEDIA_TYPES = ("youtube", "video", "audio")
 VIDEO_EXTENSIONS = (".mp4", ".webm", ".ogg", ".ogv", ".mov")
 AUDIO_EXTENSIONS = (".mp3", ".wav", ".ogg", ".oga", ".m4a", ".aac")
 FILE_DISPLAYS = ("card", "button", "text-link", "icon")
+#  The drawn mark a File download wears (icons.UI_ICON_PATHS keys). "document"
+#  is the default; "resume" is the CV/résumé card.
+FILE_ICONS = ("document", "resume")
 
 
 BLOCK_TAGS = {"div", "section", "article", "figure", "ul", "ol"}
@@ -1395,6 +1398,24 @@ def _update_banner_overlay_style(content, form):
         align, justify = BANNER_POSITIONS[position]
         outer_props["align-items"] = align
         outer_props["justify-content"] = justify
+    #  Framing the background PICTURE (not the text box): where its focal point
+    #  sits (so an off-centre or portrait-orientation subject can be moved
+    #  within the frame), whether it fills or shows whole, and how tall the
+    #  banner stands (so a taller image gets the room it needs) -- all inline on
+    #  .cms-banner, overriding the cover/center/min-height the stylesheet
+    #  defaults to. The background-image itself is set elsewhere and preserved.
+    bx = form.get("bg_pos_x", type=int)
+    by = form.get("bg_pos_y", type=int)
+    if bx is not None and by is not None:
+        outer_props["background-position"] = f"{max(0, min(100, bx))}% {max(0, min(100, by))}%"
+    bg_fit = form.get("bg_fit", "")
+    if bg_fit in ("cover", "contain"):
+        outer_props["background-size"] = bg_fit
+    hero_h = form.get("hero_height", type=int)
+    if hero_h:
+        outer_props["min-height"] = f"{max(120, min(1200, hero_h))}px"
+    else:
+        outer_props.pop("min-height", None)
     outer_style = _style_str(outer_props)
     if outer_style:
         div["style"] = outer_style
@@ -1521,7 +1542,23 @@ def banner_overlay_settings(content):
         "box_padding": re.sub(r"[^\d]", "", (ov_props.get("padding", "").split()[0] if ov_props.get("padding") else "")) or "24",
         "box_shape": next((k for k, v in BANNER_BOX_SHAPES.items() if v == ov_props.get("border-radius")), "rounded"),
         "box_width": re.sub(r"[^\d]", "", ov_props.get("width", "")) or "80",
+        #  Background-image framing (see _update_banner_overlay_style). Focal
+        #  point defaults to centre (50/50), fit to cover, height to blank
+        #  (the stylesheet's --site-hero-min stands).
+        "bg_pos_x": (_bg_pos(outer_props.get("background-position", ""))[0]),
+        "bg_pos_y": (_bg_pos(outer_props.get("background-position", ""))[1]),
+        "bg_fit": (outer_props.get("background-size") if outer_props.get("background-size") in ("cover", "contain") else "cover"),
+        "hero_height": re.sub(r"[^\d]", "", outer_props.get("min-height", "")) or "",
     }
+
+
+def _bg_pos(value):
+    """(x, y) percentages from a `background-position` like '30% 70%' -- default
+    centre (50, 50) when unset or not a simple pair of percentages."""
+    nums = re.findall(r"(\d+)%", value or "")
+    if len(nums) >= 2:
+        return int(nums[0]), int(nums[1])
+    return 50, 50
 
 
 def _parse_style(style_str):
@@ -1634,6 +1671,32 @@ def tool_allows_heading(section_type):
     return section_type not in _TYPES_WITH_BODY_HEADER
 
 
+def apply_link_target(a_tag, new_tab):
+    """Open a link in a NEW tab, or the CURRENT one. Stored on the <a> itself
+    (target/rel) so the choice travels with the content and every link-bearing
+    tool uses ONE convention -- no per-tool column, no auto rule based on
+    http-vs-not. rel carries noopener/noreferrer whenever a link opens away,
+    which is the safe default for target=_blank."""
+    if new_tab:
+        a_tag["target"] = "_blank"
+        a_tag["rel"] = "noopener noreferrer"
+    else:
+        if a_tag.has_attr("target"):
+            del a_tag["target"]
+        if a_tag.has_attr("rel"):
+            del a_tag["rel"]
+
+
+def link_opens_new_tab(a_tag):
+    """Read side of apply_link_target -- whether this <a> opens in a new tab."""
+    return a_tag is not None and a_tag.get("target") == "_blank"
+
+
+def _form_new_tab(form):
+    """The 'open in new tab' choice from a submitted tool form."""
+    return form.get("new_tab") in ("1", "on", "true")
+
+
 def _normalize_button_href(link):
     """A button's link, tolerant of a scheme left off. An owner typing
     "reelpics.win" means https://reelpics.win, not a dead "#" -- the silent
@@ -1662,10 +1725,11 @@ def card_button_settings(content):
         "has_button": button is not None,
         "link": (button.get("href") or "") if button is not None else "",
         "text": button.get_text(strip=True) if button is not None else "",
+        "new_tab": link_opens_new_tab(button),
     }
 
 
-def set_card_button(content, enabled, link):
+def set_card_button(content, enabled, link, new_tab=False):
     """Adds, updates or removes a card's button.
 
     A card could already hold a link -- the WYSIWYG toolbar makes one --
@@ -1694,6 +1758,7 @@ def set_card_button(content, enabled, link):
         button.string = "Button"
         div.append(button)
     button["href"] = href
+    apply_link_target(button, new_tab)
     return str(soup)
 
 def _set_card_image(content, image_url):
@@ -1749,7 +1814,7 @@ def _banner_div(content):
     return soup, div
 
 
-def set_banner_button(content, enabled, link):
+def set_banner_button(content, enabled, link, new_tab=False):
     """Adds, updates or removes a banner's button -- the same shape the
     Card tool's button takes (set_card_button), so a hero the generator
     made (which ships a `.cms-hero-actions` button) is managed by the same
@@ -1778,6 +1843,7 @@ def set_banner_button(content, enabled, link):
         button.string = "Get in touch"
         actions.append(button)
     button["href"] = href
+    apply_link_target(button, new_tab)
     return str(soup)
 
 
@@ -1790,7 +1856,8 @@ def banner_button_settings(content):
         actions = div.find(class_="cms-hero-actions")
         button = actions.find("a", class_="cms-btn") if actions is not None else None
     return {"has_button": button is not None,
-            "link": button.get("href", "") if button is not None else ""}
+            "link": button.get("href", "") if button is not None else "",
+            "new_tab": link_opens_new_tab(button)}
 
 
 def _set_banner_image(content, image_url):

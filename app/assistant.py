@@ -467,7 +467,15 @@ def _openai_tools_to_gemini(tools):
 def _call_gemini(settings, messages, tools, timeout=CHAT_TIMEOUT):
     model = settings["gemini_model"]
     system_text, contents = _openai_messages_to_gemini(messages)
-    body = {"contents": contents, "tools": _openai_tools_to_gemini(tools)}
+    body = {"contents": contents}
+    #  Only send a tools block when there is a real function to declare.
+    #  Gemini rejects `tools: [{functionDeclarations: []}]` with a 400 ("at
+    #  least one function declaration is required"), so a caller that passes
+    #  no tools -- translation renders every fragment with tools=[] -- would
+    #  have every call fail, while the assistant's own tool-carrying calls
+    #  worked. Omit the block entirely instead of sending an empty one.
+    if tools:
+        body["tools"] = _openai_tools_to_gemini(tools)
     if system_text:
         body["systemInstruction"] = {"parts": [{"text": system_text}]}
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={settings['gemini_api_key']}"

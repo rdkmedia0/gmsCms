@@ -800,6 +800,15 @@ def _build_package_dir(db, tpl, static_folder, page_ids, work_dir, slug, name=No
         manifest["shape_override"] = tpl["shape_override"]
     if tpl["shadow_override"]:
         manifest["shadow_override"] = tpl["shadow_override"]
+    #  Which composition the template wears -- the layout that gates
+    #  composition.css (the banded hero, the white overlay button, the gutters).
+    #  Dropped on export, the imported template loaded none of it: the banner
+    #  button fell back to the palette's primary (brown, not white) and the
+    #  banded look was gone. install_theme_package reads manifest["composition"]
+    #  straight back onto the row (composition_default/override).
+    _composition = tpl["composition_override"] or tpl["composition_default"]
+    if _composition:
+        manifest["composition"] = _composition
     if tpl["zone_style_overrides"]:
         manifest["zone_style_overrides"] = json.loads(tpl["zone_style_overrides"])
     if capture_layout:
@@ -855,10 +864,21 @@ def _build_package_dir(db, tpl, static_folder, page_ids, work_dir, slug, name=No
                 #  that dropped them would come back missing something the
                 #  admin had deliberately set. A capability the tools have
                 #  but a package cannot carry is a gap of its own.
+                #  view_overrides carries the per-view (laptop/tablet/mobile)
+                #  hide/align/order/height a section was given; layout_width_px
+                #  a custom pixel width; title_level/align/on the heading a
+                #  section wears. All are set by real controls, so a package
+                #  that dropped them restored a section shaped differently from
+                #  the one that was saved -- the same "a tool can do it but the
+                #  package cannot carry it" gap the columns above were added to
+                #  close. The install side writes whatever columns arrive, so
+                #  adding them here is all it takes to round-trip.
                 for column in ("bg_color", "border_color", "corner_style", "shadow_style",
                                "bg_image", "bg_overlay", "bg_position", "width", "layout_width",
-                               "layout_width_pct", "animation", "mask_shape", "media_type",
-                               "content_height_px", "caption", "link_url", "file_display"):
+                               "layout_width_pct", "layout_width_px", "animation", "mask_shape",
+                               "media_type", "content_height_px", "view_overrides",
+                               "title_level", "title_align", "title_on",
+                               "caption", "link_url", "link_new_tab", "file_display", "file_name", "file_icon"):
                     try:
                         value = s[column]
                     except (IndexError, KeyError):
