@@ -4,3 +4,4 @@ beautifulsoup4==4.12.3
 gunicorn==22.0.0
 cryptography==43.0.1
 pypdf==5.1.0
+qrcode==8.2

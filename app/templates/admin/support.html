@@ -14,6 +14,27 @@
   <p class="hint">Opens PayPal in a new tab. A one-off amount, never a subscription. Nothing about your site is sent anywhere &mdash; it is a plain link. {% if license.valid %}Your site already has its key; giving again is welcome and entirely up to you.{% endif %}</p>
 </div>
 
+{% if wallets %}
+<div class="card">
+  <h2>Or send crypto</h2>
+  <p>Any amount, to any of these. Scan the code with your wallet, or copy the address. These addresses are part of the software itself &mdash; nothing on this site can change them &mdash; and there is no way to reverse a transfer, so check the first and last characters before you send.</p>
+  <div class="support-wallets">
+    {% for w in wallets %}
+    <div class="support-wallet">
+      <h3>{{ w.name }} <span class="hint">({{ w.symbol }})</span></h3>
+      {% if w.qr_svg %}<div class="support-wallet-qr" title="Scan with a {{ w.name }} wallet">{{ w.qr_svg | safe }}</div>{% endif %}
+      <div class="support-wallet-address">
+        <input type="text" value="{{ w.address }}" readonly spellcheck="false" title="The {{ w.name }} address. Select it, or press Copy.">
+        <button type="button" class="btn btn-small support-copy" data-copy="{{ w.address }}" title="Copy the {{ w.name }} address to your clipboard">Copy</button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <p class="hint">After sending, reply to your receipt (or write with the transaction id) and the site&rsquo;s address &mdash; a key comes back by email.</p>
+</div>
+<script src="{{ static_url('js/admin/support.js') }}"></script>
+{% endif %}
+
 <div class="card">
   <h2>The line under your footer</h2>
   <p>Every site built with gmsCms shows one small line under its footer &mdash; <em>&ldquo;Built with gmsCms, which is free to use. Site owners can remove this line by supporting the project.&rdquo;</em> &mdash; and that is the one thing it asks for. A supporter receives a <strong>key</strong> that removes it &mdash; once, for good. A key does not run out and is not a subscription. It is for one site; a second site is a second key.</p>

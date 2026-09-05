@@ -559,6 +559,16 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--c
 .blog-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
 .blog-actions form { display: inline; margin: 0; }
 
+/*  The Support screen's wallets: one tile per chain, its QR big enough
+    for a phone to scan across a desk, the address in a box with Copy. */
+.support-wallets { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; margin: 12px 0; }
+.support-wallet { border: 1px solid var(--border); border-radius: var(--cms-ui-radius-surface); padding: 14px; }
+.support-wallet h3 { margin: 0 0 10px; font-size: 16px; }
+.support-wallet-qr { width: 180px; max-width: 100%; margin: 0 auto 10px; background: #fff; padding: 6px; border-radius: var(--cms-ui-radius-control); }
+.support-wallet-qr svg { display: block; width: 100%; height: auto; }
+.support-wallet-address { display: flex; gap: 6px; align-items: center; }
+.support-wallet-address input { flex: 1; min-width: 0; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+
 .inline-form { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
 .inline-form input, .inline-form select { width: auto; flex: 1; min-width: 180px; }
 /*  A rename lives in a table cell, and a cell is not the page. The

@@ -313,7 +313,8 @@ it with the latest commit on `main` to know whether a pull is due.
 gmsCms is free. Every site it builds shows one small line under its
 footer — *"Built with gmsCms, which is free to use. Site owners can
 remove this line by supporting the project."* — and that is the one
-thing it asks for. **Admin → ♥ Support** has the link to say thanks and
+thing it asks for. **Admin → ♥ Support** has the link to say thanks
+(PayPal, or a crypto address with a QR to scan) and
 a box for the supporter's key that removes the line — once, for good.
 A key is one-off, not a subscription, and never runs out; it is for one
 site, so a second site is a second key, and giving again afterwards is

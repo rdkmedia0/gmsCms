@@ -40,7 +40,49 @@ from .support_key import make_key, parse_key  # noqa: F401 -- re-exported
 PAYPAL_URL = ("https://www.paypal.com/donate/?business=rdkmedia0%40gmail.com"
               "&no_recurring=1&item_name=gmsCms")
 
+#  Crypto, for a supporter who would rather not go through PayPal. Hard-
+#  coded for the same reason PAYPAL_URL is: a wallet address that lived
+#  in a setting or a package could be pointed at somebody else's wallet,
+#  and a wrong address is money gone with no way back. A chain with no
+#  address is simply not offered -- fill one in and it appears.
+#
+#  `uri` is the scheme a wallet app understands when it scans the QR
+#  (BIP-21 for bitcoin, EIP-681 for ethereum); it prefixes the address.
+CRYPTO_WALLETS = (
+    {"name": "Bitcoin", "symbol": "BTC", "uri": "bitcoin:", "address": ""},
+    {"name": "Ethereum", "symbol": "ETH", "uri": "ethereum:", "address": ""},
+    {"name": "Litecoin", "symbol": "LTC", "uri": "litecoin:", "address": ""},
+    {"name": "Solana", "symbol": "SOL", "uri": "solana:", "address": ""},
+)
+
 LICENSE_PATH = os.path.join(DATA_DIR, "license.json")
+
+
+def wallet_qr_svg(text):
+    """A QR code for a wallet URI, as inline SVG -- what a phone's wallet
+    scans instead of typing forty characters. `qrcode` draws it without
+    Pillow; an install without the package gets no picture and keeps the
+    address and Copy, which still work."""
+    try:
+        import qrcode
+        import qrcode.image.svg
+    except ImportError:
+        return ""
+    img = qrcode.make(text, image_factory=qrcode.image.svg.SvgPathImage,
+                      box_size=10, border=2)
+    return img.to_string(encoding="unicode")
+
+
+def crypto_wallets():
+    """The wallets with an address, each with its scan URI and QR."""
+    out = []
+    for w in CRYPTO_WALLETS:
+        addr = (w.get("address") or "").strip()
+        if not addr:
+            continue
+        uri = w["uri"] + addr
+        out.append(dict(w, address=addr, scan=uri, qr_svg=wallet_qr_svg(uri)))
+    return out
 
 
 def _read():
