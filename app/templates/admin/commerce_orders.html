@@ -139,5 +139,20 @@
 </div>
 {% endif %}
 
+{% if stripe_ready %}
+<div class="card orders-sync">
+  <h2>Syncing &amp; keeping</h2>
+  <p class="hint">Orders are a cache of Stripe, which holds the record of every payment. Sync pulls in any paid checkouts this site missed (a closed tab, or a spell offline). Set a <strong>keep-from</strong> date and syncing also drops this site&rsquo;s copy of anything before it &mdash; the tidy way to set aside old or test sales. Stripe keeps every payment, and the pull uses the same date, so nothing dropped comes back. Leave the date blank to keep everything.</p>
+  <form method="post" action="{{ url_for('admin.commerce_orders_sync') }}" class="inline-form orders-sync-form">
+    <label for="sync_from">Keep orders from</label>
+    <input type="date" id="sync_from" name="sync_from" value="{{ sync_from }}"
+           title="Sync pulls paid checkouts from Stripe on and after this date, and drops this site's copy of anything before it. Blank keeps everything.">
+    <button type="submit" class="btn orders-sync-btn"
+            data-prune-warning="Sync now? Orders dated before your keep-from date are removed from this site’s copy — Stripe keeps every payment, but this site’s note of how many sessions or downloads each still had is not kept."
+            title="Pull orders from Stripe from the keep-from date, and drop this site's copy of anything before it">&#8635; Sync from Stripe</button>
+  </form>
+</div>
+{% endif %}
+
 <script src="{{ static_url('js/admin/orders.js') }}"></script>
 {% endblock %}

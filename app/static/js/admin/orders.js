@@ -55,3 +55,23 @@ document.querySelectorAll(".cms-clear-page-password").forEach(function (btn) {
     }
   });
 });
+
+//  Sync + keep-from. A blank date just pulls (nothing dropped); a date set
+//  means the sync will prune this site's copy before it, so confirm THAT
+//  case -- pruning loses the local fulfilment note, though Stripe keeps the
+//  payment. See commerce_orders_sync.
+document.querySelectorAll(".orders-sync-form").forEach(function (form) {
+  var btn = form.querySelector(".orders-sync-btn");
+  var date = form.querySelector("#sync_from");
+  if (!btn || !date) return;
+  form.addEventListener("submit", async function (e) {
+    if (!date.value) return;  // no window, no prune -- just sync
+    if (!window.cmsModal) return;
+    e.preventDefault();
+    var res = await window.cmsModal({
+      message: btn.dataset.pruneWarning,
+      confirmLabel: "Sync and drop older",
+    });
+    if (res.confirmed) form.submit();
+  });
+});

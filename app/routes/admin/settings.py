@@ -497,6 +497,8 @@ def commerce_orders():
     return render_template(
         "admin/commerce_orders.html",
         email_ready=mailer.is_configured(get_email_settings(db)),
+        stripe_ready=integrations.is_configured(db, "stripe"),
+        sync_from=_orders_sync_from(db),
         **ctx,
     )
 
@@ -1243,22 +1245,74 @@ def settings_stripe_webhook():
     return jsonify({"ok": ok, "message": message})
 
 
+def _orders_sync_from(db):
+    row = db.execute("SELECT value FROM settings WHERE key = 'orders_sync_from'").fetchone()
+    return (row["value"] if row else "") or ""
+
+
+def _sync_message(recorded, checked, pruned, since):
+    """One line summarising a sync for the owner: what it checked, what it
+    recorded, and what the window dropped (named as kept-in-Stripe, so it
+    never reads as loss)."""
+    parts = ["recorded %d new order%s" % (recorded, "" if recorded == 1 else "s")
+             if recorded else "nothing new to record"]
+    if pruned:
+        parts.append("dropped %d from before %s (Stripe still has them)" % (pruned, since))
+    return "Checked %d checkout%s — %s." % (checked, "" if checked == 1 else "s", ", ".join(parts))
+
+
 @bp.route("/settings/integrations/stripe/sync", methods=["POST"])
 @login_required
 def settings_stripe_sync():
-    """Pulls recent paid checkouts from Stripe and records anything
-    missed. The counterpart to the webhook, and the whole answer while
-    this site has no public address for Stripe to reach."""
+    """Pulls paid checkouts from Stripe and records anything missed. The
+    counterpart to the webhook, and the whole answer while this site has no
+    public address for Stripe to reach. Honours the orders 'keep from' date
+    if one is set, pulling and pruning to that same window."""
     db = get_db()
     from ...routes.public import _credit_expiry_at
-    recorded, checked, error = commerce.reconcile_stripe(
-        db, integrations, credit_expiry_at=_credit_expiry_at(db)
+    since = _orders_sync_from(db) or None
+    recorded, checked, pruned, error = commerce.reconcile_stripe(
+        db, integrations, since=since, credit_expiry_at=_credit_expiry_at(db)
     )
     if error:
         return jsonify({"ok": False, "message": f"Couldn't read orders from Stripe — {integrations.explain(error, 'Stripe')}"})
-    if recorded:
-        return jsonify({"ok": True, "message": f"Checked the last {checked} checkouts and recorded {recorded} new order(s)."})
-    return jsonify({"ok": True, "message": f"Checked the last {checked} checkouts — nothing new to record."})
+    return jsonify({"ok": True, "message": _sync_message(recorded, checked, pruned, since)})
+
+
+@bp.route("/commerce/orders/sync", methods=["POST"])
+@login_required
+def commerce_orders_sync():
+    """Set the date this site keeps orders FROM, then sync to it.
+
+    Orders are a cache of Stripe. This saves a 'keep from' date, pulls paid
+    checkouts from Stripe on and after it, and drops this site's copy of
+    anything before it. Stripe keeps every payment, and the pull is bounded
+    by the same date -- so nothing dropped is ever fetched back, and this
+    is how old or test sales are set aside without diverging from the
+    golden source. Blank keeps everything.
+    """
+    db = get_db()
+    if not integrations.is_configured(db, "stripe"):
+        flash("Connect Stripe first.", "error")
+        return redirect(url_for("admin.commerce_orders"))
+    since = (request.form.get("sync_from") or "").strip() or None
+    if since:
+        try:
+            __import__("datetime").datetime.strptime(since, "%Y-%m-%d")
+        except ValueError:
+            flash("That date wasn't understood — use the date picker.", "error")
+            return redirect(url_for("admin.commerce_orders"))
+    _set_setting(db, "orders_sync_from", since or "")
+    db.commit()
+    from ...routes.public import _credit_expiry_at
+    recorded, checked, pruned, error = commerce.reconcile_stripe(
+        db, integrations, since=since, credit_expiry_at=_credit_expiry_at(db)
+    )
+    if error:
+        flash(f"Couldn't read orders from Stripe — {integrations.explain(error, 'Stripe')}", "error")
+    else:
+        flash(_sync_message(recorded, checked, pruned, since), "success")
+    return redirect(url_for("admin.commerce_orders"))
 
 
 @bp.route("/settings/integrations/<provider>/disconnect", methods=["POST"])

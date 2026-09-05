@@ -199,7 +199,7 @@ def record_checkout(db, session, line_items, credit_expiry_at=None):
     customer_id = upsert_customer(db, details.get("email"), details.get("name"))
     cur = db.execute(
         "INSERT INTO orders (provider, provider_ref, customer_id, amount_total, currency, status, "
-        "line_items, invoice_ref) VALUES ('stripe', ?, ?, ?, ?, ?, ?, ?)",
+        "line_items, invoice_ref, created_at) VALUES ('stripe', ?, ?, ?, ?, ?, ?, ?, ?)",
         (
             provider_ref,
             customer_id,
@@ -212,6 +212,10 @@ def record_checkout(db, session, line_items, credit_expiry_at=None):
             #  finalises the invoice -- which is usually AFTER this
             #  webhook arrives, so storing it here would store nothing.
             session.get("invoice") or None,
+            #  The PURCHASE time, from Stripe -- not the time this row was
+            #  written. An order backfilled by a later Sync still carries
+            #  its real date, which is what the sync window prunes against.
+            _stripe_created_at(session),
         ),
     )
     order_id = cur.lastrowid
@@ -369,36 +373,84 @@ def balance_for(db, email, kind=KIND_CREDIT, ref=None):
     return row["remaining"] if row else 0
 
 
-def reconcile_stripe(db, integrations, limit=25, credit_expiry_at=None):
-    """Pulls recent paid checkouts from Stripe and records any this site
-    has missed. Returns (recorded, checked, error).
+def _stripe_created_at(session):
+    """A Stripe unix `created` as a UTC 'YYYY-MM-DD HH:MM:SS' string -- the
+    same shape SQLite's CURRENT_TIMESTAMP uses, so it sorts, filters and
+    displays identically. Falls back to now, which only a malformed session
+    would need."""
+    ts = session.get("created")
+    if ts:
+        try:
+            return datetime.datetime.fromtimestamp(
+                int(ts), tz=datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+        except (ValueError, OSError, OverflowError):
+            pass
+    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def reconcile_stripe(db, integrations, limit=100, since=None, credit_expiry_at=None):
+    """Pull paid checkouts from Stripe and record any this site has missed;
+    with `since` (a 'YYYY-MM-DD'), only from that day on -- and then PRUNE
+    the local copy of anything before it. Returns (recorded, checked,
+    pruned, error).
 
     A webhook is a push, and a push can be missed — the endpoint was down,
-    the site was mid-deploy, or (as during development) there is no public
-    address for Stripe to reach at all. Pulling is the same truth from the
-    other direction, and it makes the whole design work with no webhook
-    configured whatsoever.
+    the site was mid-deploy, or (in development) there is no public address
+    for Stripe to reach at all. Pulling is the same truth from the other
+    direction, and it makes the whole design work with no webhook at all.
+
+    The `since` window is how an owner gets rid of old or test orders
+    WITHOUT diverging from the golden source: move the start date forward
+    and the next sync drops the local rows before it. Because the very same
+    date bounds the pull, nothing dropped is ever fetched back.
 
     Safe to run repeatedly: record_checkout skips a session already stored,
     so this can never double-grant an entitlement no matter how often it
     runs or how it overlaps with a webhook arriving for the same session.
     """
-    data, error = integrations.stripe_call(
-        db, f"/checkout/sessions?limit={limit}&expand[]=data.line_items"
-    )
-    if error:
-        return 0, 0, error
-    sessions = data.get("data", [])
-    recorded = 0
-    for session in sessions:
-        if session.get("payment_status") != "paid":
-            continue
-        line_items = (session.get("line_items") or {}).get("data") or []
-        _, created = record_checkout(db, session, line_items, credit_expiry_at=credit_expiry_at)
-        if created:
-            recorded += 1
+    gte = None
+    if since:
+        try:
+            gte = int(datetime.datetime.strptime(since, "%Y-%m-%d")
+                      .replace(tzinfo=datetime.timezone.utc).timestamp())
+        except ValueError:
+            gte = None
+    recorded, checked = 0, 0
+    starting_after = None
+    #  Page through the list (100 at a time) up to a cap -- a bound on work,
+    #  not a promise to fetch a whole history in one click.
+    for _ in range(20):
+        path = f"/checkout/sessions?limit={limit}&expand[]=data.line_items"
+        if gte:
+            path += f"&created[gte]={gte}"
+        if starting_after:
+            path += f"&starting_after={starting_after}"
+        data, error = integrations.stripe_call(db, path)
+        if error:
+            return recorded, checked, 0, error
+        sessions = data.get("data", [])
+        checked += len(sessions)
+        for session in sessions:
+            if session.get("payment_status") != "paid":
+                continue
+            line_items = (session.get("line_items") or {}).get("data") or []
+            _, created = record_checkout(db, session, line_items, credit_expiry_at=credit_expiry_at)
+            if created:
+                recorded += 1
+        if not sessions or not data.get("has_more"):
+            break
+        starting_after = sessions[-1].get("id")
+    pruned = 0
+    if since:
+        rows = db.execute("SELECT id FROM orders WHERE created_at < ?", (since,)).fetchall()
+        ids = [r["id"] for r in rows]
+        if ids:
+            marks = ",".join("?" * len(ids))
+            db.execute("DELETE FROM entitlements WHERE order_id IN (%s)" % marks, ids)
+            db.execute("DELETE FROM orders WHERE id IN (%s)" % marks, ids)
+            pruned = len(ids)
     db.commit()
-    return recorded, len(sessions), None
+    return recorded, checked, pruned, None
 
 
 #  ---------------------------------------------------------------------
