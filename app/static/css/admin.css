@@ -135,6 +135,24 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--c
 
 /*  Visitor stats screen. The bar chart is server-rendered SVG (data, not
     script); the country/page lists are labelled bars. */
+/*  Palette Library rows in the Colors panel. */
+.cms-palette-save { display: flex; gap: 6px; align-items: center; margin: 6px 0; }
+.cms-palette-save input { flex: 1; min-width: 0; }
+.cms-palette-lib { display: flex; flex-direction: column; gap: 4px; margin: 6px 0; }
+.cms-palette-lib-row { display: flex; align-items: center; gap: 6px; }
+.cms-palette-lib-apply { flex: 1; min-width: 0; }
+.cms-palette-lib-apply button {
+  display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+  background: none; border: 1px solid var(--border); border-radius: var(--cms-ui-radius-control);
+  padding: 4px 8px; cursor: pointer; color: var(--text); font: inherit; min-height: 0;
+}
+.cms-palette-lib-apply button:hover { border-color: var(--cms-ui-accent); }
+.cms-palette-lib-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cms-palette-lib-export { text-decoration: none; font-size: 15px; padding: 2px 4px; color: var(--muted); }
+.cms-palette-lib-export:hover { color: var(--cms-ui-accent); }
+.cms-palette-lib-del { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 16px; padding: 2px 4px; }
+.cms-palette-import { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
+
 .visitors-range { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 16px; }
 .visitors-chart svg { width: 100%; height: 180px; display: block; }
 .visitors-bar { fill: var(--cms-ui-accent); }

@@ -844,6 +844,21 @@ def _migrate(db):
     """)
     db.execute("CREATE INDEX IF NOT EXISTS visit_stats_day ON visit_stats (day)")
 
+    #  The Palette Library: a colour scheme (three role colours) saved on
+    #  its own, reusable on any template. NOT tied to a template, because a
+    #  palette belongs to no single one -- see services/palettes.py.
+    #  `primary`/etc. are reserved-ish words, so the columns are *_color.
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS palettes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            primary_color TEXT NOT NULL,
+            secondary_color TEXT NOT NULL,
+            accent_color TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+
     #  A send put on the clock. See services/scheduling.py for why the
     #  claim is the lock and why a failure is never retried by itself.
     #

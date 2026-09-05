@@ -289,6 +289,18 @@ def color_scheme_choices(db):
             continue
         seen.add(key)
         out["tpl:" + row["slug"]] = dict(roles, name=row["name"], source="template")
+    #  Saved Palette Library entries, keyed lib:<id>. Applying one is the
+    #  same act as applying any other scheme (template_colors_preset reads
+    #  this map), so the Library needs no apply route of its own. Listed
+    #  even when they duplicate a built-in's colours -- they are the
+    #  owner's own named palettes and belong under "Your palettes"
+    #  regardless of what a built-in happens to be called.
+    for p in db.execute(
+            "SELECT id, name, primary_color, secondary_color, accent_color "
+            "FROM palettes ORDER BY id DESC").fetchall():
+        out["lib:%d" % p["id"]] = {
+            "primary": p["primary_color"], "secondary": p["secondary_color"],
+            "accent": p["accent_color"], "name": p["name"], "source": "library"}
     return out
 
 

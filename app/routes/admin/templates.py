@@ -1,3 +1,4 @@
+import io
 import os
 import re
 import json
@@ -13,6 +14,7 @@ from ...db import get_db
 from ...services.menu import refresh_site_menus
 from ...services import lifecycle, packages
 from ...services.palette import _match_palette_roles, color_scheme_choices
+from ...services import palettes as palette_lib
 from . import (
     FONT_PAIRINGS, SHAPE_PRESETS, SHADOW_PRESETS, SHADE_SPREADS,
     COMPOSITION_PRESETS,
@@ -297,6 +299,74 @@ def template_colors_reset(template_id):
         db.execute("UPDATE sections SET bg_color = NULL, border_color = NULL WHERE bg_color IS NOT NULL OR border_color IS NOT NULL")
     db.commit()
     flash("Colors reset to the theme's originals.", "success")
+    return _redirect_next("admin.dashboard")
+
+
+# --- Palette Library ------------------------------------------------------
+#
+#  A saved palette is applied through template_colors_preset like any other
+#  colour scheme (it is in color_scheme_choices, keyed lib:<id>), so there
+#  is no apply route here. These only save, remove, and move palettes in
+#  and out. They touch the `palettes` table, never a template, so the
+#  source-fork guard (LOOK_ENDPOINTS) does not apply.
+
+@bp.route("/palettes/save", methods=["POST"])
+@login_required
+def palette_save():
+    """Save the ACTIVE template's current colours (base + overrides) as a
+    named Library palette, reusable on any template."""
+    db = get_db()
+    tpl = db.execute("SELECT * FROM templates WHERE is_active = 1").fetchone()
+    roles = palette_lib.effective_roles(tpl) if tpl else {}
+    if not roles:
+        flash("This template has no colour palette to save.", "error")
+        return _redirect_next("admin.dashboard")
+    name = request.form.get("name", "").strip() or ("%s colours" % tpl["name"])
+    try:
+        palette_lib.save_palette(db, name, roles["primary"], roles["secondary"], roles["accent"])
+    except ValueError as e:
+        flash(str(e), "error")
+    else:
+        flash('Saved “%s” to your Palette Library.' % name, "success")
+    return _redirect_next("admin.dashboard")
+
+
+@bp.route("/palettes/<int:palette_id>/delete", methods=["POST"])
+@login_required
+def palette_delete(palette_id):
+    palette_lib.delete_palette(get_db(), palette_id)
+    flash("Palette removed from your library.", "success")
+    return _redirect_next("admin.dashboard")
+
+
+@bp.route("/palettes/<int:palette_id>/export")
+@login_required
+def palette_export(palette_id):
+    data = palette_lib.export_palette(get_db(), palette_id)
+    if not data:
+        abort(404)
+    buf = io.BytesIO(json.dumps(data, indent=2).encode())
+    fname = "%s.gmspalette.json" % (slugify(data["name"]) or "palette")
+    return send_file(buf, mimetype="application/json",
+                     as_attachment=True, download_name=fname)
+
+
+@bp.route("/palettes/import", methods=["POST"])
+@login_required
+def palette_import():
+    """A palette from an uploaded file, or pasted JSON in the `json` field."""
+    raw = ""
+    f = request.files.get("file")
+    if f and f.filename:
+        raw = f.read(64 * 1024).decode("utf-8", "replace")  # a palette is tiny; cap the read
+    else:
+        raw = request.form.get("json", "")
+    try:
+        palette_lib.import_palette(get_db(), raw)
+    except ValueError as e:
+        flash(str(e), "error")
+    else:
+        flash("Palette added to your library.", "success")
     return _redirect_next("admin.dashboard")
 
 

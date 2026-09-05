@@ -95,7 +95,7 @@
     {% else %}
     <p class="hint">Colors for "{{ template.name }}" — your site's current look.</p>
     <div class="cms-color-preset-gallery">
-      {% for key, preset in color_presets.items() %}
+      {% for key, preset in color_presets.items() if preset.source != 'library' %}
       <form method="post" action="{{ url_for('admin.template_colors_preset', template_id=template.id) }}">
         <input type="hidden" name="next" value="{{ current_path }}">
         <input type="hidden" name="preset" value="{{ key }}">
@@ -121,6 +121,54 @@
       <button type="submit" class="btn btn-small" title="Put every colour back to the ones this template ships with">Reset</button>
     </form>
     {% endif %}
+
+    {#  The Palette Library: colour schemes saved on their own, reusable on
+        any template and shareable as a file. Applying one is done through
+        the gallery above (they are in color_presets, source "library", but
+        shown here instead so they are clearly YOURS); this is where they
+        are saved, exported and removed. See services/palettes.py. #}
+    {{ panel_section("Your palettes", "Save the colours you have now, reuse them on any template later, or share them as a file. A palette is colours only — applying one never changes your layout or content.") }}
+    <form method="post" action="{{ url_for('admin.palette_save') }}" class="cms-palette-save">
+      <input type="hidden" name="next" value="{{ current_path }}">
+      <input type="text" name="name" placeholder="Name these colours" maxlength="60"
+             title="A name for the current colours, so you can find them in your library later.">
+      <button type="submit" class="btn btn-small btn-primary" title="Save the site's current colours to your Palette Library.">Save</button>
+    </form>
+    {% set lib = [] %}{% for key, preset in color_presets.items() if preset.source == 'library' %}{% set _ = lib.append((key, preset)) %}{% endfor %}
+    {% if lib %}
+    <div class="cms-palette-lib">
+      {% for key, preset in lib %}
+      {% set pid = key.split(':')[1] %}
+      <div class="cms-palette-lib-row">
+        <form method="post" action="{{ url_for('admin.template_colors_preset', template_id=template.id) }}" class="cms-palette-lib-apply">
+          <input type="hidden" name="next" value="{{ current_path }}">
+          <input type="hidden" name="preset" value="{{ key }}">
+          <button type="submit" title="Put these colours on your site">
+            <span class="cms-color-preset-dots">
+              <span class="cms-color-preset-dot" style="background:{{ preset.primary }}"></span>
+              <span class="cms-color-preset-dot" style="background:{{ preset.secondary }}"></span>
+              <span class="cms-color-preset-dot" style="background:{{ preset.accent }}"></span>
+            </span>
+            <span class="cms-palette-lib-name">{{ preset.name }}</span>
+          </button>
+        </form>
+        <a class="cms-palette-lib-export" href="{{ url_for('admin.palette_export', palette_id=pid) }}" title="Download “{{ preset.name }}” as a file to share or keep">⤓</a>
+        <form method="post" action="{{ url_for('admin.palette_delete', palette_id=pid) }}" class="cms-inline-form cms-delete-form" data-confirm="Remove “{{ preset.name }}” from your palette library? Your site's current colours don't change.">
+          <input type="hidden" name="next" value="{{ current_path }}">
+          <button type="submit" class="cms-palette-lib-del" title="Remove “{{ preset.name }}” from your library">&times;</button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    <details class="cms-color-advanced">
+      <summary>Import a palette{{ panel_help("Add a palette somebody shared with you (a .gmspalette.json file). It joins your library; nothing on your site changes until you apply it.") }}</summary>
+      <form method="post" action="{{ url_for('admin.palette_import') }}" enctype="multipart/form-data" class="cms-palette-import">
+        <input type="hidden" name="next" value="{{ current_path }}">
+        <input type="file" name="file" accept=".json,application/json" title="A palette file (.gmspalette.json) somebody shared with you.">
+        <button type="submit" class="btn btn-small" title="Add the chosen palette file to your library.">Import</button>
+      </form>
+    </details>
     {% if role_color_ramps %}
     <details class="cms-color-advanced">
       <summary>Full range{{ panel_help("Every colour you pick becomes eleven shades, from a near-white tint for page backgrounds down to a near-black for text. Anything you build picks from these automatically, so one colour choice stays consistent across the whole site. Hover a square to see the shade it is.") }}</summary>
