@@ -7996,3 +7996,22 @@ default, off by one click (data/support.json). Donations are a separate,
 pure gift with nothing tied to them. Deleted support_key.py,
 tools/make_license.py, and the whole verify/claim path; support.notice()
 is now "show unless hidden". Less code, and honest about what it is.
+
+## 2026-09-05 (later) - Visitor stats without a visitor log
+
+An analytics screen that keeps a row per visit keeps a record of who was
+on the site and when -- which is exactly the thing a privacy-minded owner
+(and the GDPR) would rather not hold. So this one keeps an AGGREGATE
+only: one upserted row per (day, country, page) with a hit count. No IP,
+no per-visit timestamp, nothing that is a person. It answers "how many,
+when, where from, to what" and can answer nothing else, by construction.
+
+The country is worked out ON THIS SERVER, from a CC0 IP->country set
+compacted into a 3.3MB columnar binary (data/ip-country-ipv4.bin, binary-
+searched). Nothing about a visitor is sent to a third party -- the same
+stance as the self-hosted fonts. A reverse proxy that already did the
+lookup (Cloudflare's CF-IPCountry) is trusted when present, which also
+covers IPv6, which the IPv4 table does not; an IPv6 visitor with no such
+header simply counts as "Local / unknown". The owner's own views (signed
+in) are not counted, and a stats write is wrapped so it can never break a
+page.

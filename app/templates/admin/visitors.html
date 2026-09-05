@@ -1,0 +1,65 @@
+{% extends "admin/base.html" %}
+{% block title %}Visitors — My Site Admin{% endblock %}
+{% block content %}
+<h1>📈 Visitors</h1>
+<p class="hint">How many people visited, when, and roughly where from &mdash; over the last {{ days }} days. This is an anonymous count: no IP address or visitor is ever stored, only totals per day, country and page. Your own visits (while signed in) are not counted. Country is worked out on this server from a bundled offline database, so nothing about a visitor is sent anywhere.</p>
+
+<div class="visitors-range">
+  {% for d in [7, 30, 90, 365] %}
+  <a href="{{ url_for('admin.visitors', days=d) }}" class="btn btn-small {{ 'btn-primary' if days == d }}">{{ '1 year' if d == 365 else d ~ ' days' }}</a>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <div class="card-header"><h2>{{ stats.total }} visit{{ '' if stats.total == 1 else 's' }}</h2></div>
+  {% if stats.total %}
+  {% set W = 720 %}{% set H = 180 %}{% set n = stats.series | length %}{% set bw = W / n %}
+  <div class="visitors-chart" role="img" aria-label="Visits per day">
+    <svg viewBox="0 0 {{ W }} {{ H + 4 }}" preserveAspectRatio="none">
+      {% for pt in stats.series %}
+      {% set h = ((pt.hits / stats.peak) * (H - 4)) if stats.peak else 0 %}
+      <rect x="{{ (loop.index0 * bw) + (bw * 0.12) }}" y="{{ H - h }}"
+            width="{{ bw * 0.76 }}" height="{{ h }}"
+            class="visitors-bar"><title>{{ pt.day }}: {{ pt.hits }}</title></rect>
+      {% endfor %}
+    </svg>
+    <div class="visitors-chart-axis">
+      <span>{{ stats.series[0].day }}</span>
+      <span>peak {{ stats.peak }}/day</span>
+      <span>{{ stats.series[-1].day }}</span>
+    </div>
+  </div>
+  {% else %}
+  <p>No visits recorded yet in this period. Once people start viewing your site, they will show up here.</p>
+  {% endif %}
+</div>
+
+{% if stats.total %}
+<div class="visitors-cols">
+  <div class="card">
+    <div class="card-header"><h2>Top countries</h2></div>
+    <ul class="visitors-list">
+      {% for c in stats.countries %}
+      <li>
+        <span class="visitors-list-label">{{ c.label }}</span>
+        <span class="visitors-list-bar"><span style="width: {{ (100 * c.hits / stats.countries[0].hits) | round(1) }}%"></span></span>
+        <span class="visitors-list-n">{{ c.hits }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  <div class="card">
+    <div class="card-header"><h2>Top pages</h2></div>
+    <ul class="visitors-list">
+      {% for p in stats.pages %}
+      <li>
+        <span class="visitors-list-label" title="{{ p.path }}">{{ p.path }}</span>
+        <span class="visitors-list-bar"><span style="width: {{ (100 * p.hits / stats.pages[0].hits) | round(1) }}%"></span></span>
+        <span class="visitors-list-n">{{ p.hits }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

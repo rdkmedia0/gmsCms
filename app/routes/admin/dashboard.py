@@ -243,6 +243,18 @@ def help():
     return render_template("admin/help.html")
 
 
+@bp.route("/visitors")
+@login_required
+def visitors():
+    """Visitor stats: how many, when, and which countries -- an anonymous
+    aggregate, no addresses kept (see services/analytics.py)."""
+    from ...services import analytics
+    days = request.args.get("days", type=int) or 30
+    days = max(7, min(365, days))
+    return render_template("admin/visitors.html",
+                           stats=analytics.summary(get_db(), days=days), days=days)
+
+
 @bp.route("/activity")
 @login_required
 def activity():

@@ -828,6 +828,22 @@ def _migrate(db):
     db.execute("CREATE INDEX IF NOT EXISTS admin_notes_when "
                "ON admin_notes (id DESC)")
 
+    #  Visitor stats, kept as an AGGREGATE so it holds no one's address and
+    #  cannot grow with traffic: one row per (day, country, page) with a
+    #  hit count, upserted on the primary key. No IP, no per-visit
+    #  timestamp -- see services/analytics.py for why that is the whole
+    #  privacy story. Country is a 2-letter code, "ZZ" for local/unknown.
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS visit_stats (
+            day TEXT NOT NULL,
+            country TEXT NOT NULL DEFAULT 'ZZ',
+            path TEXT NOT NULL,
+            hits INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (day, country, path)
+        )
+    """)
+    db.execute("CREATE INDEX IF NOT EXISTS visit_stats_day ON visit_stats (day)")
+
     #  A send put on the clock. See services/scheduling.py for why the
     #  claim is the lock and why a failure is never retried by itself.
     #

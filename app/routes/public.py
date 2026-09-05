@@ -11,6 +11,7 @@ from .. import mailer
 from .. import icons
 from .. import version as _version
 from ..services import support
+from ..services import analytics
 from ..services.sections import (
     MEDIA_IMAGE_EXTS,
     SECTION_TYPES,
@@ -1081,6 +1082,29 @@ def healthz():
         return Response("unhealthy\n", status=503, mimetype="text/plain")
     return Response("ok\n", status=200, mimetype="text/plain",
                     headers={"Cache-Control": "no-store"})
+
+
+#  Count a visitor's page view -- only a real one, and only as an
+#  anonymous aggregate. A view is recorded when a VISITOR (not the signed-
+#  in owner) successfully GETs an actual page (home, a page, a blog post),
+#  reduced to (day, country, path). Best-effort: a stats failure must
+#  never touch the page, so it is wrapped and swallowed. See
+#  services/analytics.py for the privacy design.
+_COUNTED_ENDPOINTS = {"public.home", "public.page", "public.blog_post"}
+
+
+@bp.after_request
+def _count_visit(response):
+    try:
+        if (request.method == "GET" and response.status_code == 200
+                and request.endpoint in _COUNTED_ENDPOINTS
+                and not session.get("user_id")
+                and "text/html" in (response.headers.get("Content-Type") or "")):
+            country = analytics.country_for_request(request)
+            analytics.record_visit(get_db(), request.path, country)
+    except Exception:  # noqa: BLE001 -- stats must never break a page
+        pass
+    return response
 
 
 @bp.context_processor
