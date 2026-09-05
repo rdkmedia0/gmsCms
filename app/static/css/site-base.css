@@ -3242,8 +3242,14 @@ body.cms-view-mobile .cms-col-resizer { display: none; }
   .cms-sm-portrait-shape-oval   > .cms-banner-portrait { --portrait-radius: 50% / 58%; border-radius: 50% / 58%; aspect-ratio: 5 / 6; }
   .cms-sm-portrait-none > .cms-banner-portrait { display: none; }
   .cms-sm-portrait-none.cms-has-portrait { margin-bottom: 0; }
+  /*  Banner overlay BOX WIDTH set for MOBILE only. The value rides as an
+      inline --cms-banner-w-mobile on the overlay and overrides the desktop
+      inline width (hence !important), only for a banner that carries the
+      override -- so a desktop-narrow box can go full-width on a phone. */
+  .cms-banner-overlay[style*="--cms-banner-w-mobile"] { width: var(--cms-banner-w-mobile) !important; }
 }
 /*  ...and the same, shown in the editor's narrowed Mobile canvas. */
+body.cms-view-mobile .cms-banner-overlay[style*="--cms-banner-w-mobile"] { width: var(--cms-banner-w-mobile) !important; }
 body.cms-view-mobile .cms-sm-has-portrait-left > .cms-banner-portrait   { left: clamp(16px, 4cqw, 64px); right: auto; transform: translateY(50%); }
 body.cms-view-mobile .cms-sm-has-portrait-center > .cms-banner-portrait { left: 50%; right: auto; transform: translate(-50%, 50%); }
 body.cms-view-mobile .cms-sm-has-portrait-right > .cms-banner-portrait  { left: auto; right: clamp(16px, 4cqw, 64px); transform: translateY(50%); }

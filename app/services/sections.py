@@ -1621,7 +1621,7 @@ def _hex_to_rgba(hex_color, opacity_pct):
     return f"rgba({r},{g},{b},{a:.2f})"
 
 
-def _update_banner_overlay_style(content, form):
+def _update_banner_overlay_style(content, form, view="desktop"):
     """Applies the overlay text box's own styling — background color/
     opacity, text color/size/font/weight/style/alignment, and the whole
     box's position within the banner — on top of whatever text the admin
@@ -1717,7 +1717,18 @@ def _update_banner_overlay_style(content, form):
     else:
         ov_props.pop("padding", None)
     box_width = form.get("box_width", type=int)
-    if box_width:
+    if view == "mobile":
+        #  Box width is PER VIEW: a phone often wants the box full-width where
+        #  a desktop wants it narrow. A mobile override rides as its own custom
+        #  property (--cms-banner-w-mobile) so it wins only at phone widths and
+        #  in the Mobile editing canvas (see site-base.css), leaving the
+        #  desktop width untouched. Everything else in this overlay is
+        #  desktop-only and applies to every view.
+        if box_width:
+            ov_props["--cms-banner-w-mobile"] = f"{max(20, min(100, box_width))}%"
+        else:
+            ov_props.pop("--cms-banner-w-mobile", None)
+    elif box_width:
         # `width` (not just `max-width`) — the overlay is a flex item inside
         # .cms-banner, so with no explicit width it always shrink-wraps to
         # its longest line regardless of any cap, which made both the
@@ -1743,12 +1754,17 @@ def _update_banner_overlay_style(content, form):
     return str(soup)
 
 
-def banner_overlay_settings(content):
+def banner_overlay_settings(content, view="desktop"):
     """Read side of _update_banner_overlay_style — reconstructs the current
     form values (with sane defaults) from a banner's saved HTML, so the
     toolbar's controls reflect what's actually applied instead of always
     resetting to blank. Registered as a Jinja global (see app/__init__.py)
-    so the banner_config_fields macro can call it directly."""
+    so the banner_config_fields macro can call it directly.
+
+    `view` decides only which BOX WIDTH is reported -- that one control is
+    per view (see _update_banner_overlay_style). In the Mobile view the
+    slider shows the mobile override if there is one, else the desktop
+    width it starts from; every other value is the shared desktop one."""
     soup, div = _banner_div(content)
     overlay = div.find(class_="cms-banner-overlay") if div is not None else None
     outer_props = _parse_style(div.get("style")) if div is not None else {}
@@ -1787,7 +1803,11 @@ def banner_overlay_settings(content):
         "text_align": ov_props.get("text-align", "center"),
         "box_padding": re.sub(r"[^\d]", "", (ov_props.get("padding", "").split()[0] if ov_props.get("padding") else "")) or "24",
         "box_shape": next((k for k, v in BANNER_BOX_SHAPES.items() if v == ov_props.get("border-radius")), "rounded"),
-        "box_width": re.sub(r"[^\d]", "", ov_props.get("width", "")) or "80",
+        "box_width": (
+            (re.sub(r"[^\d]", "", ov_props.get("--cms-banner-w-mobile", ""))
+             or re.sub(r"[^\d]", "", ov_props.get("width", "")) or "80")
+            if view == "mobile"
+            else re.sub(r"[^\d]", "", ov_props.get("width", "")) or "80"),
         #  Background-image framing (see _update_banner_overlay_style). Focal
         #  point defaults to centre (50/50), fit to cover, height to blank
         #  (the stylesheet's --site-hero-min stands).

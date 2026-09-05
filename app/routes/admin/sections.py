@@ -893,7 +893,7 @@ def section_banner_update(section_id, col_index=None):
     content = _update_banner_portrait(content, request.form.get("portrait"),
                                      request.form.get("portrait_size"),
                                      request.form.get("portrait_shape"), _view)
-    content = _update_banner_overlay_style(content, request.form)
+    content = _update_banner_overlay_style(content, request.form, _view)
     #  The button, the same way the Card tool handles its own -- add,
     #  point or remove it from the one form that carries the banner. The
     #  link is a page picked from a dropdown, or "Somewhere else" carrying

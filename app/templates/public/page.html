@@ -1288,7 +1288,7 @@
   {% endmacro %}
 
   {% macro banner_config_fields(cell, generate_url=none, apply_url=none, image_upload_url=none, image_clear_url=none, portrait_upload_url=none, edit_view="desktop") %}
-    {% set ov = banner_overlay_settings(cell.content) %}
+    {% set ov = banner_overlay_settings(cell.content, edit_view) %}
     {% set portrait = banner_portrait_of(cell.content, edit_view) %}
     {#  THREE SECTIONS, ONE LAYOUT. The panel was a stack of full-width
         controls -- two selects, then two more, then six buttons, then a
@@ -1405,8 +1405,13 @@
         <label>Box padding
           <input type="range" name="box_padding" min="4" max="80" value="{{ ov.box_padding }}" onchange="this.form.requestSubmit()" title="How much padding surrounds the text inside the box">
         </label>
-        <label>Box width
-          <input type="range" name="box_width" min="20" max="100" value="{{ ov.box_width }}" onchange="this.form.requestSubmit()" title="How wide the text box can grow — up to the full width of the banner">
+        {#  Box width is PER VIEW (unlike the rest of this group): a phone
+            usually wants the box wider than a desktop does. The label names
+            the view being edited, and the value shown is that view's -- the
+            Mobile one starts from the desktop width until you change it.
+            Switch the view in the top bar to set another. #}
+        <label>Box width ({{ edit_view }})
+          <input type="range" name="box_width" min="20" max="100" value="{{ ov.box_width }}" onchange="this.form.requestSubmit()" title="How wide the text box grows on {{ edit_view }}, up to the full width of the banner. This one width is set per view — switch the view up top to size it for another.">
         </label>
         <label>Box shape
           <select name="box_shape" onchange="this.form.requestSubmit()" title="Corner shape of the text box itself">
