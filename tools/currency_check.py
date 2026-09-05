@@ -143,16 +143,21 @@ with app.test_request_context("/"):
     routes = open("/app/app/routes/admin/settings.py", encoding="utf-8").read()
     screen = open("/app/app/templates/admin/commerce_fulfilment.html",
                   encoding="utf-8").read()
+    #  The shop-wide currency setting and the stray-currency warning moved
+    #  to the Store settings tab when Products was split from settings; the
+    #  Products screen keeps only per-product repricing.
+    settings_screen = open("/app/app/templates/admin/commerce_settings.html",
+                           encoding="utf-8").read()
     check("creating a product takes the site's currency",
           "integrations.base_currency(db)," in routes)
     check("no product form asks for a currency any more",
           'name="currency"' not in screen, "a picker is still there")
     check("repricing keeps the price's own currency",
           'name="current_currency"' in screen and "current_currency" in routes)
-    check("the setting has a screen", 'name="base_currency"' in screen
+    check("the setting has a screen", 'name="base_currency"' in settings_screen
           and "def commerce_currency" in routes)
     check("a stray currency is named rather than left quiet",
-          "currencies_in_use" in screen and "currencies_in_use" in routes)
+          "currencies_in_use" in settings_screen and "currencies_in_use" in routes)
 
 shutil.rmtree(DATA_DIR, ignore_errors=True)
 print()

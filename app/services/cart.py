@@ -195,23 +195,19 @@ def shop_products(db, integrations, limit=None, editing=False):
 
 
 #  Postage settings, with the defaults a small seller would pick anyway.
-SHIPPING_KEYS = ("shop_shipping_zone", "shop_shipping_amount", "shop_shipping_label", "shop_free_over")
+FREE_OVER_KEY = "shop_free_over"
 
 
-def shipping_settings(db):
-    rows = {
-        r["key"]: r["value"]
-        for r in db.execute(
-            "SELECT key, value FROM settings WHERE key IN (%s)" % ",".join("?" * len(SHIPPING_KEYS)),
-            SHIPPING_KEYS,
-        ).fetchall()
-    }
-    return {
-        "zone": rows.get("shop_shipping_zone") or "ch",
-        "amount": int(rows.get("shop_shipping_amount") or 0),
-        "label": rows.get("shop_shipping_label") or "Standard delivery",
-        "free_over": int(rows.get("shop_free_over") or 0),
-    }
+def free_over(db):
+    """The spend above which delivery is free, or 0 for never. A shop-wide
+    setting kept alongside the per-service weight rates."""
+    row = db.execute(
+        "SELECT value FROM settings WHERE key = ?", (FREE_OVER_KEY,)
+    ).fetchone()
+    try:
+        return int(row["value"]) if row and row["value"] else 0
+    except (TypeError, ValueError):
+        return 0
 
 
 def physical_price_ids(db):
@@ -224,28 +220,20 @@ def physical_price_ids(db):
 
 
 def shipping_for(db, integrations, lines_, subtotal, currency):
-    """What to charge for postage, or None when nothing needs posting.
+    """What delivery could cost for this basket, or None when nothing in it
+    has to be posted.
 
     Only a basket with something physical in it gets an address step at
     all — asking a buyer downloading an ebook for their street is the kind
-    of friction that loses the sale. Free-over-a-threshold is worked out
-    here rather than sent as a rate Stripe has to reason about, so the
-    buyer sees "Free delivery" as a line rather than a discount.
+    of friction that loses the sale. The actual pricing (by total weight,
+    per service) lives in services/shipping.py; this is the thin bridge the
+    cart and checkout already call. Free-over-a-threshold is applied there.
     """
-    physical = physical_price_ids(db)
-    if not any(line["price_id"] in physical for line in lines_):
-        return None
-    settings = shipping_settings(db)
-    zone = integrations.SHIPPING_ZONES.get(settings["zone"]) or integrations.SHIPPING_ZONES["ch"]
-    free = settings["free_over"] and subtotal >= settings["free_over"]
-    return {
-        "countries": zone[1],
-        "amount": 0 if free else settings["amount"],
-        "label": "Free delivery" if free else settings["label"],
-        #  The site's own, not a hardcoded CHF: postage on a shop that
-        #  charges in euros was being quoted in francs.
-        "currency": currency or integrations.base_currency(db),
-    }
+    from . import shipping as shipping_service
+    items = [(line["price_id"], line["quantity"]) for line in lines_]
+    return shipping_service.quote(
+        db, integrations, items, subtotal, currency, free_over=free_over(db)
+    )
 
 
 #  ---------------------------------------------------------------------

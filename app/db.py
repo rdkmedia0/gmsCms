@@ -732,9 +732,44 @@ def _migrate(db):
             ref TEXT,
             quantity INTEGER NOT NULL DEFAULT 1,
             stock INTEGER,
+            weight_g INTEGER,
+            shipping_service_id INTEGER,
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    #  What a posted product weighs, and (optionally) which service it
+    #  ships by -- for weight-based delivery pricing. Added after release,
+    #  so existing physical rules gain the columns here.
+    _add_column(db, "fulfilment_rules", "weight_g", "INTEGER")
+    _add_column(db, "fulfilment_rules", "shipping_service_id", "INTEGER")
+    #  A delivery SERVICE is a carrier + service tied to a destination zone;
+    #  a delivery RATE is one weight band of that service (a ceiling in
+    #  grams and a price). A basket's postage is looked up from the total
+    #  weight of what has to be posted -- see services/shipping.py -- rather
+    #  than being a single flat fee. Rates cascade-delete with their service.
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS shipping_services (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            carrier TEXT,
+            zone TEXT NOT NULL DEFAULT 'ch',
+            enabled INTEGER NOT NULL DEFAULT 1,
+            sort_order INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS shipping_rates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            service_id INTEGER NOT NULL REFERENCES shipping_services(id) ON DELETE CASCADE,
+            up_to_g INTEGER NOT NULL,
+            amount INTEGER NOT NULL
+        )
+    """)
+    #  Editable Swiss Post presets, installed exactly once (see seed_defaults'
+    #  own flag) so a shop opens with something real to sell by and to edit.
+    from .services import shipping as _shipping
+    _shipping.seed_defaults(db)
     #  A newsletter of its own: a layout and the words filled into it.
     #
     #  It used to be a PAGE, written with the tools every other page uses,

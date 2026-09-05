@@ -1,5 +1,61 @@
 {% extends "admin/base.html" %}
 {% block title %}Store settings — My Site Admin{% endblock %}
+
+{#  One delivery SERVICE: a carrier + service name, the region it covers,
+    and a table of weight bands (a ceiling and a price). Used for both an
+    existing service and the "add" form -- `s` is None for a new one. Add
+    or remove band rows with shipping-admin.js; the row markup it clones
+    lives in the <template> at the foot of the page. #}
+{% macro service_form(s, base_currency, zones) %}
+<form method="post" action="{{ url_for('admin.commerce_shipping_service_save') }}" class="fulfilment-form shipping-service-form">
+  {% if s %}<input type="hidden" name="service_id" value="{{ s.id }}">{% endif %}
+  <label>Name</label>
+  <input type="text" name="name" value="{{ s.name if s else '' }}" required maxlength="120"
+         placeholder="Swiss Post — PostPac Priority" title="What the buyer sees as their delivery option at checkout">
+
+  <label>Carrier</label>
+  <input type="text" name="carrier" value="{{ s.carrier if s else '' }}" maxlength="80"
+         placeholder="Swiss Post" title="Who actually carries it. Optional — for your own reference.">
+
+  <label>Delivers to</label>
+  <select name="zone" title="Which countries this service covers. At checkout the buyer picks the service that matches where they are, since Stripe can't price by the address they type.">
+    {% for key, zone in zones.items() %}
+    <option value="{{ key }}" {{ 'selected' if (s and s.zone == key) or (not s and key == 'ch') }}>{{ zone[0] }}</option>
+    {% endfor %}
+  </select>
+
+  <label class="product-onsale" title="Untick to keep this service but stop offering it at checkout.">
+    <input type="checkbox" name="enabled" value="1" {{ 'checked' if (not s) or s.enabled }}> Offered at checkout
+  </label>
+
+  <p class="hint">Weight bands, in kilograms. The cheapest band whose limit covers the parcel is used; a parcel heavier than every band gets no price from this service.</p>
+  <table class="shipping-bands">
+    <thead><tr><th>Up to (kg)</th><th>Price ({{ base_currency | upper }})</th><th aria-label="Remove"></th></tr></thead>
+    <tbody class="shipping-bands-body">
+      {% for r in (s.rates if s else []) %}
+      <tr class="shipping-band">
+        <td><input type="number" name="band_up_to" step="0.001" min="0" value="{{ '%.3f'|format(r.up_to_g / 1000) }}" title="Parcels at or under this weight"></td>
+        <td><input type="number" name="band_amount" step="0.01" min="0" value="{{ '%.2f'|format(r.amount / 100) }}" title="What this band costs"></td>
+        <td><button type="button" class="icon-btn icon-btn-danger shipping-band-remove" title="Remove this weight band">&times;</button></td>
+      </tr>
+      {% endfor %}
+      {% if not s %}
+      <tr class="shipping-band">
+        <td><input type="number" name="band_up_to" step="0.001" min="0" placeholder="2"></td>
+        <td><input type="number" name="band_amount" step="0.01" min="0" placeholder="8.50"></td>
+        <td><button type="button" class="icon-btn icon-btn-danger shipping-band-remove" title="Remove this weight band">&times;</button></td>
+      </tr>
+      {% endif %}
+    </tbody>
+  </table>
+  <button type="button" class="btn btn-small shipping-band-add" title="Add another weight band">&#65291; Add a weight band</button>
+
+  <div class="product-detail-actions">
+    <button type="submit" class="btn btn-primary btn-small">Save service</button>
+  </div>
+</form>
+{% endmacro %}
+
 {% block content %}
 {% include "partials/commerce_tabs.html" %}
 <h1>Store settings</h1>
@@ -69,34 +125,46 @@
   {% endif %}
 </div>
 
+<h2 class="section-heading">Delivery</h2>
+<p class="hint">A parcel doesn&rsquo;t cost a flat fee &mdash; it depends on weight, destination and carrier. Set up one or more delivery services, each with a table of weight bands. At checkout the total weight of what&rsquo;s being posted picks the band, and the buyer chooses which service to use. (Stripe can&rsquo;t re-price from the address they type on its own page, so each service is offered as a ready-priced option.) Delivery is only ever asked for when a basket holds something physical &mdash; nobody buying a download types their address. Comes set up with editable Swiss Post presets; add your own carriers, and delete any you don&rsquo;t want, presets included.</p>
+
 <div class="card">
-  <h2>Delivery</h2>
-  <p class="hint">Only asked for when a basket holds something you post &mdash; nobody buying a download is made to type their address. Stripe collects the address and adds this charge at the payment step.</p>
-  <form method="post" action="{{ url_for('admin.commerce_postage') }}" class="fulfilment-form">
-    <label for="zone">Where you post to</label>
-    <select id="zone" name="zone" title="Stripe only offers your buyer these countries at checkout">
-      {% for key, zone in zones.items() %}
-      <option value="{{ key }}" {{ 'selected' if postage.zone == key }}>{{ zone[0] }}</option>
-      {% endfor %}
-    </select>
-
-    <label for="amount">What delivery costs</label>
-    <input type="number" id="amount" name="amount" step="0.01" min="0"
-           value="{{ '%.2f'|format(postage.amount / 100) }}"
-           title="One flat charge per order. Enter 0 if you always post free.">
-
-    <label for="free_over">Free delivery over</label>
+  <h2>Free delivery</h2>
+  <form method="post" action="{{ url_for('admin.commerce_shipping_free_over') }}" class="inline-form">
+    <label for="free_over">Delivery is free when the order is over</label>
     <input type="number" id="free_over" name="free_over" step="0.01" min="0"
-           value="{{ '%.2f'|format(postage.free_over / 100) }}"
-           title="Spend this much and delivery is free. Leave at 0 to always charge.">
+           value="{{ '%.2f'|format(free_over / 100) if free_over else '' }}"
+           title="Leave blank to always charge for delivery, whatever the weight.">
+    <span class="product-currency">{{ base_currency | upper }}</span>
+    <button type="submit" class="btn btn-small btn-primary" title="Save the free-delivery threshold">Save</button>
+  </form>
+  <p class="hint">When an order&rsquo;s items come to more than this, the buyer sees &ldquo;Free delivery&rdquo; instead of a charge. Leave blank to always charge.</p>
+</div>
 
-    <label for="label">What to call it</label>
-    <input type="text" id="label" name="label" value="{{ postage.label }}" maxlength="60"
-           title="What the buyer sees on the delivery line, e.g. Standard post">
-
-    <button type="submit" class="btn btn-primary btn-small" title="Save these postage settings. They apply to every order with something to post.">Save</button>
+{% for s in shipping_services %}
+<div class="card shipping-service">
+  {{ service_form(s, base_currency, zones) }}
+  <form method="post" action="{{ url_for('admin.commerce_shipping_service_delete', service_id=s.id) }}" class="inline-form shipping-service-delete">
+    <button type="submit" class="btn btn-small btn-danger"
+            data-confirm="Remove the “{{ s.name }}” delivery service and its prices? Products set to use it fall back to your other services."
+            data-confirm-danger="1"
+            title="Remove this delivery service. Nothing sold is affected.">Delete service</button>
   </form>
 </div>
+{% endfor %}
+
+<div class="card">
+  <h2>Add a delivery service</h2>
+  {{ service_form(none, base_currency, zones) }}
+</div>
+
+<template id="shipping-band-template">
+  <tr class="shipping-band">
+    <td><input type="number" name="band_up_to" step="0.001" min="0" placeholder="2"></td>
+    <td><input type="number" name="band_amount" step="0.01" min="0" placeholder="8.50"></td>
+    <td><button type="button" class="icon-btn icon-btn-danger shipping-band-remove" title="Remove this weight band">&times;</button></td>
+  </tr>
+</template>
 
 <h2 class="section-heading">How long things stay good for</h2>
 
@@ -131,4 +199,6 @@
 </div>
 
 {% endif %}
+
+<script src="{{ static_url('js/admin/shipping-admin.js') }}"></script>
 {% endblock %}

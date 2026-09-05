@@ -493,11 +493,17 @@ def stripe_checkout_session(db, items, success_url, cancel_url, shipping=None):
     if shipping:
         for n, code in enumerate(shipping["countries"]):
             data[f"shipping_address_collection[allowed_countries][{n}]"] = code
-        rate = "shipping_options[0][shipping_rate_data]"
-        data[f"{rate}[type]"] = "fixed_amount"
-        data[f"{rate}[fixed_amount][amount]"] = int(shipping["amount"])
-        data[f"{rate}[fixed_amount][currency]"] = (shipping["currency"] or "chf").lower()
-        data[f"{rate}[display_name]"] = shipping["label"]
+        #  Each priced service is one option the buyer picks on Stripe's
+        #  page -- which is how destination is handled, since Stripe cannot
+        #  re-price from the address typed there. No options (a weight no
+        #  band covers) still collects an address so the owner can fulfil,
+        #  but charges nothing rather than dead-ending the sale.
+        for i, opt in enumerate(shipping.get("options", [])):
+            rate = f"shipping_options[{i}][shipping_rate_data]"
+            data[f"{rate}[type]"] = "fixed_amount"
+            data[f"{rate}[fixed_amount][amount]"] = int(opt["amount"])
+            data[f"{rate}[fixed_amount][currency]"] = (opt.get("currency") or "chf").lower()
+            data[f"{rate}[display_name]"] = opt["label"]
     data.update({
         #  Let Stripe work out VAT rather than us. Silently ignored on
         #  accounts that have not enabled Stripe Tax.

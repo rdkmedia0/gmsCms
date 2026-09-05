@@ -10,7 +10,7 @@ from ..auth import login_required, save_google_settings
 from ...db import get_db
 from ... import assistant, ai_image, mailer
 from ...services.sections import _save_card_image_file, _list_media
-from ...services import integrations, commerce, downloads, cart, site
+from ...services import integrations, commerce, downloads, cart, site, shipping
 from ... import bootstrap
 from ... import crypto
 from . import wants_json, get_site_settings, _set_setting, EMAIL_SETTINGS_KEYS, get_email_settings
@@ -582,6 +582,9 @@ def commerce_fulfilment():
         event_types=event_types,
         event_error=ev_error,
         rules=rules,
+        #  For the "something to post" rule: which delivery services a
+        #  product can be tied to (or left on the shop-wide set).
+        shipping_services=shipping.list_services(db, enabled_only=True),
         stripe_ready=integrations.is_configured(db, "stripe"),
         calcom_ready=integrations.is_configured(db, "calcom"),
     )
@@ -612,7 +615,10 @@ def commerce_settings():
         currencies=integrations.CURRENCIES,
         base_currency=integrations.base_currency(db),
         currencies_in_use=integrations.currencies_in_use(db)[0],
-        postage=cart.shipping_settings(db),
+        #  Delivery is now weight-based: a list of services, each with its
+        #  own weight-band price table, plus a shop-wide free-over line.
+        shipping_services=shipping.list_services(db),
+        free_over=cart.free_over(db),
         zones=integrations.SHIPPING_ZONES,
         credit_expiry_months=(expiry_row["value"] if expiry_row else "") or "",
         download_expiry_days=(download_row["value"] if download_row else None),
@@ -907,32 +913,76 @@ def commerce_product_archive(product_id):
     return redirect(url_for("admin.commerce_fulfilment"))
 
 
-@bp.route("/commerce/postage", methods=["POST"])
+@bp.route("/commerce/shipping/free-over", methods=["POST"])
 @login_required
-def commerce_postage():
-    """What delivery costs, and where the shop will post to.
+def commerce_shipping_free_over():
+    """The spend above which delivery is free, shop-wide. Entered in whole
+    currency, stored the way Stripe counts. 0 (or blank) means never."""
+    db = get_db()
+    value = (request.form.get("free_over") or "").strip().replace(",", ".")
+    try:
+        cents = str(int(round(float(value) * 100))) if value else "0"
+    except ValueError:
+        cents = "0"
+    _set_setting(db, cart.FREE_OVER_KEY, cents)
+    db.commit()
+    flash("Saved when delivery becomes free.", "success")
+    return redirect(url_for("admin.commerce_settings"))
 
-    Kept here rather than in Stripe because it has to be known BEFORE
-    checkout starts: the basket shows the buyer what postage will be, and
-    Stripe is then told the same figure. Amounts are entered in whole
-    currency and stored in the smallest unit, the way Stripe counts.
+
+@bp.route("/commerce/shipping/service/save", methods=["POST"])
+@login_required
+def commerce_shipping_service_save():
+    """Create or update a delivery service and its whole weight-band table
+    at once.
+
+    Weights are entered in kilograms for the owner and stored in grams;
+    prices in whole currency, stored in the smallest unit. A band with
+    both boxes blank is a spare row and simply dropped, so "add a row"
+    can leave an empty one behind without consequence.
     """
     db = get_db()
-    def _cents(field):
-        value = (request.form.get(field) or "").strip().replace(",", ".")
-        try:
-            return str(int(round(float(value) * 100))) if value else "0"
-        except ValueError:
-            return "0"
+    sid = request.form.get("service_id", type=int)
+    name = (request.form.get("name") or "").strip()
+    carrier = (request.form.get("carrier") or "").strip()
     zone = (request.form.get("zone") or "ch").strip()
     if zone not in integrations.SHIPPING_ZONES:
         zone = "ch"
-    _set_setting(db, "shop_shipping_zone", zone)
-    _set_setting(db, "shop_shipping_amount", _cents("amount"))
-    _set_setting(db, "shop_free_over", _cents("free_over"))
-    _set_setting(db, "shop_shipping_label", (request.form.get("label") or "Standard delivery").strip())
+    enabled = request.form.get("enabled") == "1"
+    if not name:
+        flash("Give the delivery service a name.", "error")
+        return redirect(url_for("admin.commerce_settings"))
+    if sid and shipping.get_service(db, sid):
+        shipping.update_service(db, sid, name=name, carrier=carrier, zone=zone, enabled=enabled)
+    else:
+        sid = shipping.create_service(db, name, carrier, zone)
+        shipping.update_service(db, sid, enabled=enabled)
+    bands = []
+    for up, amt in zip(request.form.getlist("band_up_to"), request.form.getlist("band_amount")):
+        up = (up or "").strip().replace(",", ".")
+        amt = (amt or "").strip().replace(",", ".")
+        if not up and not amt:
+            continue
+        try:
+            bands.append((int(round(float(up) * 1000)), int(round(float(amt) * 100))))
+        except ValueError:
+            continue
+    shipping.set_rates(db, sid, bands)
     db.commit()
-    flash("Delivery settings saved.", "success")
+    flash("Delivery service saved.", "success")
+    return redirect(url_for("admin.commerce_settings"))
+
+
+@bp.route("/commerce/shipping/service/<int:service_id>/delete", methods=["POST"])
+@login_required
+def commerce_shipping_service_delete(service_id):
+    """Remove a delivery service, presets included -- nothing installed as a
+    starting point is permanent, and the one-time seed flag means a deleted
+    one does not return on the next boot."""
+    db = get_db()
+    shipping.delete_service(db, service_id)
+    db.commit()
+    flash("Delivery service removed.", "success")
     return redirect(url_for("admin.commerce_settings"))
 
 
@@ -990,11 +1040,27 @@ def commerce_fulfilment_save():
     if kind == "download" and not ref:
         flash("Choose which file this product sends.", "error")
         return redirect(url_for("admin.commerce_fulfilment"))
+    #  A posted product carries a weight (kg in, grams stored) that its
+    #  delivery is priced from, and may name the service it ships by --
+    #  otherwise the shop's services all apply. Only meaningful for the
+    #  physical kind; cleared for the others so a changed rule leaves
+    #  nothing stale behind.
+    weight_g = None
+    service_id = None
+    if kind == "physical":
+        kg = (request.form.get("weight_kg") or "").strip().replace(",", ".")
+        try:
+            weight_g = int(round(float(kg) * 1000)) if kg else None
+        except ValueError:
+            weight_g = None
+        service_id = request.form.get("shipping_service_id", type=int) or None
     db.execute(
-        "INSERT INTO fulfilment_rules (price_id, kind, ref, quantity, stock) VALUES (?, ?, ?, ?, ?) "
+        "INSERT INTO fulfilment_rules (price_id, kind, ref, quantity, stock, weight_g, shipping_service_id) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?) "
         "ON CONFLICT(price_id) DO UPDATE SET kind = excluded.kind, ref = excluded.ref, "
-        "quantity = excluded.quantity, stock = excluded.stock",
-        (price_id, kind, ref, quantity, stock if kind == "physical" else None),
+        "quantity = excluded.quantity, stock = excluded.stock, "
+        "weight_g = excluded.weight_g, shipping_service_id = excluded.shipping_service_id",
+        (price_id, kind, ref, quantity, stock if kind == "physical" else None, weight_g, service_id),
     )
     db.commit()
     flash("Saved what this product delivers.", "success")

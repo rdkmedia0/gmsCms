@@ -780,7 +780,7 @@ def cart():
         currency=currency,
         subtotal=subtotal,
         shipping=shipping,
-        total=subtotal + (shipping["amount"] if shipping else 0),
+        total=subtotal + (shipping["estimate"] if shipping else 0),
         problems=problems,
         stripe_ready=integrations.is_configured(db, "stripe"),
     )
@@ -854,7 +854,16 @@ def checkout():
     price_id = (request.form.get("price_id") or "").strip()
     shipping = None
     if price_id:
-        items = [(price_id, request.form.get("quantity", type=int) or 1)]
+        qty = request.form.get("quantity", type=int) or 1
+        items = [(price_id, qty)]
+        #  A Buy button for a posted product still needs an address and a
+        #  delivery charge -- shipping_for returns None for anything that
+        #  is not physical, so a download or a booking is unaffected.
+        #  free_over is a basket idea, so a single-item buy passes no
+        #  subtotal to it.
+        shipping = cart_service.shipping_for(
+            db, integrations, [{"price_id": price_id, "quantity": qty}], 0,
+            integrations.base_currency(db))
     else:
         lines, currency, subtotal, problems = cart_service.lines(db, integrations)
         if problems:

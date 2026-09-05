@@ -229,6 +229,23 @@
         </div>
 
         <div class="fulfilment-fields" data-for="physical" {{ 'hidden' if not rule or rule.kind != 'physical' }}>
+          <label for="weight_{{ loop.index }}">Weight (kg)</label>
+          <input type="number" id="weight_{{ loop.index }}" name="weight_kg" step="0.001" min="0"
+                 value="{{ '%.3f'|format(rule.weight_g / 1000) if rule and rule.weight_g else '' }}"
+                 title="Used to work out delivery from your services' weight bands. Include the packaging.">
+          {% if shipping_services %}
+          <label for="svc_{{ loop.index }}">Ships by</label>
+          <select id="svc_{{ loop.index }}" name="shipping_service_id"
+                  title="Which delivery service this ships by. Leave as ‘Any’ to offer all of them at checkout.">
+            <option value="">Any of my delivery services</option>
+            {% for sv in shipping_services %}
+            <option value="{{ sv.id }}" {{ 'selected' if rule and rule.shipping_service_id == sv.id }}>{{ sv.name }}</option>
+            {% endfor %}
+          </select>
+          {% else %}
+          <p class="hint">Set up delivery services under <a href="{{ url_for('admin.commerce_settings') }}">Store settings</a> so this can be priced by weight.</p>
+          {% endif %}
+
           <label for="stock_{{ loop.index }}">How many you have</label>
           <input type="number" id="stock_{{ loop.index }}" name="stock" min="0"
                  value="{{ rule.stock if rule and rule.stock is not none else 0 }}"

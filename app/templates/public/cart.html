@@ -36,8 +36,16 @@
 <dl class="cms-cart-sums">
   <dt>Subtotal</dt><dd>{{ '%.2f'|format(subtotal / 100) }} {{ currency }}</dd>
   {% if shipping %}
-  <dt>{{ shipping.label }}</dt>
-  <dd>{{ 'Free' if not shipping.amount else '%.2f'|format(shipping.amount / 100) ~ ' ' ~ currency }}</dd>
+    {% if shipping.options | length == 1 %}
+    <dt>Delivery — {{ shipping.options[0].label }}</dt>
+    <dd>{{ 'Free' if not shipping.options[0].amount else '%.2f'|format(shipping.options[0].amount / 100) ~ ' ' ~ currency }}</dd>
+    {% elif shipping.options | length > 1 %}
+    <dt>Delivery from</dt>
+    <dd>{{ '%.2f'|format(shipping.estimate / 100) }} {{ currency }} — choose at checkout</dd>
+    {% else %}
+    <dt>Delivery</dt>
+    <dd>worked out at checkout</dd>
+    {% endif %}
   {% endif %}
   <dt class="is-total">Total</dt><dd class="is-total">{{ '%.2f'|format(total / 100) }} {{ currency }}</dd>
 </dl>
