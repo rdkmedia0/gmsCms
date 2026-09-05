@@ -1905,3 +1905,18 @@ button[aria-busy="true"] { opacity: .75; cursor: progress; }
 .download-file { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .download-file .download-file-ref { flex: 1; min-width: 180px; }
 .download-file-chosen { font-size: 13px; color: var(--muted); }
+
+/* Orders: a filterable, exportable ledger table (spreadsheet-style). */
+.orders-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 12px 0 8px; }
+.orders-table-wrap { overflow-x: auto; }
+.orders-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.orders-table th { text-align: left; font-weight: 600; color: var(--muted); padding: 6px 10px; border-bottom: 2px solid var(--border); white-space: nowrap; }
+.orders-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.orders-table tbody tr:hover { background: var(--bg-alt, #f6f6f6); }
+.orders-table .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.orders-table .order-date { white-space: nowrap; color: var(--muted); }
+.orders-table .order-delivers { color: var(--muted); }
+.order-test-tag { background: #fde68a; color: #7c5b00; border: none; }
+.order-actions { white-space: nowrap; }
+.order-actions .btn { margin: 0 2px 2px 0; }
+.order-actions .integration-result { display: block; margin-top: 4px; }

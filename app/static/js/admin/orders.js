@@ -6,7 +6,7 @@
 (function () {
   "use strict";
   document.querySelectorAll(".cms-resend-order").forEach(function (btn) {
-    var result = btn.closest(".integration-actions").nextElementSibling;
+    var result = btn.closest("[data-order-row]").querySelector(".integration-result");
     btn.addEventListener("click", async function () {
       var original = btn.textContent;
       btn.disabled = true;
@@ -37,7 +37,7 @@ document.querySelectorAll(".cms-clear-page-password").forEach(function (btn) {
       confirmLabel: "Remove it",
     });
     if (!confirmed) return;
-    var result = btn.closest(".card").querySelector(".integration-result");
+    var result = btn.closest("[data-order-row]").querySelector(".integration-result");
     btn.disabled = true;
     try {
       var resp = await fetch(btn.dataset.url, {

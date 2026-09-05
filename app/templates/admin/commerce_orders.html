@@ -3,17 +3,16 @@
 {% block content %}
 {% include "partials/commerce_tabs.html" %}
 <h1>Orders</h1>
-<p class="hint">Every sale, who made it, and what they're still owed. Buyers don't have accounts — they reach their purchases through a link we email them — so if someone says they never got theirs, resend it from here.</p>
+<p class="hint">Every sale, who made it, and what they&rsquo;re still owed &mdash; a filterable ledger you can export. Buyers don&rsquo;t have accounts &mdash; they reach their purchases through a link we email them &mdash; so if someone says they never got theirs, resend it from here. Orders mirror Stripe (the record of every payment); nothing is deleted here, so to set aside test or old sales you <em>filter</em> them out rather than removing them.</p>
 
 {% if not email_ready %}
-<p class="flash flash-warning">Email isn't set up, so order emails aren't being sent and Resend won't work. <a href="{{ url_for('admin.settings_email') }}">Set it up →</a></p>
+<p class="flash flash-warning">Email isn&rsquo;t set up, so order emails aren&rsquo;t being sent and Resend won&rsquo;t work. <a href="{{ url_for('admin.settings_email') }}">Set it up →</a></p>
 {% endif %}
 
-
 {#  Plain GET controls: the filtered view is an address, so it can be
-    bookmarked and sent to somebody. Every control names itself in a
-    title, and the choices offered are the ones actually present in the
-    orders, so a filter can never select nothing. #}
+    bookmarked, sent to somebody, or exported exactly as shown. Every
+    control names itself, and the choices offered are the ones actually
+    present in the orders, so a filter can never select nothing. #}
 <form method="get" class="card cms-order-filters" action="{{ url_for('admin.commerce_orders') }}">
   <div class="filter-row">
     <label for="who">Who bought it
@@ -41,6 +40,21 @@
         <option value="payment"{{ ' selected' if filters.kind == 'payment' }}>Payment only</option>
       </select>
     </label>
+    <label for="status">Status
+      <select id="status" name="status" title="Show only orders with one status — e.g. only refunded ones">
+        <option value="">Any status</option>
+        {% for s in statuses %}
+        <option value="{{ s }}"{{ ' selected' if filters.status == s }}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label for="mode">Live or test
+      <select id="mode" name="mode" title="Hide Stripe test-mode orders — the way to set aside test sales before and after going live, without deleting anything">
+        <option value="">All</option>
+        <option value="live"{{ ' selected' if filters.mode == 'live' }}>Live only</option>
+        <option value="test"{{ ' selected' if filters.mode == 'test' }}>Test only</option>
+      </select>
+    </label>
     <label for="since">From
       <input type="date" id="since" name="since" value="{{ filters.since }}"
              title="Only orders on or after this day. Leave blank for no earliest date.">
@@ -57,106 +71,73 @@
       {% endif %}
     </div>
   </div>
-  <p class="hint">Leave a box alone to ignore it. The address in your browser changes with your choices, so you can bookmark a view or send it to someone.</p>
+  <p class="hint">Leave a box alone to ignore it. The address in your browser changes with your choices, so you can bookmark a view, send it to someone, or export exactly what you see.</p>
 </form>
 
+<div class="orders-toolbar">
+  <span class="hint">{{ orders | length }} order{{ 's' if orders | length != 1 }}{% if filtered %} match these filters{% endif %}.</span>
+  {% if orders %}
+  <a class="btn btn-small" download
+     href="{{ url_for('admin.commerce_orders_export', who=filters.who, what=filters.what, kind=filters.kind, status=filters.status, mode=filters.mode, since=filters.since, until=filters.until) }}"
+     title="Download these orders as a CSV spreadsheet — the same filters you have on now">&#8681; Export CSV</a>
+  {% endif %}
+</div>
+
 {% if not orders %}
-{% if filtered %}
-<div class="card"><p>No orders match those choices. <a href="{{ url_for('admin.commerce_orders') }}">Show every order</a>.</p></div>
+<div class="card"><p>
+  {% if filtered %}No orders match those choices. <a href="{{ url_for('admin.commerce_orders') }}">Show every order</a>.
+  {% else %}No orders yet. When someone buys something, it appears here within seconds.{% endif %}
+</p></div>
 {% else %}
-<div class="card"><p>No orders yet. When someone buys something, it appears here within seconds.</p></div>
-{% endif %}
-{% else %}
-{% for entry in orders %}{% set order = entry.row %}
-<div class="card">
-  <div class="integration-head">
-    <h2>{{ '%.2f'|format((order.amount_total or 0) / 100) }} {{ (order.currency or '').upper() }}</h2>
-    <span class="integration-badge {{ 'is-on' if order.status == 'paid' else 'is-off' }}">{{ order.status }}</span>
-    <span class="hint">{{ order.created_at[:16] }}</span>
-  </div>
-  {% if entry.bought %}
-  <p class="order-bought">
-    {% for name, qty in entry.bought %}{{ name }}{% if qty > 1 %} &times;{{ qty }}{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}
-  </p>
-  {% endif %}
-  <p class="hint">
-    {% if order.email %}<strong>{{ order.email }}</strong>{% if order.name %} · {{ order.name }}{% endif %}
-    {% else %}<em>no email recorded</em>{% endif %}
-    · <code>{{ order.provider_ref[:28] }}…</code>
-    {#  Your copy of the same document the buyer gets. Both sides need it
-        and for the same reason: they file it as a purchase, you file it
-        as a sale. Shown only when Stripe raised one -- orders from
-        before this was captured have nothing behind the link. #}
-    {% if order.invoice_ref %}
-    · <a href="{{ url_for('admin.commerce_order_invoice', order_id=order.id) }}"
-         title="Open Stripe's invoice for this order as a PDF. The buyer has the same one.">Invoice (PDF)</a>
-    {% endif %}
-  </p>
-
-  {% set ents = entitlements.get(order.id) or [] %}
-  {% if ents %}
-  <ul class="hint order-entitlements">
-    {% for e in ents %}
-    <li>
-      {% if e.kind == 'credit' %}
-        {{ e.granted - e.used }} of {{ e.granted }} session{{ 's' if e.granted != 1 }} left
-      {% elif e.kind == 'physical' %}
-        <strong>To post:</strong> {{ e.granted }} item{{ 's' if e.granted != 1 }} &mdash; the delivery address is on the Stripe payment
-      {% else %}
-        {{ e.granted - e.used }} of {{ e.granted }} download{{ 's' if e.granted != 1 }} left
-      {% endif %}
-      {%- if e.revoked_at %} — <em>revoked</em>{% endif %}
-      {%- if e.expires_at %} — expires {{ e.expires_at[:10] }}{% endif %}
-    </li>
-    {% endfor %}
-  </ul>
-  {% else %}
-  <p class="hint">Nothing to unlock — this was payment only.</p>
-  {% endif %}
-
-  {% if order.email %}
-  <div class="integration-actions">
-    <button type="button" class="btn btn-small cms-resend-order"
-            data-url="{{ url_for('admin.commerce_order_resend', order_id=order.id) }}"
-            title="Email this buyer a fresh link to their purchases">Resend their link</button>
-    {% if order.page_password_hash %}
-    <button type="button" class="btn btn-small cms-clear-page-password"
-            data-url="{{ url_for('admin.commerce_customer_unlock', customer_id=order.customer_id) }}"
-            title="This buyer put their own password on their purchases page. Remove it if they have forgotten it — their link still works and nothing they bought is affected.">Remove their page password</button>
-    {% endif %}
-  </div>
-  <p class="integration-result" hidden></p>
-  {% endif %}
-  <form method="post" action="{{ url_for('admin.commerce_order_delete', order_id=order.id) }}" style="margin-top:8px;">
-    <button type="submit" class="btn btn-small btn-danger"
-            data-confirm="Delete this order and anything it unlocked? This can't be undone. Orders aren't stored in Stripe, so deleting here doesn't touch Stripe."
-            data-confirm-danger="1"
-            title="Remove this order from your records — handy for tidying a test order.">Delete order</button>
-  </form>
+<div class="orders-table-wrap">
+  <table class="orders-table">
+    <thead>
+      <tr>
+        <th>Date</th><th>Buyer</th><th>Items</th><th class="num">Amount</th>
+        <th>Status</th><th>Delivers</th><th aria-label="Actions"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in orders %}{% set order = entry.row %}
+      <tr data-order-row>
+        <td class="order-date">{{ order.created_at[:16] }}</td>
+        <td>
+          {% if order.email %}<strong>{{ order.email }}</strong>{% if order.name %}<br><span class="hint">{{ order.name }}</span>{% endif %}
+          {% else %}<em class="hint">no email</em>{% endif %}
+        </td>
+        <td>
+          {% if entry.bought %}{% for name, qty in entry.bought %}{{ name }}{% if qty > 1 %} &times;{{ qty }}{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}
+          {% else %}<span class="hint">&mdash;</span>{% endif %}
+        </td>
+        <td class="num">{{ '%.2f'|format((order.amount_total or 0) / 100) }} {{ (order.currency or '').upper() }}</td>
+        <td>
+          <span class="integration-badge {{ 'is-on' if order.status == 'paid' else 'is-off' }}">{{ order.status }}</span>
+          {% if entry.is_test %}<span class="integration-badge order-test-tag" title="A Stripe test-mode order">test</span>{% endif %}
+        </td>
+        <td class="order-delivers">{{ entry.delivers }}</td>
+        <td class="order-actions">
+          {% if order.invoice_ref %}
+          <a href="{{ url_for('admin.commerce_order_invoice', order_id=order.id) }}"
+             class="btn btn-small" title="Open Stripe's invoice for this order as a PDF. The buyer has the same one.">Invoice</a>
+          {% endif %}
+          {% if order.email %}
+          <button type="button" class="btn btn-small cms-resend-order"
+                  data-url="{{ url_for('admin.commerce_order_resend', order_id=order.id) }}"
+                  title="Email this buyer a fresh link to their purchases">Resend link</button>
+          {% endif %}
+          {% if order.page_password_hash %}
+          <button type="button" class="btn btn-small cms-clear-page-password"
+                  data-url="{{ url_for('admin.commerce_customer_unlock', customer_id=order.customer_id) }}"
+                  title="This buyer put their own password on their purchases page. Remove it if they have forgotten it — their link still works and nothing they bought is affected.">Remove password</button>
+          {% endif %}
+          <span class="integration-result" hidden></span>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
-{% endfor %}
 {% endif %}
-
-<div class="card">
-  <h2>Tidy up</h2>
-  <p class="hint">Orders live here, not in Stripe &mdash; switching or disconnecting Stripe does <strong>not</strong> clear them. Use these to wipe test data before you go live. Deleting an order also removes whatever it unlocked (session credits, downloads).</p>
-  <div class="integration-actions">
-    <form method="post" action="{{ url_for('admin.commerce_orders_purge') }}" style="display:inline;">
-      <input type="hidden" name="scope" value="test">
-      <button type="submit" class="btn btn-small"
-              data-confirm="Delete every TEST order (Stripe test-mode payments) and what they unlocked? Real orders are kept. This can't be undone."
-              data-confirm-danger="1"
-              title="Remove only test-mode orders. Real (live) orders are left alone.">Delete test orders</button>
-    </form>
-    <form method="post" action="{{ url_for('admin.commerce_orders_purge') }}" style="display:inline;">
-      <input type="hidden" name="scope" value="all">
-      <button type="submit" class="btn btn-small btn-danger"
-              data-confirm="Delete ALL orders and everything they unlocked? Every record here goes, real and test alike. This can't be undone."
-              data-confirm-danger="1"
-              title="Remove every order — real and test. Use only if you really want a clean slate.">Delete all orders</button>
-    </form>
-  </div>
-</div>
 
 <script src="{{ static_url('js/admin/orders.js') }}"></script>
 {% endblock %}

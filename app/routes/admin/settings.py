@@ -353,24 +353,61 @@ def commerce_order_invoice(order_id):
     return redirect(url_for("admin.commerce_orders"))
 
 
-@bp.route("/commerce/orders", methods=["GET"])
-@login_required
-def commerce_orders():
-    """Who bought what, and what they are still owed.
+def _order_bought(order):
+    """[(name, qty)] of what an order was FOR, read from its stored line
+    items. An amount with no product answers none of an owner's questions."""
+    try:
+        items = json.loads(order["line_items"] or "[]")
+    except (ValueError, TypeError):
+        return []
+    out = []
+    for item in items:
+        name = item.get("description") or (item.get("price") or {}).get("nickname")
+        if name:
+            out.append((name, item.get("quantity") or 1))
+    return out
 
-    This is the answer to "someone says they never got their email" and
-    to "what has this person actually paid for" — the two questions an
-    owner asks about a sale after it happens.
 
-    Filtered by buyer, by product and by date, because those are the three
-    ways somebody arrives at this page with a question already in mind.
-    The filters are plain links on this same address, so a filtered view
-    can be bookmarked and sent to somebody.
+def _order_is_test(provider_ref):
+    """A Stripe test-mode checkout id is cs_test_...; a live one cs_live_...
+    So test and live orders are told apart by the record Stripe gave us,
+    not by anything this app decides."""
+    return (provider_ref or "").startswith("cs_test_")
+
+
+def _delivers_text(ents):
+    """A one-line summary of what an order delivers and what is left, for
+    the Delivers column and the CSV. Payment-only is the absence of any
+    entitlement."""
+    if not ents:
+        return "payment only"
+    parts = []
+    for e in ents:
+        if e["kind"] == "credit":
+            parts.append("%d/%d sessions left" % (e["granted"] - e["used"], e["granted"]))
+        elif e["kind"] == "physical":
+            parts.append("%d to post" % e["granted"])
+        else:
+            parts.append("%d/%d downloads left" % (e["granted"] - e["used"], e["granted"]))
+        if e["revoked_at"]:
+            parts[-1] += " (revoked)"
+    return "; ".join(parts)
+
+
+def _load_orders(db):
+    """Read the orders matching the request's filters, plus everything the
+    Orders screen and its CSV export both need.
+
+    Stripe is the record. This only ever READS and FILTERS -- there is no
+    local delete, because deleting an order here would just diverge from
+    the golden source (and a manual Sync would pull it back). "Getting rid"
+    of test or old orders is a FILTER, not a mutation.
     """
-    db = get_db()
     who = (request.args.get("who") or "").strip()
     what = (request.args.get("what") or "").strip()
     kind = (request.args.get("kind") or "").strip()
+    status = (request.args.get("status") or "").strip()
+    mode = (request.args.get("mode") or "").strip()
     since = (request.args.get("since") or "").strip()
     until = (request.args.get("until") or "").strip()
 
@@ -380,6 +417,13 @@ def commerce_orders():
     if who:
         sql += " AND c.email = ?"
         args.append(who)
+    if status:
+        sql += " AND o.status = ?"
+        args.append(status)
+    if mode == "test":
+        sql += " AND o.provider_ref LIKE 'cs_test_%'"
+    elif mode == "live":
+        sql += " AND o.provider_ref NOT LIKE 'cs_test_%'"
     if since:
         sql += " AND o.created_at >= ?"
         args.append(since)
@@ -388,27 +432,9 @@ def commerce_orders():
         #  whole of the 27th, not midnight at the start of it.
         sql += " AND o.created_at < date(?, '+1 day')"
         args.append(until)
-    sql += " ORDER BY o.id DESC LIMIT 500"
+    sql += " ORDER BY o.id DESC LIMIT 1000"
     rows = db.execute(sql, args).fetchall()
 
-    #  What each order was FOR. The screen showed an amount and no
-    #  product, which answers neither of the questions above on its own.
-    def bought(order):
-        try:
-            items = json.loads(order["line_items"] or "[]")
-        except (ValueError, TypeError):
-            return []
-        out = []
-        for item in items:
-            name = item.get("description") or (item.get("price") or {}).get("nickname")
-            if name:
-                out.append((name, item.get("quantity") or 1))
-        return out
-
-    #  What each order DELIVERS, which is a different question from what
-    #  it was called: "a download" and "something to post" are the two
-    #  jobs an owner sorts their day by. Payment-only is the absence of
-    #  any rule, so it is a kind here even though it is a row nowhere.
     ents_by_order = {}
     for row in db.execute("SELECT * FROM entitlements ORDER BY id").fetchall():
         ents_by_order.setdefault(row["order_id"], []).append(row)
@@ -419,14 +445,19 @@ def commerce_orders():
 
     orders = []
     for row in rows:
-        names = bought(row)
+        names = _order_bought(row)
         if what and what not in [n for n, _ in names]:
             continue
         if kind and kind not in kinds_of(row["id"]):
             continue
         #  Not "items": Jinja resolves entry.items to dict.items, the
         #  method, and hands the template something it cannot loop over.
-        orders.append({"row": row, "bought": names})
+        orders.append({
+            "row": row,
+            "bought": names,
+            "delivers": _delivers_text(ents_by_order.get(row["id"], [])),
+            "is_test": _order_is_test(row["provider_ref"]),
+        })
 
     #  The choices offered are the ones actually present, so a filter can
     #  never select nothing.
@@ -434,17 +465,76 @@ def commerce_orders():
         "SELECT DISTINCT c.email FROM orders o JOIN customers c ON c.id = o.customer_id "
         "WHERE c.email IS NOT NULL ORDER BY c.email").fetchall()]
     products = sorted({n for r in db.execute(
-        "SELECT line_items FROM orders").fetchall() for n, _ in bought(r)})
+        "SELECT line_items FROM orders").fetchall() for n, _ in _order_bought(r)})
+    statuses = [r["status"] for r in db.execute(
+        "SELECT DISTINCT status FROM orders WHERE status IS NOT NULL ORDER BY status").fetchall()]
 
+    return {
+        "orders": orders,
+        "entitlements": ents_by_order,
+        "buyers": buyers,
+        "products": products,
+        "statuses": statuses,
+        "filters": {"who": who, "what": what, "kind": kind, "status": status,
+                    "mode": mode, "since": since, "until": until},
+        "filtered": bool(who or what or kind or status or mode or since or until),
+    }
+
+
+@bp.route("/commerce/orders", methods=["GET"])
+@login_required
+def commerce_orders():
+    """Every sale as a filterable table -- who bought what, when, for how
+    much, and what they are still owed. The two questions an owner asks
+    after a sale ("did they get their email", "what have they paid for")
+    plus the ledger view, exportable as CSV.
+
+    Filters are plain query args on this same address, so a filtered view
+    can be bookmarked, sent to somebody, or exported exactly as shown.
+    """
+    db = get_db()
+    ctx = _load_orders(db)
     return render_template(
         "admin/commerce_orders.html",
-        orders=orders,
-        entitlements=ents_by_order,
-        buyers=buyers,
-        products=products,
-        filters={"who": who, "what": what, "kind": kind, "since": since, "until": until},
-        filtered=bool(who or what or kind or since or until),
         email_ready=mailer.is_configured(get_email_settings(db)),
+        **ctx,
+    )
+
+
+@bp.route("/commerce/orders/export.csv", methods=["GET"])
+@login_required
+def commerce_orders_export():
+    """The orders currently on screen, as a CSV -- the same filters, so the
+    file is exactly what the owner is looking at. A spreadsheet is where a
+    shop's takings get reconciled, and this is that export."""
+    import csv, io
+    db = get_db()
+    ctx = _load_orders(db)
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["Date", "Order ref", "Mode", "Buyer email", "Buyer name",
+                     "Items", "Amount", "Currency", "Status", "Delivers", "Invoice ref"])
+    for entry in ctx["orders"]:
+        o = entry["row"]
+        items = "; ".join("%s%s" % (n, (" x%d" % q) if q > 1 else "")
+                          for n, q in entry["bought"])
+        writer.writerow([
+            (o["created_at"] or "")[:16],
+            o["provider_ref"] or "",
+            "test" if entry["is_test"] else "live",
+            o["email"] or "",
+            o["name"] or "",
+            items,
+            "%.2f" % ((o["amount_total"] or 0) / 100),
+            (o["currency"] or "").upper(),
+            o["status"] or "",
+            entry["delivers"],
+            o["invoice_ref"] or "",
+        ])
+    return current_app.response_class(
+        buf.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=orders.csv"},
     )
 
 
@@ -468,45 +558,6 @@ def commerce_order_resend(order_id):
         "ok": False,
         "message": "Couldn't send. Check Email Settings, and that this order has a customer email against it.",
     })
-
-
-@bp.route("/commerce/orders/<int:order_id>/delete", methods=["POST"])
-@login_required
-def commerce_order_delete(order_id):
-    """Remove one order and anything it granted. Orders live HERE, not in
-    Stripe, so switching or disconnecting Stripe never clears them -- this
-    is how a test order gets tidied away. A real order is a record you
-    usually keep, so the button asks first."""
-    db = get_db()
-    db.execute("DELETE FROM entitlements WHERE order_id = ?", (order_id,))
-    db.execute("DELETE FROM orders WHERE id = ?", (order_id,))
-    db.commit()
-    flash("Order deleted.", "success")
-    return redirect(url_for("admin.commerce_orders"))
-
-
-@bp.route("/commerce/orders/purge", methods=["POST"])
-@login_required
-def commerce_orders_purge():
-    """Clear orders in bulk -- for wiping test data before going live,
-    since swapping Stripe keys leaves the orders untouched. `scope=test`
-    removes only test-mode ones (a Stripe test id carries "test"); anything
-    else removes every order. Their granted entitlements go with them."""
-    db = get_db()
-    if request.form.get("scope") == "test":
-        rows = db.execute("SELECT id FROM orders WHERE provider_ref LIKE '%test%'").fetchall()
-        what = "test order"
-    else:
-        rows = db.execute("SELECT id FROM orders").fetchall()
-        what = "order"
-    ids = [r["id"] for r in rows]
-    if ids:
-        marks = ",".join("?" * len(ids))
-        db.execute("DELETE FROM entitlements WHERE order_id IN (%s)" % marks, ids)
-        db.execute("DELETE FROM orders WHERE id IN (%s)" % marks, ids)
-    db.commit()
-    flash("Removed %d %s%s." % (len(ids), what, "" if len(ids) == 1 else "s"), "success")
-    return redirect(url_for("admin.commerce_orders"))
 
 
 @bp.route("/commerce/customers/<int:customer_id>/unlock", methods=["POST"])
