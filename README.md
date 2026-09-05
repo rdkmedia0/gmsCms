@@ -376,3 +376,17 @@ up on one address and serve it on another, set it explicitly.
 - **Admin is a trusted role.** Anyone with an admin login can enter raw
   HTML through the Embed tool. Do not hand out admin accounts you would
   not hand the server to.
+
+---
+
+## License
+
+gmsCms is free software, licensed under the **GNU Affero General Public
+License v3.0** (AGPL-3.0) — see [LICENSE](LICENSE).
+
+In short: you may run, study, modify and share it. If you run a **modified**
+version as a network service, the AGPL requires you to offer your users the
+source of your modifications. That is the licence's whole point here — a
+self-hosted CMS that stays free for everyone who builds on it.
+
+Copyright (C) 2026 the gmsCms authors.
