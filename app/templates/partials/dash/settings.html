@@ -73,6 +73,14 @@
       <input type="file" name="image" accept="image/*" class="favicon-upload-input" hidden>
     </form>
 
+    {#  Pick a picture you already have. The button opens the shared Media
+        Library chooser (window.cmsImagePicker) and posts the chosen URL;
+        the server checks it really is in the library before using it. #}
+    <form method="post" action="{{ url_for('admin.settings_favicon_library') }}" class="inline-form favicon-library-form">
+      <input type="hidden" name="url" value="" class="favicon-library-url">
+      <button type="button" class="favicon-text-btn favicon-library-trigger" title="Choose a picture already in your Media Library">🖼️ Library</button>
+    </form>
+
     <details class="favicon-emoji-picker">
       <summary class="favicon-text-btn" title="Pick an emoji">🙂 Emoji</summary>
       <div class="favicon-emoji-grid">

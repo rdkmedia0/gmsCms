@@ -167,9 +167,10 @@ def set_notice_hidden(hidden):
 
 
 def notice():
-    """What the public page renders under the footer: the project + donate
-    link, or None when the owner has turned it off. A plain credit now --
-    no payment removes it, a click does."""
+    """What the public page renders under the footer: a plain credit linking
+    to the project, or None when the owner has turned it off. Deliberately
+    NOT a donate link -- the ask lives on the admin Support screen, never on
+    every visitor's footer -- so this carries only the project URL."""
     if notice_hidden():
         return None
-    return {"url": PAYPAL_URL, "project_url": GITHUB_CONTACT_URL}
+    return {"project_url": GITHUB_CONTACT_URL}

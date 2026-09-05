@@ -206,7 +206,10 @@
         });
         const data = await res.json();
         if (res.ok && data.ok) {
-          toast('Saved as a pattern — add it from the Tools panel');
+          //  The Tools panel was rendered at page load, so a just-saved
+          //  pattern only shows in its Patterns group after a reload --
+          //  say so rather than implying it is already there.
+          toast('Saved as a pattern — reload the page to add it from the Tools panel');
         } else {
           toast(data.error || "Couldn't save the pattern");
         }

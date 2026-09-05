@@ -11,6 +11,20 @@
     });
   }
 
+  //  Choose an existing Media Library picture as the favicon: open the
+  //  shared chooser, drop the chosen URL into the hidden field and submit.
+  //  The server re-checks the URL is really in the library before using it.
+  var libTrigger = document.querySelector(".favicon-library-trigger");
+  var libForm = document.querySelector(".favicon-library-form");
+  if (libTrigger && libForm && window.cmsImagePicker) {
+    libTrigger.addEventListener("click", async function () {
+      var url = await window.cmsImagePicker.open();
+      if (!url) return;
+      libForm.querySelector(".favicon-library-url").value = url;
+      libForm.submit();
+    });
+  }
+
   //  Importing a template that is already installed is a question, not a
   //  silent second copy. The server answers 409 with what it found; the
   //  file is still in the input, so the same upload is simply sent again

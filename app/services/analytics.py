@@ -29,9 +29,18 @@ _DB_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "ip-country-ipv
 _geo = None  # (starts, ends, ccs) loaded once
 
 #  Headers a reverse proxy sets with a country it worked out itself. Read
-#  only when present -- believed because the proxy is part of THIS
-#  deployment (see TrustedProxyFix), and it covers IPv6, which the bundled
-#  IPv4 table does not.
+#  when present -- a proxy that fronts THIS deployment is the intended
+#  source, and it covers IPv6, which the bundled IPv4 table does not.
+#
+#  Note the trust is UNCONDITIONAL: unlike X-Forwarded-*, these are not
+#  stripped from an untrusted peer (TrustedProxyFix only touches the
+#  forwarded set), so on an install exposed directly with no proxy a
+#  visitor could send their own CF-IPCountry. That is accepted on
+#  purpose: the only thing it can affect is which bucket an anonymous
+#  visit is counted in (the value is gated to two letters below, so
+#  nothing but a country code can get through), and a stats aggregate is
+#  not a security boundary. A proxy-fronted install -- where these
+#  headers are worth having -- is exactly where they are trustworthy.
 _PROXY_COUNTRY_HEADERS = ("CF-IPCountry", "X-Country-Code", "X-Geo-Country")
 
 

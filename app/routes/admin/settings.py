@@ -9,7 +9,7 @@ from . import bp
 from ..auth import login_required, save_google_settings
 from ...db import get_db
 from ... import assistant, ai_image, mailer
-from ...services.sections import _save_card_image_file
+from ...services.sections import _save_card_image_file, _list_media
 from ...services import integrations, commerce, downloads, cart, site
 from ... import bootstrap
 from ... import crypto
@@ -62,6 +62,28 @@ def settings_favicon_upload():
         flash(error[0], "error")
         return redirect(url_for("admin.dashboard"))
     _set_setting(db, "favicon_url", url)
+    db.commit()
+    flash("Favicon updated.", "success")
+    return redirect(url_for("admin.dashboard"))
+
+
+@bp.route("/settings/favicon/library", methods=["POST"])
+@login_required
+def settings_favicon_library():
+    """Use a picture already in the Media Library as the favicon.
+
+    The URL arrives from the picker, but it is never trusted as a path: it
+    is checked against what is actually IN the library (image files only)
+    and the library's own value is used, not the string that was sent --
+    the same rule the file/image tools follow."""
+    db = get_db()
+    picked = (request.form.get("url") or "").strip()
+    known = {m["url"]: m for m in _list_media(image_only=True)}
+    item = known.get(picked)
+    if not item:
+        flash("That picture is not in your Media Library — choose another.", "error")
+        return redirect(url_for("admin.dashboard"))
+    _set_setting(db, "favicon_url", item["url"])
     db.commit()
     flash("Favicon updated.", "success")
     return redirect(url_for("admin.dashboard"))
