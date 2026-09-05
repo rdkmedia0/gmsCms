@@ -70,7 +70,7 @@
         matters, and an email to a list without them is refused rather
         than sent. #}
     <h3>Who your emails come from</h3>
-    <p class="hint">Every email to a list has to say who sent it and give a real postal address &mdash; that is the law in Switzerland, the EU and the US alike, and this site refuses to send a newsletter without it. It is the same name and address your legal pages use, so filling it in here fills it in there.</p>
+    <p class="hint">Every email to a list has to say who sent it and offer an easy way to unsubscribe &mdash; that much is the law in Switzerland, the EU and the US alike. A real <strong>postal address</strong> is required on your website (the legal notice / Impressum), and required in the emails themselves only for recipients in the US (CAN-SPAM); in Switzerland and the EU it is best practice in the mail rather than mandatory. It is the same name and address your legal pages use, so filling it in here fills it in there.</p>
 
     <label for="legal_business">Business or personal name</label>
     <input type="text" id="legal_business" name="legal_business" value="{{ sender.business }}"
@@ -80,7 +80,15 @@
     <label for="legal_address">Postal address</label>
     <textarea id="legal_address" name="legal_address" rows="3"
               placeholder="3 Lindenweg&#10;8001 Zurich"
-              title="A real address somebody could write to. Required on any email sent to a list.">{{ sender.address }}</textarea>
+              title="A real address somebody could write to. Shown on your website's legal pages, and in emails when the box below is ticked.">{{ sender.address }}</textarea>
+
+    <label style="display:flex; align-items:center; gap:8px; margin-top:12px; font-weight:normal;"
+           title="When ticked, your postal address appears at the bottom of the emails you send. Untick to keep it off your emails — it stays on your website's legal pages regardless.">
+      <input type="checkbox" name="email_include_address" value="1" style="width:auto;"
+             {{ 'checked' if sender.email_include_address != '0' }}>
+      Include my postal address at the bottom of emails
+    </label>
+    <p class="hint">Recommended, and legally required if you email recipients in the US. Untick to keep the address out of your mail &mdash; it stays on your website's legal pages either way. While it's ticked, a newsletter won't send until an address is set above.</p>
 
     <button type="submit" class="btn btn-primary" title="Save how this site sends email. Test it below before relying on it.">Save Email Settings</button>
     <a href="{{ url_for('admin.dashboard') }}" class="btn" title="Leave this screen and go back to the Dashboard. Anything saved stays saved.">Back to Dashboard</a>

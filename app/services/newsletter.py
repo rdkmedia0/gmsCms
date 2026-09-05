@@ -468,16 +468,29 @@ def as_sections(title, content_html):
 
 
 def sender_line(legal_settings, site_title):
-    """Who is sending, in a form that satisfies the rules about it.
+    """Who is sending, and whether that is enough to send a list mail on.
 
-    An address is required on commercial email in the EU, Switzerland and
-    the US alike. It is already on file from the legal pages, so this
-    reuses it rather than asking again — and says plainly when it is
-    missing, because sending without it is the kind of thing nobody
-    notices until somebody complains.
+    Returns (line, ok). The mandatory core of commercial email everywhere
+    is a truthful sender identity and an easy opt-out. A physical postal
+    address is REQUIRED by US CAN-SPAM, and best practice in the EU and
+    Switzerland -- but NOT strictly mandated there for the email itself,
+    where it is the WEBSITE's Impressum that must carry the address. So
+    whether the address is repeated in emails is the owner's choice
+    (`email_include_address`, default on), separate from the website.
+
+    `ok` is False only when the owner wants the address in their mail but
+    has not set one -- that is the case worth blocking a send over. With
+    the address off, or on file, `ok` is True.
     """
     name = (legal_settings.get("business") or site_title or "").strip()
     address = " ".join(part.strip() for part in (legal_settings.get("address") or "").splitlines() if part.strip())
+    include = (legal_settings.get("email_include_address", "1") != "0")
+    if not include:
+        #  The owner keeps the address off their emails on purpose. It is
+        #  still on the site, which is what the Impressum needs; nothing to
+        #  block. (Turn it back on if mailing US recipients -- see the
+        #  toggle on the Sending-email screen.)
+        return name or "", True
     if not address:
         return name or "", False
     return f"{name}, {address}", True
@@ -625,15 +638,18 @@ def preflight(db, mailer, subscribers, legal, sections, audience,
         return Blocked("Nobody has confirmed yet." if counts["pending"]
                        else "Nobody is on the list yet.")
 
-    line, has_address = sender_line(legal_settings, site_title)
-    if not has_address:
-        #  Refused rather than warned: a commercial email without a postal
-        #  identity is unlawful in most places this will be used, and the
-        #  address is two minutes of typing on a screen that already
-        #  exists.
+    line, ok = sender_line(legal_settings, site_title)
+    if not ok:
+        #  Only reached when the owner WANTS the address in their mail (the
+        #  default) but has not set one. Either add it, or turn the setting
+        #  off if they would rather keep it off their emails -- their choice
+        #  now, not a hard rule, because outside the US the address is best
+        #  practice for the mail rather than mandated (it is the website's
+        #  Impressum that must carry it).
         return Blocked(
-            "Add your postal address on the Legal pages screen first — an email to a "
-            "list has to carry it, and it takes a minute.",
+            "Add your postal address on the Legal pages screen, or switch off "
+            "“Include my postal address in emails” on the Sending-email screen "
+            "if you would rather keep it out of your mail.",
             "admin.legal_pages")
     return Ready(people, line, site_title)
 

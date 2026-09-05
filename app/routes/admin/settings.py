@@ -235,6 +235,11 @@ def settings_email():
                     "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
                     (key, request.form.get(key, "").strip()),
                 )
+        #  Whether the postal address is repeated at the bottom of emails
+        #  (the website's Impressum still carries it either way). A checkbox,
+        #  so absent means unticked.
+        _set_setting(db, "email_include_address",
+                     "1" if request.form.get("email_include_address") else "0")
         db.commit()
         settings = get_email_settings(db)
         missing = _missing_email_fields(settings)

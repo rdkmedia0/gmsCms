@@ -114,7 +114,14 @@ def settings_for(db):
     #  owner typed, not something that happened to them.
     site_name = db.execute(
         "SELECT value FROM settings WHERE key = 'site_title'").fetchone()
+    #  Whether the postal address is repeated at the bottom of EMAILS. It
+    #  stays on the website either way (the Impressum needs it); an email is
+    #  a separate question -- see newsletter.sender_line. Default on, the
+    #  safe/compliant choice; the owner can switch it off.
+    include_addr = db.execute(
+        "SELECT value FROM settings WHERE key = 'email_include_address'").fetchone()
     return {
+        "email_include_address": (include_addr["value"] if include_addr else "1"),
         "business": rows.get("legal_business") or (site_name["value"] if site_name else "") or "",
         "address": rows.get("legal_address") or "",
         "email": rows.get("legal_email") or "",
