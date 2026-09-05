@@ -314,6 +314,13 @@ def _wordmark_starter_html(size="medium", style="plain", with_tagline=False):
 
 BLOCK_LIBRARY["wordmark"] = ("html", _wordmark_starter_html())
 
+#  The Version tool: which gmsCms the site runs on, wherever the owner
+#  wants it said. Same shape as the wordmark -- a placeholder the render
+#  fills from app/version.py (see public._apply_placeholders) -- so it
+#  reads the running software's version, never a number typed once.
+VERSION_PLACEHOLDER = "%" + "%CMS_VERSION%" + "%"
+BLOCK_LIBRARY["version"] = ("html", '<span class="cms-version">' + VERSION_PLACEHOLDER + "</span>")
+
 
 #  How the Language tool is formatted. The languages themselves always come
 #  from the site's settings (the render fills them in); these are only the

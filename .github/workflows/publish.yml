@@ -61,6 +61,10 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          #  So the running app can say which commit it is (app/version.py)
+          #  -- the one question "is prod behind?" needs answered.
+          build-args: |
+            APP_BUILD=${{ github.sha }}
           #  The template-zip stage rebuilds whenever a template changes
           #  and is the slow half of the build; caching it between runs is
           #  most of the difference between a four-minute publish and a

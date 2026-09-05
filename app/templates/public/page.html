@@ -50,6 +50,8 @@
      is inserted just before this link so it still lands after site-base.css
      and in the same order as the server would have rendered it. #}
   <link rel="stylesheet" href="{{ static_url('css/inline-editor.css') }}" data-cms-theme-end>
+  {#  The signed-in bar at the top, shared with the admin screens. #}
+  <link rel="stylesheet" href="{{ static_url('css/admin-bar.css') }}">
   {% endif %}
   {% if google_fonts_preview_url %}
   {# Only fetched while actively editing (see google_font_choices/
@@ -84,45 +86,12 @@
     design they were authored with. #}
 <body {% if composition %}data-composition="{{ composition }}"{% endif %} class="{{ 'cms-page-bg cms-page-veil-' ~ (page.bg_overlay or 'none') ~ ' cms-page-surface-' ~ (page.bg_surface or 'plain') if page.bg_image }} {{ 'cms-logged-in' if logged_in }} {{ 'cms-editing' if editing }} {{ ('cms-view-' ~ preview_view) if preview_view != 'desktop' }} nav-layout-{{ nav_layout }} {{ 'has-sidebar' if editing or sidebar_sections }} {{ 'has-sidebar-right' if editing or sidebar_right_sections }} {{ 'sidebar-reach-full' if sidebar_sections and sidebar_sections[0].layout_width == 'full' }} {{ 'sidebar-right-reach-full' if sidebar_right_sections and sidebar_right_sections[0].layout_width == 'full' }}" {% if editing %}data-save-template-url="{{ url_for('admin.template_save_current') }}"{% endif %} {% if logged_in %}data-preview-view="{{ preview_view }}" data-view-reset-url="{{ url_for('auth.set_preview_view', view='desktop', next=current_path) }}"{% endif %} {{ ('style="' ~ body_style_parts | join('; ') ~ ';"') | safe if body_style_parts }}>
   {% if logged_in %}
-  <div class="cms-admin-bar">
-    <span>{{ '✏️ Editing your site' if editing else '👁 Viewing as a visitor' }}</span>
-    <select class="cms-mode-select" onchange="location = this.value" title="Switch between editing and viewing the site as a visitor would see it">
-      <option value="{{ url_for('auth.set_view_mode', mode='editing', next=current_path) }}" {{ 'selected' if editing }}>✏️ Editing</option>
-      <option value="{{ url_for('auth.set_view_mode', mode='viewing', next=current_path) }}" {{ 'selected' if not editing }}>👁 Viewing</option>
-    </select>
-    {% if editing and nav_pages %}
-    {# The live nav's own links don't navigate while editing (see the
-       is_menu contenteditable note above) — clicking one is how you
-       select/drag it, not how you leave the page. This is the way back:
-       a plain page picker that always works, regardless of what the
-       current theme's header layout is doing (collapsed behind a
-       hamburger, a sidebar rail, whatever). #}
-    <select class="cms-mode-select" onchange="if (this.value) location = this.value" title="Jump to another page to edit it">
-      <option value="">📄 Switch page…</option>
-      {% for p in nav_pages %}
-      <option value="{{ url_for('public.home') if p.is_home else url_for('public.page', slug=p.slug) }}" {{ 'selected' if p.id == page.id }}>{{ p.title }}</option>
-      {% endfor %}
-    </select>
-    {% endif %}
-    {#  ONE view control for both jobs. It sets the screen size you are
-        looking at: while EDITING it narrows the canvas so you edit that
-        view in place (Mobile keeps its own edits as cms-sm-* over the
-        Desktop base); while VIEWING it opens the page in an honest device
-        frame of that width, where media queries fire exactly as on a real
-        device (a narrowed box would lie -- see view-frame.js). The choice
-        persists in the session, so switching Editing->Viewing shows the
-        very view you were editing. #}
-    <select class="cms-mode-select" onchange="if (this.value) location = this.value"
-            title="The screen size you're looking at. It applies while editing and, when you switch to Viewing, shows the page at that size. Mobile keeps its own edits on top of Desktop.">
-      <option value="{{ url_for('auth.set_preview_view', view='desktop', next=current_path) }}" {{ 'selected' if preview_view == 'desktop' }}>🖥 Desktop</option>
-      <option value="{{ url_for('auth.set_preview_view', view='laptop', next=current_path) }}" {{ 'selected' if preview_view == 'laptop' }}>💻 Laptop</option>
-      <option value="{{ url_for('auth.set_preview_view', view='tablet', next=current_path) }}" {{ 'selected' if preview_view == 'tablet' }}>📲 Tablet</option>
-      <option value="{{ url_for('auth.set_preview_view', view='mobile', next=current_path) }}" {{ 'selected' if preview_view == 'mobile' }}>📱 Mobile</option>
-    </select>
-    <a href="{{ url_for('admin.dashboard') }}">Dashboard</a>
-    <a href="{{ url_for('auth.account') }}">Account</a>
-    <a href="{{ url_for('auth.logout') }}">Log out</a>
-  </div>
+  {#  The signed-in bar: the same one every admin screen shows, with this
+      page's own controls (mode, page, screen size) at its left end. It
+      must stay a DIRECT child of body -- the sidebar layouts in
+      site-base.css place `body > .cms-admin-bar` by hand. #}
+  {% set bar_surface = 'site' %}
+  {% include "partials/admin_bar.html" %}
   {#  The send controls, on the page they belong to. They used to be on
       the Newsletters screen only, which meant writing an issue here and
       then going somewhere else to look at it and send it -- with no way,
@@ -1538,7 +1507,7 @@
         underneath them became one -- see BOW.md, "One list of tool
         controls". -#}
           {{ heading_controls(item, save_url) }}
-          {%- if item.type == 'html' and not item.is_menu and not item.is_breadcrumb and not item.is_lang_switcher and not item.is_divider and not item.is_image_accordion and not item.is_video_gallery and not item.is_faq and not item.is_faq_reader and not item.is_search and not item.is_blog and not item.is_basket and not item.is_contact_form and not item.is_contact_info and not item.is_buy_button and not item.is_shop and not item.is_block -%}
+          {%- if item.type == 'html' and not item.is_menu and not item.is_breadcrumb and not item.is_lang_switcher and not item.is_divider and not item.is_image_accordion and not item.is_video_gallery and not item.is_faq and not item.is_faq_reader and not item.is_search and not item.is_blog and not item.is_basket and not item.is_contact_form and not item.is_contact_info and not item.is_buy_button and not item.is_shop and not item.is_block and not item.is_version -%}
           {# A Table keeps the rich-text ribbon (its cells are real text) but
              loses the raw-HTML button: every part of its shape now has a real
              control of its own (see table_config_fields), so the escape hatch
@@ -2500,7 +2469,7 @@
                 from live data and must NOT expose a raw-HTML box, or it becomes
                 an Embed by the back door. This mirrors the cell branches, where
                 only the catch-all cell gets it. #}
-            {% set is_marker_tool = s.is_block or s.is_lang_switcher or s.is_shop or s.is_contact_form or s.is_menu or s.is_breadcrumb or s.is_divider or s.is_image_accordion or s.is_video_gallery or s.is_faq or s.is_faq_reader or s.is_search or s.is_blog or s.is_basket or s.is_buy_button or s.is_contact_info or s.is_wordmark %}
+            {% set is_marker_tool = s.is_block or s.is_lang_switcher or s.is_shop or s.is_contact_form or s.is_menu or s.is_breadcrumb or s.is_divider or s.is_image_accordion or s.is_video_gallery or s.is_faq or s.is_faq_reader or s.is_search or s.is_blog or s.is_basket or s.is_buy_button or s.is_contact_info or s.is_wordmark or s.is_version %}
             {% if s.is_dynamic or not is_marker_tool %}
             {{ embed_code_editor(url_for('admin.section_update', section_id=s.id), s.raw) }}
             {% endif %}
@@ -2650,6 +2619,16 @@
     </div>
     {% else %}
     <p>&copy; {{ page.title }}</p>
+    {% endif %}
+    {#  gmsCms is free, and this is the one line that says so on the site
+        it built -- shown to visitors under the footer until the owner
+        supports the project and enters the key that comes with it
+        (Admin → Support). The link is the project's own, hard-coded in
+        services/support.py; nothing on the site can change where it
+        points. Inside the footer, not beside it, so the sidebar layouts
+        that place body's direct children by hand are untouched. #}
+    {% if support_notice %}
+    <p class="cms-support-notice">Built with <a href="{{ support_notice.url }}" target="_blank" rel="noopener noreferrer">gmsCms</a>, which is free to use. Site owners can remove this line by supporting the project.</p>
     {% endif %}
   </footer>
 

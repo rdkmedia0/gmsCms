@@ -1118,6 +1118,7 @@ from . import dashboard  # noqa: E402,F401
 from . import pages  # noqa: E402,F401
 from . import sections  # noqa: E402,F401
 from . import settings  # noqa: E402,F401
+from . import support  # noqa: E402,F401
 from . import templates  # noqa: E402,F401
 from . import wizard  # noqa: E402,F401
 

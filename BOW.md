@@ -7884,3 +7884,50 @@ is mixed from `currentColor` now: the text colour is chosen to contrast
 its ground by definition, so on a light page it is a shadow and on a dark
 one a soft light lift -- ground-aware by construction, with no palette
 assumption in it.
+
+## 2026-09-05 - The reason was thrown away three times
+
+A site translate through Gemini failed all 13 strings and the screen
+said "Paused at 0 / 13 -- press Retry". The same key had just made a
+favicon, so the connection was fine, and there was nothing else to read.
+Tracing it: Gemini's HTTP 400 carried a sentence explaining itself, and
+`_post_json` dropped the body to keep "request-context detail" off the
+screen; `_translate_via_ai` tries three ways (whole, batched, one at a
+time) and each layer swallowed the layer below's reason to try the next;
+`translate_site` counted the failure and continued; and the worker's
+progress callback was `lambda *_a: heartbeat()`, so even what DID reach
+it was thrown away. Four places, each locally reasonable, and the sum
+was an owner staring at a number with no way to act on it.
+
+**An absence is not an explanation** was already the rule for a missing
+control (CLAUDE.md, "What the AI cannot do"). It applies to a failed
+run just as much. The provider's own `error.message` is kept now -- with
+anything key-shaped redacted, which is the honest version of the old
+worry -- and travels up every layer as `last_error`, per language, into
+the run state the screen polls. "Stopped at 0 / 13 -- the AI provider
+said: API key not valid" is something a person can fix.
+
+The heartbeat was the same mistake from the other side: it fired only on
+a SUCCESS, so a run in which everything failed never heartbeat at all.
+
+### One bar
+
+The live page had a dark strip (mode, page, screen size, three links)
+and the admin a white header with a brand and six links, so pressing
+Dashboard on the page changed the whole top of the screen, and Media
+Library and Help existed on one side only. The same person is signed in
+on both. It is one partial now, included by both shells, styled by one
+stylesheet, and the only thing that differs is its left end. The version
+sits at its right end, because "is prod behind?" was being answered by
+counting commits -- and a Version tool puts the same number on the page
+for an owner who wants it in a footer.
+
+### The one line gmsCms asks for
+
+Free software, one credit line under the footer, removed by a signed
+key for the period of support. Three decisions worth keeping: the way to
+pay is a constant, not a setting, so nothing a site imports can point
+the line elsewhere; the key is checked offline, on the owner's server,
+so nothing phones home; and the key's arithmetic is a standard-library
+module of its own, so the person issuing keys can do it on a machine
+with no Flask on it without importing the app and opening a database.

@@ -348,6 +348,10 @@ def create_app():
 
     app.jinja_env.globals["static_url"] = static_url
 
+    #  The version, for the admin bar and the Version tool. See version.py.
+    from . import version as _version
+    app.jinja_env.globals["app_version"] = _version.info()
+
     from . import icons as _icons
     app.jinja_env.globals["icon_svg"] = _icons.render_icon
     #  A SURFACE THAT PAINTS ITSELF STATES ITS OWN INK, and a section

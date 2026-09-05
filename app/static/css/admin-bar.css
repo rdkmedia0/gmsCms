@@ -1,0 +1,90 @@
+/*  The bar at the top of every signed-in screen -- partials/admin_bar.html.
+
+    Loaded by BOTH shells (the live page while signed in, and every admin
+    screen), which is the whole point: one strip, the same on both sides,
+    so the links to everything else never change shape underfoot. Its
+    rules lived in inline-editor.css when only the page had it; the admin
+    had a separate white header with a different set of links.
+
+    Chrome, not content: the editor's own face, its own dark ground, its
+    own control corners. Nothing in here reads a site variable. */
+
+/*  Declared here as well as in inline-editor.css, for the same reason
+    every shared token is: this file is loaded on screens where that one
+    is not, and a token that resolves on one page and not the other is
+    worse than no token. Same value on both. */
+:root { --cms-ui-font: -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+:root { --cms-ui-radius-control: 4px; }
+
+/*  No reservation needed: the bar is in the flow (sticky, see below). */
+body.cms-logged-in { padding-top: 0; }
+
+.cms-admin-bar {
+  /*  Sticky, not fixed. Fixed needs the body to reserve exactly the
+      bar's height, and that was a hard-coded 40px against a bar 47px
+      tall -- so 7px of every page has always sat underneath it -- and on
+      a phone the bar wraps to a height no constant can know. Sticky
+      takes its own space and stays visible while scrolling, which is
+      what was wanted from fixed in the first place. */
+  position: sticky; top: 0; z-index: 1000;
+  background: #1f2430; color: #fff;
+  display: flex; align-items: center; gap: 20px; flex-wrap: nowrap;
+  overflow-x: auto; white-space: nowrap;
+  padding: 10px 20px; font-size: 14px; font-family: var(--cms-ui-font);
+  line-height: 1.4;
+}
+.cms-admin-bar a { color: #93c5fd; text-decoration: none; font-weight: 600; flex: 0 0 auto; }
+.cms-admin-bar a:hover { text-decoration: underline; }
+.cms-admin-bar a:focus-visible { outline: 2px solid #93c5fd; outline-offset: 3px; border-radius: 2px; }
+.cms-admin-bar select { flex: 0 0 auto; }
+.cms-admin-bar-state { font-weight: 700; flex: 0 0 auto; }
+/*  The brand on an admin screen stands where the mode label stands on
+    the page: same slot, same weight, so the eye lands in one place. */
+.cms-admin-bar-brand { color: #fff; font-weight: 700; }
+.cms-admin-bar-brand:hover { text-decoration: none; opacity: .85; }
+
+/*  The links are the one part that is identical on both sides, pushed
+    to the right so the left end can hold whatever that surface needs. */
+.cms-admin-bar-links { margin-left: auto; display: flex; align-items: center; gap: 20px; flex: 0 0 auto; }
+.cms-admin-bar-support { color: #fca5a5; }
+
+/*  The version: read, never pressed. Quieter than a link on purpose. */
+.cms-admin-bar-version {
+  flex: 0 0 auto; font-size: 12px; font-weight: 500; opacity: .6;
+  font-variant-numeric: tabular-nums; letter-spacing: .02em; cursor: default;
+}
+
+.cms-mode-select {
+  background: #333a48; color: #fff; border: 1px solid #4b5563; border-radius: var(--cms-ui-radius-control);
+  padding: 4px 8px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: var(--cms-ui-font);
+}
+
+/*  The admin bar on a phone.
+    ------------------------------------------------------------------
+    It is a single nowrap row that scrolls sideways. Measured at 390px it
+    held 869px of controls, so five of its seven -- including the mode
+    switch, the page picker and the screen size -- were simply off the
+    right edge, and a sideways scroll inside a fixed 47px strip is not
+    something anybody finds. The reported symptom was "I don't see the
+    preview dropdown"; it was there and unreachable.
+
+    It wraps here instead. Two or three short rows is worth more than one
+    row you cannot see the end of, and the page content already starts
+    below whatever height this ends up being. 900, not 760: the bar's
+    own controls measure about 869px, so a tablet at 768 was still losing
+    two of them off the right. The breakpoint is the content's width, not
+    a device's. */
+@media (max-width: 900px) {
+  .cms-admin-bar {
+    flex-wrap: wrap;
+    white-space: normal;
+    overflow-x: visible;
+    gap: 8px 14px;
+    padding: 8px 12px;
+  }
+  /*  The "Editing your site" label is the one thing that can be read from
+      the state of everything else, so it gives up its room first. */
+  .cms-admin-bar-state, .cms-admin-bar-brand { flex: 1 1 100%; }
+  .cms-admin-bar select { max-width: 46vw; }
+  .cms-admin-bar-links { margin-left: 0; flex-wrap: wrap; gap: 8px 14px; flex: 1 1 100%; }
+}

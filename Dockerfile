@@ -56,6 +56,11 @@ COPY --from=packager --chown=cms:cms /app /app
 # lines mean even a run with no -v gets an anonymous volume rather than
 # writing into the container's own layer, where a rebuild destroys it.
 ENV DATA_DIR=/app/data
+#  The commit this image was built from, shown beside the version in the
+#  admin bar (app/version.py). The publish workflow passes it; a local
+#  build leaves it blank and the bar shows the version number alone.
+ARG APP_BUILD=
+ENV APP_BUILD=$APP_BUILD
 RUN mkdir -p /app/data /app/app/static/uploads /app/app/static/themes
 VOLUME ["/app/data", "/app/app/static/uploads", "/app/app/static/themes"]
 

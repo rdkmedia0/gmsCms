@@ -5,23 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}My Site — Admin{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+  <link rel="stylesheet" href="{{ static_url('css/admin-bar.css') }}">
 </head>
 <body {% if session.get('user_id') %}data-save-template-url="{{ url_for('admin.template_save_current') }}"{% endif %}>
   {% if session.get('user_id') %}
-  <header class="admin-header">
-    {#  The site's own name, not a fixed one. Somebody who has just told
-        this app their business is called Ridgeway Bakehouse should not
-        then be looking at a bar that says "My Site". #}
-    <a class="brand" href="{{ url_for('admin.dashboard') }}" title="Back to the Dashboard">🛠️ {{ site_settings.site_title or 'My Site' }} &mdash; Admin</a>
-    <nav>
-      <a href="{{ url_for('admin.dashboard') }}">Dashboard</a>
-      <a href="{{ url_for('auth.account') }}">Account</a>
-      <a href="{{ url_for('admin.image_library') }}">Media Library</a>
-      <a href="{{ url_for('admin.help') }}">Help</a>
-      <a href="{{ url_for('public.home') }}" target="_blank">View Site ↗</a>
-      <a href="{{ url_for('auth.logout') }}">Log out</a>
-    </nav>
-  </header>
+  {#  The same bar the live page shows while signed in -- see the partial. #}
+  {% set bar_surface = 'admin' %}
+  {% include "partials/admin_bar.html" %}
   {% include "partials/assistant_panel.html" %}
   {% include "partials/cms_modal.html" %}
   {% endif %}

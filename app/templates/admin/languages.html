@@ -51,6 +51,9 @@
         <td>
           <span class="cms-lang-bar" aria-hidden="true"><span class="cms-lang-bar-fill" style="width: {{ (100 * l.done / l.total) if l.total else 0 }}%"></span></span>
           <span class="cms-lang-count">{{ l.done }} / {{ l.total }}</span>
+          {#  Filled by translate.js from the run's own report: the provider's
+              last words for this language. Empty and hidden until it has any. #}
+          <span class="cms-lang-error hint" hidden></span>
         </td>
         <td class="cms-lang-actions">
           <span class="cms-lang-tick icon-state" title="Fully translated"{{ '' if l.complete else ' hidden' | safe }}>✓</span>

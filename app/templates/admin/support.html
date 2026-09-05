@@ -1,0 +1,42 @@
+{% extends "admin/base.html" %}
+{% block title %}Support — My Site Admin{% endblock %}
+{% block content %}
+<h1>♥ Support gmsCms</h1>
+<p class="hint">gmsCms is free to use, on as many sites as you like, for as long as you like. It is built and kept up by one person. If it has been useful to you, this is where to say thanks.</p>
+
+<div class="card">
+  <h2>Say thanks</h2>
+  <p>Anything at all helps keep it going &mdash; the hosting this is tested on, the time the next fix takes. You are running <strong>{{ app_version.name }} {{ app_version.label }}</strong>.</p>
+  <p>
+    <a href="{{ paypal_url }}" class="btn btn-primary" target="_blank" rel="noopener noreferrer"
+       title="Opens PayPal in a new tab. Give whatever you think it is worth.">☕ Buy me a coffee</a>
+  </p>
+  <p class="hint">Opens PayPal in a new tab. Nothing about your site is sent anywhere &mdash; it is a plain link.</p>
+</div>
+
+<div class="card">
+  <h2>The line under your footer</h2>
+  <p>Every site built with gmsCms shows one small line under its footer &mdash; <em>&ldquo;Built with gmsCms, which is free to use. Site owners can remove this line by supporting the project.&rdquo;</em> &mdash; and that is the one thing it asks for. A supporter receives a key that removes it for the period their support covers; when the key runs out, the line comes back by itself.</p>
+
+  {% if license.valid %}
+  <p><strong>Removed.</strong> Your key runs until <strong>{{ license.until.strftime('%d %B %Y') }}</strong> ({{ license.days_left }} day{{ '' if license.days_left == 1 else 's' }} left). The line is not shown to visitors.</p>
+  <form method="post" action="{{ url_for('admin.support_key') }}" class="inline-form">
+    <input type="hidden" name="action" value="remove">
+    <button type="submit" class="btn" data-confirm="Remove the key? The line under your footer comes back straight away. You can enter the key again later." title="Take the key off this site. The line under your footer comes back straight away.">Remove the key</button>
+  </form>
+  {% else %}
+  {% if license.installed %}
+  <p class="flash flash-error">The key on this site has run out, so the line is showing again. A newer key removes it.</p>
+  {% else %}
+  <p>The line is currently <strong>showing</strong> on your site.</p>
+  {% endif %}
+  <form method="post" action="{{ url_for('admin.support_key') }}" class="inline-form">
+    <input type="hidden" name="action" value="apply">
+    <input type="text" name="key" placeholder="GMS-20270101-A1B2C3D4E5F60718" size="34" maxlength="40" autocomplete="off" spellcheck="false"
+           title="The supporter's key you received. Paste it exactly as it came; spaces at the ends are fine.">
+    <button type="submit" class="btn btn-primary" title="Check the key and, if it is genuine, remove the line under your footer until the day it covers.">Apply the key</button>
+  </form>
+  <p class="hint">Don't have one? Say thanks above and reply to the receipt with the site's address &mdash; a key comes back by email. The key is checked here, on your own server; nothing is sent anywhere to check it.</p>
+  {% endif %}
+</div>
+{% endblock %}

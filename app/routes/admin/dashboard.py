@@ -438,9 +438,11 @@ def theme_generator():
 
 def _spawn_translation_worker(langs):
     """Run the translate off the request, in a daemon thread with its own app
-    context and DB connection. Heartbeats through translate_site's per-string
-    progress so a stalled run is detectable; always clears the active flag on
-    the way out, success or failure, so the next run is never blocked."""
+    context and DB connection. translate_site's per-string progress is written
+    into the run state -- counts and the last reason a string failed -- which
+    doubles as the heartbeat that makes a stalled run detectable; always
+    clears the active flag on the way out, success or failure, so the next
+    run is never blocked."""
     app = current_app._get_current_object()
 
     def worker():
@@ -449,7 +451,7 @@ def _spawn_translation_worker(langs):
             try:
                 translation_mod.translate_site(
                     wdb, langs=langs,
-                    progress=lambda *_a: translation_mod.run_heartbeat(wdb),
+                    progress=lambda *a: translation_mod.note_progress(wdb, *a),
                     should_stop=lambda: translation_mod.cancel_requested(wdb))
             except Exception as e:  # noqa: BLE001 -- must never leave it flagged
                 translation_mod.finish_run(wdb, error=str(e)[:200])
@@ -470,6 +472,10 @@ def languages_status():
     return jsonify({
         "active": bool(st.get("active")),
         "error": st.get("error"),
+        #  Per language, what the run itself reported: its failure count and
+        #  the last reason. The counts above are the cache's; this is the
+        #  only place "why" survives.
+        "languages": st.get("languages") or {},
         "status": translation_mod.translation_status(db),
     })
 

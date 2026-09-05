@@ -22,6 +22,7 @@ Every provider call is normalized to/from one shape internally —
 so run_turn() below never needs to know which provider answered it.
 """
 import os
+import re
 import json
 import urllib.request
 import urllib.error
@@ -247,16 +248,70 @@ CHAT_TIMEOUT = 60
 GENERATE_TIMEOUT = 300
 
 
+#  What a provider's error body is allowed to say back to the owner.
+#
+#  This used to be the status alone -- "HTTP 400" -- on the grounds that a
+#  raw body can carry request detail. It cost a whole afternoon: a site
+#  translate failed every one of 13 strings with "HTTP 400" and nothing
+#  else, while the same key made a favicon fine, and there was no way to
+#  tell a rejected model name from a malformed request from a quota. The
+#  status is NOT enough to act on; the provider's own sentence is, and
+#  every provider this app speaks to puts one in `error.message`.
+#
+#  So the message is kept and the risk is handled by redaction rather than
+#  silence: anything shaped like a key (Gemini's travels in the URL, which
+#  an error body could echo) is blanked, and the whole thing is capped at
+#  a sentence or two.
+_ERROR_DETAIL_MAX = 240
+_SECRET_SHAPES = re.compile(
+    r"(?:(?:api[_-]?)?key|token|authorization)=[^&\s\"']+"  # ?key=... in an echoed URL
+    r"|AIza[0-9A-Za-z_\-]{20,}"                            # a Google API key on its own
+    r"|sk-[0-9A-Za-z_\-]{16,}",                            # an OpenAI-shaped key
+    re.IGNORECASE)
+
+
+def _error_detail(err):
+    """The provider's own explanation from an HTTPError, redacted and short.
+    JSON `{"error": {"message": ...}}` (Gemini, OpenAI, Open WebUI) or
+    `{"error": "..."}` (Ollama) is read for its message; anything else is a
+    trimmed snippet of the body; a body that cannot be read is ''."""
+    try:
+        raw = err.read().decode("utf-8", "replace")
+    except Exception:  # noqa: BLE001 -- a body we cannot read is just absent
+        return ""
+    detail = ""
+    try:
+        data = json.loads(raw)
+        e = data.get("error") if isinstance(data, dict) else None
+        if isinstance(e, dict):
+            detail = str(e.get("message") or e.get("status") or "")
+        elif isinstance(e, str):
+            detail = e
+        elif isinstance(data, dict) and data.get("message"):
+            detail = str(data["message"])
+    except (ValueError, TypeError, AttributeError):
+        detail = re.sub(r"<[^>]+>", " ", raw)  # an HTML error page: its words only
+    detail = re.sub(r"\s+", " ", detail).strip()
+    detail = _SECRET_SHAPES.sub("[redacted]", detail)
+    if len(detail) > _ERROR_DETAIL_MAX:
+        detail = detail[:_ERROR_DETAIL_MAX - 1].rstrip() + "…"
+    return detail
+
+
+def _http_error(err):
+    detail = _error_detail(err)
+    if detail:
+        return ProviderError(f"The AI provider returned an error (HTTP {err.code}): {detail}")
+    return ProviderError(f"The AI provider returned an error (HTTP {err.code}).")
+
+
 def _post_json(url, body, headers, timeout=CHAT_TIMEOUT):
     req = urllib.request.Request(url, data=json.dumps(body).encode(), method="POST", headers=headers)
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             return json.loads(resp.read().decode())
     except urllib.error.HTTPError as e:
-        # Never echo the raw response back up to a flash/UI surface — it can
-        # include request-context detail from the provider's own error
-        # formatting. Just the status is enough to act on.
-        raise ProviderError(f"The AI provider returned an error (HTTP {e.code}).")
+        raise _http_error(e)
     except TimeoutError:
         # A slow-to-respond model (large prompt, cold start, ...) raises a
         # bare TimeoutError on the response read, not urllib.error.URLError
@@ -274,7 +329,7 @@ def _get_json(url, headers, timeout=15):
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             return json.loads(resp.read().decode())
     except urllib.error.HTTPError as e:
-        raise ProviderError(f"The AI provider returned an error (HTTP {e.code}).")
+        raise _http_error(e)
     except TimeoutError:
         raise ProviderError("The AI provider took too long to respond.")
     except urllib.error.URLError:
@@ -482,6 +537,12 @@ def _call_gemini(settings, messages, tools, timeout=CHAT_TIMEOUT):
     data = _post_json(url, body, {"Content-Type": "application/json"}, timeout)
     candidates = data.get("candidates") or []
     if not candidates:
+        #  A 200 with no candidate is Gemini declining, and it says why in
+        #  promptFeedback -- a blocked prompt looks identical to "the model
+        #  had nothing to say" unless that reason is carried up.
+        reason = (data.get("promptFeedback") or {}).get("blockReason")
+        if reason:
+            raise ProviderError(f"Gemini refused the request ({reason}).")
         return {"content": None, "tool_calls": []}
     parts = candidates[0].get("content", {}).get("parts", [])
     text_parts, tool_calls = [], []
@@ -491,6 +552,12 @@ def _call_gemini(settings, messages, tools, timeout=CHAT_TIMEOUT):
         elif "functionCall" in part:
             fc = part["functionCall"]
             tool_calls.append({"id": f"gemini-{i}", "name": fc.get("name", ""), "arguments": fc.get("args", {})})
+    if not text_parts and not tool_calls:
+        #  Same again for an empty candidate: SAFETY, RECITATION and
+        #  MAX_TOKENS all arrive as a candidate with no parts.
+        finish = candidates[0].get("finishReason")
+        if finish and finish != "STOP":
+            raise ProviderError(f"Gemini returned no text (finish reason: {finish}).")
     return {"content": "\n".join(text_parts) if text_parts else None, "tool_calls": tool_calls}
 
 

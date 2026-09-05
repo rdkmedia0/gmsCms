@@ -1,0 +1,77 @@
+{#  ONE bar, on every screen the owner is signed in to.
+
+    There were two. The live page had a dark strip -- mode, page picker,
+    screen size, three links -- and the admin had a white header with a
+    brand and six links, so pressing Dashboard on the page changed the
+    whole top of the screen, and Media Library and Help existed on one
+    of them only. The same person is signed in on both; the way to
+    everything else should not depend on which side they are standing.
+
+    So this is included by BOTH shells (public/page.html and
+    admin/base.html), styled by ONE stylesheet (css/admin-bar.css), and
+    the only thing that differs is the left end: on the page it is the
+    page's own controls (what mode, which page, what screen size); in the
+    admin it is the way back to the Dashboard. `bar_surface` says which,
+    set by the including template. Everything after that is the same
+    links in the same order, and the version at the far end.
+
+    This is chrome -- the app talking -- so it wears the editor's own
+    face and never the site's. #}
+<div class="cms-admin-bar" role="navigation" aria-label="Site admin">
+  {% if bar_surface == 'site' %}
+    <span class="cms-admin-bar-state">{{ '✏️ Editing your site' if editing else '👁 Viewing as a visitor' }}</span>
+    <select class="cms-mode-select" onchange="location = this.value" title="Switch between editing and viewing the site as a visitor would see it">
+      <option value="{{ url_for('auth.set_view_mode', mode='editing', next=current_path) }}" {{ 'selected' if editing }}>✏️ Editing</option>
+      <option value="{{ url_for('auth.set_view_mode', mode='viewing', next=current_path) }}" {{ 'selected' if not editing }}>👁 Viewing</option>
+    </select>
+    {% if editing and nav_pages %}
+    {# The live nav's own links don't navigate while editing (see the
+       is_menu contenteditable note in page.html) — clicking one is how you
+       select/drag it, not how you leave the page. This is the way back:
+       a plain page picker that always works, regardless of what the
+       current theme's header layout is doing (collapsed behind a
+       hamburger, a sidebar rail, whatever). #}
+    <select class="cms-mode-select" onchange="if (this.value) location = this.value" title="Jump to another page to edit it">
+      <option value="">📄 Switch page…</option>
+      {% for p in nav_pages %}
+      <option value="{{ url_for('public.home') if p.is_home else url_for('public.page', slug=p.slug) }}" {{ 'selected' if p.id == page.id }}>{{ p.title }}</option>
+      {% endfor %}
+    </select>
+    {% endif %}
+    {#  ONE view control for both jobs. It sets the screen size you are
+        looking at: while EDITING it narrows the canvas so you edit that
+        view in place (Mobile keeps its own edits as cms-sm-* over the
+        Desktop base); while VIEWING it opens the page in an honest device
+        frame of that width, where media queries fire exactly as on a real
+        device (a narrowed box would lie -- see view-frame.js). The choice
+        persists in the session, so switching Editing->Viewing shows the
+        very view you were editing. #}
+    <select class="cms-mode-select" onchange="if (this.value) location = this.value"
+            title="The screen size you're looking at. It applies while editing and, when you switch to Viewing, shows the page at that size. Mobile keeps its own edits on top of Desktop.">
+      <option value="{{ url_for('auth.set_preview_view', view='desktop', next=current_path) }}" {{ 'selected' if preview_view == 'desktop' }}>🖥 Desktop</option>
+      <option value="{{ url_for('auth.set_preview_view', view='laptop', next=current_path) }}" {{ 'selected' if preview_view == 'laptop' }}>💻 Laptop</option>
+      <option value="{{ url_for('auth.set_preview_view', view='tablet', next=current_path) }}" {{ 'selected' if preview_view == 'tablet' }}>📲 Tablet</option>
+      <option value="{{ url_for('auth.set_preview_view', view='mobile', next=current_path) }}" {{ 'selected' if preview_view == 'mobile' }}>📱 Mobile</option>
+    </select>
+  {% else %}
+    {#  The site's own name, not a fixed one. Somebody who has just told
+        this app their business is called Ridgeway Bakehouse should not
+        then be looking at a bar that says "My Site". #}
+    <a class="cms-admin-bar-brand" href="{{ url_for('admin.dashboard') }}" title="Back to the Dashboard">🛠️ {{ site_settings.site_title or 'My Site' }} &mdash; Admin</a>
+  {% endif %}
+  <nav class="cms-admin-bar-links" aria-label="Admin screens">
+    <a href="{{ url_for('admin.dashboard') }}" title="The Dashboard: your site's name, address and favicon, and the way to every other screen">Dashboard</a>
+    <a href="{{ url_for('auth.account') }}" title="Your password, sign-in method and who else can sign in">Account</a>
+    <a href="{{ url_for('admin.image_library') }}" title="Every picture and file on this site, yours and your template's">Media Library</a>
+    <a href="{{ url_for('admin.help') }}" title="How this site's editor works, all on one page">Help</a>
+    <a href="{{ url_for('admin.support_screen') }}" class="cms-admin-bar-support" title="gmsCms is free. If it has been useful, this is where to say thanks — and where a supporter's key removes the line under your site's footer.">♥ Support</a>
+    {% if bar_surface != 'site' %}
+    <a href="{{ url_for('public.home') }}" title="Open your site. Signed in, you can edit it right on the page.">View Site</a>
+    {% endif %}
+    <a href="{{ url_for('auth.logout') }}" title="Sign out of the editor">Log out</a>
+  </nav>
+  {#  Which build this is, so "is it updated?" is answered by looking.
+      The number is the VERSION file; the bracket is the commit the
+      published image was built from (absent on a local build). #}
+  <span class="cms-admin-bar-version" title="{{ app_version.name }} {{ app_version.label }} — the version of the software this site runs on{{ ', built from commit ' ~ app_version.build if app_version.build }}">{{ app_version.label }}</span>
+</div>

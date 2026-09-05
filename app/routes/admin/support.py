@@ -1,0 +1,39 @@
+"""The Support screen: where to say thanks, and the supporter's key that
+removes the credit line under the site's footer. The logic is in
+services/support.py; this only asks and answers."""
+from flask import request, flash, redirect, url_for, render_template
+
+from . import bp
+from ..auth import login_required
+from ...services import support
+from ... import version
+
+
+@bp.route("/support")
+@login_required
+def support_screen():
+    return render_template("admin/support.html",
+                           paypal_url=support.PAYPAL_URL,
+                           license=support.state(),
+                           app_version=version.info())
+
+
+@bp.route("/support/key", methods=["POST"])
+@login_required
+def support_key():
+    """Apply or remove a supporter's key. Back to the same screen either
+    way -- the answer belongs where the question was asked."""
+    action = request.form.get("action", "apply")
+    if action == "remove":
+        if support.remove():
+            flash("The key is removed. The line under your footer is back.", "success")
+        else:
+            flash("There was no key to remove.", "success")
+    else:
+        try:
+            until = support.install_key(request.form.get("key", ""))
+        except ValueError as e:
+            flash(str(e), "error")
+        else:
+            flash(f"Thank you. The line under your footer is gone until {until:%d %B %Y}.", "success")
+    return redirect(url_for("admin.support_screen"))

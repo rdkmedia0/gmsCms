@@ -35,7 +35,8 @@
   }
   function applyStatus(data) {
     var langs = (data.status && data.status.languages) || [];
-    var totalDone = 0, total = 0;
+    var reported = data.languages || {};  // what the run itself said, per language
+    var totalDone = 0, total = 0, lastError = null;
     langs.forEach(function (l) {
       totalDone += l.done; total += l.total;
       var row = table.querySelector('tr[data-lang="' + l.code + '"]');
@@ -50,8 +51,16 @@
       var btn = row.querySelector(".cms-translate-one");
       if (btn) btn.textContent = l.complete ? "Re-translate" : (l.done > 0 ? "Retry" : "Translate");
       row.classList.toggle("cms-lang-failed", !l.complete && l.total > 0 && l.done < l.total);
+      //  The reason, on the row it belongs to. "0 / 13" says a language
+      //  did not translate; the provider's own sentence says why, and it
+      //  is the only thing on this screen somebody can act on.
+      var rep = reported[l.code] || {};
+      var why = (!l.complete && rep.failed && rep.last_error) ? rep.last_error : "";
+      var note = row.querySelector(".cms-lang-error");
+      if (note) { note.hidden = !why; note.textContent = why ? "Last attempt failed: " + why : ""; }
+      if (why && !lastError) lastError = why;
     });
-    return { active: data.active, error: data.error, totalDone: totalDone, total: total };
+    return { active: data.active, error: data.error, lastError: lastError, totalDone: totalDone, total: total };
   }
   function poll() {
     fetch(statusUrl, { headers: { "X-Requested-With": "cms-translate" }, credentials: "same-origin" })
@@ -70,6 +79,9 @@
           polling = false;
           if (s.error) say("Stopped: " + s.error + " — press Translate to continue.");
           else if (s.total && s.totalDone >= s.total) say("All languages fully translated.");
+          else if (s.total && s.lastError) say("Stopped at " + s.totalDone + " / " + s.total
+            + " — the AI provider said: " + s.lastError
+            + " Fix that under Site settings → AI, then press Translate again.");
           else if (s.total) say("Paused at " + s.totalDone + " / " + s.total
             + " — press Retry on any unfinished language, or Translate to continue.");
           else say("");
@@ -125,6 +137,13 @@
   //  resume reporting if so -- the run itself never stopped.
   fetch(statusUrl, { headers: { "X-Requested-With": "cms-translate" }, credentials: "same-origin" })
     .then(function (r) { return r.json(); })
-    .then(function (data) { if (applyStatus(data).active) startPolling(); })
+    .then(function (data) {
+      var s = applyStatus(data);
+      if (s.active) startPolling();
+      //  A run that ended before this page was opened still has a reason
+      //  to show: the last one it recorded, until the next run replaces it.
+      else if (s.lastError && s.total && s.totalDone < s.total) say("Last run stopped at " + s.totalDone + " / " + s.total
+        + " — the AI provider said: " + s.lastError);
+    })
     .catch(function () {});
 })();

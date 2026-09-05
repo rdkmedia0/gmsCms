@@ -123,7 +123,7 @@ TOOL_CATEGORY_BY_NAME = {
     "Divider": "layout", "Card": "layout", "Banner": "layout",
     "Table (Data)": "layout", "Embed": "layout",
     "Menu": "navigation", "Breadcrumb": "navigation", "Search": "navigation",
-    "Site name": "navigation",
+    "Site name": "navigation", "Version": "navigation",
     "Pricing": "sections", "Testimonial": "sections", "Numbers": "sections",
     "Logo row": "sections", "The team": "sections", "Timeline": "sections",
     "Call to action": "sections", "Blog": "sections",
@@ -157,6 +157,10 @@ DEFAULT_TOOLS = [
     #  The site's own name, wherever somebody wants it -- usually the
     #  header, which is the one zone that could not show it.
     ("Site name", "🔤", "html", "wordmark"),
+    #  Which gmsCms this site runs on, for an owner who wants it on the
+    #  page (a footer, usually). Optional like every tool; filled in at
+    #  render from app/version.py, so it can never go stale.
+    ("Version", "🏷️", "html", "version"),
     ("Banner", "🏞️", "banner", None),
     ("Card", "🃏", "card", None),
     #  Writing questions and showing them are different jobs with

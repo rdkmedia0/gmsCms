@@ -73,40 +73,9 @@
     use, so applying it changes nothing on screen and closes the path. */
 :root { --cms-ui-text: #111827; }
 
-/* The admin bar is fixed-position and shows in both Editing and Viewing
-   mode (anything logged_in) — so the top-padding compensation must key off
-   the same condition, not just "editing", or Viewing mode's page content
-   starts underneath the bar instead of below it. */
-/*  No reservation needed: the bar is in the flow (see above). */
-body.cms-logged-in { padding-top: 0; }
-
-/* Fixed-height single line, always — this bar's height is what body's
-   padding-top compensates for (see the rule above). Letting its contents
-   wrap onto extra lines at narrow widths would silently grow the bar
-   taller than that padding accounts for, so real page content (including
-   a "minimal" header's own ☰ toggle, positioned right under it) ends up
-   hidden underneath. Overflow scrolls horizontally instead of wrapping. */
-.cms-admin-bar {
-  /*  Sticky, not fixed. Fixed needs the body to reserve exactly the
-      bar's height, and that was a hard-coded 40px against a bar 47px
-      tall -- so 7px of every page has always sat underneath it -- and on
-      a phone the bar wraps to a height no constant can know. Sticky
-      takes its own space and stays visible while scrolling, which is
-      what was wanted from fixed in the first place. */
-  position: sticky; top: 0; z-index: 1000;
-  background: #1f2430; color: #fff;
-  display: flex; align-items: center; gap: 20px; flex-wrap: nowrap;
-  overflow-x: auto; white-space: nowrap;
-  padding: 10px 20px; font-size: 14px; font-family: var(--cms-ui-font);
-}
-.cms-admin-bar a { color: #93c5fd; text-decoration: none; font-weight: 600; flex: 0 0 auto; }
-.cms-admin-bar a:hover { text-decoration: underline; }
-.cms-admin-bar span { font-weight: 700; margin-right: auto; flex: 0 0 auto; }
-.cms-admin-bar select { flex: 0 0 auto; }
-.cms-mode-select {
-  background: #333a48; color: #fff; border: 1px solid #4b5563; border-radius: var(--cms-ui-radius-control);
-  padding: 4px 8px; font-size: 13px; font-weight: 600; cursor: pointer;
-}
+/*  The admin bar (.cms-admin-bar, .cms-mode-select) is in admin-bar.css
+    now: it is the same strip on the admin screens, which do not load this
+    file, and one bar with two stylesheets is two bars. */
 
 /* Section hover/edit affordances — scoped to .cms-editing so "Viewing" mode
    (still logged in, but not editing) renders exactly like a real visitor
@@ -1280,39 +1249,7 @@ html:has(.cms-dock-panel), body:has(.cms-dock-panel) { overflow-x: clip; }
 /*  Nothing behind it should scroll while it is open. */
 body.cms-preview-open { overflow: hidden; }
 
-/*  The admin bar on a phone.
-    ------------------------------------------------------------------
-    It is a single nowrap row that scrolls sideways. Measured at 390px it
-    held 869px of controls, so five of its seven -- including the mode
-    switch, the page picker and Preview at… -- were simply off the right
-    edge, and a sideways scroll inside a fixed 47px strip is not something
-    anybody finds. The reported symptom was "I don't see the preview
-    dropdown"; it was there and unreachable.
-
-    It wraps here instead. Two or three short rows is worth more than one
-    row you cannot see the end of, and the page content already starts
-    below whatever height this ends up being. */
-/*  900, not 760: the bar's own controls measure about 869px, so a
-    tablet at 768 was still losing two of them off the right. The
-    breakpoint is the content's width, not a device's. */
-@media (max-width: 900px) {
-  .cms-admin-bar {
-    flex-wrap: wrap;
-    white-space: normal;
-    overflow-x: visible;
-    gap: 8px 14px;
-    padding: 8px 12px;
-  }
-  /*  The "Editing your site" label is the one thing that can be read from
-      the state of everything else, so it gives up its room first. */
-  .cms-admin-bar > span:first-child { flex: 1 1 100%; }
-  .cms-admin-bar select { max-width: 46vw; }
-  /*  Sticky rather than fixed, so it occupies its own space and the page
-      follows it. Fixed needs the body to reserve exactly its height, and
-      that height now depends on how many rows the controls wrap to --
-      a number no padding value can know. Sticky keeps it visible while
-      scrolling and needs nobody to guess. */
-}
+/*  The admin bar's phone layout moved to admin-bar.css with the rest of it. */
 
 /*  A tile for something with no thumbnail -- a video, an audio file, a
     PDF. Chosen by name, because that is the only thing that tells two

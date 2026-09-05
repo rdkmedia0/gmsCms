@@ -38,6 +38,7 @@ import re
 import json
 import time
 import hashlib
+import threading
 
 # ---------------------------------------------------------------------------
 # The closed set of offerable languages. (code, English name, native name,
@@ -115,7 +116,7 @@ _STRUCTURED_TYPE = "columns"
 #  translated, whatever its type -- so a new tool or design needs no change
 #  here to be covered.
 _MARKER_RE = re.compile(
-    r'cms-(menu|breadcrumb|wordmark|blog|search|contact-form|faq-reader|'
+    r'cms-(menu|breadcrumb|wordmark|version|blog|search|contact-form|faq-reader|'
     r'lang-switcher|video-gallery|image-accordion|shop|buy-button|basket)\b')
 _HAS_LETTERS = re.compile(r'[^\W\d_]', re.UNICODE)
 
@@ -322,6 +323,29 @@ class TranslationError(Exception):
     pass
 
 
+#  The last thing the PROVIDER said, per thread.
+#
+#  A string's translation is several calls deep -- whole, then batched,
+#  then one segment at a time -- and each layer swallows the layer below's
+#  failure to try the next way. That is right for the RESULT (the worst
+#  case is untranslated words, never a broken layout) and wrong for the
+#  REASON: by the time _translate_via_ai gives up, the provider's "API key
+#  not valid" or "model not found" has been thrown away three times and
+#  what reaches the screen is "returned nothing for any part", which is
+#  true and useless. So every provider failure is noted here as it
+#  happens, and the outermost error carries the innermost message. Thread-
+#  local because the background run and a request can translate at once.
+_last = threading.local()
+
+
+def _note_failure(msg):
+    _last.error = (msg or "").strip() or None
+
+
+def last_provider_error():
+    return getattr(_last, "error", None)
+
+
 #  A self-hosted model handed several KB of markup at once returns NOTHING
 #  -- no error, an empty reply after a long pause (measured: fine to ~800
 #  chars, empty by ~3000, on the model this install had). We still TRY the
@@ -351,11 +375,13 @@ def _translate_call(db, text, lang):
             db, [{"role": "user", "content": prompt}], [],
             want_json=False, timeout=getattr(assistant, "GENERATE_TIMEOUT", 240))
     except Exception as e:  # ProviderError and anything the wire throws
+        _note_failure(str(e))
         raise TranslationError(str(e))
     out = (result.get("content") if result else "") or ""
     out = re.sub(r"^```(?:html)?", "", out.strip()).strip()
     out = re.sub(r"```$", "", out).strip()
     if not out:
+        _note_failure("The AI provider returned nothing.")
         raise TranslationError("The AI provider returned nothing.")
     return out
 
@@ -431,9 +457,11 @@ def _translate_batch(db, segments, lang):
             db, [{"role": "user", "content": prompt}], [],
             want_json=False, timeout=getattr(assistant, "GENERATE_TIMEOUT", 240))
     except Exception as e:  # ProviderError and anything the wire throws
+        _note_failure(str(e))
         raise TranslationError(str(e))
     out = (result.get("content") if result else "") or ""
     if not out.strip():
+        _note_failure("The AI provider returned nothing.")
         raise TranslationError("The AI provider returned nothing.")
     by_num = {}
     for line in out.splitlines():
@@ -487,8 +515,10 @@ def _translate_via_ai(db, text, lang):
     never sees a tag that way, so it cannot drop, reorder or invent one; the
     work is a handful of calls, not one per word; and any segment that fails
     keeps its source, so the worst case is some untranslated words, never
-    missing text or a broken layout. Only an all-empty result raises."""
+    missing text or a broken layout. Only an all-empty result raises -- and
+    it raises with the PROVIDER's last words, not this function's."""
     text = text or ""
+    _note_failure(None)
     if len(text) <= _CHUNK_LIMIT:
         try:
             whole = _translate_call(db, text, lang)
@@ -522,7 +552,8 @@ def _translate_via_ai(db, text, lang):
         node.replace_with(NavigableString(lead + tr + trail))
         any_ok = True
     if not any_ok:
-        raise TranslationError("The AI provider returned nothing for any part.")
+        raise TranslationError(last_provider_error()
+                               or "The AI provider returned nothing for any part.")
     return str(soup)
 
 
@@ -615,10 +646,15 @@ def translate_site(db, langs=None, progress=None, should_stop=None):
     strings = _site_strings(db)
     summary = {"total": len(strings), "languages": {}}
     for lang in langs:
-        made, failed, skipped = 0, 0, 0
+        made, failed, skipped, last_error = 0, 0, 0, None
+
+        def counts():
+            return {"made": made, "failed": failed, "skipped": skipped,
+                    "last_error": last_error}
+
         for text in strings:
             if should_stop and should_stop():
-                summary["languages"][lang] = {"made": made, "failed": failed, "skipped": skipped}
+                summary["languages"][lang] = counts()
                 summary["cancelled"] = True
                 return summary
             if cached(db, text, lang) is not None:
@@ -626,15 +662,21 @@ def translate_site(db, langs=None, progress=None, should_stop=None):
                 continue
             try:
                 out = _translate_via_ai(db, text, lang)
-            except TranslationError:
+            except TranslationError as e:
+                #  Counted AND remembered: a run that fails thirteen times
+                #  with the reason dropped each time reads as "Paused at
+                #  0 / 13" and nothing else -- see the Languages screen.
                 failed += 1
-                continue
-            _store(db, text, lang, out)
-            db.commit()
-            made += 1
+                last_error = str(e)[:300] or last_error
+            else:
+                _store(db, text, lang, out)
+                db.commit()
+                made += 1
             if progress:
-                progress(lang, made, failed, skipped, len(strings))
-        summary["languages"][lang] = {"made": made, "failed": failed, "skipped": skipped}
+                #  On a failure too: a run that only reports successes
+                #  never heartbeats while everything is failing.
+                progress(lang, made, failed, skipped, len(strings), last_error)
+        summary["languages"][lang] = counts()
     return summary
 
 
@@ -689,7 +731,7 @@ def claim_translation_run(db, langs):
         return False
     now = time.time()
     _write_run_state(db, {"active": True, "started": now, "heartbeat": now,
-                          "langs": list(langs), "error": None})
+                          "langs": list(langs), "error": None, "languages": {}})
     return True
 
 
@@ -698,6 +740,22 @@ def run_heartbeat(db):
     if st.get("active"):
         st["heartbeat"] = time.time()
         _write_run_state(db, st)
+
+
+def note_progress(db, lang, made, failed, skipped, total, last_error=None):
+    """What translate_site reports after every string, written into the run
+    state: the counts for that language and the LAST reason a string failed.
+    The counts the screen shows still come from the cache (the true number);
+    this is where the reason lives, because the cache cannot say why a
+    string is not in it. Also the heartbeat."""
+    st = run_state(db)
+    if not st.get("active"):
+        return
+    st["heartbeat"] = time.time()
+    langs = st.setdefault("languages", {})
+    langs[lang] = {"made": made, "failed": failed, "skipped": skipped,
+                   "total": total, "last_error": last_error}
+    _write_run_state(db, st)
 
 
 def request_cancel(db):

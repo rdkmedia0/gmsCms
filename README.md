@@ -301,6 +301,25 @@ git pull && docker compose up -d --build
 Your data lives in the mounted directories, not in the image. Migrations
 run at boot. Take a backup first anyway.
 
+**Which version is running?** The bar at the top of every signed-in
+screen ends with it — `v0.9.0 (53e3520)`, the number from the `VERSION`
+file and, for a published image, the commit it was built from. Compare
+it with the latest commit on `main` to know whether a pull is due.
+
+---
+
+## The line under the footer
+
+gmsCms is free. Every site it builds shows one small line under its
+footer — *"Built with gmsCms, which is free to use. Site owners can
+remove this line by supporting the project."* — and that is the one
+thing it asks for. **Admin → ♥ Support** has the link to say thanks and
+a box for the supporter's key that removes the line for the period the
+support covers. The key is checked on your own server (`data/
+license.json`, beside the database, so it survives an upgrade); nothing
+is sent anywhere. When the key runs out the line comes back by itself.
+The same screen removes a key again.
+
 ---
 
 ## Is it running?

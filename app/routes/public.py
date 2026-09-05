@@ -9,6 +9,8 @@ from ..db import get_db, TOOL_CATEGORIES
 from .. import assistant
 from .. import mailer
 from .. import icons
+from .. import version as _version
+from ..services import support
 from ..services.sections import (
     MEDIA_IMAGE_EXTS,
     SECTION_TYPES,
@@ -1086,6 +1088,13 @@ def inject_site_settings():
 
 
 @bp.context_processor
+def inject_support_notice():
+    #  The line under the footer saying gmsCms is free -- None once the
+    #  owner has entered a supporter's key. See services/support.py.
+    return {"support_notice": support.notice()}
+
+
+@bp.context_processor
 def inject_nav_layout():
     return {"nav_layout": get_nav_layout(get_db())}
 
@@ -1260,6 +1269,9 @@ def _apply_placeholders(html_text, nav_html, breadcrumb_html="", site_title=""):
                                   html_escape(site_title or SITE_TITLE))
     html_text = html_text.replace("%" + "%CMS_SITE_TAGLINE%" + "%",
                                   html_escape(_live_site_tagline()))
+    #  The Version tool. Read from the running software, never stored.
+    html_text = html_text.replace("%" + "%CMS_VERSION%" + "%",
+                                  html_escape(_version.NAME + " " + _version.label()))
     html_text = html_text.replace("%%CMS_NAV%%", nav_html)
     html_text = html_text.replace("%%CMS_BREADCRUMB%%", breadcrumb_html)
     return html_text
@@ -1530,6 +1542,7 @@ _BLOCK_LABEL_MARKERS = tuple(
 HTML_SECTION_LABEL_MARKERS = _BLOCK_LABEL_MARKERS + (
     #  The site's own name, wherever somebody has put it.
     ("cms-wordmark", "Site name"),
+    ("cms-version", "Version"),
     #  cms-buy-style-, not cms-buy: the shorter string is a substring of
     #  cms-buy-btn, which other tools' markup carried -- an Email sign-up
     #  rendered one, and pages saved before that was fixed still do. It
@@ -1641,6 +1654,7 @@ def _heading_fields(d):
         #  the parity check flagged. A wordmark is identity, not a place
         #  for a heading, in either container.
         and "cms-wordmark" not in (d.get("content") or "")
+        and "cms-version" not in (d.get("content") or "")
         and not d.get("is_lang_switcher") and not d.get("is_basket"))
     d["title_level_r"] = heading_level_of(d.get("title_level"))
     d["title_align_r"] = heading_align_of(d.get("title_align"))
@@ -1699,6 +1713,8 @@ def _normalize_column_cell(cell, nav_html="", breadcrumb_html=""):
         d["youtube_id"] = _youtube_id(d.get("content", ""))
     if d["type"] == "html" and "cms-wordmark" in d["content"]:
         d["is_wordmark"] = True
+    if d["type"] == "html" and "cms-version" in d["content"]:
+        d["is_version"] = True
     if d["type"] == "html" and "cms-menu" in d["content"]:
         d["is_menu"] = True
         (d["menu_items"], d["menu_style"], d["menu_size"], d["menu_align"], d["menu_highlight_current"],
@@ -1837,6 +1853,8 @@ def _prepare_sections(sections, section_type_labels=None, nav_html="", breadcrum
              d["menu_submenu_style"], d["menu_direction"]) = _parse_menu_meta(d["content"])
         if d["type"] == "html" and "cms-breadcrumb" in (d["content"] or ""):
             d["is_breadcrumb"] = True
+        if d["type"] == "html" and "cms-version" in (d["content"] or ""):
+            d["is_version"] = True
         if d["type"] == "html" and "cms-lang-switcher" in (d["content"] or ""):
             d["is_lang_switcher"] = True
             d["ls_opts"] = read_lang_switcher_opts(d["content"] or "")

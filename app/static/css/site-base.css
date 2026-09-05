@@ -2913,6 +2913,25 @@ body.cms-logged-in .cms-basket-link.cms-basket-align-float-top { top: 60px; }
   font-size: 13px; opacity: .72; letter-spacing: 0;
 }
 
+/*  The Version tool: "gmsCms v0.9.0", filled in at render. Content, and
+    small print -- it takes the site's face and ink and sits a step
+    quieter than the text around it. */
+.cms-version {
+  display: inline-block; font-family: var(--site-font-family, inherit);
+  font-size: 12px; opacity: .7; letter-spacing: .02em; font-variant-numeric: tabular-nums;
+}
+
+/*  The one line gmsCms puts on a site it built, under the footer, until
+    the owner supports the project (see partials in page.html and
+    services/support.py). The footer's own ink, a step quieter, and the
+    link takes that ink too rather than the theme's link colour: it is a
+    credit, not a call. */
+.cms-support-notice {
+  margin: 18px 0 0; font-size: 12px; opacity: .7; text-align: center;
+  font-family: var(--site-font-family, inherit);
+}
+.cms-support-notice a { color: inherit; text-decoration: underline; }
+
 
 /*  A PORTRAIT ON A BANNER.
     ---------------------

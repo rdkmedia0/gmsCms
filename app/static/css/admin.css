@@ -64,28 +64,10 @@ body {
   line-height: 1.5;
 }
 
-.admin-header {
-  background: var(--card-bg);
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px 24px;
-}
-.admin-header .brand {
-  font-family: var(--site-heading-font-family);
-  font-weight: var(--site-heading-weight);
-  font-size: var(--site-brand-size);
-  text-decoration: none;
-  color: var(--text);
-}
-.admin-header nav a {
-  margin-left: 20px;
-  text-decoration: none;
-  color: var(--cms-ui-accent);
-  font-weight: var(--site-nav-weight);
-  font-size: var(--site-nav-size);
-}
+/*  The bar at the top is partials/admin_bar.html, styled by admin-bar.css
+    -- the SAME bar the live page shows while signed in. The admin used to
+    have a white header of its own with a different set of links, so
+    pressing Dashboard on the page changed the whole top of the screen. */
 
 .admin-main { max-width: 900px; margin: 0 auto; padding: 24px; }
 
