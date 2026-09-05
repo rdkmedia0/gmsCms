@@ -31,10 +31,12 @@ def _sig(nonce):
                     hashlib.sha256).hexdigest()[:16].upper()
 
 
-def make_key():
-    """A fresh key. Each one is different, so a supporter with two sites
-    gets two keys and each is its own."""
-    nonce = secrets.token_hex(4).upper()
+def make_key(nonce=None):
+    """A key. With no nonce it is fresh and random (a person issuing keys
+    by hand gets a different one each time); with a nonce it is
+    deterministic, so the same source -- e.g. one blockchain payment --
+    always yields the same key rather than a new one on every retry."""
+    nonce = (nonce or secrets.token_hex(4)).upper()[:8].rjust(8, "0")
     return f"GMS-{nonce}-{_sig(nonce)}"
 
 

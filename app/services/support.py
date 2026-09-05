@@ -29,7 +29,11 @@ applies a key can take it off again, and that is the whole mechanism.
 """
 import os
 import json
+import time
+import hashlib
 import datetime
+import urllib.request
+import urllib.error
 
 from ..db import DATA_DIR
 from .support_key import make_key, parse_key  # noqa: F401 -- re-exported
@@ -195,3 +199,178 @@ def remove():
     except FileNotFoundError:
         return False
     return True
+
+
+# --- Claim a key with a payment ------------------------------------------
+#
+#  A supporter who has paid pastes their transaction id, and the app
+#  checks it against the project's hard-coded addresses on a public block
+#  explorer -- confirmed, and paid to us -- then issues the key itself and
+#  removes the line. No email, no central server, instant.
+#
+#  This runs on the OWNER's own install and the app already carries the
+#  key-signing code, so on-chain verification is a courtesy gate, not
+#  protection: it asks somebody to have paid before it hands them the
+#  key it could always have made. That is the same footing the whole
+#  scheme stands on (the footer line is not enforced either).
+#
+#  What is checked: a NATIVE-coin payment (BTC, or ETH/POL on Ethereum,
+#  Base or Polygon) whose output/`to` is our address. A token transfer
+#  (USDC and the like) calls a contract rather than paying our address
+#  directly, so it does not validate here and falls back to the email
+#  steps -- said as much on the screen.
+
+CLAIMS_PATH = os.path.join(DATA_DIR, "support_claims.json")
+_HTTP_TIMEOUT = 8
+
+#  Public, keyless endpoints. Each chain lists more than one so a single
+#  explorer being down or rate-limiting is not the whole feature failing.
+_BTC_APIS = ("https://mempool.space/api", "https://blockstream.info/api")
+_EVM_CHAINS = (
+    ("Ethereum", ("https://ethereum-rpc.publicnode.com", "https://cloudflare-eth.com")),
+    ("Base", ("https://base-rpc.publicnode.com", "https://mainnet.base.org")),
+    ("Polygon", ("https://polygon-bor-rpc.publicnode.com", "https://polygon-rpc.com")),
+)
+
+
+def _addr_for(symbol):
+    for w in CRYPTO_WALLETS:
+        if w["symbol"] == symbol:
+            return (w.get("address") or "").strip()
+    return ""
+
+
+def _get_json(url):
+    req = urllib.request.Request(url, headers={"Accept": "application/json",
+                                               "User-Agent": "gmsCms-support"})
+    with urllib.request.urlopen(req, timeout=_HTTP_TIMEOUT) as resp:
+        return json.loads(resp.read().decode())
+
+
+def _rpc(url, method, params):
+    body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": method, "params": params}).encode()
+    req = urllib.request.Request(url, data=body, method="POST",
+                                 headers={"Content-Type": "application/json",
+                                          "User-Agent": "gmsCms-support"})
+    with urllib.request.urlopen(req, timeout=_HTTP_TIMEOUT) as resp:
+        return json.loads(resp.read().decode()).get("result")
+
+
+def _looks_like_evm(txid):
+    return txid.startswith("0x") and len(txid) == 66
+
+
+def _verify_btc(txid):
+    """(ok, detail). Confirmed, and an output pays our BTC address."""
+    ours = _addr_for("BTC")
+    if not ours:
+        return False, ""
+    for base in _BTC_APIS:
+        try:
+            tx = _get_json("%s/tx/%s" % (base, txid))
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                return False, "No Bitcoin transaction with that id was found. Check you copied all of it."
+            continue
+        except Exception:  # noqa: BLE001 -- try the next explorer
+            continue
+        if not (tx.get("status") or {}).get("confirmed"):
+            return False, "That transaction hasn't confirmed yet. Try again once it has a confirmation."
+        paid = any(o.get("scriptpubkey_address") == ours for o in tx.get("vout") or [])
+        if paid:
+            return True, "Bitcoin"
+        return False, "That transaction didn't pay this site's Bitcoin address."
+    return False, ""  # no explorer answered -- caller reports a soft failure
+
+
+def _verify_evm(txid):
+    """(ok, detail). A confirmed native-coin transfer to our address on any
+    of the EVM chains we watch."""
+    ours = _addr_for("ETH").lower()
+    if not ours:
+        return False, ""
+    reached = False        # at least one RPC answered us
+    seen_anywhere = False   # the tx exists on some chain
+    for name, urls in _EVM_CHAINS:
+        for url in urls:
+            try:
+                tx = _rpc(url, "eth_getTransactionByHash", [txid])
+            except Exception:  # noqa: BLE001
+                continue
+            reached = True
+            if not tx:
+                break  # this chain answered "no such tx"; try the next chain
+            seen_anywhere = True
+            to = (tx.get("to") or "").lower()
+            value = int(tx.get("value") or "0x0", 16)
+            if to != ours:
+                break  # found, but not a native payment to us (maybe a token) -> next chain
+            try:
+                receipt = _rpc(url, "eth_getTransactionReceipt", [txid])
+            except Exception:  # noqa: BLE001
+                receipt = None
+            if not receipt or not receipt.get("blockNumber"):
+                return False, "That transaction hasn't confirmed yet. Try again in a moment."
+            if receipt.get("status") not in ("0x1", None):
+                return False, "That transaction failed on-chain, so nothing was received."
+            if value <= 0:
+                return False, "That looks like a token transfer — those can't be checked here. Use the email steps below."
+            return True, name
+    if seen_anywhere:
+        return False, "That transaction didn't pay this site's Ethereum address. A token transfer? Use the email steps below."
+    if reached:
+        return False, "No transaction with that id was found on Ethereum, Base or Polygon. Check you copied all of it."
+    return False, ""
+
+
+def verify_payment(txid):
+    """(ok, detail). detail is the chain name on success, or a sentence to
+    show the owner on failure. An empty detail means no explorer could be
+    reached -- a soft failure the screen frames as 'try again'."""
+    txid = (txid or "").strip().split()[0] if (txid or "").strip() else ""
+    if not txid:
+        return False, "Paste the transaction id first."
+    if _looks_like_evm(txid):
+        return _verify_evm(txid)
+    #  A bare 64-hex string is a Bitcoin txid (with or without an 0x the
+    #  EVM branch already took).
+    if len(txid) == 64 and all(c in "0123456789abcdefABCDEF" for c in txid):
+        return _verify_btc(txid.lower())
+    return False, "That doesn't look like a transaction id. Copy it from your wallet or Coinbase — a long string of letters and numbers."
+
+
+def _claims():
+    try:
+        with open(CLAIMS_PATH, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def claim_with_txid(txid):
+    """Verify a payment and, if it is good, issue the key for it and remove
+    the line. Returns (ok, message). The key is derived from the txid, so
+    the same payment always produces the same key and a re-submit is
+    harmless. Each txid is written down so it reads as one payment, one
+    key."""
+    txid = (txid or "").strip()
+    key_id = txid.lower().split()[0] if txid.split() else ""
+    claims = _claims()
+    if key_id and key_id in claims and state()["valid"]:
+        return True, "This payment has already unlocked your site — you're all set."
+    ok, detail = verify_payment(txid)
+    if not ok:
+        if not detail:
+            return False, "Couldn't reach a block explorer just now. Wait a moment and try again, or use the email steps below."
+        return False, detail
+    nonce = hashlib.sha256(("gmscms-tx:" + key_id).encode()).hexdigest()[:8]
+    install_key(make_key(nonce))
+    claims[key_id] = {"chain": detail, "at": datetime.datetime.utcnow().isoformat(timespec="seconds") + "Z"}
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        with open(CLAIMS_PATH, "w", encoding="utf-8") as f:
+            json.dump(claims, f, indent=2)
+    except OSError:
+        pass  # the key is installed; failing to note the txid is not worth undoing that
+    return True, "Payment confirmed on %s. Your key is applied and the line under your footer is gone. Thank you!" % detail

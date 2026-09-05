@@ -39,3 +39,15 @@ def support_key():
         else:
             flash("Thank you. The line under your footer is gone.", "success")
     return redirect(url_for("admin.support_screen"))
+
+
+@bp.route("/support/claim", methods=["POST"])
+@login_required
+def support_claim():
+    """Claim a key with a crypto transaction id: verify it on-chain against
+    the project's addresses, and if it is a confirmed payment to us, issue
+    the key on the spot. The on-chain calls can take a few seconds; the
+    poller lives in the service, not here."""
+    ok, message = support.claim_with_txid(request.form.get("txid", ""))
+    flash(message, "success" if ok else "error")
+    return redirect(url_for("admin.support_screen"))
