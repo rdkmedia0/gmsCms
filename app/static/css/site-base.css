@@ -742,7 +742,14 @@ body.cms-view-mobile .cms-section.cms-sm-has-custom-height > .block-banner { ove
 /* currentColor as the color-mix base (not a fixed gray/white) so this
    reads correctly against any theme's own text color, including a dark
    theme's light-on-black body text — a fixed #666 was unreadable there. */
-.cms-breadcrumb { padding: 8px 24px; color: color-mix(in srgb, var(--secondary, #666) 55%, currentColor); }
+/*  A breadcrumb colours from --secondary (a muted wayfinding grey) by
+    default, and the tool Colour control only re-points --primary/--accent
+    -- so the control did nothing here. Read --tool-accent directly (the
+    concrete colour the wrapper hands its descendants when a colour is
+    chosen), falling back to the muted default when none is: now the
+    control recolours the trail and its links, and does nothing visible
+    until it is used. Same shape the File tool's link uses. */
+.cms-breadcrumb { padding: 8px 24px; color: var(--tool-accent, color-mix(in srgb, var(--secondary, #666) 55%, currentColor)); }
 .cms-breadcrumb a { color: inherit; text-decoration: none; }
 .cms-breadcrumb a:hover { text-decoration: underline; }
 .cms-breadcrumb-sep { margin: 0 8px; opacity: 0.5; }
