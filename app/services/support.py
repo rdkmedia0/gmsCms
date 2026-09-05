@@ -41,16 +41,23 @@ from .support_key import make_key, parse_key  # noqa: F401 -- re-exported
 #  Where support goes. Hard-coded on purpose -- see the module note.
 #
 #  A raw `business=<email>` donate link shows the address on the URL and
-#  on PayPal's own page. A HOSTED donate button (made once in PayPal ->
-#  gives a `hosted_button_id`) hides it: the link carries only the id.
-#  Set the id and it is used; leave it blank and the email form is the
-#  fallback so the button still works today. `no_recurring=1` because a
-#  supporter's key is one-off and the ask should look like it.
+#  on PayPal's own page. Two ways to hide it, in order of preference:
+#    * a PayPal.Me handle (works on a personal account) -- the link is
+#      just paypal.me/<handle>, no email anywhere;
+#    * a HOSTED donate button (needs a business account) -- the link
+#      carries only its `hosted_button_id`.
+#  The email form is the last-resort fallback so a donate link always
+#  exists. Set whichever the account has.
+PAYPAL_ME_HANDLE = "rdkmedia0"
 PAYPAL_HOSTED_BUTTON_ID = ""
-if PAYPAL_HOSTED_BUTTON_ID:
+if PAYPAL_ME_HANDLE:
+    PAYPAL_URL = "https://www.paypal.com/paypalme/" + PAYPAL_ME_HANDLE
+elif PAYPAL_HOSTED_BUTTON_ID:
     PAYPAL_URL = ("https://www.paypal.com/donate/?hosted_button_id="
                   + PAYPAL_HOSTED_BUTTON_ID)
 else:
+    #  `no_recurring=1` because a supporter's key is one-off and the ask
+    #  should look like it.
     PAYPAL_URL = ("https://www.paypal.com/donate/?business=rdkmedia0%40gmail.com"
                   "&no_recurring=1&item_name=gmsCms")
 
