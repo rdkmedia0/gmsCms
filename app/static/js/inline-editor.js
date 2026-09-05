@@ -65,6 +65,9 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => { toastEl.hidden = true; }, 1800);
   }
+  //  Shared with the dock's own scripts (template-panel.js), so a control
+  //  there can say what it did instead of navigating away to prove it.
+  window.cmsToast = toast;
 
   // ---------- Modal (replaces native confirm()/prompt()) ----------
   // Implementation lives in static/js/admin/modal.js (loaded before this
@@ -2395,11 +2398,29 @@
       })[editView] || null;
       const startX = e.clientX, startY = e.clientY;
       const startWidth = parseInt(getComputedStyle(document.body).getPropertyValue(widthVar)) || section.getBoundingClientRect().width;
-      const startHeight = section.getBoundingClientRect().height;
+      //  Measure the element the custom height actually GOVERNS -- the
+      //  .block wrapper -- and prefer the value already set, so a drag
+      //  starts from the real controlled height. The whole SECTION was
+      //  measured before, and for a banner that includes the portrait's
+      //  margin-bottom reserve: applying that inflated number as the
+      //  block's min-height sat ON TOP of the reserve, so every click grew
+      //  the banner by a reserve's worth (560, then 840, then 1120).
+      const block = section.querySelector(":scope > .block") || section;
+      const heightVar = perView ? perView.v : "--cms-content-height-px";
+      const startHeight = parseInt(section.style.getPropertyValue(heightVar)) || block.getBoundingClientRect().height;
       let pending = null;
+      //  A click is not a drag: nothing is written until the pointer has
+      //  moved a real distance. Saving on any mousemove meant a one-pixel
+      //  jitter on a click saved a height.
+      let dragged = false;
+      const DRAG_THRESHOLD = 4;
       document.body.classList.add("cms-resizing", axis === "width" ? "cms-resizing-w" : "cms-resizing-h");
 
       function onMove(ev) {
+        if (!dragged) {
+          if (Math.abs(ev.clientX - startX) < DRAG_THRESHOLD && Math.abs(ev.clientY - startY) < DRAG_THRESHOLD) return;
+          dragged = true;
+        }
         if (axis === "width") {
           const delta = isRightRail ? (startX - ev.clientX) : (ev.clientX - startX);
           pending = Math.max(160, Math.min(600, Math.round(startWidth + delta)));
@@ -2426,7 +2447,7 @@
         document.removeEventListener("mousemove", onMove);
         document.removeEventListener("mouseup", onUp);
         document.body.classList.remove("cms-resizing", "cms-resizing-w", "cms-resizing-h");
-        if (pending === null) return;
+        if (!dragged || pending === null) return;   // a click writes nothing
         if (axis === "width") {
           saveField(handle.dataset.saveUrl, "sidebar_width", "custom");
           saveField(handle.dataset.saveUrl, "sidebar_width_px", String(pending));

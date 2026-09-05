@@ -67,6 +67,45 @@
       }
     }
 
+    //  A control in the dock never navigates. The Corners, Depth and "Save
+    //  site" forms used to post as plain forms and land the owner on the
+    //  Dashboard (or reload the page and lose the open dock): a `next` that
+    //  fails the safety check, or a Referer the browser or prod's proxy does
+    //  not send, and _redirect_next fell through. Applying a corner style is
+    //  not a navigation. So any form.cms-dock-form submits in place, the page
+    //  re-renders with the same live refresh the colour picker uses, and a
+    //  toast says what changed. Delegated on the document, because the dock
+    //  is re-rendered by that refresh and a listener bound to the old form
+    //  would be gone by the second click.
+    document.addEventListener("submit", async (e) => {
+      const form = e.target;
+      if (!(form instanceof HTMLFormElement) || !form.classList.contains("cms-dock-form")) return;
+      e.preventDefault();
+      const body = new FormData(form);
+      body.set("next", location.pathname);   // the no-JS fallback stays on this page too
+      let data = null;
+      try {
+        const res = await fetch(form.action, { method: "POST", body, headers: { "X-Inline-Edit": "1" } });
+        if (!res.ok) throw new Error(String(res.status));
+        data = await res.json().catch(() => null);
+      } catch {
+        if (window.cmsToast) window.cmsToast("That didn't save — please try again.");
+        return;
+      }
+      let msg = form.dataset.toast || "Applied.";
+      if (data && data.name) msg = msg.replace("{name}", data.name);
+      //  A site-wide Corners or Depth is shadowed by any section carrying
+      //  its own setting -- and the one thing the owner is looking at may be
+      //  exactly that section. Say so, or the control reads as dead.
+      const attr = form.dataset.shadows;
+      if (attr) {
+        const own = document.querySelectorAll(`.cms-section[${attr}]:not([${attr}=""])`).length;
+        if (own) msg += ` — ${own} section${own === 1 ? " keeps its own" : "s keep their own"} setting`;
+      }
+      if (form.dataset.refresh !== "0") await refresh();
+      if (window.cmsToast) window.cmsToast(msg);
+    });
+
     //  "You have changed a starting point. What would you like instead?"
     //
     //  Two answers, and only the owner can pick: overwrite a copy they

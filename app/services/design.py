@@ -275,19 +275,27 @@ SHAPE_PRESETS = {
 # stays visible on either, because the tint is a real hue rather than an
 # absence of light. Kept to four steps: offset/blur/spread as separate
 # controls would be four ways for a novice to get one effect wrong.
+#  Mixed from currentColor, not from --primary and not from black. The text
+#  colour is chosen to contrast its ground by definition, so on a light page
+#  this is a shadow and on a dark page a soft light lift -- ground-aware by
+#  construction. It was mixed from the palette's primary on the reasoning
+#  that black goes invisible on a dark theme, which is true; and a dark-brown
+#  primary on a near-black ground is invisible for exactly the same reason.
+#  Measured on a dark CV site: every "raised" element computed a shadow the
+#  eye could not find, so Depth read as a control that did nothing.
 SHADOW_PRESETS = {
     "none": {"name": "Flat", "shadow": "none"},
     "subtle": {
         "name": "Subtle",
-        "shadow": "0 1px 3px color-mix(in srgb, var(--primary, #1f2937) 18%, transparent)",
+        "shadow": "0 1px 3px color-mix(in srgb, currentColor 18%, transparent)",
     },
     "raised": {
         "name": "Raised",
-        "shadow": "0 4px 14px color-mix(in srgb, var(--primary, #1f2937) 22%, transparent)",
+        "shadow": "0 4px 14px color-mix(in srgb, currentColor 22%, transparent)",
     },
     "floating": {
         "name": "Floating",
-        "shadow": "0 14px 34px color-mix(in srgb, var(--primary, #1f2937) 28%, transparent)",
+        "shadow": "0 14px 34px color-mix(in srgb, currentColor 28%, transparent)",
     },
 }
 

@@ -1100,13 +1100,13 @@ li.cms-menu-divider { display: block; width: auto; height: 1px; margin: 4px 8px;
     the site, the section, or the tool. */
 [data-shadow-style="none"] { --site-shadow: none; }
 [data-shadow-style="subtle"] {
-  --site-shadow: 0 1px 3px color-mix(in srgb, var(--primary, #1f2937) 18%, transparent);
+  --site-shadow: 0 1px 3px color-mix(in srgb, currentColor 18%, transparent);
 }
 [data-shadow-style="raised"] {
-  --site-shadow: 0 4px 14px color-mix(in srgb, var(--primary, #1f2937) 22%, transparent);
+  --site-shadow: 0 4px 14px color-mix(in srgb, currentColor 22%, transparent);
 }
 [data-shadow-style="floating"] {
-  --site-shadow: 0 14px 34px color-mix(in srgb, var(--primary, #1f2937) 28%, transparent);
+  --site-shadow: 0 14px 34px color-mix(in srgb, currentColor 28%, transparent);
 }
 
 /* A full-bleed element must not float: a shadow says "this sits above a

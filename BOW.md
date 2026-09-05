@@ -7827,3 +7827,60 @@ which is the difference between a message somebody can act on and one
 they can only be annoyed by. And a model that does not say either way is
 TRIED, not refused: not being able to check is not evidence of an
 incapable model.
+
+## 2026-09-05 - Three things that made a control feel like it did nothing
+
+Found by an owner, not a check, and all three come down to one rule that
+had not been written down: **a control never takes the owner anywhere,
+and always says what it did.**
+
+### Clicking applied it -- and moved you to the Dashboard
+
+The Corners, Depth and "Save site" controls in the live editor's dock were
+plain `<form method="post">`s. They carried a `next`, and `_redirect_next`
+already prefers the page the request came from -- but that rests on a
+`next` that passes the safety check and a Referer the browser (or the
+proxy in front of prod) actually sends, and when neither held it fell
+through to the admin dashboard. Even when it did come back, a full-page
+POST reloads the page and loses the dock the owner had open, which reads
+the same way. Applying a corner style should not be a navigation at all.
+Those forms now submit by fetch (delegated, so they survive the dock being
+re-rendered), the page re-renders in place with the live refresh the
+colour picker already uses, and a toast says what changed. The rule going
+forward: a control in the editor never redirects; it notifies, and if
+there is somewhere to manage the thing, it names it ("saved as a template
+-- manage it under Design → Templates").
+
+### A click on the height handle grew the banner by a reserve each time
+
+The resize handle saved on ANY mouse movement after mousedown, so a click
+with a one-pixel jitter saved a height. Worse, it measured the whole
+SECTION -- which for a banner includes the portrait's margin-bottom
+reserve -- and applied that as the block's min-height ON TOP of the
+reserve, so every click compounded: 560, then 840, then 1120. Two rules
+now: nothing is written until the pointer has moved a real distance (a
+click is not a drag), and a drag starts from the height the control
+actually governs (the value already set, else the block), never the
+inflated section.
+
+### "Corners does nothing" -- when it did, out of sight
+
+Measured on the CV site rather than reasoned about: site-wide Corners set
+`--site-radius: 22px` and every plain section computed it. The one thing
+the eye lands on -- the banner button -- stayed square, because the banner
+SECTION carried its own `data-corner-style="sharp"` and the button
+inherited that section's 0. Correct by the rule in CLAUDE.md (a section's
+own setting is somebody's choice), and completely invisible as a reason.
+So the toast after a site-wide Corners or Depth now says how many
+sections keep their own setting, which is the difference between "the
+button is dead" and "look at the banner's own Corners".
+
+Depth was worse, and it was a deliberate choice that had aged. Its
+shadows were mixed from `--primary` on the reasoning that black goes
+invisible on a dark theme -- true, and a dark-brown primary on a
+near-black ground is invisible for exactly the same reason. Neither a
+fixed black nor the palette colour is right on every ground. The shadow
+is mixed from `currentColor` now: the text colour is chosen to contrast
+its ground by definition, so on a light page it is a shadow and on a dark
+one a soft light lift -- ground-aware by construction, with no palette
+assumption in it.

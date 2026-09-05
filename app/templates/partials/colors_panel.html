@@ -200,7 +200,8 @@
     {{ panel_section("Corners", "Shapes Banner/Card boxes and section corners site-wide — not text, which has no corners to round.") }}
     <div class="cms-color-preset-gallery">
       {% for key, preset in shape_presets.items() %}
-      <form method="post" action="{{ url_for('admin.template_shape_preset', template_id=template.id) }}">
+      <form method="post" action="{{ url_for('admin.template_shape_preset', template_id=template.id) }}"
+            class="cms-dock-form" data-toast="Corners: {{ preset.name }} — applied site-wide" data-shadows="data-corner-style">
         <input type="hidden" name="next" value="{{ current_path }}">
         <input type="hidden" name="preset" value="{{ key }}">
         <button type="submit" class="cms-color-preset-swatch" title="Use {{ preset.name }}">
@@ -211,7 +212,8 @@
       {% endfor %}
     </div>
     {% if template.shape_override %}
-    <form method="post" action="{{ url_for('admin.template_shape_reset', template_id=template.id) }}">
+    <form method="post" action="{{ url_for('admin.template_shape_reset', template_id=template.id) }}"
+          class="cms-dock-form" data-toast="Corners put back to the template's own" data-shadows="data-corner-style">
       <input type="hidden" name="next" value="{{ current_path }}">
       <button type="submit" class="btn btn-small" title="Put the corner style back to the one this template ships with">Reset</button>
     </form>
@@ -258,10 +260,11 @@
     </form>
     {% endif %}
 
-    {{ panel_section("Depth", "Raises Cards, Images, Banners and file cards off the page with a soft shadow, tinted from your palette rather than black — black goes invisible on a dark theme. A full-width section stays flat on purpose: a shadow says 'this sits above the page', which reads as a mistake on something that IS the page.") }}
+    {{ panel_section("Depth", "Raises Cards, Images, Banners and file cards off the page with a soft shadow, tinted from the words around it rather than a fixed black or palette colour — so it shows on a dark theme as a soft lift and on a light one as a shadow. A full-width section stays flat on purpose: a shadow says 'this sits above the page', which reads as a mistake on something that IS the page.") }}
     <div class="cms-color-preset-gallery">
       {% for key, preset in shadow_presets.items() %}
-      <form method="post" action="{{ url_for('admin.template_shadow_preset', template_id=template.id) }}">
+      <form method="post" action="{{ url_for('admin.template_shadow_preset', template_id=template.id) }}"
+            class="cms-dock-form" data-toast="Depth: {{ preset.name }} — applied site-wide" data-shadows="data-shadow-style">
         <input type="hidden" name="next" value="{{ current_path }}">
         <input type="hidden" name="preset" value="{{ key }}">
         <button type="submit" class="cms-color-preset-swatch" title="Use {{ preset.name }}">
@@ -272,7 +275,8 @@
       {% endfor %}
     </div>
     {% if template.shadow_override %}
-    <form method="post" action="{{ url_for('admin.template_shadow_reset', template_id=template.id) }}">
+    <form method="post" action="{{ url_for('admin.template_shadow_reset', template_id=template.id) }}"
+          class="cms-dock-form" data-toast="Depth put back to the template's own" data-shadows="data-shadow-style">
       <input type="hidden" name="next" value="{{ current_path }}">
       <button type="submit" class="btn btn-small" title="Put the depth back to the one this template ships with">Reset</button>
     </form>

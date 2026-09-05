@@ -119,7 +119,9 @@
        label too many. #}
     <details>
       <summary class="hint" style="cursor:pointer;">Save site{{ panel_help("Captures the active look, layout and every page's content as a brand new template in your library. This is also your get-back-to-this-later point: save one before a risky change, then activate it again to restore everything. Leave the name blank for a timestamped default you can rename afterwards.") }}</summary>
-      <form method="post" action="{{ url_for('admin.template_save_current') }}">
+      <form method="post" action="{{ url_for('admin.template_save_current') }}"
+            class="cms-dock-form" data-refresh="0"
+            data-toast="Saved as “{name}” — manage it under Design → Templates">
         <input type="text" name="name" class="cms-tpl-save-name" placeholder="Name (optional)" maxlength="80" title="What to call this new template in your library. Leave blank to use a timestamped default you can rename later.">
         <button type="submit" class="cms-tpl-save-btn" title="Save the active look, layout, and every page's content as a brand new template.">Save</button>
       </form>
