@@ -1,0 +1,134 @@
+{% extends "admin/base.html" %}
+{% block title %}Store settings — My Site Admin{% endblock %}
+{% block content %}
+{% include "partials/commerce_tabs.html" %}
+<h1>Store settings</h1>
+<p class="hint">The rules your shop runs by &mdash; not the things you sell. What it charges in, what delivery costs, the files you offer as downloads, and how long a session credit or a download stays good for. Your products live under <a href="{{ url_for('admin.commerce_fulfilment') }}">Products</a>.</p>
+
+{% if not stripe_ready %}
+<div class="card">
+  <p>Connect Stripe to open your shop. <a href="{{ url_for('admin.settings_integrations') }}">Open Integrations &rarr;</a></p>
+</div>
+{% else %}
+
+<div class="card">
+  <div class="integration-head">
+    <h2>What this shop charges in</h2>
+    <span class="hint">One shop, one currency.</span>
+  </div>
+  <form method="post" action="{{ url_for('admin.commerce_currency') }}" class="inline-form">
+    <label for="base_currency" title="The currency every new product is priced in.">Currency</label>
+    <select id="base_currency" name="base_currency"
+            title="Every new product is priced in this. Anything already on sale keeps the currency it was created with, because a Stripe price cannot change.">
+      {% for code, label in currencies %}
+      <option value="{{ code }}" {{ 'selected' if code == base_currency }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-small btn-primary"
+            title="Save this as the currency new products are priced in.">Save</button>
+  </form>
+  <p class="hint">This decides what the <em>next</em> product is priced in. Anything already on
+    sale keeps what it was created with &mdash; Stripe never lets a price change, so an old
+    receipt still says what it said.</p>
+
+  {#  Two currencies on one shop is not a warning about tidiness. A
+      basket cannot hold both -- there is no total that is a price in
+      either -- so the odd one out is taken back out at the basket, and
+      the owner should hear it here rather than from a customer. #}
+  {% set strays = currencies_in_use | reject('equalto', base_currency) | list %}
+  {% if strays %}
+  <p class="flash flash-warning">Some of what you sell is priced in
+    {{ strays | map('upper') | join(', ') }}, not {{ base_currency | upper }}.
+    A basket cannot hold two currencies &mdash; there is no total that is a price in either
+    &mdash; so anything in the odd one out is taken back out when a customer tries to buy it
+    alongside the rest. To fix it, retire that product and add it again.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Files you sell</h2>
+  <p class="hint">Upload anything you sell as a download — an ebook, a set of photos, an audio track, a template. These are kept private: they have no web address of their own, and a buyer only ever gets one by having paid for it. Once a file is here, a product can be set to deliver it (on the <a href="{{ url_for('admin.commerce_fulfilment') }}">Products</a> screen).</p>
+  <form method="post" action="{{ url_for('admin.commerce_file_upload') }}" enctype="multipart/form-data" class="inline-form">
+    <input type="file" name="file" required title="The file your buyer downloads — up to 250 MB">
+    <button type="submit" class="btn btn-small btn-primary" title="Add this file so a product can send it">Add file</button>
+  </form>
+  {% if files %}
+  <ul class="hint order-entitlements">
+    {% for f in files %}
+    <li>
+      <strong>{{ f.original_name }}</strong>
+      {%- if f.size %} · {{ (f.size / 1048576) | round(1) }} MB{% endif %}
+      · <form method="post" action="{{ url_for('admin.commerce_file_delete', file_id=f.id) }}" class="inline-form is-inline">
+          <button type="submit" class="btn btn-small" title="Delete this file — blocked while anyone can still download it">Delete</button>
+        </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="hint">Nothing uploaded yet.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Delivery</h2>
+  <p class="hint">Only asked for when a basket holds something you post &mdash; nobody buying a download is made to type their address. Stripe collects the address and adds this charge at the payment step.</p>
+  <form method="post" action="{{ url_for('admin.commerce_postage') }}" class="fulfilment-form">
+    <label for="zone">Where you post to</label>
+    <select id="zone" name="zone" title="Stripe only offers your buyer these countries at checkout">
+      {% for key, zone in zones.items() %}
+      <option value="{{ key }}" {{ 'selected' if postage.zone == key }}>{{ zone[0] }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="amount">What delivery costs</label>
+    <input type="number" id="amount" name="amount" step="0.01" min="0"
+           value="{{ '%.2f'|format(postage.amount / 100) }}"
+           title="One flat charge per order. Enter 0 if you always post free.">
+
+    <label for="free_over">Free delivery over</label>
+    <input type="number" id="free_over" name="free_over" step="0.01" min="0"
+           value="{{ '%.2f'|format(postage.free_over / 100) }}"
+           title="Spend this much and delivery is free. Leave at 0 to always charge.">
+
+    <label for="label">What to call it</label>
+    <input type="text" id="label" name="label" value="{{ postage.label }}" maxlength="60"
+           title="What the buyer sees on the delivery line, e.g. Standard post">
+
+    <button type="submit" class="btn btn-primary btn-small" title="Save these postage settings. They apply to every order with something to post.">Save</button>
+  </form>
+</div>
+
+<h2 class="section-heading">How long things stay good for</h2>
+
+<div class="card">
+  <h2>Session credits</h2>
+  <form method="post" action="{{ url_for('admin.commerce_credit_expiry') }}" class="inline-form">
+    <label for="months">How long do unused sessions stay bookable?</label>
+    <select id="months" name="months" title="Leave as Never unless you have a reason — someone who paid for ten sessions has paid for ten sessions">
+      <option value="0" {{ 'selected' if not credit_expiry_months or credit_expiry_months == '0' }}>Never expire (recommended)</option>
+      <option value="6" {{ 'selected' if credit_expiry_months == '6' }}>6 months after purchase</option>
+      <option value="12" {{ 'selected' if credit_expiry_months == '12' }}>12 months after purchase</option>
+      <option value="24" {{ 'selected' if credit_expiry_months == '24' }}>24 months after purchase</option>
+    </select>
+    <button type="submit" class="btn btn-small" title="Save how long a session credit lasts. Credits already sold keep the term they were sold with.">Save</button>
+  </form>
+  <p class="hint">Applies to sessions bought from now on. Sessions someone has already paid for keep whatever term they were sold under.</p>
+</div>
+
+<div class="card">
+  <h2>Downloads</h2>
+  <form method="post" action="{{ url_for('admin.commerce_download_expiry') }}" class="inline-form">
+    <label for="download_days">How long can a buyer download what they paid for?</label>
+    <select id="download_days" name="days" title="How long you promise to keep a paid file available. The buyer is told this in their order email.">
+      <option value="30" {{ 'selected' if download_expiry_days in (None, '', '30') }}>30 days after purchase (recommended)</option>
+      <option value="90" {{ 'selected' if download_expiry_days == '90' }}>90 days after purchase</option>
+      <option value="365" {{ 'selected' if download_expiry_days == '365' }}>A year after purchase</option>
+      <option value="0" {{ 'selected' if download_expiry_days == '0' }}>Never expire &mdash; you keep hosting it</option>
+    </select>
+    <button type="submit" class="btn btn-small" title="Save how long paid files stay available">Save</button>
+  </form>
+  <p class="hint">Nobody hosts a file forever, so a buyer is told how long they have and can save it in time. Applies to files bought from now on &mdash; anything already sold keeps the term it was sold under. Choosing Never is a promise to keep the file up indefinitely.</p>
+</div>
+
+{% endif %}
+{% endblock %}

@@ -537,13 +537,16 @@ def commerce_fulfilment():
     then needs no special case per product.
     """
     db = get_db()
-    catalogue, cat_error = ([], None)
+    #  The products themselves are all this screen shows now; the shop's
+    #  own settings (currency, delivery, files, expiries) moved to their
+    #  own tab, so there is no longer a reason to fetch the catalogue here
+    #  as well as the product list.
     products, product_error = ([], None)
     if integrations.is_configured(db, "stripe"):
-        catalogue, cat_error = integrations.stripe_catalogue_cached(db)
         products, product_error = integrations.stripe_products(db)
-        cat_error = integrations.explain(cat_error, "Stripe")
         product_error = integrations.explain(product_error, "Stripe")
+    #  Cal.com event types feed the "bookable against" field of a
+    #  session-credit rule, which is now folded into each product's editor.
     event_types, ev_error = ([], None)
     if integrations.is_configured(db, "calcom"):
         event_types, ev_error = integrations.calcom_event_types(db)
@@ -552,12 +555,6 @@ def commerce_fulfilment():
         r["price_id"]: r
         for r in db.execute("SELECT * FROM fulfilment_rules").fetchall()
     }
-    download_row = db.execute(
-        "SELECT value FROM settings WHERE key = 'commerce_download_expiry_days'"
-    ).fetchone()
-    expiry_row = db.execute(
-        "SELECT value FROM settings WHERE key = 'commerce_credit_expiry_months'"
-    ).fetchone()
     #  Nothing sold through Stripe can ever be deleted — a price has no
     #  delete at all, and a product that has been bought keeps its
     #  history — so an owner's list only ever grows. Retired items are
@@ -572,29 +569,51 @@ def commerce_fulfilment():
         files=downloads.list_files(db),
         retired_count=len(retired),
         show_all=show_all,
-        postage=cart.shipping_settings(db),
         products=products,
         product_error=product_error,
-        currencies=integrations.CURRENCIES,
         base_currency=integrations.base_currency(db),
         #  Whether a picture can be MADE, and if not, why -- said in the
         #  owner's terms rather than left as a button that does nothing.
         image_gen_ready=ai_image.is_configured(db),
         image_gen_reason=(None if ai_image.is_configured(db)
                           else ai_image.unavailable_reason(db)),
-        #  Read from Stripe, not from anything stored here: a price lives
-        #  there and could have been changed there.
-        currencies_in_use=integrations.currencies_in_use(db)[0],
         intervals=integrations.INTERVALS,
         public_url=bool((get_email_settings(db).get("site_public_url") or "").strip()),
-        zones=integrations.SHIPPING_ZONES,
-        catalogue=catalogue,
-        catalogue_error=cat_error,
         event_types=event_types,
         event_error=ev_error,
         rules=rules,
         stripe_ready=integrations.is_configured(db, "stripe"),
         calcom_ready=integrations.is_configured(db, "calcom"),
+    )
+
+
+@bp.route("/commerce/settings", methods=["GET"])
+@login_required
+def commerce_settings():
+    """Store-wide settings that are NOT a product: the currency the shop
+    charges in, the pool of files sold as downloads, delivery, and how
+    long a session credit or a download stays good for.
+
+    These used to sit on the Products screen among the products, which
+    made a long page read as one confusing list. A product is a thing you
+    sell; these are the rules the shop runs by, so they get their own tab.
+    """
+    db = get_db()
+    download_row = db.execute(
+        "SELECT value FROM settings WHERE key = 'commerce_download_expiry_days'"
+    ).fetchone()
+    expiry_row = db.execute(
+        "SELECT value FROM settings WHERE key = 'commerce_credit_expiry_months'"
+    ).fetchone()
+    return render_template(
+        "admin/commerce_settings.html",
+        stripe_ready=integrations.is_configured(db, "stripe"),
+        files=downloads.list_files(db),
+        currencies=integrations.CURRENCIES,
+        base_currency=integrations.base_currency(db),
+        currencies_in_use=integrations.currencies_in_use(db)[0],
+        postage=cart.shipping_settings(db),
+        zones=integrations.SHIPPING_ZONES,
         credit_expiry_months=(expiry_row["value"] if expiry_row else "") or "",
         download_expiry_days=(download_row["value"] if download_row else None),
     )
@@ -653,16 +672,41 @@ def _generated_product_image_url(prompt):
 def _picture_for_product():
     """(url, error). Whichever way the owner chose to provide one.
 
-    Upload wins when both are given -- a file somebody actually attached
-    is a deliberate act, and a prompt left in the box from last time is
-    not. Neither is required; a product without a picture is fine.
+    Three sources, in order of how deliberate each is: a file somebody
+    actually attached wins, then a picture chosen from the Media Library,
+    then an AI description. A prompt or a stale library pick left in the
+    form from last time should never beat a file just attached. Neither is
+    required; a product without a picture is fine.
     """
     file = request.files.get("image")
     if file and file.filename:
         return _product_image_url()
+    picked = (request.form.get("image_library_url") or "").strip()
+    if picked:
+        return _library_image_url(picked)
     if (request.form.get("image_prompt") or "").strip():
         return _generated_product_image_url(request.form.get("image_prompt"))
     return None, None
+
+
+def _library_image_url(picked):
+    """(url, error). A picture the owner chose from the Media Library.
+
+    The URL arrives from the picker but is never trusted as a path: it
+    must match something actually IN the library (image files only) and
+    the library's own stored value is used, not the string sent -- the
+    same rule the favicon and file/image tools follow. Made absolute for
+    Stripe when this site has a public address, since Stripe fetches the
+    picture by URL; the shop on this site uses it either way.
+    """
+    known = {m["url"]: m for m in _list_media(image_only=True)}
+    item = known.get(picked)
+    if not item:
+        return None, "That picture is not in your Media Library — choose another."
+    db = get_db()
+    url = item["url"]
+    base = site.public_base(db)
+    return ((base + url) if base and site.is_public_host(base) else url), None
 
 
 def _product_image_url():
@@ -795,7 +839,7 @@ def commerce_currency():
         db.commit()
         flash("New products will be priced in %s. Anything already on sale keeps the "
               "currency it was created with." % saved.upper(), "success")
-    return redirect(url_for("admin.commerce_fulfilment"))
+    return redirect(url_for("admin.commerce_settings"))
 
 
 @bp.route("/commerce/products/<product_id>/save", methods=["POST"])
@@ -889,7 +933,7 @@ def commerce_postage():
     _set_setting(db, "shop_shipping_label", (request.form.get("label") or "Standard delivery").strip())
     db.commit()
     flash("Delivery settings saved.", "success")
-    return redirect(url_for("admin.commerce_fulfilment"))
+    return redirect(url_for("admin.commerce_settings"))
 
 
 @bp.route("/commerce/files/upload", methods=["POST"])
@@ -908,7 +952,7 @@ def commerce_file_upload():
     else:
         db.commit()
         flash("File added. Now choose it on whichever product sends it.", "success")
-    return redirect(url_for("admin.commerce_fulfilment"))
+    return redirect(url_for("admin.commerce_settings"))
 
 
 @bp.route("/commerce/files/<int:file_id>/delete", methods=["POST"])
@@ -918,7 +962,7 @@ def commerce_file_delete(file_id):
     ok, error = downloads.delete_file(db, file_id)
     db.commit()
     flash(error if error else "File deleted.", "error" if error else "success")
-    return redirect(url_for("admin.commerce_fulfilment"))
+    return redirect(url_for("admin.commerce_settings"))
 
 
 @bp.route("/commerce/fulfilment/save", methods=["POST"])
@@ -969,7 +1013,7 @@ def commerce_credit_expiry():
     db.commit()
     flash("Session credits never expire." if months <= 0
           else f"Session credits now expire {months} months after purchase.", "success")
-    return redirect(url_for("admin.commerce_fulfilment"))
+    return redirect(url_for("admin.commerce_settings"))
 
 
 @bp.route("/commerce/download-expiry", methods=["POST"])
@@ -988,7 +1032,7 @@ def commerce_download_expiry():
     db.commit()
     flash("Paid files never stop being downloadable." if days == 0
           else f"Buyers can download what they paid for for {days} days.", "success")
-    return redirect(url_for("admin.commerce_fulfilment"))
+    return redirect(url_for("admin.commerce_settings"))
 
 
 @bp.route("/settings/integrations", methods=["GET"])

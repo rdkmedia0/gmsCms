@@ -7,6 +7,10 @@
   "use strict";
   document.querySelectorAll(".fulfilment-form").forEach(function (form) {
     var select = form.querySelector(".fulfilment-kind");
+    // The class is also worn for styling by forms that carry no outcome
+    // picker (the add-product and postage forms). One without a kind
+    // select is simply not a fulfilment-rule form -- leave it be.
+    if (!select) return;
     var groups = form.querySelectorAll(".fulfilment-fields");
     function sync() {
       groups.forEach(function (group) {

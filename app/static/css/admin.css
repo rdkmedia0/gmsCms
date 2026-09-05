@@ -1867,3 +1867,29 @@ button[aria-busy="true"] { opacity: .75; cursor: progress; }
 .products-grid[data-view="gallery"] .product-summary-caret { display: none; }
 .products-grid[data-view="gallery"] .product-summary-price { white-space: normal; }
 .products-grid[data-view="gallery"] .product-item.is-open { grid-column: 1 / -1; }
+
+/* A second badge on the summary saying what a sale delivers. */
+.product-delivers-badge { background: var(--bg-alt, #eef1f4); color: var(--muted); border: none; }
+
+/* The add-product panel sits under the toolbar, revealed by ＋ Add. */
+.product-add-panel { margin: 0 0 12px; }
+
+/* Save changes and the On-sale tick share one row at the foot of the editor. */
+.product-detail-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 4px; }
+.product-onsale { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; cursor: pointer; }
+.product-onsale input { width: 16px; height: 16px; }
+
+/* What a sale delivers -- folded into the product, set off from its details. */
+.product-fulfilment { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border); }
+
+/* The three-way picture chooser (upload / library / describe). */
+.product-image-controls { margin: 6px 0 4px; }
+.product-image-caption { display: block; font-weight: 600; margin-bottom: 4px; }
+.product-image-preview { margin-bottom: 8px; }
+.product-image-preview img {
+  max-width: 140px; max-height: 140px; border-radius: var(--cms-ui-radius-control);
+  border: 1px solid var(--border);
+}
+.product-image-options { display: flex; gap: 8px; flex-wrap: wrap; }
+.product-image-ai { margin-top: 8px; }
+.product-image-ai input { width: 100%; }

@@ -1,84 +1,80 @@
 {% extends "admin/base.html" %}
-{% block title %}What your products deliver — My Site Admin{% endblock %}
+{% block title %}Products — My Site Admin{% endblock %}
+
+{#  One picture chooser, used by the add form and by every product's own
+    editor. Three sources in one row of icon buttons, the same set the
+    rest of the app uses: Upload a file, pick one from the Media Library,
+    or (only when an AI image provider is configured) describe one and let
+    the AI make it -- the ✨ the app uses everywhere for "generate". The
+    server decides between them in _picture_for_product(); here they just
+    feed the same product form. See products-admin.js for the wiring. #}
+{% macro image_controls(idx, current, gen_ready, gen_reason='') %}
+<div class="product-image-controls" data-image-controls>
+  <span class="product-image-caption">Picture</span>
+  <div class="product-image-preview" data-image-preview{{ '' if current else ' hidden' }}>
+    <img src="{{ current or '' }}" alt="" data-preview-img>
+  </div>
+  <div class="product-image-options">
+    <button type="button" class="btn btn-small" data-image-upload
+            title="Upload an image file from your device">&#11014;&#65039; Upload</button>
+    <input type="file" name="image" accept="image/*" hidden data-image-file
+           title="The picture buyers see on your shop and on the payment page">
+    <button type="button" class="btn btn-small" data-image-library
+            title="Choose a picture already in your Media Library">&#128444;&#65039; Library</button>
+    <input type="hidden" name="image_library_url" value="" data-image-library-url>
+    {% if gen_ready %}
+    <button type="button" class="btn btn-small" data-image-ai-toggle
+            title="Describe a picture and let the AI make one">&#10024; Describe</button>
+    {% endif %}
+  </div>
+  {% if gen_ready %}
+  <div class="product-image-ai" data-image-ai hidden>
+    <input type="text" name="image_prompt" maxlength="300"
+           placeholder="a hand-thrown stoneware mug, matte grey"
+           title="Describe the picture you want. Leave the box empty if you are uploading or choosing one.">
+    <p class="hint">Say what the thing IS, plainly &mdash; it is made as a clean product shot on a plain background, so you do not need to ask for that.</p>
+  </div>
+  {% elif gen_reason %}
+  <p class="hint">{{ gen_reason }}</p>
+  {% endif %}
+</div>
+{% endmacro %}
+
 {% block content %}
 {% include "partials/commerce_tabs.html" %}
 <h1>Products</h1>
-<p class="hint">Everything you sell, managed from here — add it, price it, photograph it, and say what a sale should actually deliver. Changes are pushed straight to Stripe, so there is no second place to keep up to date. Stripe knows what each product costs and takes the money. It has no idea that "10 Coaching Sessions" should become ten bookings someone can claim, or that you only have three of something in a cupboard. Say it here once, and every future sale of that product is handled for you.</p>
+<p class="hint">Everything you sell, managed from here &mdash; add it, price it, photograph it, and say what a sale should actually deliver. Changes are pushed straight to Stripe, so there is no second place to keep up to date. The shop&rsquo;s own settings &mdash; what it charges in, delivery, and the files you sell as downloads &mdash; live under <a href="{{ url_for('admin.commerce_settings') }}">Store settings</a>.</p>
 
 {% if not stripe_ready %}
 <div class="card">
-  <p>Connect Stripe first and your products will appear here. <a href="{{ url_for('admin.settings_integrations') }}">Open Integrations →</a></p>
+  <p>Connect Stripe first and your products will appear here. <a href="{{ url_for('admin.settings_integrations') }}">Open Integrations &rarr;</a></p>
 </div>
-{% elif catalogue_error %}
+{% elif product_error %}
 <div class="card">
-  <p class="flash flash-error">Couldn't read your products from Stripe — {{ catalogue_error }}</p>
-</div>
-{% elif not catalogue %}
-<div class="card">
-  <p>Stripe is connected, but this account has no active products yet. Add one in Stripe and it will show up here.</p>
+  <p class="flash flash-error">Couldn&rsquo;t read your products from Stripe &mdash; {{ product_error }}</p>
 </div>
 {% else %}
 
-<div class="card">
-  <div class="integration-head">
-    <h2>What this shop charges in</h2>
-    <span class="hint">One shop, one currency.</span>
+{#  Products are a compact list (or a gallery of cards -- toggle top-right,
+    remembered per browser), each one a summary you can scan. Click a
+    product to open its editor inline; only one opens at a time, so the
+    page stays short however many you sell. Add one with the ＋ button,
+    which reveals the "add" form. See products-admin.js and .products-*
+    in admin.css. #}
+<div class="products-toolbar">
+  <input type="search" id="products-search" placeholder="Search products…"
+         title="Filter the list by name" autocomplete="off">
+  <button type="button" class="btn btn-small btn-primary" id="products-add-toggle"
+          aria-expanded="false" aria-controls="product-add-panel"
+          title="Add a new product — creates it in Stripe for you">&#65291; Add product</button>
+  <div class="products-view-toggle" role="group" aria-label="Choose how products are shown">
+    <button type="button" class="btn btn-small" data-products-view="list" title="Show products as a compact list">&#9776; List</button>
+    <button type="button" class="btn btn-small" data-products-view="gallery" title="Show products as a grid of picture cards">&#9638; Gallery</button>
   </div>
-  <form method="post" action="{{ url_for('admin.commerce_currency') }}" class="inline-form">
-    <label for="base_currency" title="The currency every new product is priced in.">Currency</label>
-    <select id="base_currency" name="base_currency"
-            title="Every new product is priced in this. Anything already on sale keeps the currency it was created with, because a Stripe price cannot change.">
-      {% for code, label in currencies %}
-      <option value="{{ code }}" {{ 'selected' if code == base_currency }}>{{ label }}</option>
-      {% endfor %}
-    </select>
-    <button type="submit" class="btn btn-small btn-primary"
-            title="Save this as the currency new products are priced in.">Save</button>
-  </form>
-  <p class="hint">This decides what the <em>next</em> product is priced in. Anything already on
-    sale keeps what it was created with &mdash; Stripe never lets a price change, so an old
-    receipt still says what it said.</p>
-
-  {#  Two currencies on one shop is not a warning about tidiness. A
-      basket cannot hold both -- there is no total that is a price in
-      either -- so the odd one out is taken back out at the basket, and
-      the owner should hear it here rather than from a customer. #}
-  {% set strays = currencies_in_use | reject('equalto', base_currency) | list %}
-  {% if strays %}
-  <p class="flash flash-warning">Some of what you sell is priced in
-    {{ strays | map('upper') | join(', ') }}, not {{ base_currency | upper }}.
-    A basket cannot hold two currencies &mdash; there is no total that is a price in either
-    &mdash; so anything in the odd one out is taken back out when a customer tries to buy it
-    alongside the rest. To fix it, retire that product and add it again.</p>
-  {% endif %}
 </div>
 
-<div class="card">
-  <h2>Files you sell</h2>
-  <p class="hint">Upload anything you sell as a download — an ebook, a set of photos, an audio track, a template. These are kept private: they have no web address of their own, and a buyer only ever gets one by having paid for it.</p>
-  <form method="post" action="{{ url_for('admin.commerce_file_upload') }}" enctype="multipart/form-data" class="inline-form">
-    <input type="file" name="file" required title="The file your buyer downloads — up to 250 MB">
-    <button type="submit" class="btn btn-small btn-primary" title="Add this file so a product can send it">Add file</button>
-  </form>
-  {% if files %}
-  <ul class="hint order-entitlements">
-    {% for f in files %}
-    <li>
-      <strong>{{ f.original_name }}</strong>
-      {%- if f.size %} · {{ (f.size / 1048576) | round(1) }} MB{% endif %}
-      · <form method="post" action="{{ url_for('admin.commerce_file_delete', file_id=f.id) }}" class="inline-form is-inline">
-          <button type="submit" class="btn btn-small" title="Delete this file — blocked while anyone can still download it">Delete</button>
-        </form>
-    </li>
-    {% endfor %}
-  </ul>
-  {% else %}
-  <p class="hint">Nothing uploaded yet.</p>
-  {% endif %}
-</div>
-
-<div class="card">
-  <h2>Add something to sell</h2>
+<div class="card product-add-panel" id="product-add-panel" hidden>
+  <h2>Add a product</h2>
   <p class="hint">This creates the product in Stripe for you. You never need to open the Stripe dashboard to put something on sale.</p>
   <form method="post" action="{{ url_for('admin.commerce_product_add') }}" enctype="multipart/form-data" class="fulfilment-form">
     <label for="new_name">What is it called</label>
@@ -93,45 +89,167 @@
     <div class="product-price-row">
       <input type="number" id="new_amount" name="amount" step="0.01" min="0" required
              placeholder="0.00" title="What it costs. Tax is added by Stripe if you have Stripe Tax switched on.">
-      {#  No picker. One shop is one currency, and a per-product
-          dropdown is exactly how a shop came to price in three of them.
-          Said in words so it is never a surprise, with the setting one
-          click away. #}
-      <span class="product-currency" title="This shop charges in {{ base_currency | upper }}. Change it in “What this shop charges in”, above.">{{ base_currency | upper }}</span>
+      <span class="product-currency" title="This shop charges in {{ base_currency | upper }}. Change it under Store settings.">{{ base_currency | upper }}</span>
       <select name="interval" title="A one-off sale, or something they pay for again each month or year">
         {% for value, label in intervals %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
       </select>
     </div>
 
-    <label for="new_image">Picture</label>
-    <input type="file" id="new_image" name="image" accept="image/*"
-           title="Shown on your shop page and on the payment page. Optional.">
-    {#  Offered only when an image provider is actually configured. A
-        Generate button that cannot generate is a control that lies --
-        and the commonest case is somebody running Ollama, which answers
-        chat perfectly well and has no image API at all. #}
-    {% if image_gen_ready %}
-    <label for="new_image_prompt">&hellip;or describe one and let the AI make it</label>
-    <input type="text" id="new_image_prompt" name="image_prompt" maxlength="300"
-           placeholder="a hand-thrown stoneware mug, matte grey"
-           title="Describe the picture you want. Leave it blank if you are uploading one — an uploaded file always wins.">
-    <p class="hint">Say what the thing IS, plainly. It is made as a clean product shot on a
-      plain background, so you do not need to ask for that.</p>
-    {% elif image_gen_reason %}
-    <p class="hint">{{ image_gen_reason }}</p>
-    {% endif %}
+    {{ image_controls('new', none, image_gen_ready, image_gen_reason) }}
     {% if not public_url %}
-    <p class="hint">Your picture will show on this site. Stripe's own payment page can only show it once this site has a public web address &mdash; set one under Email settings and it will be sent along from then on.</p>
+    <p class="hint">Your picture will show on this site. Stripe&rsquo;s own payment page can only show it once this site has a public web address &mdash; set one under Email settings and it will be sent along from then on.</p>
     {% endif %}
 
     <button type="submit" class="btn btn-primary btn-small">Create product</button>
   </form>
 </div>
 
+<p class="hint products-none-match" hidden>No product matches that.</p>
+<div class="products-grid" id="products-grid" data-view="list">
+{% for p in products %}
+{% set rule = rules.get(p.price_id) %}
+<div class="product-item{{ ' is-off' if not p.active }}" data-name="{{ (p.name or '') | lower }}">
+  <button type="button" class="product-summary" aria-expanded="false"
+          title="Click to edit “{{ p.name }}”">
+    {% if p.image %}<img src="{{ p.image }}" alt="" class="product-summary-thumb">
+    {% else %}<span class="product-summary-thumb product-summary-thumb-empty" aria-hidden="true">&#128717;</span>{% endif %}
+    <span class="product-summary-name">{{ p.name }}</span>
+    <span class="product-summary-price">{{ '%.2f'|format(p.amount / 100) if p.amount is not none else '—' }} {{ p.currency }}</span>
+    <span class="integration-badge {{ 'is-on' if p.active else 'is-off' }}">{{ 'on sale' if p.active else 'off sale' }}</span>
+    {% if rule %}<span class="integration-badge product-delivers-badge" title="What a sale of this delivers">
+      {%- if rule.kind == 'credit' %}{{ rule.quantity }} session{{ 's' if rule.quantity != 1 }}
+      {%- elif rule.kind == 'download' %}a download
+      {%- elif rule.kind == 'physical' %}{{ rule.stock if rule.stock is not none else '—' }} in stock
+      {%- else %}payment only{% endif %}</span>{% endif %}
+    <span class="product-summary-caret" aria-hidden="true">&#9662;</span>
+  </button>
+  <div class="product-detail" hidden>
+
+    <form method="post" action="{{ url_for('admin.commerce_product_save', product_id=p.product_id) }}" enctype="multipart/form-data" class="product-edit-form">
+      <input type="hidden" name="price_id" value="{{ p.price_id }}">
+      <input type="hidden" name="current_amount" value="{{ p.amount if p.amount is not none else 0 }}">
+      <input type="hidden" name="current_interval" value="{{ p.interval }}">
+
+      <label for="name_{{ loop.index }}">Name</label>
+      <input type="text" id="name_{{ loop.index }}" name="name" value="{{ p.name }}" maxlength="250"
+             title="The name buyers see">
+
+      <label for="desc_{{ loop.index }}">Short description</label>
+      <input type="text" id="desc_{{ loop.index }}" name="description" value="{{ p.description }}" maxlength="500"
+             title="One line under the name">
+
+      <label for="amount_{{ loop.index }}">Price</label>
+      <div class="product-price-row">
+        <input type="number" id="amount_{{ loop.index }}" name="amount" step="0.01" min="0"
+               value="{{ '%.2f'|format(p.amount / 100) if p.amount is not none else '' }}"
+               title="Change this and a new price is created for you, with the old one retired">
+        {#  Its own, and not editable: a Stripe price cannot change, so
+            repricing makes a NEW one -- and making that new one in a
+            different currency would orphan the fulfilment rule keyed to
+            the old price, which is how a buyer pays and gets nothing. #}
+        <span class="product-currency" title="A price cannot change currency once it exists. To sell this in {{ base_currency | upper }}, retire it and add it again.">{{ p.currency }}</span>
+        <input type="hidden" name="current_currency" value="{{ p.currency | lower }}">
+        <select name="interval" title="A one-off sale, or something they pay for again">
+          {% for value, label in intervals %}
+          <option value="{{ value }}" {{ 'selected' if p.interval == value }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <p class="hint">Changing the price makes a new one and retires the old &mdash; Stripe never lets a price that has been used change, so that an old receipt still says what it said. Anyone already subscribed keeps the price they signed up at.</p>
+
+      {{ image_controls(loop.index, p.image, image_gen_ready) }}
+
+      <div class="product-detail-actions">
+        <button type="submit" class="btn btn-primary btn-small">Save changes</button>
+        {#  On-sale is a tick, not a button: it reads as the state it is,
+            and toggling it submits the archive form on its own. A ticked
+            box posts active=1; unticking posts nothing, which the route
+            reads as "off sale". #}
+        <label class="product-onsale" title="Untick to stop selling this. Nothing is deleted, and past orders are untouched.">
+          <input type="checkbox" name="active" value="1" form="onsale_{{ loop.index }}"
+                 class="product-onsale-toggle" {{ 'checked' if p.active }}>
+          On sale
+        </label>
+      </div>
+    </form>
+    {#  The tick lives in its own form (a different route from Save) but is
+        drawn on the Save row above via the form= attribute. #}
+    <form method="post" id="onsale_{{ loop.index }}"
+          action="{{ url_for('admin.commerce_product_archive', product_id=p.product_id) }}" hidden></form>
+
+    <div class="product-fulfilment">
+      <form method="post" action="{{ url_for('admin.commerce_fulfilment_save') }}" class="fulfilment-form">
+        <input type="hidden" name="price_id" value="{{ p.price_id }}">
+
+        <label for="kind_{{ loop.index }}">When someone buys this…</label>
+        <select id="kind_{{ loop.index }}" name="kind" class="fulfilment-kind" title="What this sale should unlock for the buyer">
+          <option value="" {{ 'selected' if not rule }}>Just take the payment</option>
+          <option value="credit" {{ 'selected' if rule and rule.kind == 'credit' }}>Give them sessions to book</option>
+          <option value="download" {{ 'selected' if rule and rule.kind == 'download' }}>Give them a file to download</option>
+          <option value="physical" {{ 'selected' if rule and rule.kind == 'physical' }}>Send them something — keep a stock count</option>
+        </select>
+
+        <div class="fulfilment-fields" data-for="credit" {{ 'hidden' if not rule or rule.kind != 'credit' }}>
+          <label for="qty_{{ loop.index }}">How many sessions</label>
+          <input type="number" id="qty_{{ loop.index }}" name="quantity" min="1" max="100"
+                 value="{{ rule.quantity if rule and rule.kind == 'credit' else 1 }}"
+                 title="A buyer can book this many times before paying again">
+          <label for="ref_{{ loop.index }}">Bookable against</label>
+          {% if calcom_ready and event_types %}
+          <select id="ref_{{ loop.index }}" name="ref" title="Which meeting on your calendar these sessions can be booked into">
+            <option value="">Choose a meeting…</option>
+            {% for et in event_types %}
+            <option value="{{ et.id }}" {{ 'selected' if rule and rule.ref == et.id }}>{{ et.label }}</option>
+            {% endfor %}
+          </select>
+          {% elif calcom_ready %}
+          <p class="hint">{{ event_error or 'No event types found on your Cal.com account yet.' }}</p>
+          {% else %}
+          <p class="hint">Connect Cal.com and your meetings will appear here. <a href="{{ url_for('admin.settings_integrations') }}">Open Integrations →</a></p>
+          {% endif %}
+        </div>
+
+        <div class="fulfilment-fields" data-for="download" {{ 'hidden' if not rule or rule.kind != 'download' }}>
+          <label for="file_{{ loop.index }}">Which file</label>
+          {% if files %}
+          <select id="file_{{ loop.index }}" name="ref" title="The file the buyer gets when they pay for this">
+            <option value="">Choose a file…</option>
+            {% for f in files %}
+            <option value="{{ f.id }}" {{ 'selected' if rule and rule.kind == 'download' and rule.ref == f.id|string }}>{{ f.original_name }}</option>
+            {% endfor %}
+          </select>
+          <label for="dl_{{ loop.index }}">How many times they can download it</label>
+          <input type="number" id="dl_{{ loop.index }}" name="quantity" min="1" max="50"
+                 value="{{ rule.quantity if rule and rule.kind == 'download' else 5 }}"
+                 title="A few is kind — people lose files and change phones. A very high number makes the link worth sharing.">
+          <p class="hint">Five is a sensible default: enough that an honest buyer never gets stuck, few enough that the link isn&rsquo;t worth passing around.</p>
+          {% else %}
+          <p class="hint">Upload a file under <a href="{{ url_for('admin.commerce_settings') }}">Store settings</a> first, then it can be chosen here.</p>
+          {% endif %}
+        </div>
+
+        <div class="fulfilment-fields" data-for="physical" {{ 'hidden' if not rule or rule.kind != 'physical' }}>
+          <label for="stock_{{ loop.index }}">How many you have</label>
+          <input type="number" id="stock_{{ loop.index }}" name="stock" min="0"
+                 value="{{ rule.stock if rule and rule.stock is not none else 0 }}"
+                 title="Counts down with each sale. Stripe has no stock field of its own, so this is the only place it lives.">
+          <p class="hint">Counts down as they sell. Stripe doesn&rsquo;t track stock at all, so this is the only record of it.</p>
+        </div>
+
+        <button type="submit" class="btn btn-small" title="Save what this product delivers when somebody buys it.">Save what it delivers</button>
+      </form>
+    </div>
+  </div>{# .product-detail #}
+</div>{# .product-item #}
+{% else %}
+<div class="card"><p>No products yet. Click <strong>&#65291; Add product</strong> above to create your first one.</p></div>
+{% endfor %}
+</div>{# .products-grid #}
+
 {% if retired_count %}
 <p class="hint">
   {% if show_all %}
-  Showing {{ retired_count }} item{{ 's' if retired_count != 1 }} you've taken off sale.
+  Showing {{ retired_count }} item{{ 's' if retired_count != 1 }} you&rsquo;ve taken off sale.
   <a href="{{ url_for('admin.commerce_fulfilment') }}" title="Show only what's currently on sale">Hide them</a>
   {% else %}
   {{ retired_count }} item{{ 's' if retired_count != 1 }} taken off sale {{ 'are' if retired_count != 1 else 'is' }} hidden.
@@ -140,239 +258,9 @@
 </p>
 {% endif %}
 
-{% if product_error %}
-<div class="card"><p class="flash flash-error">Couldn't read your products from Stripe &mdash; {{ product_error }}</p></div>
-{% elif products %}
-{#  Products are a compact list (or a gallery of cards -- toggle top-right,
-    remembered per browser), each one a summary you can scan. Click a
-    product to open its editor inline; only one opens at a time, so the
-    page stays short however many you sell. A search box filters by name.
-    See static/js/admin/products-admin.js and .products-* in admin.css. #}
-<div class="products-toolbar">
-  <input type="search" id="products-search" placeholder="Search products…"
-         title="Filter the list by name" autocomplete="off">
-  <div class="products-view-toggle" role="group" aria-label="Choose how products are shown">
-    <button type="button" class="btn btn-small" data-products-view="list" title="Show products as a compact list">&#9776; List</button>
-    <button type="button" class="btn btn-small" data-products-view="gallery" title="Show products as a grid of picture cards">&#9638; Gallery</button>
-  </div>
-</div>
-<p class="hint products-none-match" hidden>No product matches that.</p>
-<div class="products-grid" id="products-grid" data-view="list">
-{% for p in products %}
-<div class="product-item{{ ' is-off' if not p.active }}" data-name="{{ (p.name or '') | lower }}">
-  <button type="button" class="product-summary" aria-expanded="false"
-          title="Click to edit “{{ p.name }}”">
-    {% if p.image %}<img src="{{ p.image }}" alt="" class="product-summary-thumb">
-    {% else %}<span class="product-summary-thumb product-summary-thumb-empty" aria-hidden="true">&#128717;</span>{% endif %}
-    <span class="product-summary-name">{{ p.name }}</span>
-    <span class="product-summary-price">{{ '%.2f'|format(p.amount / 100) if p.amount is not none else '&mdash;' | safe }} {{ p.currency }}</span>
-    <span class="integration-badge {{ 'is-on' if p.active else 'is-off' }}">{{ 'on sale' if p.active else 'off sale' }}</span>
-    <span class="product-summary-caret" aria-hidden="true">&#9662;</span>
-  </button>
-  <div class="product-detail" hidden>
-  <form method="post" action="{{ url_for('admin.commerce_product_save', product_id=p.product_id) }}" enctype="multipart/form-data" class="fulfilment-form">
-    <input type="hidden" name="price_id" value="{{ p.price_id }}">
-    <input type="hidden" name="current_amount" value="{{ p.amount if p.amount is not none else 0 }}">
-    <input type="hidden" name="current_interval" value="{{ p.interval }}">
-
-    {% if p.image %}<img src="{{ p.image }}" alt="" class="product-thumb">{% endif %}
-
-    <label for="name_{{ loop.index }}">Name</label>
-    <input type="text" id="name_{{ loop.index }}" name="name" value="{{ p.name }}" maxlength="250"
-           title="The name buyers see">
-
-    <label for="desc_{{ loop.index }}">Short description</label>
-    <input type="text" id="desc_{{ loop.index }}" name="description" value="{{ p.description }}" maxlength="500"
-           title="One line under the name">
-
-    <label for="amount_{{ loop.index }}">Price</label>
-    <div class="product-price-row">
-      <input type="number" id="amount_{{ loop.index }}" name="amount" step="0.01" min="0"
-             value="{{ '%.2f'|format(p.amount / 100) if p.amount is not none else '' }}"
-             title="Change this and a new price is created for you, with the old one retired">
-      {#  Its own, and not editable: a Stripe price cannot change, so
-          repricing makes a NEW one -- and making that new one in a
-          different currency would orphan the fulfilment rule keyed to
-          the old price, which is how a buyer pays and gets nothing. #}
-      <span class="product-currency" title="A price cannot change currency once it exists. To sell this in {{ base_currency | upper }}, retire it and add it again.">{{ p.currency }}</span>
-      <input type="hidden" name="current_currency" value="{{ p.currency | lower }}">
-      <select name="interval" title="A one-off sale, or something they pay for again">
-        {% for value, label in intervals %}
-        <option value="{{ value }}" {{ 'selected' if p.interval == value }}>{{ label }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <p class="hint">Changing the price makes a new one and retires the old &mdash; Stripe never lets a price that has been used change, so that an old receipt still says what it said. Anyone already subscribed keeps the price they signed up at.</p>
-
-    {% if image_gen_ready %}
-    <label for="prompt_{{ loop.index }}">&hellip;or describe a new one</label>
-    <input type="text" id="prompt_{{ loop.index }}" name="image_prompt" maxlength="300"
-           placeholder="a hand-thrown stoneware mug, matte grey"
-           title="Describe a replacement picture. Leave it blank to keep the one it has — and if you also choose a file, the file wins.">
-    {% endif %}
-
-    <label for="img_{{ loop.index }}">Replace the picture</label>
-    <input type="file" id="img_{{ loop.index }}" name="image" accept="image/*" title="Leave empty to keep the current one">
-
-    <button type="submit" class="btn btn-primary btn-small">Save changes</button>
-  </form>
-
-  <form method="post" action="{{ url_for('admin.commerce_product_archive', product_id=p.product_id) }}" class="inline-form">
-    <input type="hidden" name="active" value="{{ '1' if not p.active else '0' }}">
-    <button type="submit" class="btn btn-small"
-            title="{{ 'Put this back on sale' if not p.active else 'Stop selling this. Nothing is deleted, and past orders are untouched.' }}">
-      {{ 'Put back on sale' if not p.active else 'Take off sale' }}
-    </button>
-  </form>
-  </div>{# .product-detail #}
-</div>{# .product-item #}
-{% endfor %}
-</div>{# .products-grid #}
-{% endif %}
-
-<div class="card">
-  <h2>Delivery</h2>
-  <p class="hint">Only asked for when a basket holds something you post &mdash; nobody buying a download is made to type their address. Stripe collects the address and adds this charge at the payment step.</p>
-  <form method="post" action="{{ url_for('admin.commerce_postage') }}" class="fulfilment-form">
-    <label for="zone">Where you post to</label>
-    <select id="zone" name="zone" title="Stripe only offers your buyer these countries at checkout">
-      {% for key, zone in zones.items() %}
-      <option value="{{ key }}" {{ 'selected' if postage.zone == key }}>{{ zone[0] }}</option>
-      {% endfor %}
-    </select>
-
-    <label for="amount">What delivery costs</label>
-    <input type="number" id="amount" name="amount" step="0.01" min="0"
-           value="{{ '%.2f'|format(postage.amount / 100) }}"
-           title="One flat charge per order. Enter 0 if you always post free.">
-
-    <label for="free_over">Free delivery over</label>
-    <input type="number" id="free_over" name="free_over" step="0.01" min="0"
-           value="{{ '%.2f'|format(postage.free_over / 100) }}"
-           title="Spend this much and delivery is free. Leave at 0 to always charge.">
-
-    <label for="label">What to call it</label>
-    <input type="text" id="label" name="label" value="{{ postage.label }}" maxlength="60"
-           title="What the buyer sees on the delivery line, e.g. Standard post">
-
-    <button type="submit" class="btn btn-primary btn-small" title="Save these postage settings. They apply to every order with something to post.">Save</button>
-  </form>
-</div>
-
-<h2 class="section-heading">What each sale delivers</h2>
-<p class="hint">Stripe takes the money. It has no idea that "10 Coaching Sessions" should become ten bookings someone can claim, or that you only have three of something in a cupboard. Say it here once.</p>
-
-<div class="card">
-  <h2>Session credits</h2>
-  <form method="post" action="{{ url_for('admin.commerce_credit_expiry') }}" class="inline-form">
-    <label for="months">How long do unused sessions stay bookable?</label>
-    <select id="months" name="months" title="Leave as Never unless you have a reason — someone who paid for ten sessions has paid for ten sessions">
-      <option value="0" {{ 'selected' if not credit_expiry_months or credit_expiry_months == '0' }}>Never expire (recommended)</option>
-      <option value="6" {{ 'selected' if credit_expiry_months == '6' }}>6 months after purchase</option>
-      <option value="12" {{ 'selected' if credit_expiry_months == '12' }}>12 months after purchase</option>
-      <option value="24" {{ 'selected' if credit_expiry_months == '24' }}>24 months after purchase</option>
-    </select>
-    <button type="submit" class="btn btn-small" title="Save how long a session credit lasts. Credits already sold keep the term they were sold with.">Save</button>
-  </form>
-  <p class="hint">Applies to sessions bought from now on. Sessions someone has already paid for keep whatever term they were sold under.</p>
-</div>
-
-<div class="card">
-  <h2>Files you sell</h2>
-  <form method="post" action="{{ url_for('admin.commerce_download_expiry') }}" class="inline-form">
-    <label for="download_days">How long can a buyer download what they paid for?</label>
-    <select id="download_days" name="days" title="How long you promise to keep a paid file available. The buyer is told this in their order email.">
-      <option value="30" {{ 'selected' if download_expiry_days in (None, '', '30') }}>30 days after purchase (recommended)</option>
-      <option value="90" {{ 'selected' if download_expiry_days == '90' }}>90 days after purchase</option>
-      <option value="365" {{ 'selected' if download_expiry_days == '365' }}>A year after purchase</option>
-      <option value="0" {{ 'selected' if download_expiry_days == '0' }}>Never expire &mdash; you keep hosting it</option>
-    </select>
-    <button type="submit" class="btn btn-small" title="Save how long paid files stay available">Save</button>
-  </form>
-  <p class="hint">Nobody hosts a file forever, so a buyer is told how long they have and can save it in time. Applies to files bought from now on &mdash; anything already sold keeps the term it was sold under. Choosing Never is a promise to keep the file up indefinitely.</p>
-</div>
-
-{% for item in catalogue %}
-{% set rule = rules.get(item.price_id) %}
-<div class="card fulfilment-card">
-  <div class="integration-head">
-    <h2>{{ item.name }}</h2>
-    <span class="integration-badge {{ 'is-on' if rule else 'is-off' }}">
-      {% if rule and rule.kind == 'credit' %}{{ rule.quantity }} session{{ 's' if rule.quantity != 1 }}
-      {%- elif rule and rule.kind == 'download' %}a download
-      {%- elif rule and rule.kind == 'physical' %}{{ rule.stock if rule.stock is not none else '—' }} in stock
-      {%- else %}payment only{% endif %}
-    </span>
-  </div>
-  <p class="hint">
-    {{ '%.2f'|format(item.amount / 100) ~ ' ' ~ item.currency if item.amount is not none else 'Customer chooses the amount' }}
-    {%- if item.description %} · {{ item.description }}{% endif %}
-  </p>
-
-  <form method="post" action="{{ url_for('admin.commerce_fulfilment_save') }}" class="fulfilment-form">
-    <input type="hidden" name="price_id" value="{{ item.price_id }}">
-
-    <label for="kind_{{ loop.index }}">When someone buys this…</label>
-    <select id="kind_{{ loop.index }}" name="kind" class="fulfilment-kind" title="What this sale should unlock for the buyer">
-      <option value="" {{ 'selected' if not rule }}>Just take the payment</option>
-      <option value="credit" {{ 'selected' if rule and rule.kind == 'credit' }}>Give them sessions to book</option>
-      <option value="download" {{ 'selected' if rule and rule.kind == 'download' }}>Give them a file to download</option>
-      <option value="physical" {{ 'selected' if rule and rule.kind == 'physical' }}>Send them something — keep a stock count</option>
-    </select>
-
-    <div class="fulfilment-fields" data-for="credit" {{ 'hidden' if not rule or rule.kind != 'credit' }}>
-      <label for="qty_{{ loop.index }}">How many sessions</label>
-      <input type="number" id="qty_{{ loop.index }}" name="quantity" min="1" max="100"
-             value="{{ rule.quantity if rule and rule.kind == 'credit' else 1 }}"
-             title="A buyer can book this many times before paying again">
-      <label for="ref_{{ loop.index }}">Bookable against</label>
-      {% if calcom_ready and event_types %}
-      <select id="ref_{{ loop.index }}" name="ref" title="Which meeting on your calendar these sessions can be booked into">
-        <option value="">Choose a meeting…</option>
-        {% for et in event_types %}
-        <option value="{{ et.id }}" {{ 'selected' if rule and rule.ref == et.id }}>{{ et.label }}</option>
-        {% endfor %}
-      </select>
-      {% elif calcom_ready %}
-      <p class="hint">{{ event_error or 'No event types found on your Cal.com account yet.' }}</p>
-      {% else %}
-      <p class="hint">Connect Cal.com and your meetings will appear here. <a href="{{ url_for('admin.settings_integrations') }}">Open Integrations →</a></p>
-      {% endif %}
-    </div>
-
-    <div class="fulfilment-fields" data-for="download" {{ 'hidden' if not rule or rule.kind != 'download' }}>
-      <label for="file_{{ loop.index }}">Which file</label>
-      {% if files %}
-      <select id="file_{{ loop.index }}" name="ref" title="The file the buyer gets when they pay for this">
-        <option value="">Choose a file…</option>
-        {% for f in files %}
-        <option value="{{ f.id }}" {{ 'selected' if rule and rule.kind == 'download' and rule.ref == f.id|string }}>{{ f.original_name }}</option>
-        {% endfor %}
-      </select>
-      <label for="dl_{{ loop.index }}">How many times they can download it</label>
-      <input type="number" id="dl_{{ loop.index }}" name="quantity" min="1" max="50"
-             value="{{ rule.quantity if rule and rule.kind == 'download' else 5 }}"
-             title="A few is kind — people lose files and change phones. A very high number makes the link worth sharing.">
-      <p class="hint">Five is a sensible default: enough that an honest buyer never gets stuck, few enough that the link isn't worth passing around.</p>
-      {% else %}
-      <p class="hint">Upload a file above first, then it can be chosen here.</p>
-      {% endif %}
-    </div>
-
-    <div class="fulfilment-fields" data-for="physical" {{ 'hidden' if not rule or rule.kind != 'physical' }}>
-      <label for="stock_{{ loop.index }}">How many you have</label>
-      <input type="number" id="stock_{{ loop.index }}" name="stock" min="0"
-             value="{{ rule.stock if rule and rule.stock is not none else 0 }}"
-             title="Counts down with each sale. Stripe has no stock field of its own, so this is the only place it lives.">
-      <p class="hint">Counts down as they sell. Stripe doesn't track stock at all, so this is the only record of it.</p>
-    </div>
-
-    <button type="submit" class="btn btn-primary btn-small" title="Save what this product delivers when somebody buys it.">Save</button>
-  </form>
-</div>
-{% endfor %}
 {% endif %}
 
 <script src="{{ static_url('js/admin/fulfilment.js') }}"></script>
+<script src="{{ static_url('js/admin/image-picker.js') }}"></script>
 <script src="{{ static_url('js/admin/products-admin.js') }}"></script>
 {% endblock %}

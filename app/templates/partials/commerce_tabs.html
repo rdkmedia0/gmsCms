@@ -6,5 +6,6 @@
   ("Products", url_for('admin.commerce_fulfilment'), request.endpoint == 'admin.commerce_fulfilment'),
   ("Orders", url_for('admin.commerce_orders'), request.endpoint == 'admin.commerce_orders'),
   ("Bookings", url_for('admin.commerce_bookings'), request.endpoint == 'admin.commerce_bookings'),
+  ("Store settings", url_for('admin.commerce_settings'), request.endpoint == 'admin.commerce_settings'),
 ] %}
 {% include "partials/tabs.html" %}
