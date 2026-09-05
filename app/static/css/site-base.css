@@ -502,6 +502,20 @@ body.has-sidebar-right > .site-sidebar.site-sidebar-right.site-sidebar-empty { f
   min-height: var(--cms-content-height-px);
 }
 
+/*  A desktop custom height is a floor for WIDE screens, and on a phone it
+    usually strands a gap: the content reflows narrower and taller-or-
+    shorter, so a height that fit two desktop columns leaves empty space
+    under a single stacked one -- and there is no handle to drag on a real
+    phone. So a height set for desktop with NO mobile height of its own
+    RELEASES to content-driven on a phone; an explicit mobile height (below)
+    still wins. This is the base/override rule the portrait and box width
+    already follow: the desktop value is the wide-screen base, not a law for
+    every size. */
+@media (max-width: 640px) {
+  .cms-section.cms-has-custom-height:not(.cms-sm-has-custom-height) > .block { min-height: 0; }
+}
+body.cms-view-mobile .cms-section.cms-has-custom-height:not(.cms-sm-has-custom-height) > .block { min-height: 0; }
+
 /*  The MOBILE height override: a height dragged for phone widths only (see
     set_section_height). It wins over the desktop base at phone widths and in
     the Mobile editing canvas, so a tall hero can be cut down for a phone
