@@ -53,6 +53,30 @@
       {% endfor %}
     </div>
 
+    {#  Patterns: whole sections the owner saved, dropped onto this page as
+        a new section. Unlike a tool (which fills a cell), a pattern IS a
+        section, so it is placed by adding one. Save a section as a pattern
+        from its own toolbar (the bookmark icon on its divider). #}
+    {% if patterns %}
+    <details class="cms-tool-new cms-patterns" open>
+      <summary title="Sections you saved to reuse">Patterns{{ panel_help("A section you built, saved whole. Click one to add it to the bottom of this page, then move it where you like. Save a new one with the bookmark icon on any section's divider bar.") }}</summary>
+      <div class="cms-patterns-list">
+        {% for pat in patterns %}
+        <div class="cms-pattern-row">
+          <form method="post" action="{{ url_for('admin.page_insert_pattern', page_id=page.id, pattern_id=pat.id) }}" class="cms-pattern-add">
+            <input type="hidden" name="next" value="{{ current_path }}">
+            <button type="submit" title="Add “{{ pat.name }}” to this page">{{ pat.name }}</button>
+          </form>
+          <form method="post" action="{{ url_for('admin.pattern_delete', pattern_id=pat.id) }}" class="cms-inline-form cms-delete-form" data-confirm="Delete the pattern “{{ pat.name }}”? Sections already placed from it stay.">
+            <input type="hidden" name="next" value="{{ current_path }}">
+            <button type="submit" class="cms-pattern-del" title="Delete the “{{ pat.name }}” pattern">&times;</button>
+          </form>
+        </div>
+        {% endfor %}
+      </div>
+    </details>
+    {% endif %}
+
     {% set has_custom_tools = content_tools | selectattr('is_builtin', 'equalto', 0) | list %}
     <details class="cms-tool-new">
       <summary title="Export every custom tool as one file, or import one somebody shared">Toolkits{{ panel_help("Export every custom tool on this site as one file, to reuse on another install. Importing only adds tools whose name doesn't already exist — nothing already installed is ever changed or duplicated.") }}</summary>

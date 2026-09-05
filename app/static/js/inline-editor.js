@@ -182,6 +182,40 @@
     });
   });
 
+  // ---------- Save a section as a reusable pattern ----------
+  // The bookmark on a section's divider. Ask for a name (one the owner
+  // chooses is one they'll recognise in the Tools panel later), then POST
+  // it. The pattern shows up in Tools -> Patterns on the next page load;
+  // no need to reload here — nothing on THIS page changed.
+  bindEach(".cms-save-pattern-btn", (btn) => {
+    btn.addEventListener("click", async () => {
+      const { confirmed, value } = await cmsModal({
+        message: "Save this section as a pattern. Name it so you can find it in the Tools panel:",
+        showInput: true,
+        confirmLabel: "Save pattern",
+        danger: false,
+      });
+      if (!confirmed || !value || !value.trim()) return;
+      try {
+        const body = new URLSearchParams();
+        body.set("name", value.trim());
+        const res = await fetch(btn.dataset.saveUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded", "X-Inline-Edit": "1" },
+          body,
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          toast('Saved as a pattern — add it from the Tools panel');
+        } else {
+          toast(data.error || "Couldn't save the pattern");
+        }
+      } catch {
+        toast("Couldn't save the pattern — check your connection");
+      }
+    });
+  });
+
   // Pages are added/removed from the Dashboard only now — no nav add/delete
   // controls on the live page itself.
 

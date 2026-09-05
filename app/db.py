@@ -859,6 +859,20 @@ def _migrate(db):
         )
     """)
 
+    #  Patterns: a section the owner built, saved whole to drop onto other
+    #  pages. `data_json` is the section's captured columns (type, content
+    #  and every styling field) -- see services/patterns.py. Local to the
+    #  install; a Template Package is the thing that travels.
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS patterns (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            section_type TEXT NOT NULL DEFAULT 'text',
+            data_json TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+    """)
+
     #  A send put on the clock. See services/scheduling.py for why the
     #  claim is the lock and why a failure is never retried by itself.
     #

@@ -722,6 +722,7 @@ body.cms-placing-tool .cms-editing .cms-column:hover {
    the tiny left/right margin that separates them differ per icon. */
 .cms-section-divider-btn,
 .cms-section-edit-icon,
+.cms-save-pattern-btn,
 .cms-section-divider-delete-btn {
   position: relative; z-index: 1;
   box-sizing: border-box; width: 20px; height: 20px; padding: 0; margin: 0;
@@ -736,9 +737,11 @@ body.cms-placing-tool .cms-editing .cms-column:hover {
    surrounding box CSS was tuned. */
 .cms-section-divider-btn svg,
 .cms-section-edit-icon svg,
+.cms-save-pattern-btn svg,
 .cms-section-divider-delete-btn svg { display: block; }
 .cms-section-divider-btn { background: #e2e4e9; color: #1f2430; }
 .cms-section-edit-icon { background: #e2e4e9; color: #1f2430; margin-right: 6px; }
+.cms-save-pattern-btn { background: #e2e4e9; color: #1f2430; margin-left: 6px; }
 .cms-section-divider-delete-btn { background: #fca5a5; color: #7f1d1d; margin-left: 6px; }
 
 /* Hovering anywhere on the line just reveals all three icons (opacity);
@@ -747,9 +750,11 @@ body.cms-placing-tool .cms-editing .cms-column:hover {
    was anywhere on the line, not actually tracking the cursor. */
 .cms-section-divider:hover .cms-section-divider-btn,
 .cms-section-divider:hover .cms-section-edit-icon,
+.cms-section-divider:hover .cms-save-pattern-btn,
 .cms-section-divider:hover .cms-section-divider-delete-btn { opacity: 1; }
 .cms-section-divider-btn:hover { background: #2563eb; color: #fff; transform: scale(1.15); }
 .cms-section-edit-icon:hover { background: #2563eb; color: #fff; transform: scale(1.15); }
+.cms-save-pattern-btn:hover { background: #2563eb; color: #fff; transform: scale(1.15); }
 .cms-section-divider-delete-btn:hover { background: #f87171; transform: scale(1.15); }
 /* The tool panel — a full-width bar atop the section's content, holding
    that tool's own settings (Image's Change button, Menu's pages, ...).

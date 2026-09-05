@@ -1742,6 +1742,27 @@
 
 .cms-tool-new { margin-top: 4px; font-size: 12px; flex-shrink: 0; }
 .cms-tool-new summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
+
+/*  Saved patterns — a list of "add this whole section to the page"
+    buttons, each with a red × to forget the pattern. The add button is
+    the wide one (it is the common act); delete is the small square
+    beside it, using the app's own remove colour, never the site's. */
+.cms-patterns-list { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.cms-pattern-row { display: flex; align-items: stretch; gap: 4px; }
+.cms-pattern-add { flex: 1; min-width: 0; }
+.cms-pattern-add button {
+  width: 100%; text-align: left; cursor: pointer;
+  padding: 6px 10px; font-size: 12px; font-weight: 600; line-height: 1.3;
+  background: var(--cms-ui-surface, #fff); color: var(--cms-ui-text, #1f2430);
+  border: 1px solid var(--border, #e2e4e9); border-radius: var(--cms-ui-radius-control);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.cms-pattern-add button:hover { border-color: var(--cms-ui-accent, #2563eb); }
+.cms-pattern-del {
+  flex-shrink: 0; width: 26px; cursor: pointer; font-size: 15px; line-height: 1;
+  background: #fca5a5; color: #7f1d1d; border: none; border-radius: var(--cms-ui-radius-control);
+}
+.cms-pattern-del:hover { background: #f87171; }
 .cms-tool-new-form { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
 .cms-tool-new-form input, .cms-tool-new-form select, .cms-tool-new-form textarea {
   padding: 6px 8px; border: 1px solid var(--border, #e2e4e9); border-radius: var(--cms-ui-radius-control); font-family: inherit; font-size: 12px;

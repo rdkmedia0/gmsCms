@@ -12,6 +12,7 @@ from .. import icons
 from .. import version as _version
 from ..services import support
 from ..services import analytics
+from ..services import patterns as _patterns
 from ..services.sections import (
     MEDIA_IMAGE_EXTS,
     SECTION_TYPES,
@@ -2559,6 +2560,9 @@ def _render_page(db, page, post=None, post_content=""):
         email_configured=mailer.is_configured(get_email_settings(db)),
         icon_choices=icons.icon_choices_for() if editing else [],
         color_presets=color_scheme_choices(db) if editing else {},
+        #  Saved patterns (whole sections), for the Tools panel's Patterns
+        #  group -- see services/patterns.py.
+        patterns=(_patterns.list_patterns(db) if editing else []),
         role_color_ramps=_role_color_ramps(template) if editing else {},
         font_pairings=FONT_PAIRINGS if editing else {},
         #  Which composition this template wears, if any. It gates

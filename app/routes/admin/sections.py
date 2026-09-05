@@ -311,6 +311,53 @@ def section_new(page_id):
     return _redirect_next("admin.page_edit", page_id=page_id, anchor=f"section-{cur.lastrowid}")
 
 
+@bp.route("/sections/<int:section_id>/save-pattern", methods=["POST"])
+@login_required
+def section_save_pattern(section_id):
+    """Save this section as a reusable pattern (see services/patterns.py)."""
+    from ...services import patterns
+    try:
+        patterns.save_pattern(get_db(), section_id, request.form.get("name", ""))
+    except ValueError as e:
+        if wants_json():
+            return jsonify({"error": str(e)}), 400
+        flash(str(e), "error")
+        return _redirect_next("admin.dashboard")
+    if wants_json():
+        return jsonify({"ok": True})
+    flash("Saved as a pattern — add it to any page from the Tools panel.", "success")
+    return _redirect_next("admin.dashboard")
+
+
+@bp.route("/pages/<int:page_id>/patterns/<int:pattern_id>", methods=["POST"])
+@login_required
+def page_insert_pattern(page_id, pattern_id):
+    """Drop a saved pattern onto a page as a new section."""
+    from ...services import patterns
+    new_id = patterns.insert_pattern(get_db(), pattern_id, page_id,
+                                     before_id=request.form.get("before", type=int))
+    if new_id is None:
+        if wants_json():
+            return jsonify({"error": "That pattern or page no longer exists."}), 404
+        flash("That pattern or page no longer exists.", "error")
+        return _redirect_next("admin.dashboard")
+    if wants_json():
+        return jsonify({"ok": True, "id": new_id})
+    flash("Pattern added to the page.", "success")
+    return _redirect_next("admin.page_edit", page_id=page_id, anchor="section-%s" % new_id)
+
+
+@bp.route("/patterns/<int:pattern_id>/delete", methods=["POST"])
+@login_required
+def pattern_delete(pattern_id):
+    from ...services import patterns
+    patterns.delete_pattern(get_db(), pattern_id)
+    if wants_json():
+        return jsonify({"ok": True})
+    flash("Pattern removed.", "success")
+    return _redirect_next("admin.dashboard")
+
+
 @bp.route("/templates/<int:template_id>/<zone>/sections/new", methods=["POST"])
 @login_required
 def zone_section_new(template_id, zone):
