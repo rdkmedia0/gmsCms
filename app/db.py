@@ -742,6 +742,17 @@ def _migrate(db):
     #  so existing physical rules gain the columns here.
     _add_column(db, "fulfilment_rules", "weight_g", "INTEGER")
     _add_column(db, "fulfilment_rules", "shipping_service_id", "INTEGER")
+    #  A product's shop visibility, a LOCAL flag separate from Stripe's
+    #  archive state: an available product shows in the shop, an unavailable
+    #  one stays live in Stripe (a direct Buy link still works) but is kept
+    #  out of the shop listing. Archived is Stripe's own `active=false`.
+    #  A product with no row here is available by default.
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS product_visibility (
+            product_id TEXT PRIMARY KEY,
+            available INTEGER NOT NULL DEFAULT 1
+        )
+    """)
     #  A delivery SERVICE is a carrier + service tied to a destination zone;
     #  a delivery RATE is one weight band of that service (a ceiling in
     #  grams and a price). A basket's postage is looked up from the total

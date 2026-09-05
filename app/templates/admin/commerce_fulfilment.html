@@ -152,17 +152,24 @@
     which reveals the "add" form. See products-admin.js and .products-*
     in admin.css. #}
 <div class="products-toolbar">
+  <div class="products-view-toggle" role="group" aria-label="Which products to show">
+    <a class="btn btn-small {{ 'is-active' if view == 'active' }}"
+       href="{{ url_for('admin.commerce_fulfilment') }}"
+       title="Products that are live in Stripe (shown in your shop, or hidden but still live)">Active{% if active_count %} ({{ active_count }}){% endif %}</a>
+    <a class="btn btn-small {{ 'is-active' if view == 'archived' }}"
+       href="{{ url_for('admin.commerce_fulfilment', view='archived') }}"
+       title="Products you've archived in Stripe — off the shop, kept for their history">Archived{% if archived_count %} ({{ archived_count }}){% endif %}</a>
+  </div>
   <input type="search" id="products-search" placeholder="Search products…"
          title="Filter the list by name" autocomplete="off">
+  {% if view == 'active' %}
   <button type="button" class="btn btn-small btn-primary" id="products-add-toggle"
           aria-expanded="false" aria-controls="product-add-panel"
           title="Add a new product — creates it in Stripe for you">&#65291; Add product</button>
-  <div class="products-view-toggle" role="group" aria-label="Choose how products are shown">
-    <button type="button" class="btn btn-small" data-products-view="list" title="Show products as a compact list">&#9776; List</button>
-    <button type="button" class="btn btn-small" data-products-view="gallery" title="Show products as a grid of picture cards">&#9638; Gallery</button>
-  </div>
+  {% endif %}
 </div>
 
+{% if view == 'active' %}
 <div class="card product-add-panel" id="product-add-panel" hidden>
   <h2>Add a product</h2>
   <p class="hint">This creates the product in Stripe for you. You never need to open the Stripe dashboard to start selling something.</p>
@@ -195,19 +202,48 @@
     <button type="submit" class="btn btn-primary btn-small">Create product</button>
   </form>
 </div>
+{% endif %}
 
 <p class="hint products-none-match" hidden>No product matches that.</p>
-<div class="products-grid" id="products-grid" data-view="list">
+
+{#  Tick the box on any collapsed rows and archive (or restore) them
+    together. The checkboxes carry form="products-bulk-form" so they post to
+    the bulk form below without nesting inside each product's edit form. #}
+<div class="products-bulk-bar" id="products-bulk-bar" hidden>
+  <span class="products-bulk-count"><strong id="products-bulk-n">0</strong> selected</span>
+  {% if view == 'archived' %}
+  <button type="submit" name="action" value="restore" form="products-bulk-form" class="btn btn-small btn-primary">Restore selected</button>
+  {% else %}
+  <button type="submit" name="action" value="archive" form="products-bulk-form" class="btn btn-small btn-danger"
+          data-confirm="Archive the selected products? They leave your shop and move to Archived. Nothing is deleted — you can restore them from there."
+          data-confirm-danger="1">Archive selected</button>
+  {% endif %}
+  <button type="button" class="btn btn-small" id="products-bulk-clear">Clear</button>
+</div>
+<form method="post" id="products-bulk-form" action="{{ url_for('admin.commerce_products_bulk') }}" hidden>
+  <input type="hidden" name="view" value="{{ view }}">
+</form>
+
+<div class="products-grid" id="products-grid">
 {% for p in products %}
 {% set rule = rules.get(p.price_id) %}
 <div class="product-item{{ ' is-off' if not p.active }}" data-name="{{ (p.name or '') | lower }}">
+  <label class="product-select" title="Tick to select this product for bulk archive or restore">
+    <input type="checkbox" name="product_ids" value="{{ p.product_id }}" form="products-bulk-form" class="product-select-box">
+  </label>
   <button type="button" class="product-summary" aria-expanded="false"
           title="Click to edit “{{ p.name }}”">
     {% if p.image %}<img src="{{ p.image }}" alt="" class="product-summary-thumb">
     {% else %}<span class="product-summary-thumb product-summary-thumb-empty" aria-hidden="true">&#128717;</span>{% endif %}
     <span class="product-summary-name">{{ p.name }}</span>
     <span class="product-summary-price">{{ '%.2f'|format(p.amount / 100) if p.amount is not none else '—' }} {{ p.currency }}</span>
-    <span class="integration-badge {{ 'is-on' if p.active else 'is-off' }}">{{ 'Available' if p.active else 'Unavailable' }}</span>
+    {% if not p.active %}
+    <span class="integration-badge is-off">Archived</span>
+    {% elif p.available %}
+    <span class="integration-badge is-on">Available</span>
+    {% else %}
+    <span class="integration-badge is-off">Unavailable</span>
+    {% endif %}
     {% if rule %}<span class="integration-badge product-delivers-badge" title="What buying this delivers">
       {%- if rule.kind == 'credit' %}{{ rule.quantity }} session{{ 's' if rule.quantity != 1 }}
       {%- elif rule.kind == 'download' %}a download
@@ -255,39 +291,44 @@
 
       <div class="product-detail-actions">
         <button type="submit" class="btn btn-primary btn-small">Save changes</button>
-        {#  Availability is a tick, not a button: it reads as the state it
-            is, and toggling it submits the archive form on its own. A
-            ticked box posts active=1; unticking posts nothing, which the
-            route reads as unavailable/taken out of the shop. #}
-        <label class="product-onsale" title="Ticked, customers can buy it. Untick to take it out of your shop — nothing is deleted, and past orders are untouched.">
-          <input type="checkbox" name="active" value="1" form="onsale_{{ loop.index }}"
-                 class="product-onsale-toggle" {{ 'checked' if p.active }}>
+        {#  Two ticks, two axes, each in its own hidden form (a different
+            route from Save) but drawn on this row via form=. AVAILABLE is a
+            local flag -- show it in the shop or not; only meaningful while
+            the product is active, so it is shown on the Active tab only.
+            ARCHIVED is the Stripe act -- ticked means archived. A ticked
+            box posts value=1; unticking posts nothing. #}
+        {% if p.active %}
+        <label class="product-onsale" title="Ticked, this product shows in your shop. Untick to hide it — it stays live in Stripe (a direct link still works), just not listed.">
+          <input type="checkbox" name="available" value="1" form="avail_{{ loop.index }}"
+                 class="product-avail-toggle" {{ 'checked' if p.available }}>
           Available
+        </label>
+        {% endif %}
+        <label class="product-onsale" title="Ticked, this product is archived in Stripe — off your shop and in the Archived tab. Untick to restore it. Nothing is deleted, and past orders are untouched.">
+          <input type="checkbox" name="archived" value="1" form="arch_{{ loop.index }}"
+                 class="product-archive-toggle" {{ 'checked' if not p.active }}>
+          Archived
         </label>
       </div>
     </form>
-    {#  The tick lives in its own form (a different route from Save) but is
-        drawn on the Save row above via the form= attribute. #}
-    <form method="post" id="onsale_{{ loop.index }}"
-          action="{{ url_for('admin.commerce_product_archive', product_id=p.product_id) }}" hidden></form>
+    {#  Each tick posts to its own route; drawn on the Save row above via
+        form=. The archive form carries the current view so the redirect
+        lands back where the owner was. #}
+    <form method="post" id="avail_{{ loop.index }}"
+          action="{{ url_for('admin.commerce_product_availability', product_id=p.product_id) }}" hidden></form>
+    <form method="post" id="arch_{{ loop.index }}"
+          action="{{ url_for('admin.commerce_product_archive', product_id=p.product_id) }}" hidden>
+      <input type="hidden" name="view" value="{{ view }}">
+    </form>
   </div>{# .product-detail #}
 </div>{# .product-item #}
 {% else %}
-<div class="card"><p>No products yet. Click <strong>&#65291; Add product</strong> above to create your first one.</p></div>
+<div class="card"><p>
+  {% if view == 'archived' %}Nothing archived. Products you archive from the Active tab appear here, kept for their history.
+  {% else %}No products yet. Click <strong>&#65291; Add product</strong> above to create your first one.{% endif %}
+</p></div>
 {% endfor %}
 </div>{# .products-grid #}
-
-{% if retired_count %}
-<p class="hint">
-  {% if show_all %}
-  Showing {{ retired_count }} item{{ 's' if retired_count != 1 }} you&rsquo;ve taken out of your shop.
-  <a href="{{ url_for('admin.commerce_fulfilment') }}" title="Show only what customers can currently buy">Hide them</a>
-  {% else %}
-  {{ retired_count }} item{{ 's' if retired_count != 1 }} you&rsquo;ve taken out of your shop {{ 'are' if retired_count != 1 else 'is' }} hidden.
-  <a href="{{ url_for('admin.commerce_fulfilment', show='all') }}" title="Stripe never deletes a product that has been sold, so they stay here — this shows them">Show them</a>
-  {% endif %}
-</p>
-{% endif %}
 
 {% endif %}
 

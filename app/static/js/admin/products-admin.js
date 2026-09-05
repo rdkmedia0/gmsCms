@@ -1,32 +1,14 @@
-// The Products screen: search, a list/gallery toggle (remembered per
-// browser), click-to-open ONE product's editor at a time, an "add"
-// panel behind the ＋ button, an on-sale tick that submits itself, and
-// the three-way picture chooser (upload / Media Library / describe) each
-// product form carries. Keeping the page short however many you sell.
+// The Products screen: Active/Archived tabs (server-rendered), search,
+// click-to-open ONE editor at a time, an "add" panel behind the ＋ button,
+// the Available/Archived ticks that submit themselves, bulk archive/restore
+// from the row checkboxes, and the three-way picture chooser each product
+// form carries.
 (function () {
   "use strict";
 
   var grid = document.getElementById("products-grid");
 
-  // ---- List / Gallery, remembered ----
   if (grid) {
-    var KEY = "cms-products-view";
-    var toggles = document.querySelectorAll("[data-products-view]");
-    var setView = function (view) {
-      if (view !== "gallery") view = "list";
-      grid.setAttribute("data-view", view);
-      toggles.forEach(function (b) {
-        b.classList.toggle("is-active", b.dataset.productsView === view);
-      });
-      try { localStorage.setItem(KEY, view); } catch (e) { /* private mode */ }
-    };
-    toggles.forEach(function (b) {
-      b.addEventListener("click", function () { setView(b.dataset.productsView); });
-    });
-    var saved = "list";
-    try { saved = localStorage.getItem(KEY) || "list"; } catch (e) { /* ignore */ }
-    setView(saved);
-
     // ---- Open one product's editor at a time ----
     var closeAll = function () {
       grid.querySelectorAll(".product-item").forEach(function (it) {
@@ -81,15 +63,35 @@
     });
   }
 
-  // ---- On sale is a tick that submits itself ----
-  document.querySelectorAll(".product-onsale-toggle").forEach(function (box) {
+  // ---- The Available and Archived ticks each submit their own form ----
+  document.querySelectorAll(".product-avail-toggle, .product-archive-toggle").forEach(function (box) {
     box.addEventListener("change", function () {
-      // The box carries form="onsale_N"; .form resolves it wherever it
-      // is drawn. A ticked box posts active=1, an unticked one posts
-      // nothing, which the archive route reads as "off sale".
+      // The box carries form="avail_N" / "arch_N"; .form resolves it
+      // wherever it is drawn. A ticked box posts value=1, an unticked one
+      // posts nothing, which each route reads as the "off" state.
       if (box.form) box.form.submit();
     });
   });
+
+  // ---- Bulk select: the row ticks feed one Archive/Restore action ----
+  var bulkBar = document.getElementById("products-bulk-bar");
+  var bulkN = document.getElementById("products-bulk-n");
+  var bulkClear = document.getElementById("products-bulk-clear");
+  var boxes = document.querySelectorAll(".product-select-box");
+  var syncBulk = function () {
+    var n = 0;
+    boxes.forEach(function (b) { if (b.checked) n++; });
+    if (bulkN) bulkN.textContent = n;
+    if (bulkBar) bulkBar.hidden = n === 0;
+  };
+  boxes.forEach(function (b) { b.addEventListener("change", syncBulk); });
+  if (bulkClear) {
+    bulkClear.addEventListener("click", function () {
+      boxes.forEach(function (b) { b.checked = false; });
+      syncBulk();
+    });
+  }
+  syncBulk();
 
   // ---- Picture chooser: upload / Media Library / describe ----
   document.querySelectorAll("[data-image-controls]").forEach(function (root) {

@@ -454,6 +454,36 @@ def reconcile_stripe(db, integrations, limit=100, since=None, credit_expiry_at=N
 
 
 #  ---------------------------------------------------------------------
+#  Shop visibility -- a LOCAL flag, separate from Stripe's archive state
+#  ---------------------------------------------------------------------
+#  "Available" means a product shows in the shop. "Unavailable" keeps it
+#  live in Stripe (a direct Buy link still works) but out of the shop
+#  listing. "Archived" is Stripe's own active=false and is a different
+#  axis entirely. A product with no row here is available by default, so a
+#  brand-new product needs no write to appear.
+
+def unavailable_product_ids(db):
+    """The set of product ids the owner has hidden from the shop."""
+    return {r["product_id"] for r in db.execute(
+        "SELECT product_id FROM product_visibility WHERE available = 0").fetchall()}
+
+
+def product_available(db, product_id):
+    row = db.execute(
+        "SELECT available FROM product_visibility WHERE product_id = ?", (product_id,)
+    ).fetchone()
+    return True if row is None else bool(row["available"])
+
+
+def set_product_available(db, product_id, available):
+    db.execute(
+        "INSERT INTO product_visibility (product_id, available) VALUES (?, ?) "
+        "ON CONFLICT(product_id) DO UPDATE SET available = excluded.available",
+        (product_id, 1 if available else 0),
+    )
+
+
+#  ---------------------------------------------------------------------
 #  Reaching what you bought, without an account
 #  ---------------------------------------------------------------------
 ACCESS_TOKEN_DAYS = 30

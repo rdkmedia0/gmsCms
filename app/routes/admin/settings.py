@@ -608,21 +608,26 @@ def commerce_fulfilment():
         r["price_id"]: r
         for r in db.execute("SELECT * FROM fulfilment_rules").fetchall()
     }
-    #  Nothing sold through Stripe can ever be deleted — a price has no
-    #  delete at all, and a product that has been bought keeps its
-    #  history — so an owner's list only ever grows. Retired items are
-    #  therefore folded away by default rather than left to bury the
-    #  things actually available.
-    show_all = request.args.get("show") == "all"
-    retired = [p for p in products if not p["active"]]
-    if not show_all:
-        products = [p for p in products if p["active"]]
+    #  Two lists, not one long roll: ACTIVE (live in Stripe -- available or
+    #  not) and ARCHIVED (Stripe active=false). Nothing sold through Stripe
+    #  can ever be deleted, so archiving is how a product leaves the shop
+    #  for good; the archived ones live on their own tab rather than burying
+    #  the things being sold. Each active product also carries its own
+    #  AVAILABLE flag -- the local "show in the shop" state, separate from
+    #  the Stripe archive above.
+    view = "archived" if request.args.get("view") == "archived" else "active"
+    active_products = [p for p in products if p["active"]]
+    archived_products = [p for p in products if not p["active"]]
+    unavailable = commerce.unavailable_product_ids(db)
+    shown = archived_products if view == "archived" else active_products
+    shown = [{**p, "available": p["product_id"] not in unavailable} for p in shown]
     return render_template(
         "admin/commerce_fulfilment.html",
         files=downloads.list_files(db),
-        retired_count=len(retired),
-        show_all=show_all,
-        products=products,
+        view=view,
+        active_count=len(active_products),
+        archived_count=len(archived_products),
+        products=shown,
         product_error=product_error,
         base_currency=integrations.base_currency(db),
         #  Whether a picture can be MADE, and if not, why -- said in the
@@ -972,16 +977,65 @@ def commerce_product_save(product_id):
     return redirect(url_for("admin.commerce_fulfilment"))
 
 
+@bp.route("/commerce/products/<product_id>/availability", methods=["POST"])
+@login_required
+def commerce_product_availability(product_id):
+    """Show or hide a product in the shop -- a LOCAL flag, not a Stripe act.
+    Unavailable keeps the product live in Stripe (a direct Buy link still
+    works) but drops it from the shop listing. Archiving is separate."""
+    db = get_db()
+    available = request.form.get("available") == "1"
+    commerce.set_product_available(db, product_id, available)
+    db.commit()
+    flash("Showing in your shop again." if available else
+          "Hidden from your shop. It's still live in Stripe — a direct link still works — just not listed.",
+          "success")
+    return redirect(url_for("admin.commerce_fulfilment"))
+
+
 @bp.route("/commerce/products/<product_id>/archive", methods=["POST"])
 @login_required
 def commerce_product_archive(product_id):
+    """Archive (or restore) a product in Stripe. An archived product leaves
+    the Active list for the Archived tab and cannot be bought; restoring
+    brings it back. Stripe refuses to DELETE anything that has ever sold,
+    and rightly so -- archiving is the closest, correct act."""
     db = get_db()
-    active = request.form.get("active") == "1"
-    ok, error = integrations.stripe_archive_product(db, product_id, active)
-    flash(error if not ok else ("Back in your shop — customers can buy it again." if active
-                                else "Taken out of your shop. Nothing is deleted, and past orders are untouched."),
-          "error" if not ok else "success")
-    return redirect(url_for("admin.commerce_fulfilment"))
+    archived = request.form.get("archived") == "1"
+    view = "archived" if request.form.get("view") == "archived" else "active"
+    ok, error = integrations.stripe_archive_product(db, product_id, active=not archived)
+    if not ok:
+        flash(error, "error")
+    else:
+        flash("Archived — moved to your Archived products and out of the shop." if archived
+              else "Restored to your active products.", "success")
+    return redirect(url_for("admin.commerce_fulfilment", view=view))
+
+
+@bp.route("/commerce/products/bulk", methods=["POST"])
+@login_required
+def commerce_products_bulk():
+    """Archive or restore several products at once, from the ticks on the
+    collapsed rows -- the same Stripe act as the per-product control, in a
+    loop. A product Stripe refuses is counted; the rest still go through."""
+    db = get_db()
+    action = request.form.get("action")
+    ids = [i for i in request.form.getlist("product_ids") if i]
+    view = "archived" if request.form.get("view") == "archived" else "active"
+    if action not in ("archive", "restore") or not ids:
+        flash("Tick the products first, then choose Archive or Restore.", "error")
+        return redirect(url_for("admin.commerce_fulfilment", view=view))
+    active = action == "restore"
+    done, failed = 0, 0
+    for pid in ids:
+        ok, _ = integrations.stripe_archive_product(db, pid, active=active)
+        done, failed = (done + 1, failed) if ok else (done, failed + 1)
+    word = "Restored" if active else "Archived"
+    msg = "%s %d product%s." % (word, done, "" if done == 1 else "s")
+    if failed:
+        msg += " %d couldn't be changed." % failed
+    flash(msg, "error" if failed and not done else "success")
+    return redirect(url_for("admin.commerce_fulfilment", view=view))
 
 
 @bp.route("/commerce/shipping/free-over", methods=["POST"])

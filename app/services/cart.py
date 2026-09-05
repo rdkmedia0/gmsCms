@@ -187,8 +187,15 @@ def shop_products(db, integrations, limit=None, editing=False):
     if error:
         return [], error
     stock = _stock_map(db)
+    #  A product the owner marked unavailable stays live in Stripe but is
+    #  kept out of the shop listing -- so it drops out here, for the visitor
+    #  and the editor alike, while its price still works from a direct link.
+    from . import commerce
+    hidden = commerce.unavailable_product_ids(db)
     items = []
     for item in catalogue:
+        if item.get("product_id") in hidden:
+            continue
         left = stock.get(item["price_id"])
         items.append({**item, "stock": left, "sold_out": left == 0})
     return (items[:limit] if limit else items), None
