@@ -40,17 +40,11 @@ def send(settings, to_email, subject, body, reply_to=None, from_name=None, heade
         smtp.send_message(msg)
 
 
-def send_contact_message(settings, name, email, message):
-    """Raises on failure — callers decide how to surface that to the user."""
-    body = "From: {} <{}>\n\n{}".format(name, email, message)
-    send(
-        settings,
-        settings["to_email"],
-        f"New contact form message from {name}",
-        body,
-        reply_to=email or None,
-        from_name=settings.get("from_name") or "Website Contact Form",
-    )
+#  The contact-form notification used to be a fixed "From: ... \n\n ..."
+#  built here. Its wording is the owner's now (Email -> Message wording,
+#  message "contact"), so it is composed in the route with site_emails and
+#  sent through send_html like the order/sale notices -- one fewer body
+#  fixed in the code.
 
 
 def send_html(settings, to_email, subject, html_body, text_body, from_name=None, headers=None):

@@ -1469,7 +1469,20 @@ def contact_submit(slug):
     db.commit()
 
     try:
-        mailer.send_contact_message(settings, name, email, message)
+        #  The wording is the owner's, editable on Email -> Message wording
+        #  (services/site_emails.py, message "contact"), with the visitor's
+        #  name/email/message as placeholders. Sent the same way the order
+        #  and sale notices are -- wrapped, dressed in the site's look, both
+        #  halves -- and Reply-To is set to the visitor so a reply reaches
+        #  them rather than the site's own outbox.
+        site = (get_site_settings(db) or {}).get("site_title") or "our website"
+        subject = ("New message from %s" % name) if name else "New message from your website"
+        body = site_emails.wrap(db, "contact", None,
+                                {"site": site, "name": name, "email": email, "message": message})
+        html, text = _dressed(db, body, subject)
+        mailer.send_html(settings, settings["to_email"], subject, html, text,
+                         from_name=settings.get("from_name") or "Website Contact Form",
+                         headers={"Reply-To": email} if email else None)
     except Exception:
         return redirect(f"{back_url}?error=1")
     return redirect(f"{back_url}?sent=1")

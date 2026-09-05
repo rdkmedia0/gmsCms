@@ -122,6 +122,25 @@ MESSAGES = {
             '{{action}}',
         ]),
     },
+    "contact": {
+        "name": "Contact form message (to you)",
+        "when": "Sent to you whenever a visitor sends a message through a Contact Form.",
+        "placeholders": [
+            _p("site", "your site's name"),
+            _p("name", "the name the visitor gave"),
+            _p("email", "the visitor's email address"),
+            _p("message", "the message they typed"),
+        ],
+        "body_default": NL.join([
+            '## New message from your website',
+            '',
+            'You have received a message through {{site}}.',
+            '',
+            '**From:** {{name}} <{{email}}>',
+            '',
+            '{{message}}',
+        ]),
+    },
     "confirm": {
         "name": "Confirm your subscription",
         "when": "The one message that may go to an address that has not confirmed.",
@@ -179,6 +198,8 @@ MESSAGES = {
 APPENDED = {
     "order": "The sender line, which says who this came from.",
     "sale": "The sender line, which says who this came from.",
+    "contact": "The sender line, which says who this came from. The visitor's "
+               "own address is set as Reply-To, so replying reaches them.",
     "confirm": "The sender line, which says who this came from.",
     "subscribed": "The unsubscribe link and the sender line. Both are required by "
                   "law on a message to a mailing list, so they are added for you "
@@ -192,7 +213,7 @@ APPENDED = {
 #  they never joined is its own kind of confusing.
 NEEDS_UNSUBSCRIBE = ("subscribed",)
 
-ORDER = ("order", "sale", "confirm", "subscribed")
+ORDER = ("order", "sale", "contact", "confirm", "subscribed")
 
 
 def _key(message, part):
@@ -343,6 +364,11 @@ SAMPLE = {
     "access": "This order includes 3 sessions to book.",
     "action": "Nothing to post - this one delivers itself.",
     "buyer": "somebody@example.com",
+    "name": "Alex Visitor",
+    "email": "alex@example.com",
+    "message": NL.join(["Hello,", "",
+                        "I saw your site and wanted to ask about your opening hours.",
+                        "Could you let me know?", "", "Thanks, Alex"]),
     "link": "https://your.site/my/abc123",
 }
 
