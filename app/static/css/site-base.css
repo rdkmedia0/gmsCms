@@ -1580,6 +1580,10 @@ video, .cms-media video, .cms-video {
   display: flex; align-items: center; gap: 14px;
   padding: var(--site-radius-pad-row, 16px 20px);
   border: 1px solid rgba(0,0,0,0.12); border-radius: var(--site-radius, 12px); max-width: 420px; width: 100%;
+  /*  In a very narrow cell the fixed icon + Download button leave the name
+      little width. Wrapping the row keeps everything inside the cell (it
+      never spills); a genuinely tiny cell just wraps to more lines. */
+  flex-wrap: wrap; justify-content: center; row-gap: 8px;
 }
 /*  The download's icon is a drawn SVG now (icon_svg), not an emoji, so it is
     sized in px/em here rather than by font-size, and follows the text colour
