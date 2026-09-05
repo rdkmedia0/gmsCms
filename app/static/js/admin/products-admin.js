@@ -143,4 +143,32 @@
       });
     }
   });
+
+  // ---- Download file: upload a new one, or choose from the library ----
+  document.querySelectorAll("[data-download-controls]").forEach(function (root) {
+    var btn = root.querySelector("[data-download-upload]");
+    var input = root.querySelector("[data-download-input]");
+    var chosen = root.querySelector("[data-download-chosen]");
+    var ref = root.querySelector(".download-file-ref");
+
+    if (btn && input) {
+      btn.addEventListener("click", function () { input.click(); });
+      input.addEventListener("change", function () {
+        if (!input.files || !input.files.length) return;
+        // An uploaded file wins over a chosen one, so clear the select.
+        if (ref) ref.value = "";
+        if (chosen) {
+          chosen.textContent = "New file: " + input.files[0].name;
+          chosen.hidden = false;
+        }
+      });
+    }
+    // Picking an existing file drops any pending upload.
+    if (ref) {
+      ref.addEventListener("change", function () {
+        if (ref.value && input) input.value = "";
+        if (ref.value && chosen) chosen.hidden = true;
+      });
+    }
+  });
 })();

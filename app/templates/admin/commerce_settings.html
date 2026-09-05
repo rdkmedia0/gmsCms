@@ -59,7 +59,7 @@
 {% block content %}
 {% include "partials/commerce_tabs.html" %}
 <h1>Store settings</h1>
-<p class="hint">The rules your shop runs by &mdash; not the things you sell. What it charges in, what delivery costs, the files you offer as downloads, and how long a session credit or a download stays good for. Your products live under <a href="{{ url_for('admin.commerce_fulfilment') }}">Products</a>.</p>
+<p class="hint">The rules your shop runs by &mdash; not the things you sell. What it charges in, what delivery costs, and how long a session credit or a download stays good for. Your products &mdash; and the files you sell as downloads &mdash; live under <a href="{{ url_for('admin.commerce_fulfilment') }}">Products</a>.</p>
 
 {% if not stripe_ready %}
 <div class="card">
@@ -98,30 +98,6 @@
     A basket cannot hold two currencies &mdash; there is no total that is a price in either
     &mdash; so anything in the odd one out is taken back out when a customer tries to buy it
     alongside the rest. To fix it, retire that product and add it again.</p>
-  {% endif %}
-</div>
-
-<div class="card">
-  <h2>Files you sell</h2>
-  <p class="hint">Upload anything you sell as a download — an ebook, a set of photos, an audio track, a template. These are kept private: they have no web address of their own, and a buyer only ever gets one by having paid for it. Once a file is here, a product can be set to deliver it (on the <a href="{{ url_for('admin.commerce_fulfilment') }}">Products</a> screen).</p>
-  <form method="post" action="{{ url_for('admin.commerce_file_upload') }}" enctype="multipart/form-data" class="inline-form">
-    <input type="file" name="file" required title="The file your buyer downloads — up to 250 MB">
-    <button type="submit" class="btn btn-small btn-primary" title="Add this file so a product can send it">Add file</button>
-  </form>
-  {% if files %}
-  <ul class="hint order-entitlements">
-    {% for f in files %}
-    <li>
-      <strong>{{ f.original_name }}</strong>
-      {%- if f.size %} · {{ (f.size / 1048576) | round(1) }} MB{% endif %}
-      · <form method="post" action="{{ url_for('admin.commerce_file_delete', file_id=f.id) }}" class="inline-form is-inline">
-          <button type="submit" class="btn btn-small" title="Delete this file — blocked while anyone can still download it">Delete</button>
-        </form>
-    </li>
-    {% endfor %}
-  </ul>
-  {% else %}
-  <p class="hint">Nothing uploaded yet.</p>
   {% endif %}
 </div>
 

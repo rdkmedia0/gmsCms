@@ -1902,3 +1902,8 @@ button[aria-busy="true"] { opacity: .75; cursor: progress; }
 .shipping-bands th:last-child, .shipping-bands td:last-child { width: 34px; padding-right: 0; text-align: center; }
 .shipping-band-add { margin-bottom: 6px; }
 .shipping-service-delete { margin-top: 10px; }
+
+/* Download product: choose an uploaded file or upload a new one, in a row. */
+.download-file { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.download-file .download-file-ref { flex: 1; min-width: 180px; }
+.download-file-chosen { font-size: 13px; color: var(--muted); }

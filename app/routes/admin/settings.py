@@ -611,7 +611,6 @@ def commerce_settings():
     return render_template(
         "admin/commerce_settings.html",
         stripe_ready=integrations.is_configured(db, "stripe"),
-        files=downloads.list_files(db),
         currencies=integrations.CURRENCIES,
         base_currency=integrations.base_currency(db),
         currencies_in_use=integrations.currencies_in_use(db)[0],
@@ -986,33 +985,18 @@ def commerce_shipping_service_delete(service_id):
     return redirect(url_for("admin.commerce_settings"))
 
 
-@bp.route("/commerce/files/upload", methods=["POST"])
-@login_required
-def commerce_file_upload():
-    """Adds a file to the ones this site can sell.
-
-    It goes under DATA_DIR rather than static/uploads, so it has no URL of
-    its own at all — see services/downloads.py for why that is the whole
-    point.
-    """
-    db = get_db()
-    file_id, error = downloads.save_upload(db, request.files.get("file"))
-    if error:
-        flash(error, "error")
-    else:
-        db.commit()
-        flash("File added. Now choose it on whichever product sends it.", "success")
-    return redirect(url_for("admin.commerce_settings"))
-
-
 @bp.route("/commerce/files/<int:file_id>/delete", methods=["POST"])
 @login_required
 def commerce_file_delete(file_id):
+    """Remove a file from the ones this site sells. Listed under the
+    products that use it (not a settings tab); uploading happens inside a
+    download product's own config. Blocked while a buyer can still
+    download it -- see services/downloads.py."""
     db = get_db()
     ok, error = downloads.delete_file(db, file_id)
     db.commit()
     flash(error if error else "File deleted.", "error" if error else "success")
-    return redirect(url_for("admin.commerce_settings"))
+    return redirect(url_for("admin.commerce_fulfilment"))
 
 
 @bp.route("/commerce/fulfilment/save", methods=["POST"])
@@ -1037,9 +1021,20 @@ def commerce_fulfilment_save():
     if kind == "credit" and not ref:
         flash("Choose which meeting these sessions can be booked against.", "error")
         return redirect(url_for("admin.commerce_fulfilment"))
-    if kind == "download" and not ref:
-        flash("Choose which file this product sends.", "error")
-        return redirect(url_for("admin.commerce_fulfilment"))
+    if kind == "download":
+        #  Say which file this delivers either way: a new upload wins (it
+        #  is added to the shop's files, reusable on another product), or a
+        #  file already uploaded is chosen from the list.
+        up = request.files.get("download_file")
+        if up and up.filename:
+            file_id, up_error = downloads.save_upload(db, up)
+            if up_error:
+                flash(up_error, "error")
+                return redirect(url_for("admin.commerce_fulfilment"))
+            ref = str(file_id)
+        if not ref:
+            flash("Upload a file to sell, or choose one you have already uploaded.", "error")
+            return redirect(url_for("admin.commerce_fulfilment"))
     #  A posted product carries a weight (kg in, grams stored) that its
     #  delivery is priced from, and may name the service it ships by --
     #  otherwise the shop's services all apply. Only meaningful for the
