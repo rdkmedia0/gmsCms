@@ -897,14 +897,34 @@ a.cms-add-section-btn:hover { color: #2563eb; text-decoration: none; }
   cursor: pointer; font-weight: 700; line-height: 1;
 }
 
-/* Image controls */
-.cms-change-image-btn { white-space: nowrap; }
-/*  "Choose" stands beside "Upload" on every tool that takes a picture, a
-    video or a file. It is chrome -- this app asking the admin a question
-    -- so it wears the editor's own clothes and takes them from the same
-    rules its neighbours do; it is only listed here so it cannot wrap
-    away from the button it belongs beside. */
-.cms-pick-library-btn { white-space: nowrap; }
+/*  Picture-source controls, on every tool that takes a picture, a video or
+    a file: Choose (from the Media Library), Upload (from this device),
+    Generate (AI), Remove and Reset. They are ICON buttons now -- the glyph
+    is the action and the title carries the words, the same convention the
+    pencil/× actions use -- so the same act wears the same icon everywhere
+    (see the ic_* macros in public/page.html). Chrome: the editor's own
+    clothes, square, centred, so a row of them reads as a toolbar. Styled by
+    class rather than a shared marker because each keeps the class its own
+    JS handler already binds to. */
+.cms-pick-library-btn, .cms-change-image-btn, .cms-generate-image-btn,
+.cms-change-card-image-btn, .cms-change-banner-image-btn, .cms-change-banner-portrait-btn,
+.cms-change-accordion-image-btn, .cms-change-media-btn, .cms-change-post-image-btn,
+.cms-generate-banner-btn, .cms-clear-card-image-btn, .cms-reset-card-btn,
+.cms-block-image-pick, .cms-block-image-upload {
+  display: inline-flex; align-items: center; justify-content: center;
+  box-sizing: border-box; height: 28px; min-width: 30px; padding: 0 7px;
+  border: 1px solid #d5d8de; border-radius: var(--cms-ui-radius-control);
+  background: #fff; color: var(--cms-ui-text, #1f2430); cursor: pointer;
+  vertical-align: middle; white-space: nowrap;
+}
+.cms-pick-library-btn:hover, .cms-change-image-btn:hover, .cms-generate-image-btn:hover,
+.cms-change-card-image-btn:hover, .cms-change-banner-image-btn:hover, .cms-change-banner-portrait-btn:hover,
+.cms-change-accordion-image-btn:hover, .cms-change-media-btn:hover, .cms-change-post-image-btn:hover,
+.cms-generate-banner-btn:hover, .cms-clear-card-image-btn:hover, .cms-reset-card-btn:hover,
+.cms-block-image-pick:hover, .cms-block-image-upload:hover {
+  border-color: var(--cms-ui-accent, #2563eb); color: var(--cms-ui-accent, #2563eb);
+}
+.cms-imgctl-ic { display: block; }
 
 /* Confirm modal — see static/css/cms-modal.css (linked separately from
    partials/cms_modal.html) for its styles; kept out of this file since the

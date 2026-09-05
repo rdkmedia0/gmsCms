@@ -1918,26 +1918,10 @@
     });
   });
 
-  // ---------- Media Library picker (choose an existing file instead of generating/uploading) ----------
-  bindEach(".cms-library-pick-btn", (btn) => {
-    btn.addEventListener("click", async () => {
-      let images = [];
-      try {
-        const res = await fetch("/admin/images?picker=1", { headers: { "X-Inline-Edit": "1" } });
-        const data = await res.json();
-        images = data.images || [];
-      } catch {
-        toast("Couldn't load the Media Library — check your connection");
-        return;
-      }
-      if (!images.length) {
-        toast("The Media Library is empty — upload or generate an image first");
-        return;
-      }
-      const chosen = await cmsImagePicker(images);
-      if (chosen) await applyGeneratedImage(btn, chosen);
-    });
-  });
+  //  The old ".cms-library-pick-btn" ("📚 Library") is gone: every picture
+  //  tool's "Choose" ([data-library-pick]) already picks from the Media
+  //  Library through the same code an upload uses, so a second button doing
+  //  the same job by a different route was one button too many.
 
   // ---------- Image controls ----------
   // Every one of these controls can now live either in a full section's

@@ -267,6 +267,17 @@
     </select>
   {% endmacro %}
 
+  {#  Icons for the picture-source controls (Choose / Upload / Generate /
+      Remove / Reset), written once so the same action wears the same glyph
+      on every tool -- Image, Card, Banner, Portrait, Media, block pictures.
+      Each is an action-with-a-tooltip: the button keeps its title, the word
+      is dropped. Styled square by .cms-imgctl-ic's button in inline-editor.css. #}
+  {%- macro ic_library() -%}<svg class="cms-imgctl-ic" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="14" height="11" rx="1.5"/><circle cx="7.3" cy="8.3" r="1.2"/><path d="m3.5 14 4-3.4 3 2.6 2.4-2 3.6 3.1"/></svg>{%- endmacro -%}
+  {%- macro ic_upload() -%}<svg class="cms-imgctl-ic" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13V4M6.5 7.5 10 4l3.5 3.5M4 15.5h12"/></svg>{%- endmacro -%}
+  {%- macro ic_generate() -%}<svg class="cms-imgctl-ic" viewBox="0 0 20 20" width="14" height="14" fill="currentColor"><path d="M9.6 2.2l1.35 4.05 4.05 1.35-4.05 1.35L9.6 13l-1.35-4.05L4.2 7.6l4.05-1.35z"/><path d="M15.2 12l.5 1.5 1.5.5-1.5.5-.5 1.5-.5-1.5-1.5-.5 1.5-.5z"/></svg>{%- endmacro -%}
+  {%- macro ic_remove() -%}<svg class="cms-imgctl-ic" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12M8 6V4.5h4V6M6.4 6l.55 9.5h6.1L15.6 6"/></svg>{%- endmacro -%}
+  {%- macro ic_reset() -%}<svg class="cms-imgctl-ic" viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.6 10a5.4 5.4 0 1 1 1.5 3.8"/><path d="M4 6.5V10h3.5"/></svg>{%- endmacro -%}
+
   {%- macro image_controls(save_url, item, upload_url, generate_url, apply_url) -%}
     {# THE Image tool's controls. One definition, called from the section
        chain and from render_cell, because a picture in a column is the
@@ -308,13 +319,11 @@
            title="A line printed under the picture saying what it is — leave empty for no caption">
     <button type="button" class="cms-pick-library-btn" data-library-pick
             data-library-for="cms-image-file-input" data-library-kinds="image"
-            title="Choose a picture already in your Media Library">Choose</button>
-    <button type="button" class="cms-change-image-btn" title="Upload an image from your device">⬆ Upload</button>
+            title="Choose a picture already in your Media Library">{{ ic_library() }}</button>
+    <button type="button" class="cms-change-image-btn" title="Upload an image from your device">{{ ic_upload() }}</button>
     <input type="file" class="cms-image-file-input" data-upload-url="{{ upload_url }}" accept="image/*" hidden>
     <button type="button" class="cms-generate-image-btn" data-generate-url="{{ generate_url }}"
-            data-apply-url="{{ apply_url }}" data-kind="image" title="Generate an image with AI">✨ Generate</button>
-    <button type="button" class="cms-library-pick-btn" data-apply-url="{{ apply_url }}" data-kind="image"
-            title="Choose an existing image from the Media Library">📚 Library</button>
+            data-apply-url="{{ apply_url }}" data-kind="image" title="Generate an image with AI">{{ ic_generate() }}</button>
   {%- endmacro %}
 
   {%- macro image_tool(item, save_url, title=none, corner_style=none, shadow_style=none, extra_class='') -%}
@@ -395,8 +404,8 @@
     {% else %}
     <button type="button" class="cms-pick-library-btn" data-library-pick
             data-library-for="cms-media-file-input" data-library-kinds="video,audio"
-            title="Choose a video or sound file already in your Media Library">Choose</button>
-    <button type="button" class="cms-change-media-btn" title="Upload audio or video">🎬 Change Media</button>
+            title="Choose a video or sound file already in your Media Library">{{ ic_library() }}</button>
+    <button type="button" class="cms-change-media-btn" title="Upload audio or video">{{ ic_upload() }}</button>
     <input type="file" class="cms-media-file-input" data-upload-url="{{ upload_url }}" accept="video/*,audio/*" hidden>
     {% if item.media_type == 'video' %}
     <button type="button" class="cms-generate-video-btn" data-generate-url="{{ generate_url }}"
@@ -428,7 +437,7 @@
       {% elif item.content %}
         {% if item.media_type == 'video' %}<video controls src="{{ item.content }}"></video>
         {% else %}<audio controls src="{{ item.content }}"></audio>{% endif %}
-      {% elif editing %}<div class="cms-image-placeholder">Click "Change Media" above to upload {{ item.media_type }}</div>{% endif %}
+      {% elif editing %}<div class="cms-image-placeholder">Use the upload or Library button above to add {{ item.media_type }}</div>{% endif %}
     </section>
   {%- endmacro %}
 
@@ -656,16 +665,16 @@
       {% set upload_url = url_for('admin.section_accordion_image_upload', section_id=section.id, col_index=col_index, panel_index=i) ~ row_qs if col_index is not none else url_for('admin.section_accordion_image_upload', section_id=section.id, panel_index=i) %}
       {% set generate_url = url_for('admin.section_accordion_image_generate', section_id=section.id, col_index=col_index, panel_index=i) ~ row_qs if col_index is not none else url_for('admin.section_accordion_image_generate', section_id=section.id, panel_index=i) %}
       {% set apply_url = url_for('admin.section_accordion_image_apply', section_id=section.id, col_index=col_index, panel_index=i) ~ row_qs if col_index is not none else url_for('admin.section_accordion_image_apply', section_id=section.id, panel_index=i) %}
-      <button type="button" class="cms-change-accordion-image-btn" data-panel-index="{{ i }}" title="Upload an image for this panel">⬆</button>
+      <button type="button" class="cms-change-accordion-image-btn" data-panel-index="{{ i }}" title="Upload an image for this panel">{{ ic_upload() }}</button>
       <button type="button" class="cms-pick-library-btn" data-library-pick
               data-library-kinds="image"
-              title="Choose a picture already in your Media Library">Choose</button>
+              title="Choose a picture already in your Media Library">{{ ic_library() }}</button>
       <input type="file" class="cms-accordion-image-file-input"
              data-upload-url="{{ upload_url }}" accept="image/*" hidden>
       <button type="button" class="cms-generate-image-btn" data-panel-index="{{ i }}" data-kind="accordion"
               data-generate-url="{{ generate_url }}"
               data-apply-url="{{ apply_url }}"
-              title="Generate an image for this panel with AI">✨</button>
+              title="Generate an image for this panel with AI">{{ ic_generate() }}</button>
     </div>
     {% endfor %}
   {% endmacro %}
@@ -737,7 +746,7 @@
       <button type="button" class="cms-change-gallery-clip-btn" title="Upload a video file for this clip">&#11014;</button>
       <button type="button" class="cms-pick-library-btn" data-library-pick
               data-library-kinds="video"
-              title="Choose a video already in your Media Library">Choose</button>
+              title="Choose a video already in your Media Library">{{ ic_library() }}</button>
       <input type="file" class="cms-gallery-clip-file-input" data-upload-url="{{ upload_url }}" accept="video/*" hidden>
       <button type="submit" name="op" value="remove_{{ loop.index0 }}" title="Remove this video">&times;</button>
     </div>
@@ -1147,8 +1156,8 @@
       <input type="hidden" name="{{ name }}" value="{{ value }}">
       <img class="cms-block-image-thumb" src="{{ value }}" alt="" {{ 'hidden' if not value }}>
       <span class="cms-block-image-none" {{ 'hidden' if value }}>No picture</span>
-      <button type="button" class="cms-block-image-pick" title="Choose a picture from the Media Library">Choose</button>
-      <button type="button" class="cms-block-image-upload" title="Upload a picture from this device">Upload</button>
+      <button type="button" class="cms-block-image-pick" title="Choose a picture from the Media Library">{{ ic_library() }}</button>
+      <button type="button" class="cms-block-image-upload" title="Upload a picture from this device">{{ ic_upload() }}</button>
       <input type="file" class="cms-block-image-file" accept="image/*" hidden>
       <button type="button" class="cms-block-image-clear" title="Use no picture here" {{ 'hidden' if not value }}>&times;</button>
     </span>
@@ -1337,15 +1346,12 @@
         <span class="cms-config-actions">
           <button type="button" class="cms-pick-library-btn" data-library-pick
                   data-library-for="cms-banner-image-file-input" data-library-kinds="image"
-                  title="Choose the background picture from your Media Library">Choose</button>
-          <button type="button" class="cms-change-banner-image-btn" title="Upload a background picture from your device">&#11014; Upload</button>
+                  title="Choose the background picture from your Media Library">{{ ic_library() }}</button>
+          <button type="button" class="cms-change-banner-image-btn" title="Upload a background picture from your device">{{ ic_upload() }}</button>
           <input type="file" class="cms-banner-image-file-input" data-upload-url="{{ image_upload_url }}" accept="image/*" hidden>
-          <button type="button" class="cms-clear-card-image-btn" data-clear-url="{{ image_clear_url }}" title="Remove the background picture" {{ 'hidden' if 'background-image' not in cell.content }}>Remove</button>
+          <button type="button" class="cms-clear-card-image-btn" data-clear-url="{{ image_clear_url }}" title="Remove the background picture" {{ 'hidden' if 'background-image' not in cell.content }}>{{ ic_remove() }}</button>
           {% if generate_url %}
-          <button type="button" class="cms-generate-banner-btn" data-generate-url="{{ generate_url }}" data-kind="banner" title="Generate a background picture with AI">&#10024; Generate</button>
-          {% endif %}
-          {% if apply_url %}
-          <button type="button" class="cms-library-pick-btn" data-apply-url="{{ apply_url }}" data-kind="banner" title="Choose an existing image from the Media Library">&#128218; Library</button>
+          <button type="button" class="cms-generate-banner-btn" data-generate-url="{{ generate_url }}" data-kind="banner" title="Generate a background picture with AI">{{ ic_generate() }}</button>
           {% endif %}
         </span>
         {% endif %}
@@ -1468,9 +1474,9 @@
         <span class="cms-config-actions">
           <button type="button" class="cms-pick-library-btn" data-library-pick
                   data-library-for="cms-banner-portrait-file-input" data-library-kinds="image"
-                  title="Choose the portrait picture from your Media Library">Choose face</button>
+                  title="Choose the portrait picture from your Media Library">{{ ic_library() }}</button>
           <button type="button" class="cms-change-banner-portrait-btn"
-                  title="Upload the portrait picture from your device">&#11014; Portrait</button>
+                  title="Upload the portrait picture from your device">{{ ic_upload() }}</button>
           <input type="file" class="cms-banner-portrait-file-input"
                  data-upload-url="{{ portrait_upload_url }}" accept="image/*" hidden>
         </span>
@@ -1555,22 +1561,19 @@
     {% if image_upload_url %}
     <button type="button" class="cms-pick-library-btn" data-library-pick
             data-library-for="cms-card-image-file-input" data-library-kinds="image"
-            title="Choose a picture already in your Media Library">Choose</button>
-    <button type="button" class="cms-change-card-image-btn" title="Upload a background image from your device">⬆ Upload</button>
+            title="Choose a picture already in your Media Library">{{ ic_library() }}</button>
+    <button type="button" class="cms-change-card-image-btn" title="Upload a background image from your device">{{ ic_upload() }}</button>
     <input type="file" class="cms-card-image-file-input" data-upload-url="{{ image_upload_url }}" accept="image/*" hidden>
     {# Always in the DOM (not just when an image is already set) — the JS
        toggles its `hidden` state directly after an upload/generate/clear
        so that never has to reload the page just to reveal/hide this. #}
-    <button type="button" class="cms-clear-card-image-btn" data-clear-url="{{ image_clear_url }}" title="Remove the background image" {{ 'hidden' if not cs.has_image }}>Remove image</button>
+    <button type="button" class="cms-clear-card-image-btn" data-clear-url="{{ image_clear_url }}" title="Remove the background image" {{ 'hidden' if not cs.has_image }}>{{ ic_remove() }}</button>
     {% endif %}
     {% if generate_url %}
-    <button type="button" class="cms-generate-image-btn" data-generate-url="{{ generate_url }}" data-apply-url="{{ apply_url }}" data-kind="card" title="Generate a background image with AI">✨ Generate</button>
-    {% endif %}
-    {% if apply_url %}
-    <button type="button" class="cms-library-pick-btn" data-apply-url="{{ apply_url }}" data-kind="card" title="Choose an existing image from the Media Library">📚 Library</button>
+    <button type="button" class="cms-generate-image-btn" data-generate-url="{{ generate_url }}" data-apply-url="{{ apply_url }}" data-kind="card" title="Generate a background image with AI">{{ ic_generate() }}</button>
     {% endif %}
     {% if reset_url %}
-    <button type="button" class="cms-reset-card-btn" data-reset-url="{{ reset_url }}" title="Reset shape, color, and image back to the default card">↺ Reset</button>
+    <button type="button" class="cms-reset-card-btn" data-reset-url="{{ reset_url }}" title="Reset shape, color, and image back to the default card">{{ ic_reset() }}</button>
     {% endif %}
   {% endmacro %}
 
@@ -2658,10 +2661,10 @@
           <a class="btn btn-small"
              href="{{ url_for('admin.blog_post_edit', blog_id=blog.id, post_id=post.id, next=current_path) }}"
              title="Open the writing form — better for a long piece, and it comes back here">Write / publish</a>
-          <button type="button" class="cms-change-post-image-btn" title="Upload a picture for the top of this post">&#11014; Picture</button>
+          <button type="button" class="cms-change-post-image-btn" title="Upload a picture for the top of this post">{{ ic_upload() }}</button>
           <button type="button" class="cms-pick-library-btn" data-library-pick
               data-library-kinds="image"
-              title="Choose a picture already in your Media Library">Choose</button>
+              title="Choose a picture already in your Media Library">{{ ic_library() }}</button>
       <input type="file" class="cms-post-image-file-input" accept="image/*"
                  data-upload-url="{{ url_for('admin.blog_post_image_upload', blog_id=blog.id, post_id=post.id) }}" hidden>
           <form method="post" action="{{ url_for('admin.blog_post_delete', blog_id=blog.id, post_id=post.id) }}"
