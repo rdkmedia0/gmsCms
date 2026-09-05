@@ -1797,6 +1797,10 @@
     {% set row_qs = ('?row=' ~ row_index) if row_index is not none else '' %}
     {% set cell_save_url = url_for('admin.section_column_update', section_id=s.id, col_index=col_index) ~ row_qs %}
     {% set cell_clear_url = url_for('admin.section_column_clear', section_id=s.id, col_index=col_index) ~ row_qs %}
+    {#  Where the palette-colour control saves -- the cell's own URL, but
+        withheld from tools that already carry their own colour picker (the
+        Tags block), so a tool never shows two "Colour" controls. #}
+    {% set cell_color_url = none if (cell.is_block and cell.block_key == 'tags') else cell_save_url %}
 
     {% if cell.type == 'empty' %}
       {% if editing %}<div class="cms-cell-empty-hint">Drop a tool here</div>{% endif %}
@@ -1826,7 +1830,7 @@
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
                           shadow_current=cell.shadow_style, shadow_field='shadow_style',
-                          color_save_url=cell_save_url, color_current=cell.text_color, color_field='text_color') %}
+                          color_save_url=cell_color_url, color_current=cell.text_color, color_field='text_color') %}
         {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -1838,7 +1842,7 @@
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
                           shadow_current=cell.shadow_style, shadow_field='shadow_style',
-                          color_save_url=cell_save_url, color_current=cell.text_color, color_field='text_color') %}
+                          color_save_url=cell_color_url, color_current=cell.text_color, color_field='text_color') %}
         {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -1849,7 +1853,7 @@
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
                           shadow_current=cell.shadow_style, shadow_field='shadow_style',
-                          color_save_url=cell_save_url, color_current=cell.text_color, color_field='text_color') %}
+                          color_save_url=cell_color_url, color_current=cell.text_color, color_field='text_color') %}
         {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -1862,7 +1866,7 @@
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
                           shadow_current=cell.shadow_style, shadow_field='shadow_style',
-                          color_save_url=cell_save_url, color_current=cell.text_color, color_field='text_color') %}
+                          color_save_url=cell_color_url, color_current=cell.text_color, color_field='text_color') %}
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -1873,7 +1877,7 @@
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
                           shadow_current=cell.shadow_style, shadow_field='shadow_style',
-                          color_save_url=cell_save_url, color_current=cell.text_color, color_field='text_color') %}
+                          color_save_url=cell_color_url, color_current=cell.text_color, color_field='text_color') %}
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -1885,7 +1889,7 @@
       {% set menu_label = 'Menu (Dropdown)' if cell.menu_style == 'dropdown' else ('Menu (Buttons)' if cell.menu_style == 'buttons' else 'Menu') %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
                           shadow_current=cell.shadow_style, shadow_field='shadow_style',
-                          color_save_url=cell_save_url, color_current=cell.text_color, color_field='text_color') %}
+                          color_save_url=cell_color_url, color_current=cell.text_color, color_field='text_color') %}
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -1896,7 +1900,7 @@
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
                           shadow_current=cell.shadow_style, shadow_field='shadow_style',
-                          color_save_url=cell_save_url, color_current=cell.text_color, color_field='text_color') %}
+                          color_save_url=cell_color_url, color_current=cell.text_color, color_field='text_color') %}
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -1907,7 +1911,7 @@
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
                           shadow_current=cell.shadow_style, shadow_field='shadow_style',
-                          color_save_url=cell_save_url, color_current=cell.text_color, color_field='text_color') %}
+                          color_save_url=cell_color_url, color_current=cell.text_color, color_field='text_color') %}
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -1918,7 +1922,7 @@
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
                           shadow_current=cell.shadow_style, shadow_field='shadow_style',
-                          color_save_url=cell_save_url, color_current=cell.text_color, color_field='text_color') %}
+                          color_save_url=cell_color_url, color_current=cell.text_color, color_field='text_color') %}
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -1929,7 +1933,7 @@
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
                           shadow_current=cell.shadow_style, shadow_field='shadow_style',
-                          color_save_url=cell_save_url, color_current=cell.text_color, color_field='text_color') %}
+                          color_save_url=cell_color_url, color_current=cell.text_color, color_field='text_color') %}
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -1940,7 +1944,7 @@
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
                           shadow_current=cell.shadow_style, shadow_field='shadow_style',
-                          color_save_url=cell_save_url, color_current=cell.text_color, color_field='text_color') %}
+                          color_save_url=cell_color_url, color_current=cell.text_color, color_field='text_color') %}
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -1951,7 +1955,7 @@
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
                           shadow_current=cell.shadow_style, shadow_field='shadow_style',
-                          color_save_url=cell_save_url, color_current=cell.text_color, color_field='text_color') %}
+                          color_save_url=cell_color_url, color_current=cell.text_color, color_field='text_color') %}
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -1961,7 +1965,7 @@
     {% elif cell.is_contact_form %}
       {% if editing %}{% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
                           shadow_current=cell.shadow_style, shadow_field='shadow_style',
-                          color_save_url=cell_save_url, color_current=cell.text_color, color_field='text_color') %}
+                          color_save_url=cell_color_url, color_current=cell.text_color, color_field='text_color') %}
         {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}{% endif %}
       <div class="cms-column-body">{{ contact_form_tool() }}</div>
@@ -1983,7 +1987,7 @@
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
                           shadow_current=cell.shadow_style, shadow_field='shadow_style',
-                          color_save_url=cell_save_url, color_current=cell.text_color, color_field='text_color') %}
+                          color_save_url=cell_color_url, color_current=cell.text_color, color_field='text_color') %}
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -1994,7 +1998,7 @@
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
                           shadow_current=cell.shadow_style, shadow_field='shadow_style',
-                          color_save_url=cell_save_url, color_current=cell.text_color, color_field='text_color') %}
+                          color_save_url=cell_color_url, color_current=cell.text_color, color_field='text_color') %}
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -2005,7 +2009,7 @@
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
                           shadow_current=cell.shadow_style, shadow_field='shadow_style',
-                          color_save_url=cell_save_url, color_current=cell.text_color, color_field='text_color') %}
+                          color_save_url=cell_color_url, color_current=cell.text_color, color_field='text_color') %}
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -2016,7 +2020,7 @@
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
                           shadow_current=cell.shadow_style, shadow_field='shadow_style',
-                          color_save_url=cell_save_url, color_current=cell.text_color, color_field='text_color') %}
+                          color_save_url=cell_color_url, color_current=cell.text_color, color_field='text_color') %}
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -2029,7 +2033,7 @@
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
                           shadow_current=cell.shadow_style, shadow_field='shadow_style',
-                          color_save_url=cell_save_url, color_current=cell.text_color, color_field='text_color') %}
+                          color_save_url=cell_color_url, color_current=cell.text_color, color_field='text_color') %}
         {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -2040,7 +2044,7 @@
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
                           shadow_current=cell.shadow_style, shadow_field='shadow_style',
-                          color_save_url=cell_save_url, color_current=cell.text_color, color_field='text_color') %}
+                          color_save_url=cell_color_url, color_current=cell.text_color, color_field='text_color') %}
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -2063,7 +2067,7 @@
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
                           shadow_current=cell.shadow_style, shadow_field='shadow_style',
-                          color_save_url=cell_save_url, color_current=cell.text_color, color_field='text_color') %}
+                          color_save_url=cell_color_url, color_current=cell.text_color, color_field='text_color') %}
         {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -2073,7 +2077,7 @@
     {% else %}
       {% if editing %}{% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
                           shadow_current=cell.shadow_style, shadow_field='shadow_style',
-                          color_save_url=cell_save_url, color_current=cell.text_color, color_field='text_color') %}{{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}{% endcall %}{% endif %}
+                          color_save_url=cell_color_url, color_current=cell.text_color, color_field='text_color') %}{{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}{% endcall %}{% endif %}
       {# cms-html-preview in BOTH views, matching the section. It looks
          like editor markup and is not: site-base.css styles it for
          visitors -- link colours, and `overflow-x: auto` on a preview
@@ -2379,7 +2383,9 @@
               On a tool with no palette accent (a plain picture) it simply
               has nothing to re-point; on the many that do, it is the
               control the owner asked for. #}
-          {% set tool_can_be_colored = tool_can_be_shaped %}
+          {#  ...except a tool that carries its own colour picker (the Tags
+              block), which must not sprout a second "Colour" control. #}
+          {% set tool_can_be_colored = tool_can_be_shaped and not (s.is_block and s.block_key == 'tags') %}
           {# Remove sits in the panel's corner here too. A tool in a Columns
              cell has always had it; a tool that is its own section had it
              only on the bar above, so the same × was in two different
