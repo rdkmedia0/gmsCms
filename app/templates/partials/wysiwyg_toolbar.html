@@ -64,13 +64,16 @@
       <button type="button" class="cms-color-reset" data-reset-cmd="hiliteColor" title="Remove the highlight color">⟲A</button>
       {%- endif %}
       {%- if include_image %}
-      <button type="button" class="cms-insert-image-btn" title="Insert an image here">🖼️ Image</button>
+      <button type="button" class="cms-insert-image-btn" title="Insert an image here" aria-label="Insert an image here">🖼️</button>
       {%- endif %}
       {%- if include_image %}
       <input type="file" class="cms-insert-image-input" accept="image/*" hidden>
       {%- endif %}
       {%- if include_icon %}
-      <button type="button" class="cms-insert-icon-btn" title="Insert an icon here">{{ icon_svg(icon_choices[0][0] if icon_choices else '') | safe }} Icon</button>
+      {#  A fixed, recognisable "insert an icon" glyph -- NOT the first icon
+          in the grid, which read as whatever it happened to be (a house),
+          looking like a Home button rather than an icon picker. #}
+      <button type="button" class="cms-insert-icon-btn" title="Insert an icon here" aria-label="Insert an icon here">🙂</button>
       {%- endif %}
     </div>
   {% endmacro %}
