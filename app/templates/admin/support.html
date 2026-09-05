@@ -14,17 +14,9 @@
   <p class="hint">Opens PayPal in a new tab. A one-off amount, never a subscription. Nothing about your site is sent anywhere &mdash; it is a plain link. {% if license.valid %}Your site already has its key; giving again is welcome and entirely up to you.{% endif %}</p>
 </div>
 
-{% if wallets or coinbase_url %}
+{% if wallets %}
 <div class="card">
   <h2>Or send crypto</h2>
-  {% if coinbase_url %}
-  <p>
-    <a href="{{ coinbase_url }}" class="btn btn-primary" target="_blank" rel="noopener noreferrer"
-       title="Opens a Coinbase checkout in a new tab. Pick any coin it offers; one-off, any amount.">₿ Pay with crypto (Coinbase)</a>
-  </p>
-  <p class="hint">One page, many coins: choose the currency and network there. Any amount, one-off.{% if wallets %} Or send straight to an address below.{% endif %}</p>
-  {% endif %}
-  {% if wallets %}
   <p>Any amount, to any of these. Scan the code with your wallet, or copy the address. These addresses are part of the software itself &mdash; nothing on this site can change them &mdash; and there is no way to reverse a transfer, so check the first and last characters before you send.</p>
   <div class="support-wallets">
     {% for w in wallets %}
@@ -38,7 +30,6 @@
     </div>
     {% endfor %}
   </div>
-  {% endif %}
   <p class="hint">After sending, reply to your receipt (or write with the transaction id) and the site&rsquo;s address &mdash; a key comes back by email.</p>
 </div>
 <script src="{{ static_url('js/admin/support.js') }}"></script>
