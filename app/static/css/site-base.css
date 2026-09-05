@@ -1564,7 +1564,7 @@ video, .cms-media video, .cms-video {
 /*  A File tool is a LIST of downloads (partials/file_tool.html). Cards
     stack, one under another, each centred; the three inline looks --
     buttons, plain links, icons -- sit side by side and wrap. */
-.cms-file-tool { display: flex; flex-direction: column; align-items: center; gap: 12px; max-width: 100%; }
+.cms-file-tool { display: flex; flex-direction: column; align-items: center; gap: 12px; max-width: 100%; container-type: inline-size; }
 .cms-file-display-button, .cms-file-display-text-link, .cms-file-display-icon {
   flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 10px 16px;
 }
@@ -1584,6 +1584,16 @@ video, .cms-media video, .cms-video {
       little width. Wrapping the row keeps everything inside the cell (it
       never spills); a genuinely tiny cell just wraps to more lines. */
   flex-wrap: wrap; justify-content: center; row-gap: 8px;
+}
+/*  Below a certain CELL width the horizontal card would crush the name to
+    one letter per line (icon + Download button eat the row). The File tool
+    is a query container (above), so the card stacks vertically -- icon,
+    name, then the button -- giving the name the card's full width. A
+    container query, not a media query, because it is the CELL's width that
+    matters, not the screen's. */
+@container (max-width: 260px) {
+  .cms-file-card { flex-direction: column; text-align: center; gap: 8px; }
+  .cms-file-card .cms-file-info { align-items: center; width: 100%; }
 }
 /*  The download's icon is a drawn SVG now (icon_svg), not an emoji, so it is
     sized in px/em here rather than by font-size, and follows the text colour
