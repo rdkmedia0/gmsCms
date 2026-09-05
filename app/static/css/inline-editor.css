@@ -1231,8 +1231,11 @@ html:has(.cms-dock-panel), body:has(.cms-dock-panel) { overflow-x: clip; }
 /*  A File line is the same shape as a Contacts line: its icon, which file
     it is (read-only -- the file is put there by Upload or Choose), the name
     to show, and the + / - for this line. The file's own name is clipped
-    rather than wrapped so the row stays a row. */
-.cms-file-row { flex-wrap: nowrap; gap: 4px; }
+    rather than wrapped (white-space:nowrap on .cms-file-row-file) so the
+    NAME stays one line -- but the ROW itself wraps, so in a narrow panel
+    (a Columns cell, a small section) the buttons drop to a second line
+    instead of spilling off the right edge, which they did with nowrap. */
+.cms-file-row { flex-wrap: wrap; gap: 4px; }
 .cms-file-row .cms-file-row-file {
   flex: 0 1 150px; min-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   font-size: 12px; color: var(--cms-ui-text);

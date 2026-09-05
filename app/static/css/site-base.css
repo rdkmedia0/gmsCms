@@ -3483,7 +3483,16 @@ body.cms-view-mobile .cms-columns > .cms-column { order: var(--sm-order, 0); }
 /* -- Tool heading (the optional heading above a tool) ---------------------
    The heading itself is content and follows the site's type. Alignment is a
    structural choice; H2/H3/Paragraph pick the tag, so size follows the
-   theme's own scale. */
+   theme's own scale.
+
+   The heading must span its section's FULL width, or text-align has nothing
+   to work within: a theme that centres its content with a flex column
+   (align-items:center) would otherwise shrink-wrap the heading box to its
+   own text, and Left/Centre/Right would all look identical (centred by the
+   container). width:100% + align-self:stretch makes the alignment actually
+   move the heading on every theme, flex-centred or not. */
+.cms-tool-heading { width: 100%; align-self: stretch; }
+.cms-tool-title { display: block; width: 100%; align-self: stretch; }
 .cms-tool-title.cms-th-align-left   { text-align: left; }
 .cms-tool-title.cms-th-align-center { text-align: center; }
 .cms-tool-title.cms-th-align-right  { text-align: right; }
