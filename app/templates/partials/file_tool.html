@@ -1,0 +1,37 @@
+{#  The File tool as a VISITOR sees it -- a list of downloads in one of four
+    looks. ONE renderer: public/page.html calls this macro for a section
+    and for a cell, and the update routes call the same macro (via the
+    template's module) to hand the editor a freshly drawn block to swap in
+    -- so what the editor shows after a save is exactly what a visitor gets.
+
+    Each download keeps its own name: `download="<name>"` makes the browser
+    save the file under the name it was uploaded with rather than whatever
+    the stored file happens to be called, which for anything uploaded
+    before names were kept is a 32-character hex string.
+
+    Content, not chrome: the site's own colours and corners, see
+    site-base.css ".cms-file-tool". #}
+{% macro file_tool(items, display='card', editing=false) %}
+<div class="cms-file-tool cms-file-display-{{ display or 'card' }}">
+  {% for it in items if it.url %}
+    {% if display == 'button' %}
+    <a href="{{ it.url }}" download="{{ it.name }}" class="cms-file-btn">{{ icon_svg(it.icon_r) | safe }}<span>{{ it.shown }}</span></a>
+    {% elif display == 'text-link' %}
+    <a href="{{ it.url }}" download="{{ it.name }}" class="cms-file-textlink">{{ icon_svg(it.icon_r) | safe }}<span>{{ it.shown }}</span></a>
+    {% elif display == 'icon' %}
+    <a href="{{ it.url }}" download="{{ it.name }}" class="cms-file-icon-only" title="{{ it.shown }}">{{ icon_svg(it.icon_r) | safe }}</a>
+    {% else %}
+    <div class="cms-file-card">
+      <span class="cms-file-icon">{{ icon_svg(it.icon_r) | safe }}</span>
+      <div class="cms-file-info">
+        <span class="cms-file-name">{{ it.shown }}</span>
+        {% if it.size_display %}<span class="cms-file-size">{{ it.size_display }}</span>{% endif %}
+      </div>
+      <a href="{{ it.url }}" download="{{ it.name }}" class="cms-file-download">Download</a>
+    </div>
+    {% endif %}
+  {% else %}
+    {% if editing %}<div class="cms-image-placeholder">No file yet — press Upload or Choose on a line above</div>{% endif %}
+  {% endfor %}
+</div>
+{% endmacro %}

@@ -424,6 +424,12 @@ def create_app():
     app.jinja_env.globals["card_button_settings"] = card_button_settings
     app.jinja_env.globals["banner_button_settings"] = banner_button_settings
     app.jinja_env.globals["table_style_choices"] = TABLE_STYLE_CHOICES
+    from .services.sections import FILE_DISPLAY_CHOICES as _file_displays, FILE_EXTENSIONS as _file_exts
+    app.jinja_env.globals["file_displays"] = _file_displays
+    #  What the File tool's chooser offers, and the icon a file wears by
+    #  its type -- both read by the tool's form in public/page.html.
+    app.jinja_env.globals["file_accept"] = ",".join(_file_exts)
+    app.jinja_env.globals["icon_for_file"] = _icons.file_type_icon
     app.jinja_env.globals["video_gallery_layouts"] = VIDEO_GALLERY_LAYOUTS
     app.jinja_env.globals["max_video_gallery_clips"] = MAX_VIDEO_GALLERY_CLIPS
     app.jinja_env.globals["accordion_styles"] = ACCORDION_STYLES

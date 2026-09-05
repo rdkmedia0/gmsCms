@@ -20,6 +20,7 @@ from ...services.sections import (
     MEDIA_TYPES, VIDEO_EXTENSIONS, AUDIO_EXTENSIONS, FILE_DISPLAYS, FILE_ICONS, MEDIA_IMAGE_EXTS,
     _breadcrumb_starter_html, _divider_starter_html, _resolve_tool_content,
     apply_contact_form, apply_lang_switcher_form, read_lang_switcher_opts,
+    apply_file_form, set_file_item, file_items_for,
     _columns_section_or_404, _get_columns_cells, _save_columns_cells, _normalize_cell, _cell_slot,
     set_columns_width, set_columns_widths, COLUMN_WIDTHS,
     _update_banner_classes, _update_banner_overlay_style, _card_div, _update_card_classes,
@@ -51,7 +52,7 @@ from . import wants_json, _redirect_next, _undo_snapshot, SHAPE_PRESETS, SHADOW_
 
 
 
-def _saved_upload(field, allowed, refusal):
+def _saved_upload(field, allowed, refusal, keep_name=False):
     """(url, filename, extension, error) for one uploaded file.
 
     Three routes wrote this out in full -- choose the file, secure the
@@ -60,6 +61,15 @@ def _saved_upload(field, allowed, refusal):
     again. The rule that matters is in CLAUDE.md: never trust a
     client-supplied filename on disk, so `secure_filename` plus a
     generated name, always, and an allowlist rather than a denylist.
+
+    `keep_name` is for a file people DOWNLOAD (the File tool): a picture
+    is looked at, but a PDF is saved to somebody's disk under the name it
+    has here, and `3f9a...c2.pdf` is not a name. The name kept is still
+    `secure_filename`'s -- no path in it, nothing outside ASCII -- and
+    made unique with a numeric suffix rather than a hex one, so it is
+    never the client's string as given and never overwrites another. The
+    Library lists it under that name too, which is what makes a file
+    findable there.
     """
     #  A picture can come from the Media Library instead of from this
     #  device, and every route that takes an upload should accept one --
@@ -89,14 +99,32 @@ def _saved_upload(field, allowed, refusal):
     if not file or file.filename == "":
         return None, None, None, refusal
     filename = secure_filename(file.filename)
+    #  The name as the person knows it -- "My CV 2026.pdf", spaces and all
+    #  -- is what a download is saved as and what a line shows. It is a
+    #  LABEL only, never a path: printable characters, no directory, and
+    #  the same cap services/downloads.py puts on a paid file's name.
+    shown = (file.filename or "").replace("\\", "/").rsplit("/", 1)[-1]
+    shown = "".join(ch for ch in shown if ch.isprintable()).strip()[:120] or filename
     ext = os.path.splitext(filename)[1].lower()
     if ext not in allowed:
         return None, None, None, "Please upload one of: %s" % ", ".join(sorted(allowed))
-    unique_name = "%s%s" % (uuid.uuid4().hex, ext)
-    os.makedirs(current_app.config["UPLOAD_FOLDER"], exist_ok=True)
-    path = os.path.join(current_app.config["UPLOAD_FOLDER"], unique_name)
+    folder = current_app.config["UPLOAD_FOLDER"]
+    os.makedirs(folder, exist_ok=True)
+    base = os.path.splitext(filename)[0]
+    if keep_name and base:
+        unique_name, n = filename, 2
+        while os.path.exists(os.path.join(folder, unique_name)):
+            unique_name = "%s-%d%s" % (base, n, ext)
+            n += 1
+    else:
+        unique_name = "%s%s" % (uuid.uuid4().hex, ext)
+    path = os.path.join(folder, unique_name)
     file.save(path)
-    return "/static/uploads/%s" % unique_name, filename, ext, None
+    #  A kept name reports the name the person gave the file, which is what
+    #  the download is saved as; the disk name (underscored, maybe with a
+    #  -2) is the Library's, and the two differ only by what
+    #  secure_filename had to change.
+    return "/static/uploads/%s" % unique_name, (shown if keep_name else filename), ext, None
 
 
 class _Where:
@@ -1707,27 +1735,64 @@ def section_image_upload(section_id, col_index=None):
 @bp.route("/sections/<int:section_id>/columns/<int:col_index>/file-upload", methods=["POST"])
 @login_required
 def section_file_upload(section_id, col_index=None):
-    """A file to download, uploaded to wherever the File tool is standing."""
+    """A file onto ONE LINE of the File tool, wherever the tool is standing
+    -- from this device, or from the Media Library (`library_url`). `row`
+    says which line; the line keeps its icon and shown name, and every
+    other line is untouched (services.sections.set_file_item)."""
     where, bail = _where(section_id, col_index)
     if bail:
         return bail
     url, filename, _ext, error = _saved_upload(
-        "file", FILE_EXTENSIONS, "Please choose a file.")
+        "file", FILE_EXTENSIONS, "Please choose a file.", keep_name=True)
     if error:
         return where.fail(error)
-    size = os.path.getsize(os.path.join(current_app.config["UPLOAD_FOLDER"],
-                                        os.path.basename(url)))
-    #  The name it arrived under is the file's OWN name (file_name) -- the
-    #  fallback shown when no custom label is typed. It is NOT the title:
-    #  title is the heading above the tool now, like every other tool. A
-    #  custom label the owner typed (caption) is left untouched; only the
-    #  fallback filename is (re)set on each upload.
-    where.write(url, tool_name="File / Download", cell_type="file",
-                file_name=filename, file_size=size)
+    #  By the URL's own path, not UPLOAD_FOLDER + basename: a Library pick
+    #  can be a template's file under /static/themes/<slug>/media/.
+    try:
+        size = os.path.getsize(os.path.join(current_app.static_folder,
+                                            *url[len("/static/"):].split("/")))
+    except (OSError, ValueError):
+        size = 0
+    row = request.form.get("row", type=int) or 0
+    content = set_file_item(where.read(), _file_legacy(where), row, url, filename, size)
+    where.write(content, tool_name="File / Download", cell_type="file")
     if wants_json():
-        return jsonify({"ok": True, "url": url, "filename": filename, "size": size})
+        from ...icons import render_icon, file_type_icon
+        return jsonify({"ok": True, "url": url, "filename": filename, "size": size, "row": row,
+                        "icon_html": render_icon(file_type_icon(filename)),
+                        "html": _file_tool_html(content, where)})
     flash("File uploaded!", "success")
     return where.respond()
+
+
+def _file_legacy(where):
+    """The old one-file columns, for a File tool written before it was a
+    list -- read_file_tool turns them into its first line."""
+    return {k: where.get(k) for k in ("file_name", "caption", "file_icon", "file_size", "file_display")}
+
+
+def _file_tool_html(content, where):
+    """The block freshly drawn for the editor's swap, by the SAME macro the
+    page renders it with (partials/file_tool.html) -- so what the editor
+    shows after a save is what a visitor gets."""
+    items, display = file_items_for(content, _file_legacy(where))
+    macro = current_app.jinja_env.get_template("partials/file_tool.html").module.file_tool
+    return str(macro(items, display, True))
+
+
+@bp.route("/sections/<int:section_id>/file-update", methods=["POST"])
+@bp.route("/sections/<int:section_id>/columns/<int:col_index>/file-update", methods=["POST"])
+@login_required
+def section_file_update(section_id, col_index=None):
+    """Rebuilds the File tool from its form's own fields -- every line, the
+    display, and any +/- pressed -- one submit, one rebuild, the shape
+    Contact Info takes (see apply_file_form)."""
+    where, bail = _where(section_id, col_index)
+    if bail:
+        return bail
+    content = apply_file_form(request.form)
+    where.write(content, tool_name="File / Download", cell_type="file")
+    return where.respond({"html": _file_tool_html(content, where)})
 
 
 @bp.route("/upload-image", methods=["POST"])

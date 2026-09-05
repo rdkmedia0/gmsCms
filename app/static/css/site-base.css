@@ -1535,6 +1535,14 @@ video, .cms-media video, .cms-video {
 
 /* File / download section */
 .block-file { display: flex; justify-content: center; }
+.block-file > .cms-block-host { width: 100%; }
+/*  A File tool is a LIST of downloads (partials/file_tool.html). Cards
+    stack, one under another, each centred; the three inline looks --
+    buttons, plain links, icons -- sit side by side and wrap. */
+.cms-file-tool { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.cms-file-display-button, .cms-file-display-text-link, .cms-file-display-icon {
+  flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 10px 16px;
+}
 .cms-file-card {
   /*  A row, so the ROW inset -- see --site-radius-pad-row. With the
       ordinary one this became 420x352 on a pill-cornered site. */

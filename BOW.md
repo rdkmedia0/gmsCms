@@ -7931,3 +7931,47 @@ the line elsewhere; the key is checked offline, on the owner's server,
 so nothing phones home; and the key's arithmetic is a standard-library
 module of its own, so the person issuing keys can do it on a machine
 with no Flask on it without importing the app and opening a database.
+
+## 2026-09-05 - The heading that appeared on one kind of cell only
+
+"Heading" ticked on a tool in a Columns cell saved `title_on = 1` and
+drew nothing. Measured in the editor: the tick was there for every
+cell, the ANCHOR the heading is typed into (`heading_anchor`) was drawn
+for one cell branch out of twenty-three -- the declared blocks -- and
+heading-zone.js, finding no anchor, quietly returned. A section had it
+because the section path draws the anchor once, above the whole type
+switch; the cell path draws its chrome per branch, so the one place the
+anchor was added is the one place it worked. Every cell branch draws
+it now, after its tool header, from a script rather than by hand, so
+the twenty-fourth branch cannot miss it either.
+
+### The File tool is a list, and the list is the storage
+
+One file per tool, four columns beside its URL. A CV page wants three
+downloads side by side, which was three tools in three cells. It is the
+Contact Info shape now: one line per file, each with its icon and its
+shown name, one display for the lot, and the block IS the storage --
+`build_file_tool`/`read_file_tool` exact inverses, the old bare-URL
+shape read as a one-line list so nothing migrated. Three things worth
+keeping from building it:
+
+* **One renderer.** The four looks are drawn by one macro
+  (`partials/file_tool.html`) that the page calls for a section, for a
+  cell, and that the update routes call through the template's module
+  to hand the editor a fresh block. The editor shows what a visitor
+  gets because they are the same call.
+* **The rows JS went generic** (`.cms-rows-form`) rather than being
+  copied. Contact Info's +/-, renumbering and icon-grid code took the
+  new classes beside its own; the File form only had to wear them.
+* **A file input inside a form that saves on change is a race.** The
+  rows form posts itself on any change event; a change bubbling up
+  from the `<input type=file>` posted the line's OLD hidden fields a
+  moment before the upload wrote the new ones, and whichever landed
+  second won. The input stands after the form, not in it.
+
+A downloaded file is saved as the name it was uploaded with
+(`download="<name>"` on every link -- which also fixes every file
+uploaded before names were kept), the disk name is `secure_filename`'s
+made unique by a numeric suffix rather than a hex one, and the Library
+draws a file by its TYPE -- a page outline with PDF/DOC/XLS inside,
+`icons.file_type_icon` -- instead of the same 📄 for all of them.

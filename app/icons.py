@@ -13,6 +13,7 @@ SVGs sat under static/icons/. Both are gone: nothing read the parameters,
 nothing referenced the files, and carrying a removed feature's shape
 around is exactly the drift CLAUDE.md exists to prevent.
 """
+import os
 from html import escape as html_escape
 
 # Grouped for readability/maintenance only — icon_choices_for() flattens
@@ -448,9 +449,55 @@ UI_ICON_LABELS = {
     "document": "Document / file", "resume": "CV / résumé",
 }
 
+#  File-TYPE icons, for the File tool and the Media Library: a page outline
+#  carrying the type in letters, so a PDF, a spreadsheet and a zip can be
+#  told apart at a glance -- which a grid of identical 📄 could not. Drawn,
+#  not emoji, for the same reason as the rest of this file: currentColor,
+#  so they follow the theme. Keyed "ui:file-<type>"; `file_type_icon`
+#  picks one from a filename, and a File tool line with no icon of its own
+#  wears that.
+FILE_TYPE_ICONS = {
+    "file-pdf": ("PDF", "PDF file"),
+    "file-word": ("DOC", "Word document"),
+    "file-sheet": ("XLS", "Spreadsheet"),
+    "file-csv": ("CSV", "CSV data"),
+    "file-slides": ("PPT", "Presentation"),
+    "file-archive": ("ZIP", "Zip archive"),
+    "file-text": ("TXT", "Plain text"),
+}
+_FILE_TYPE_BY_EXT = {
+    ".pdf": "file-pdf", ".doc": "file-word", ".docx": "file-word",
+    ".xls": "file-sheet", ".xlsx": "file-sheet", ".csv": "file-csv",
+    ".ppt": "file-slides", ".pptx": "file-slides", ".zip": "file-archive",
+    ".txt": "file-text",
+}
+#  A page with a folded corner, drawn as an outline so the letters read
+#  inside it. 384x512, the same box the document icon uses.
+_FILE_PAGE_OUTLINE = ("M64 16h176l112 112v336a32 32 0 0 1-32 32H64"
+                      "a32 32 0 0 1-32-32V48a32 32 0 0 1 32-32z M240 16v112h112")
+
+
+def file_type_icon(filename):
+    """The icon key for a file, from its extension -- "ui:file-pdf" for a
+    .pdf -- or the plain document for anything this does not know."""
+    ext = os.path.splitext(filename or "")[1].lower()
+    return "ui:" + _FILE_TYPE_BY_EXT.get(ext, "document")
+
+
+def _file_type_svg(key):
+    label = FILE_TYPE_ICONS[key][0]
+    return ('<span class="cms-icon cms-icon-drawn"><svg viewBox="0 0 384 512" '
+            'width="16" height="16" aria-hidden="true">'
+            '<path d="%s" fill="none" stroke="currentColor" stroke-width="28" stroke-linejoin="round"/>'
+            '<text x="192" y="418" text-anchor="middle" fill="currentColor" '
+            'font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="128">%s</text>'
+            '</svg></span>' % (_FILE_PAGE_OUTLINE, label))
+
 
 EMOJI_GROUPS.insert(1, ("Social", [("brand:" + k, BRAND_LABELS[k]) for k in SOCIAL_ICON_PATHS]))
-EMOJI_GROUPS.insert(2, ("Icons (follow theme)", [("ui:" + k, UI_ICON_LABELS[k]) for k in UI_ICON_PATHS]))
+EMOJI_GROUPS.insert(2, ("Icons (follow theme)",
+                        [("ui:" + k, UI_ICON_LABELS[k]) for k in UI_ICON_PATHS]
+                        + [("ui:" + k, v[1]) for k, v in FILE_TYPE_ICONS.items()]))
 
 EMOJI_CHOICES = [item for _group, items in EMOJI_GROUPS for item in items]
 
@@ -488,6 +535,8 @@ def render_icon(icon_key):
                     '<path d="%s"/></svg></span>' % (fill, path))
         return ""
     if icon_key.startswith("ui:"):
+        if icon_key[3:] in FILE_TYPE_ICONS:
+            return _file_type_svg(icon_key[3:])
         #  A plain icon, ALWAYS currentColor -- it takes the colour of the
         #  text it sits in, so it follows the site's theme and recolours with
         #  it (the answer to "make these icons fit the theme").

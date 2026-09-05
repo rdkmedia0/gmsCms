@@ -880,9 +880,6 @@ a.cms-add-section-btn:hover { color: #2563eb; text-decoration: none; }
     link field it sits beside. */
 .cms-caption-input { width: 190px; }
 
-/* File / download section */
-.cms-change-file-btn { white-space: nowrap; }
-
 /* Nav +/- controls */
 .cms-nav-del {
   border: none; background: #fca5a5; color: #7f1d1d; border-radius: 50%;
@@ -1221,10 +1218,29 @@ html:has(.cms-dock-panel), body:has(.cms-dock-panel) { overflow-x: clip; }
 }
 /*  The picker hangs under the row that opened it rather than pushing the
     rest of the form down the page. */
-.cms-contact-tool-form { position: relative; }
-.cms-contact-tool-form .cms-icon-grid-view {
+.cms-rows-form { position: relative; }
+.cms-rows-form .cms-icon-grid-view {
   position: absolute; z-index: 40; right: 0; max-width: 100%;
 }
+
+/*  A File line is the same shape as a Contacts line: its icon, which file
+    it is (read-only -- the file is put there by Upload or Choose), the name
+    to show, and the + / - for this line. The file's own name is clipped
+    rather than wrapped so the row stays a row. */
+.cms-file-row { flex-wrap: nowrap; gap: 4px; }
+.cms-file-row .cms-file-row-file {
+  flex: 0 1 150px; min-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 12px; color: var(--cms-ui-text);
+}
+.cms-file-row .cms-file-row-label { flex: 1; min-width: 90px; }
+.cms-file-row-upload, .cms-file-row-choose {
+  font-size: 12px; line-height: 1; padding: 4px 8px; border-radius: var(--cms-ui-radius-control);
+  border: 1px solid #d5d8de; background: #fff; cursor: pointer; white-space: nowrap; min-height: 0;
+}
+.cms-file-row-upload:hover, .cms-file-row-choose:hover { border-color: var(--cms-ui-accent); }
+/*  A drawn icon on a line's icon button sits on the line like the emoji do. */
+.cms-rows-icon-pick .cms-icon { display: inline-flex; vertical-align: middle; }
+.cms-rows-icon-pick .cms-icon svg { width: 16px; height: 16px; }
 
 /*  The responsive preview. A frame over the editor rather than beside it:
     the point is to look at the page, and half a screen of editor next to
@@ -1256,7 +1272,7 @@ body.cms-preview-open { overflow: hidden; }
     of them apart; an <img> for each gives a grid of identical broken
     icons. */
 .cms-picker-file {
-  display: flex; align-items: center; justify-content: center;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
   padding: 10px; min-height: 84px;
   font: 500 12px/1.35 var(--cms-ui-font, system-ui, sans-serif);
   color: var(--cms-ui-text, #1f2733);
@@ -1264,6 +1280,10 @@ body.cms-preview-open { overflow: hidden; }
   background: #f4f6f8;
   border-radius: var(--cms-ui-radius-control, 4px);
 }
+/*  Its type, drawn large enough to read the letters on; then its name. */
+.cms-picker-file .cms-icon { display: inline-flex; }
+.cms-picker-file .cms-icon svg { width: 40px; height: 40px; }
+.cms-picker-file-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /*  The picture buttons inside a config grid sit as one group, on their
     own row, so a section reads as: settings, then what you can do. */

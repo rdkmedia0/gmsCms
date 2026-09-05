@@ -16,7 +16,7 @@
       <img src="{{ item.url }}" alt="" loading="lazy">
     </button>
     {% else %}
-    <a href="{{ item.url }}" target="_blank" class="media-library-thumb-btn media-library-file" title="{{ item.filename }}">📄</a>
+    <a href="{{ item.url }}" target="_blank" class="media-library-thumb-btn media-library-file" title="{{ item.filename }}{{ ' — ' ~ item.size_display if item.size_display }}. Opens the file in a new tab.">{{ icon_svg(item.icon) | safe }}<span class="media-library-file-name">{{ item.filename }}</span></a>
     {% endif %}
     {% if item.can_delete %}
     <button type="button" class="media-library-delete" data-filename="{{ item.filename }}"

@@ -115,6 +115,7 @@
   {% from "partials/wysiwyg_toolbar.html" import wysiwyg_toolbar with context %}
 
   {% from "partials/icon_picker.html" import icon_picker_grid with context %}
+  {% from "partials/file_tool.html" import file_tool %}
   {%- macro wysiwyg_body(content, save_url, extra_class='', editable=true) %}
     {#- The editable words of a tool: the one place this markup is written.
         Nine call sites had their own copy of it — five in render_cell, four
@@ -173,12 +174,12 @@
     <p class="hint">Each line shows its own icon and is clickable — an email opens the visitor's mail app, a number dials, a link opens that page. Untick to show the icon on its own, with the address on hover.</p>
     {% for i in range(row_count) %}
     {% set row = rows[i] if i < rows | length else {} %}
-    <div class="cms-config-row cms-contact-row">
-      <button type="button" class="cms-contact-icon-pick" data-row="{{ i }}"
+    <div class="cms-config-row cms-contact-row cms-rows-row">
+      <button type="button" class="cms-contact-icon-pick cms-rows-icon-pick" data-row="{{ i }}"
               title="Choose the icon for this line">{{ icon_svg(row.get('icon') or '🔗') | safe }}</button>
       <input type="hidden" name="icon_{{ i }}" value="{{ row.get('icon', '') }}">
       <input type="text" name="value_{{ i }}" value="{{ row.get('value', '') }}"
-             class="cms-contact-value"
+             class="cms-contact-value cms-rows-focus"
              title="A number, an email address, a web address, or words such as a copyright line. What you type decides what it becomes: an email opens a mail app, a number dials, an address opens that page, plain words stay text.">
       <input type="checkbox" name="show_{{ i }}" value="1" {{ 'checked' if row.get('show', True) }}
              title="Print the address as text. Unticked shows the icon on its own, with the address on hover.">
@@ -191,6 +192,51 @@
        use, so icons are chosen by looking at them rather than by name. #}
     {{ icon_picker_grid(include_none=false) }}
   {%- endmacro %}
+
+  {#  The File tool's form: one line per download, the same shape as the
+      Contacts form above and driven by the same rows JS (.cms-rows-form).
+      A line's file comes from Upload or Choose; the line keeps its own icon
+      (blank follows the file's type) and the name shown (blank shows the
+      file's own). The <input type=file> sits AFTER the form, not in it --
+      see inline-editor.js, "File / download controls" for why. #}
+  {%- macro file_config_fields(item, section, col_index=none, row_qs='') -%}
+    {% set rows = item.file_items or [] %}
+    {% set row_count = rows | length if rows else 1 %}
+    <form method="post" action="{{ url_for('admin.section_file_update', section_id=section.id, col_index=col_index) }}{{ row_qs }}" class="cms-inline-form cms-block-config-form cms-rows-form cms-file-tool-form">
+      <input type="hidden" name="next" value="{{ current_path }}">
+      <input type="hidden" name="row_count" value="{{ row_count }}">
+      <div class="cms-config-row">
+        <select name="display" title="How the downloads look: a card each, a row of buttons, plain links, or icons on their own.">
+          {% for key, label in file_displays %}
+          <option value="{{ key }}" {{ 'selected' if (item.file_display_r or 'card') == key }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <p class="hint">One line per file. Upload one or choose it from your Media Library; visitors see the file's own name unless you type another. The icon follows the file's type until you pick one. Files download under their own names.</p>
+      {% for i in range(row_count) %}
+      {% set row = rows[i] if i < rows | length else {} %}
+      <div class="cms-config-row cms-file-row cms-rows-row">
+        <button type="button" class="cms-contact-icon-pick cms-rows-icon-pick" data-row="{{ i }}"
+                data-empty-html="{{ icon_svg(icon_for_file(row.name or row.url or '')) }}"
+                title="Choose the icon for this file. “No icon” goes back to the icon for its type.">{{ icon_svg(row.icon_r or icon_for_file('')) | safe }}</button>
+        <input type="hidden" name="icon_{{ i }}" value="{{ row.icon or '' }}">
+        <input type="hidden" name="url_{{ i }}" value="{{ row.url or '' }}">
+        <input type="hidden" name="name_{{ i }}" value="{{ row.name or '' }}">
+        <input type="hidden" name="size_{{ i }}" value="{{ row.size or 0 }}">
+        <span class="cms-file-row-file" data-row-clear="No file yet" title="{{ row.name or 'No file on this line yet — press Upload or Choose' }}">{{ row.name or 'No file yet' }}</span>
+        <input type="text" name="label_{{ i }}" value="{{ row.label or '' }}" class="cms-file-row-label cms-rows-focus"
+               placeholder="{{ row.name or 'Name to show (optional)' }}" data-empty-placeholder="Name to show (optional)"
+               title="What visitors see for this file. Leave blank to show the file's own name.">
+        <button type="button" class="cms-file-row-upload" title="Upload a file from this device onto this line">⬆ Upload</button>
+        <button type="button" class="cms-file-row-choose" title="Choose a file already in your Media Library for this line">Choose</button>
+        <button type="submit" name="op" value="add_{{ i }}" title="Add a file below this one">+</button>
+        <button type="submit" name="op" value="del_{{ i }}" title="Remove this file from the list">&minus;</button>
+      </div>
+      {% endfor %}
+      {{ icon_picker_grid(include_none=true) }}
+    </form>
+    <input type="file" class="cms-file-row-input" accept="{{ file_accept }}" data-upload-url="{{ url_for('admin.section_file_upload', section_id=section.id, col_index=col_index) }}{{ row_qs }}" hidden>
+  {%- endmacro -%}
 
   {% macro tool_corner_select(save_url, current, field='tool_corner_style') %}
     {# The innermost of the three Corners levels. The site-wide setting
@@ -1523,31 +1569,7 @@
                             url_for('admin.section_image_apply', section_id=section.id, col_index=col_index) ~ row_qs) }}
           {%- endif %}
           {%- if item.type == 'file' -%}
-          <select class="cms-file-display-select" title="How should this download look?" data-save-url="{{ save_url }}">
-            {#  "card" is the default, so an unset value means card -- the cell's
-                own list said so and the section's did not, which is the one
-                real difference the two lists had grown. #}
-            <option value="card" {{ 'selected' if not item.file_display or item.file_display == 'card' }}>Card</option>
-            <option value="button" {{ 'selected' if item.file_display == 'button' }}>Button</option>
-            <option value="text-link" {{ 'selected' if item.file_display == 'text-link' }}>Plain text link</option>
-            <option value="icon" {{ 'selected' if item.file_display == 'icon' }}>Icon only</option>
-          </select>
-          {#  The name is optional: blank shows the file's own name (the
-              placeholder), or type your own -- e.g. "Download a physical CV".
-              Its own field, not the heading: the heading tick above is the
-              conventional one every tool has. #}
-          <input type="text" class="cms-file-name-input" name="caption" value="{{ item.caption or '' }}"
-                 placeholder="{{ item.file_name or 'File name (optional)' }}" data-save-url="{{ save_url }}"
-                 title="An optional label for the download. Leave blank to use the file's own name.">
-          <select class="cms-file-icon-select" title="Which icon the download shows" data-save-url="{{ save_url }}">
-            <option value="document" {{ 'selected' if not item.file_icon or item.file_icon == 'document' }}>Document icon</option>
-            <option value="resume" {{ 'selected' if item.file_icon == 'resume' }}>CV / résumé icon</option>
-          </select>
-          <button type="button" class="cms-change-file-btn" title="Change file">📎 Change File</button>
-          <button type="button" class="cms-pick-library-btn" data-library-pick
-              data-library-kinds="file"
-              title="Choose a file already in your Media Library">Choose</button>
-      <input type="file" class="cms-file-file-input" data-upload-url="{{ url_for('admin.section_file_upload', section_id=section.id, col_index=col_index) }}{{ row_qs }}" hidden>
+          {{ file_config_fields(item, section, col_index, row_qs) }}
           {%- endif %}
           {%- if item.type == 'media' -%}
           {{ media_controls(save_url, item,
@@ -1624,7 +1646,7 @@
           {%- endif %}
           {%- endif %}
           {%- if item.is_contact_info -%}
-          <form method="post" action="{{ url_for('admin.section_contact_update', section_id=section.id, col_index=col_index) }}{{ row_qs }}" class="cms-inline-form cms-contact-tool-form cms-block-config-form">
+          <form method="post" action="{{ url_for('admin.section_contact_update', section_id=section.id, col_index=col_index) }}{{ row_qs }}" class="cms-inline-form cms-contact-tool-form cms-block-config-form cms-rows-form">
             <input type="hidden" name="next" value="{{ current_path }}">
             {{ contact_config_fields(item) }}
           </form>
@@ -1775,6 +1797,7 @@
          and a section's Text now offer the same controls because they
          are the same tool, not because two lists happen to agree. #}
       {% if editing %}{% call tool_header(cell.display_label, cell_clear_url) %}{{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}{% endcall %}{% endif %}
+      {{ heading_anchor(cell, cell_save_url) }}
       {{ text_tool(cell.display_content, cell_save_url, extra_class='cms-column-body') }}
 
     {% elif cell.type == 'image' %}
@@ -1784,6 +1807,7 @@
         {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
+      {{ heading_anchor(cell, cell_save_url) }}
       {{ image_tool(cell, cell_save_url, corner_style=cell.corner_style,
                     shadow_style=cell.shadow_style, extra_class='cms-column-body') }}
 
@@ -1794,6 +1818,7 @@
         {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
+      {{ heading_anchor(cell, cell_save_url) }}
       {{ media_tool(cell, cell_save_url, extra_class='cms-column-body') }}
 
     {% elif cell.type == 'file' %}
@@ -1803,28 +1828,10 @@
         {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
-      <div class="cms-column-body">
-        {%- set f_icon = 'ui:' ~ (cell.file_icon or 'document') -%}
-        {%- set f_name = cell.caption or cell.file_name or ('' if cell.title_on_flag else (cell.title or '')) -%}
-        {% if not cell.content %}
-          {% if editing %}<div class="cms-image-placeholder">Click "Change File" above to upload</div>{% endif %}
-        {% elif cell.file_display == 'button' %}
-          <a href="{{ cell.content }}" download class="cms-file-btn">{{ icon_svg(f_icon) | safe }}<span>{{ f_name or 'Download' }}</span></a>
-        {% elif cell.file_display == 'text-link' %}
-          <a href="{{ cell.content }}" download class="cms-file-textlink">{{ icon_svg(f_icon) | safe }}<span>{{ f_name or 'Download' }}</span></a>
-        {% elif cell.file_display == 'icon' %}
-          <a href="{{ cell.content }}" download class="cms-file-icon-only" title="{{ f_name or 'Download' }}">{{ icon_svg(f_icon) | safe }}</a>
-        {% else %}
-          <div class="cms-file-card">
-            <span class="cms-file-icon">{{ icon_svg(f_icon) | safe }}</span>
-            <div class="cms-file-info">
-              <span {{ edit_field('caption', cell_save_url) }} class="cms-file-name" data-placeholder="{{ cell.file_name or 'File name' }}">{{ cell.caption if editing else (f_name or 'Untitled file') }}</span>
-              {% if cell.file_size_display %}<span class="cms-file-size">{{ cell.file_size_display }}</span>{% endif %}
-            </div>
-            <a href="{{ cell.content }}" download class="cms-file-download">Download</a>
-          </div>
-        {% endif %}
-      </div>
+      {{ heading_anchor(cell, cell_save_url) }}
+      {#  One renderer for the list, shared with the section below and with
+          the routes' live swap -- partials/file_tool.html. #}
+      <div class="cms-column-body cms-block-host">{{ file_tool(cell.file_items, cell.file_display_r, editing) }}</div>
 
     {% elif cell.type == 'banner' %}
       {% if editing %}
@@ -1833,6 +1840,7 @@
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
+      {{ heading_anchor(cell, cell_save_url) }}
       {{ wysiwyg_body(cell.display_content, cell_save_url, 'cms-column-body') }}
 
     {% elif cell.type == 'card' %}
@@ -1842,6 +1850,7 @@
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
+      {{ heading_anchor(cell, cell_save_url) }}
       {{ wysiwyg_body(cell.display_content, cell_save_url, 'cms-column-body') }}
 
     {% elif cell.is_menu %}
@@ -1852,6 +1861,7 @@
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
+      {{ heading_anchor(cell, cell_save_url) }}
       <div class="cms-column-body">{{ cell.display_content | safe }}</div>
 
     {% elif cell.is_breadcrumb %}
@@ -1861,6 +1871,7 @@
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
+      {{ heading_anchor(cell, cell_save_url) }}
       <div class="cms-column-body">{{ cell.display_content | safe }}</div>
 
     {% elif cell.is_lang_switcher %}
@@ -1870,6 +1881,7 @@
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
+      {{ heading_anchor(cell, cell_save_url) }}
       <div class="cms-column-body cms-block-host">{{ lang_switcher_markup(cell.ls_opts) }}</div>
 
     {% elif cell.is_buy_button %}
@@ -1879,6 +1891,7 @@
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
+      {{ heading_anchor(cell, cell_save_url) }}
       <div class="cms-column-body">{{ cell.display_content | safe }}</div>
 
     {% elif cell.is_block %}
@@ -1898,6 +1911,7 @@
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
+      {{ heading_anchor(cell, cell_save_url) }}
       <div class="cms-column-body">{{ shop_grid(cell) }}</div>
 
     {% elif cell.is_faq_reader %}
@@ -1907,6 +1921,7 @@
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
+      {{ heading_anchor(cell, cell_save_url) }}
       <div class="cms-column-body">{{ cell.display_content | safe }}</div>
 
     {% elif cell.is_contact_form %}
@@ -1926,6 +1941,7 @@
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
+      {{ heading_anchor(cell, cell_save_url) }}
       <div class="cms-column-body cms-block-host">{{ cell.content | safe }}</div>
 
     {% elif cell.is_blog %}
@@ -1935,6 +1951,7 @@
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
+      {{ heading_anchor(cell, cell_save_url) }}
       <div class="cms-column-body">{{ cell.display_content | safe }}</div>
 
     {% elif cell.is_search %}
@@ -1944,6 +1961,7 @@
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
+      {{ heading_anchor(cell, cell_save_url) }}
       <div class="cms-column-body">{{ cell.display_content | safe }}</div>
 
     {% elif cell.is_faq %}
@@ -1953,6 +1971,7 @@
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
+      {{ heading_anchor(cell, cell_save_url) }}
       <div class="cms-column-body">{{ cell.display_content | safe }}</div>
 
     {% elif cell.is_video_gallery %}
@@ -1962,6 +1981,7 @@
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
+      {{ heading_anchor(cell, cell_save_url) }}
       <div class="cms-column-body">{{ cell.display_content | safe }}</div>
 
     {% elif cell.is_table %}
@@ -1973,6 +1993,7 @@
         {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
+      {{ heading_anchor(cell, cell_save_url) }}
       {{ wysiwyg_body(cell.display_content, cell_save_url, 'cms-column-body') }}
 
     {% elif cell.is_image_accordion %}
@@ -1982,6 +2003,7 @@
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
+      {{ heading_anchor(cell, cell_save_url) }}
       <div class="cms-column-body">{{ cell.display_content | safe }}</div>
 
     {% elif cell.is_divider %}
@@ -1990,6 +2012,7 @@
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
+      {{ heading_anchor(cell, cell_save_url) }}
       <div class="cms-column-body">{{ cell.display_content | safe }}</div>
 
     {% elif cell.is_basket %}
@@ -2002,6 +2025,7 @@
         {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
+      {{ heading_anchor(cell, cell_save_url) }}
       <div class="cms-column-body">{{ cell.display_content | safe }}</div>
 
     {% else %}
@@ -2343,30 +2367,12 @@
           {{ image_tool(s, url_for('admin.section_update', section_id=s.id), title=s.title,
                         corner_style=s.tool_corner_style, shadow_style=s.tool_shadow_style) }}
         {% elif s.type == 'file' %}
-          {%- set f_icon = 'ui:' ~ (s.file_icon or 'document') -%}
-          {#  The download's name: an optional custom label (caption), else the
-              uploaded file's own name. `title` is NOT used -- it is the heading
-              above the tool now, drawn by heading_anchor like every tool. #}
-          {%- set f_name = s.caption or s.file_name -%}
+          {#  The list of downloads -- partials/file_tool.html, the one
+              renderer the cell branch and the routes' live swap use too.
+              `title` is the heading above the tool, drawn by heading_anchor
+              like every tool; a download's shown name is its own line's. #}
           <section class="block block-file" {{ ('data-corner-style="' ~ s.tool_corner_style ~ '"') | safe if s.tool_corner_style }} {{ ('data-shadow-style="' ~ s.tool_shadow_style ~ '"') | safe if s.tool_shadow_style }}>
-            {% if not s.content %}
-              {% if editing %}<div class="cms-image-placeholder">Click "Change File" above to upload</div>{% endif %}
-            {% elif s.file_display == 'button' %}
-              <a href="{{ s.content }}" download class="cms-file-btn">{{ icon_svg(f_icon) | safe }}<span>{{ f_name or 'Download' }}</span></a>
-            {% elif s.file_display == 'text-link' %}
-              <a href="{{ s.content }}" download class="cms-file-textlink">{{ icon_svg(f_icon) | safe }}<span>{{ f_name or 'Download' }}</span></a>
-            {% elif s.file_display == 'icon' %}
-              <a href="{{ s.content }}" download class="cms-file-icon-only" title="{{ f_name or 'Download' }}">{{ icon_svg(f_icon) | safe }}</a>
-            {% else %}
-              <div class="cms-file-card">
-                <span class="cms-file-icon">{{ icon_svg(f_icon) | safe }}</span>
-                <div class="cms-file-info">
-                  <span {{ edit_field('caption', url_for('admin.section_update', section_id=s.id)) }} class="cms-file-name" data-placeholder="{{ s.file_name or 'File name' }}">{{ s.caption if editing else (f_name or 'Untitled file') }}</span>
-                  {% if s.file_size_display %}<span class="cms-file-size">{{ s.file_size_display }}</span>{% endif %}
-                </div>
-                <a href="{{ s.content }}" download class="cms-file-download">Download</a>
-              </div>
-            {% endif %}
+            <div class="cms-block-host">{{ file_tool(s.file_items, s.file_display_r, editing) }}</div>
           </section>
         {% elif s.type == 'media' %}
           {{ media_tool(s, url_for('admin.section_update', section_id=s.id), title=s.title,

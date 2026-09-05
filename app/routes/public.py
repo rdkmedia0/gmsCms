@@ -18,6 +18,7 @@ from ..services.sections import (
     section_view_classes, section_hidden_on, section_align_on, section_height_override,
     PER_VIEW_VIEWS, NON_DESKTOP_VIEWS, column_mobile_positions,
     tool_allows_heading, heading_level_of, heading_align_of,
+    file_items_for,
 )
 from ..services import translation as _translation
 from ..services.sections import (
@@ -1709,6 +1710,10 @@ def _normalize_column_cell(cell, nav_html="", breadcrumb_html=""):
     d["width_class"] = f'cms-img-{d.get("width") or "normal"}'
     d["animation_class"] = f'cms-anim-{d["animation"]}' if d.get("animation") and d["animation"] != "none" else ""
     d["file_size_display"] = _format_file_size(d.get("file_size"))
+    if d["type"] == "file":
+        #  The File tool's lines -- from its block, or from the old
+        #  one-file columns (see services.sections.read_file_tool).
+        d["file_items"], d["file_display_r"] = file_items_for(d.get("content"), d)
     if d["type"] == "media" and d.get("media_type") == "youtube":
         d["youtube_id"] = _youtube_id(d.get("content", ""))
     if d["type"] == "html" and "cms-wordmark" in d["content"]:
@@ -1844,6 +1849,8 @@ def _prepare_sections(sections, section_type_labels=None, nav_html="", breadcrum
         d["width_class"] = f'cms-img-{d["width"] or "normal"}'
         d["animation_class"] = f'cms-anim-{d["animation"]}' if d.get("animation") and d["animation"] != "none" else ""
         d["file_size_display"] = _format_file_size(d.get("file_size"))
+        if d["type"] == "file":
+            d["file_items"], d["file_display_r"] = file_items_for(d.get("content"), d)
         if d["type"] == "media" and d.get("media_type") == "youtube":
             d["youtube_id"] = _youtube_id(d["content"])
         if d["type"] == "html" and "cms-menu" in (d["content"] or ""):

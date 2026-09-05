@@ -120,8 +120,15 @@
         //  look the same. Those are chosen by NAME, which is the only
         //  thing that tells them apart.
         if (img.is_image === false) {
+          //  By its TYPE and its name: the Library says what kind of file
+          //  each is (icon_html, drawn server-side from the extension), so
+          //  a PDF and a spreadsheet are told apart before the name is read.
           b.className = "cms-picker-file";
-          b.textContent = name;
+          b.innerHTML = img.icon_html || "";
+          const label = document.createElement("span");
+          label.className = "cms-picker-file-name";
+          label.textContent = name;
+          b.appendChild(label);
         } else {
           //  LAZY AND ASYNC, and a loading state. This grid lists every
           //  picture on the site at full size -- measured: 164 of them,
@@ -1701,8 +1708,15 @@
   // here. This file has no business knowing what a contacts row looks
   // like; that is the template's, and a second copy of it here is exactly
   // the drift this project keeps having to undo.
+  //  Generic since the File tool became a list too: a `.cms-rows-form`
+  //  holds `.cms-rows-row` lines whose fields end in _<index>, an optional
+  //  `.cms-rows-icon-pick` per line, and `.cms-rows-focus` for the box the
+  //  caret goes to on +. Contact Info and File / Download both wear these
+  //  classes beside their own, so ONE handler adds, removes and renumbers
+  //  for both -- a second copy for the File tool is how the two would
+  //  have drifted.
   function renumber(form) {
-    const rows = [...form.querySelectorAll(".cms-contact-row")];
+    const rows = [...form.querySelectorAll(".cms-rows-row")];
     rows.forEach((row, i) => {
       row.querySelectorAll("[name]").forEach((el) => {
         el.name = el.name.replace(/_\d+$/, "_" + i);
@@ -1711,8 +1725,7 @@
       row.querySelectorAll('button[name="op"]').forEach((b) => {
         b.value = b.value.replace(/_\d+$/, "_" + i);
       });
-      const pick = row.querySelector(".cms-contact-icon-pick");
-      if (pick) pick.dataset.row = String(i);
+      row.querySelectorAll("[data-row]").forEach((el) => { el.dataset.row = String(i); });
     });
     const count = form.querySelector('input[name="row_count"]');
     if (count) count.value = String(rows.length);
@@ -1720,10 +1733,10 @@
   }
 
   document.addEventListener("click", (e) => {
-    const btn = e.target.closest('.cms-contact-tool-form button[name="op"]');
+    const btn = e.target.closest('.cms-rows-form button[name="op"]');
     if (!btn) return;
-    const form = btn.closest(".cms-contact-tool-form");
-    const row = btn.closest(".cms-contact-row");
+    const form = btn.closest(".cms-rows-form");
+    const row = btn.closest(".cms-rows-row");
     if (!form || !row) return;
     e.preventDefault();
     if (btn.value.startsWith("add_")) {
@@ -1732,12 +1745,23 @@
         if (el.type === "checkbox") el.checked = true;
         else el.value = "";
       });
+      //  What a line SHOWS about itself (a File line names its file) is
+      //  emptied too, and its icon goes back to "not chosen yet".
+      fresh.querySelectorAll("[data-row-clear]").forEach((el) => {
+        el.textContent = el.dataset.rowClear; el.title = el.dataset.rowClear;
+      });
+      fresh.querySelectorAll("[data-empty-placeholder]").forEach((el) => {
+        el.placeholder = el.dataset.emptyPlaceholder;
+      });
+      fresh.querySelectorAll(".cms-rows-icon-pick[data-empty-html]").forEach((el) => {
+        el.innerHTML = el.dataset.emptyHtml;
+      });
       row.after(fresh);
       renumber(form);
       //  On the next tick: the button takes focus on mousedown, which
       //  happens after this handler runs, so focusing the box here is
       //  undone a moment later and the caret ends up nowhere.
-      const box = fresh.querySelector(".cms-contact-value");
+      const box = fresh.querySelector(".cms-rows-focus");
       if (box) setTimeout(() => box.focus(), 0);
       //  Nothing is saved: an empty line is not content, and the server
       //  learns about it with the first thing typed into it.
@@ -2488,23 +2512,85 @@
   });
 
   // ---------- File / download controls ----------
-  bindEach(".cms-file-display-select", (select) => {
-    select.addEventListener("change", async () => {
-      await saveField(select.dataset.saveUrl, "file_display", select.value);
-      location.reload(); // display styles differ structurally (card/button/link/icon)
-    });
-  });
+  //
+  //  The File tool is a LIST of downloads (see file_config_fields in
+  //  page.html): one line per file, and each line gets its file from this
+  //  device or from the Media Library. The line's other fields -- its
+  //  icon, the name to show, + and - -- are the generic rows form above;
+  //  this is only the part that is the File tool's own: putting a file
+  //  onto a line. The route answers with the line's facts (which land in
+  //  the line's hidden fields, so the next save keeps them) and the block
+  //  freshly drawn (which swaps in below), so nothing reloads.
+  //
+  //  The <input type=file> stands OUTSIDE the form on purpose: the rows
+  //  form saves itself on any change event, and a change bubbling up from
+  //  the file input would post the line's OLD hidden fields a moment
+  //  before the upload wrote the new ones -- and whichever landed second
+  //  would win.
+  bindEach(".cms-file-tool-form", (form) => {
+    const input = form.nextElementSibling && form.nextElementSibling.classList.contains("cms-file-row-input")
+      ? form.nextElementSibling : null;
+    if (!input) return;
+    const rows = () => [...form.querySelectorAll(".cms-rows-row")];
+    let activeRow = 0;
 
-  //  The File tool's optional custom label (saved to `caption`; blank falls
-  //  back to the file's own name) and which icon it wears.
-  bindEach(".cms-file-name-input", (input) => {
-    const save = debounce(() => saveField(input.dataset.saveUrl, "caption", input.value), 500);
-    input.addEventListener("input", save);
-  });
-  bindEach(".cms-file-icon-select", (select) => {
-    select.addEventListener("change", async () => {
-      await saveField(select.dataset.saveUrl, "file_icon", select.value);
-      location.reload(); // re-render the download with the new icon
+    async function send(body, row) {
+      body.set("row", String(row));
+      try {
+        const res = await fetch(input.dataset.uploadUrl, {
+          method: "POST", headers: { "X-Inline-Edit": "1" }, body,
+        });
+        const data = await res.json();
+        if (!(res.ok && data.ok)) { toast(data.error || "That didn't work"); return; }
+        const rowEl = rows()[row];
+        if (rowEl) {
+          const set = (prefix, v) => { const f = rowEl.querySelector('input[name^="' + prefix + '"]'); if (f) f.value = v; };
+          set("url_", data.url); set("name_", data.filename); set("size_", String(data.size || 0));
+          const shown = rowEl.querySelector(".cms-file-row-file");
+          if (shown) { shown.textContent = data.filename; shown.title = data.filename; }
+          const label = rowEl.querySelector(".cms-file-row-label");
+          if (label) label.placeholder = data.filename;
+          //  A line with no icon of its own wears the one for its file's
+          //  type, so the button shows that now; "No icon" later goes back
+          //  to it too.
+          const pick = rowEl.querySelector(".cms-rows-icon-pick");
+          const iconField = rowEl.querySelector('input[name^="icon_"]');
+          if (pick && data.icon_html) {
+            pick.dataset.emptyHtml = data.icon_html;
+            if (!(iconField && iconField.value)) pick.innerHTML = data.icon_html;
+          }
+        }
+        const host = form.closest(".cms-section, .cms-column, .cms-row-cell")?.querySelector(".cms-block-host");
+        if (host && data.html) host.innerHTML = data.html;
+        toast("File set");
+      } catch {
+        toast("That didn't work — check your connection");
+      }
+    }
+
+    form.addEventListener("click", async (e) => {
+      const up = e.target.closest(".cms-file-row-upload");
+      const choose = e.target.closest(".cms-file-row-choose");
+      if (!up && !choose) return;
+      e.preventDefault();
+      const rowEl = (up || choose).closest(".cms-rows-row");
+      const idx = Math.max(0, rows().indexOf(rowEl));
+      if (up) { activeRow = idx; input.click(); return; }
+      const items = await libraryList("file");
+      if (!items.length) { toast("Your Media Library has no files yet — upload one and it will be offered here"); return; }
+      const chosen = await cmsImagePicker(items);
+      if (!chosen) return;
+      const body = new FormData();
+      body.set("library_url", chosen);
+      await send(body, idx);
+    });
+    input.addEventListener("change", async () => {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      const body = new FormData();
+      body.set("file", file);
+      input.value = "";
+      await send(body, activeRow);
     });
   });
 
@@ -2515,39 +2601,6 @@
     cb.addEventListener("change", async () => {
       await saveField(cb.dataset.saveUrl, cb.dataset.field || "link_new_tab", cb.checked ? "1" : "0");
       location.reload();
-    });
-  });
-
-  bindEach(".cms-change-file-btn", (btn) => {
-    const scope = btn.closest(".cms-row-cell, .cms-column, .cms-section");
-    const fileInput = scope.querySelector(".cms-file-file-input");
-    btn.addEventListener("click", () => fileInput.click());
-    //  Sending and applying, once -- so a file chosen from the Library
-    //  lands the same way an uploaded one does.
-    fileInput.cmsSend = async (formData) => {
-      try {
-        const res = await fetch(fileInput.dataset.uploadUrl, {
-          method: "POST",
-          headers: { "X-Inline-Edit": "1" },
-          body: formData,
-        });
-        const data = await res.json();
-        if (res.ok && data.url) {
-          toast("File set — reloading…");
-          location.reload();
-        } else {
-          toast(data.error || "That didn't work");
-        }
-      } catch {
-        toast("That didn't work — check your connection");
-      }
-    };
-    fileInput.addEventListener("change", async () => {
-      const file = fileInput.files[0];
-      if (!file) return;
-      const formData = new FormData();
-      formData.set("file", file);
-      await fileInput.cmsSend(formData);
     });
   });
 
@@ -2718,9 +2771,11 @@
 //  apply-on-change every other tool panel has.
 (function () {
   const FALLBACK_ICON = "\u{1F517}";
+  //  Shared by every rows form with an icon per line (Contact Info, File /
+  //  Download) -- see the `.cms-rows-form` note above.
   document.addEventListener("click", (e) => {
-    const pick = e.target.closest(".cms-contact-icon-pick");
-    const form = pick && pick.closest(".cms-contact-tool-form");
+    const pick = e.target.closest(".cms-rows-icon-pick");
+    const form = pick && pick.closest(".cms-rows-form");
     if (pick && form) {
       e.preventDefault();
       const grid = form.querySelector(".cms-icon-grid-view");
@@ -2730,27 +2785,33 @@
       grid.dataset.row = pick.dataset.row;
       return;
     }
-    const iconBtn = e.target.closest(".cms-contact-tool-form .cms-icon-grid-btn");
+    const iconBtn = e.target.closest(".cms-rows-form .cms-icon-grid-btn");
     if (iconBtn) {
       e.preventDefault();
       const grid = iconBtn.closest(".cms-icon-grid-view");
-      const f = iconBtn.closest(".cms-contact-tool-form");
+      const f = iconBtn.closest(".cms-rows-form");
       const row = grid && grid.dataset.row;
       if (!f || row === undefined) return;
       const field = f.querySelector('input[name="icon_' + row + '"]');
-      const button = f.querySelector('.cms-contact-icon-pick[data-row="' + row + '"]');
-      if (field) field.value = iconBtn.dataset.iconKey || "";
+      const button = f.querySelector('.cms-rows-icon-pick[data-row="' + row + '"]');
+      const key = iconBtn.dataset.iconKey || "";
+      if (field) field.value = key;
       //  The grid button already holds the drawn mark -- an emoji, or the
       //  SVG for a brand. Copying its contents is why a network's icon
       //  shows as its logo; writing the key put "brand:x" on the button.
-      if (button) button.innerHTML = iconBtn.innerHTML || FALLBACK_ICON;
+      //  "No icon" on a line that knows what it looks like unchosen (a File
+      //  line: the icon for its file's type) shows that instead of ∅.
+      if (button) {
+        button.innerHTML = (!key && button.dataset.emptyHtml) ? button.dataset.emptyHtml
+          : (iconBtn.innerHTML || FALLBACK_ICON);
+      }
       grid.hidden = true;
       if (f.requestSubmit) { f.requestSubmit(); } else { f.submit(); }
       return;
     }
     //  Anywhere else closes an open grid.
     if (!e.target.closest(".cms-icon-grid-view")) {
-      document.querySelectorAll(".cms-contact-tool-form .cms-icon-grid-view")
+      document.querySelectorAll(".cms-rows-form .cms-icon-grid-view")
         .forEach((g) => { g.hidden = true; });
     }
   });

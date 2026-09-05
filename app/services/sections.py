@@ -441,6 +441,171 @@ def _insert_layout_chunks(db, page_id, layout_sections):
     return count
 
 
+#  --- The File tool: a LIST of downloads --------------------------------
+#
+#  It was one file per tool, with its name, size, icon and label in four
+#  columns beside the URL. A CV page wants a CV, a cover letter and a
+#  portfolio side by side, which meant three tools in three cells with
+#  three sets of controls -- so, like Contact Info, it is a list now: one
+#  line per file, each with its own icon and its own shown name, and one
+#  display choice for the lot. The block IS the storage, the same shape
+#  Contact Info takes: build_file_tool writes the lines into the markup
+#  and read_file_tool takes them back out, exact inverses.
+#
+#  The stored lines carry FACTS only (url, the file's own name, the name
+#  to show, the icon, the size); how they are drawn -- card, button, link,
+#  icon -- is partials/file_tool.html, one renderer for the page and for
+#  the editor's live swap. A block written before this (a bare URL in
+#  `content`, the rest in the old columns) is read as a one-line list, so
+#  nothing needed migrating and a template shipping the old shape still
+#  installs.
+FILE_DISPLAY_CHOICES = (
+    ("card", "Card"), ("button", "Button"),
+    ("text-link", "Plain text link"), ("icon", "Icon only"),
+)
+MAX_FILE_ROWS = 12
+_FILE_ITEM_KEYS = ("url", "name", "label", "icon", "size")
+
+
+def format_file_size(num_bytes):
+    try:
+        num_bytes = float(num_bytes or 0)
+    except (TypeError, ValueError):
+        return ""
+    if not num_bytes:
+        return ""
+    for unit in ("B", "KB", "MB", "GB"):
+        if num_bytes < 1024:
+            return f"{num_bytes:.0f} {unit}" if unit == "B" else f"{num_bytes:.1f} {unit}"
+        num_bytes /= 1024
+    return f"{num_bytes:.1f} TB"
+
+
+def _file_url_ok(url):
+    """Only an address this app itself serves, or a full web address, is
+    kept on a line -- the URL arrives from a form field and is written
+    into an href, so anything else (a javascript: scheme, a bare path
+    somebody typed) is dropped rather than published."""
+    url = (url or "").strip()
+    return url if url.startswith(("/static/", "http://", "https://")) else ""
+
+
+def build_file_tool(items, display="card"):
+    """The block, from a list of {url, name, label, icon, size} lines."""
+    display = display if display in dict(FILE_DISPLAY_CHOICES) else "card"
+    parts = []
+    for it in items:
+        vals = {
+            "url": _file_url_ok(it.get("url")),
+            "name": (it.get("name") or "").strip(),
+            "label": (it.get("label") or "").strip(),
+            "icon": (it.get("icon") or "").strip(),
+            "size": str(int(it.get("size") or 0)),
+        }
+        parts.append('<span class="cms-file-item" %s></span>' % " ".join(
+            'data-%s="%s"' % (k, html_escape(vals[k], quote=True)) for k in _FILE_ITEM_KEYS))
+    #  data-rows keeps a line somebody has added but not yet filled, so
+    #  pressing + does not lose the box on the next redraw (Contact Info
+    #  does the same with its blanks).
+    return ('<div class="cms-file-tool" data-display="%s" data-rows="%d">%s</div>'
+            % (display, max(len(items), 1), "".join(parts)))
+
+
+def read_file_tool(content, legacy=None):
+    """(items, display) from a block -- or from the old one-file shape,
+    where `content` was the URL and `legacy` carries the columns that went
+    with it (file_name, caption, file_icon, file_size, file_display)."""
+    content = content or ""
+    legacy = legacy or {}
+    if "cms-file-tool" not in content:
+        display = legacy.get("file_display") or "card"
+        if not content.strip():
+            return [], display
+        icon = legacy.get("file_icon") or ""
+        return [{
+            "url": content.strip(), "name": legacy.get("file_name") or "",
+            "label": legacy.get("caption") or "",
+            #  The old column held a bare key ("document", "resume"); a
+            #  line holds the full icon key the picker deals in.
+            "icon": ("ui:" + icon) if icon and ":" not in icon else icon,
+            "size": legacy.get("file_size") or 0,
+        }], display
+    soup = BeautifulSoup(content, "html.parser")
+    wrap = soup.select_one(".cms-file-tool")
+    display = (wrap.get("data-display") if wrap else None) or "card"
+    items = []
+    for node in soup.select(".cms-file-item"):
+        try:
+            size = int(node.get("data-size") or 0)
+        except ValueError:
+            size = 0
+        items.append({"url": node.get("data-url") or "", "name": node.get("data-name") or "",
+                      "label": node.get("data-label") or "", "icon": node.get("data-icon") or "",
+                      "size": size})
+    return items, display
+
+
+def file_items_for(content, legacy=None):
+    """What the renderer and the form need: the lines with their resolved
+    icon (a line with none wears its file type's), the name shown (the
+    label, else the file's own name) and a readable size."""
+    from ..icons import file_type_icon
+    items, display = read_file_tool(content, legacy)
+    out = []
+    for it in items:
+        it = dict(it)
+        it["icon_r"] = it["icon"] or file_type_icon(it["name"] or it["url"])
+        it["shown"] = it["label"] or it["name"] or "Download"
+        it["size_display"] = format_file_size(it["size"])
+        out.append(it)
+    return out, display
+
+
+def _blank_file_item():
+    return {"url": "", "name": "", "label": "", "icon": "", "size": 0}
+
+
+def apply_file_form(form):
+    """One submit of the File form, applied whole -- every line plus any
+    +/- pressed, the same shape Contact Info takes."""
+    count = form.get("row_count", type=int) or 1
+    count = max(0, min(MAX_FILE_ROWS, count))
+    items = []
+    for i in range(count):
+        items.append({
+            "url": form.get("url_%d" % i) or "",
+            "name": form.get("name_%d" % i) or "",
+            "label": form.get("label_%d" % i) or "",
+            "icon": form.get("icon_%d" % i) or "",
+            "size": form.get("size_%d" % i, type=int) or 0,
+        })
+    op = form.get("op") or ""
+    if op.startswith("add_") and op[4:].isdigit():
+        at = int(op[4:])
+        if len(items) < MAX_FILE_ROWS:
+            items.insert(min(at + 1, len(items)), _blank_file_item())
+    elif op.startswith("del_") and op[4:].isdigit():
+        at = int(op[4:])
+        if 0 <= at < len(items):
+            items.pop(at)
+    if not items:
+        items = [_blank_file_item()]
+    return build_file_tool(items, form.get("display") or "card")
+
+
+def set_file_item(content, legacy, row, url, name, size):
+    """Put a file onto one line (from an upload or a Library pick), keeping
+    the line's icon and shown name and every other line as it was. A row
+    past the end pads the list -- the form may have added lines the server
+    has not seen yet."""
+    items, display = read_file_tool(content, legacy)
+    row = max(0, min(MAX_FILE_ROWS - 1, int(row or 0)))
+    while len(items) <= row:
+        items.append(_blank_file_item())
+    items[row].update({"url": url, "name": name, "size": size or 0})
+    return build_file_tool(items, display)
+
+
 def is_contact_tool_block(content):
     """Whether this block is a Contact Info TOOL, or merely writing that
     happens to sit in a contact wrapper.
@@ -2275,7 +2440,31 @@ def _list_media(image_only=False):
         #  follows below is not.
         item["owned_by"] = None
         item["can_delete"] = True
-    return items + _installed_template_media(db, image_only=image_only)
+    return _describe_files(items + _installed_template_media(db, image_only=image_only))
+
+
+def _describe_files(items):
+    """What a file that is not a picture looks like in a list: its TYPE
+    (icon, drawn by the extension -- see icons.file_type_icon), the drawn
+    mark as HTML for a picker that builds its own tiles, and its size.
+    A picture is left as it is; it is chosen by looking at it."""
+    from ..icons import file_type_icon
+    static = current_app.static_folder
+    for item in items:
+        if item.get("is_image"):
+            continue
+        item["icon"] = file_type_icon(item.get("filename") or item.get("url") or "")
+        item["icon_html"] = render_icon(item["icon"])
+        url = item.get("url") or ""
+        size = 0
+        if url.startswith("/static/"):
+            try:
+                size = os.path.getsize(os.path.join(static, *url[len("/static/"):].split("/")))
+            except OSError:
+                size = 0
+        item["size"] = size
+        item["size_display"] = format_file_size(size)
+    return items
 
 
 def _installed_template_media(db, image_only=False):

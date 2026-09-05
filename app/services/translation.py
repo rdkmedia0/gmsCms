@@ -116,7 +116,7 @@ _STRUCTURED_TYPE = "columns"
 #  translated, whatever its type -- so a new tool or design needs no change
 #  here to be covered.
 _MARKER_RE = re.compile(
-    r'cms-(menu|breadcrumb|wordmark|version|blog|search|contact-form|faq-reader|'
+    r'cms-(menu|breadcrumb|wordmark|version|file-tool|blog|search|contact-form|faq-reader|'
     r'lang-switcher|video-gallery|image-accordion|shop|buy-button|basket)\b')
 _HAS_LETTERS = re.compile(r'[^\W\d_]', re.UNICODE)
 
