@@ -1813,3 +1813,57 @@ button[aria-busy="true"] { opacity: .75; cursor: progress; }
   padding: 5px 8px; font: inherit; font-size: 13px;
   border: 1px solid var(--cms-ui-border, #d7dbe0); border-radius: var(--cms-ui-radius-control, 4px);
 }
+
+/* === Products screen: scannable list / gallery with edit-on-click ======
+   Every product was a full open edit form stacked down the page. It is a
+   compact summary now -- thumbnail, name, price, on/off badge -- that
+   opens its editor inline on click, one at a time, in a list or a gallery
+   of cards (toggle remembered in localStorage). See products-admin.js. */
+.products-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 16px 0 10px; }
+.products-toolbar #products-search {
+  flex: 1; min-width: 180px; padding: 8px 10px; font: inherit;
+  border: 1px solid var(--border); border-radius: var(--cms-ui-radius-control);
+  background: var(--card-bg, #fff); color: var(--text);
+}
+.products-view-toggle { display: inline-flex; gap: 4px; flex: 0 0 auto; }
+.products-view-toggle .btn.is-active { border-color: var(--cms-ui-accent); color: var(--cms-ui-accent); }
+.products-none-match { margin: 4px 0 10px; }
+
+.products-grid[data-view="list"] { display: flex; flex-direction: column; gap: 8px; }
+.products-grid[data-view="gallery"] {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; align-items: start;
+}
+
+.product-item {
+  border: 1px solid var(--border); border-radius: var(--cms-ui-radius-surface);
+  background: var(--card-bg, #fff); overflow: hidden;
+}
+.product-item.is-open { border-color: var(--cms-ui-accent); }
+
+.product-summary {
+  display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px;
+  background: none; border: none; cursor: pointer; text-align: left; font: inherit; color: inherit;
+}
+.product-summary:hover { background: var(--bg-alt, #f6f6f6); }
+.product-summary-thumb { width: 44px; height: 44px; object-fit: cover; border-radius: var(--cms-ui-radius-control); flex: 0 0 auto; }
+.product-summary-thumb-empty {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--bg-alt, #f0f0f0); font-size: 20px;
+}
+.product-summary-name { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.product-summary-price { color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.product-summary-caret { color: var(--muted); transition: transform .15s; flex: 0 0 auto; }
+.product-item.is-open .product-summary-caret { transform: rotate(180deg); }
+.product-item.is-off .product-summary-name { color: var(--muted); }
+
+.product-detail { padding: 4px 14px 14px; border-top: 1px solid var(--border); }
+.product-detail .product-thumb { max-width: 120px; border-radius: var(--cms-ui-radius-control); }
+
+/* Gallery: the summary becomes a picture card; an OPEN one spans the whole
+   row so its editor has full width to work in. */
+.products-grid[data-view="gallery"] .product-summary { flex-direction: column; align-items: stretch; gap: 8px; }
+.products-grid[data-view="gallery"] .product-summary-thumb { width: 100%; height: 130px; }
+.products-grid[data-view="gallery"] .product-summary-name { white-space: normal; }
+.products-grid[data-view="gallery"] .product-summary-caret { display: none; }
+.products-grid[data-view="gallery"] .product-summary-price { white-space: normal; }
+.products-grid[data-view="gallery"] .product-item.is-open { grid-column: 1 / -1; }

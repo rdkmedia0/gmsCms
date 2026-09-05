@@ -143,12 +143,33 @@
 {% if product_error %}
 <div class="card"><p class="flash flash-error">Couldn't read your products from Stripe &mdash; {{ product_error }}</p></div>
 {% elif products %}
-{% for p in products %}
-<div class="card">
-  <div class="integration-head">
-    <h2>{{ p.name }}</h2>
-    <span class="integration-badge {{ 'is-on' if p.active else 'is-off' }}">{{ 'on sale' if p.active else 'off sale' }}</span>
+{#  Products are a compact list (or a gallery of cards -- toggle top-right,
+    remembered per browser), each one a summary you can scan. Click a
+    product to open its editor inline; only one opens at a time, so the
+    page stays short however many you sell. A search box filters by name.
+    See static/js/admin/products-admin.js and .products-* in admin.css. #}
+<div class="products-toolbar">
+  <input type="search" id="products-search" placeholder="Search products…"
+         title="Filter the list by name" autocomplete="off">
+  <div class="products-view-toggle" role="group" aria-label="Choose how products are shown">
+    <button type="button" class="btn btn-small" data-products-view="list" title="Show products as a compact list">&#9776; List</button>
+    <button type="button" class="btn btn-small" data-products-view="gallery" title="Show products as a grid of picture cards">&#9638; Gallery</button>
   </div>
+</div>
+<p class="hint products-none-match" hidden>No product matches that.</p>
+<div class="products-grid" id="products-grid" data-view="list">
+{% for p in products %}
+<div class="product-item{{ ' is-off' if not p.active }}" data-name="{{ (p.name or '') | lower }}">
+  <button type="button" class="product-summary" aria-expanded="false"
+          title="Click to edit “{{ p.name }}”">
+    {% if p.image %}<img src="{{ p.image }}" alt="" class="product-summary-thumb">
+    {% else %}<span class="product-summary-thumb product-summary-thumb-empty" aria-hidden="true">&#128717;</span>{% endif %}
+    <span class="product-summary-name">{{ p.name }}</span>
+    <span class="product-summary-price">{{ '%.2f'|format(p.amount / 100) if p.amount is not none else '&mdash;' | safe }} {{ p.currency }}</span>
+    <span class="integration-badge {{ 'is-on' if p.active else 'is-off' }}">{{ 'on sale' if p.active else 'off sale' }}</span>
+    <span class="product-summary-caret" aria-hidden="true">&#9662;</span>
+  </button>
+  <div class="product-detail" hidden>
   <form method="post" action="{{ url_for('admin.commerce_product_save', product_id=p.product_id) }}" enctype="multipart/form-data" class="fulfilment-form">
     <input type="hidden" name="price_id" value="{{ p.price_id }}">
     <input type="hidden" name="current_amount" value="{{ p.amount if p.amount is not none else 0 }}">
@@ -203,8 +224,10 @@
       {{ 'Put back on sale' if not p.active else 'Take off sale' }}
     </button>
   </form>
-</div>
+  </div>{# .product-detail #}
+</div>{# .product-item #}
 {% endfor %}
+</div>{# .products-grid #}
 {% endif %}
 
 <div class="card">
@@ -351,4 +374,5 @@
 {% endif %}
 
 <script src="{{ static_url('js/admin/fulfilment.js') }}"></script>
+<script src="{{ static_url('js/admin/products-admin.js') }}"></script>
 {% endblock %}
