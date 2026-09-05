@@ -75,7 +75,7 @@
   <form method="post" action="{{ url_for('admin.commerce_currency') }}" class="inline-form">
     <label for="base_currency" title="The currency every new product is priced in.">Currency</label>
     <select id="base_currency" name="base_currency"
-            title="Every new product is priced in this. Anything already on sale keeps the currency it was created with, because a Stripe price cannot change.">
+            title="Every new product is priced in this. Anything already in your shop keeps the currency it was created with, because a Stripe price cannot change.">
       {% for code, label in currencies %}
       <option value="{{ code }}" {{ 'selected' if code == base_currency }}>{{ label }}</option>
       {% endfor %}

@@ -165,7 +165,7 @@
 
 <div class="card product-add-panel" id="product-add-panel" hidden>
   <h2>Add a product</h2>
-  <p class="hint">This creates the product in Stripe for you. You never need to open the Stripe dashboard to put something on sale.</p>
+  <p class="hint">This creates the product in Stripe for you. You never need to open the Stripe dashboard to start selling something.</p>
   <form method="post" action="{{ url_for('admin.commerce_product_add') }}" enctype="multipart/form-data" class="fulfilment-form">
     <label for="new_name">What is it called</label>
     <input type="text" id="new_name" name="name" required maxlength="250"
@@ -180,7 +180,7 @@
       <input type="number" id="new_amount" name="amount" step="0.01" min="0" required
              placeholder="0.00" title="What it costs. Tax is added by Stripe if you have Stripe Tax switched on.">
       <span class="product-currency" title="This shop charges in {{ base_currency | upper }}. Change it under Store settings.">{{ base_currency | upper }}</span>
-      <select name="interval" title="A one-off sale, or something they pay for again each month or year">
+      <select name="interval" title="A one-off payment, or something they pay for again each month or year">
         {% for value, label in intervals %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
       </select>
     </div>
@@ -207,8 +207,8 @@
     {% else %}<span class="product-summary-thumb product-summary-thumb-empty" aria-hidden="true">&#128717;</span>{% endif %}
     <span class="product-summary-name">{{ p.name }}</span>
     <span class="product-summary-price">{{ '%.2f'|format(p.amount / 100) if p.amount is not none else '—' }} {{ p.currency }}</span>
-    <span class="integration-badge {{ 'is-on' if p.active else 'is-off' }}">{{ 'on sale' if p.active else 'off sale' }}</span>
-    {% if rule %}<span class="integration-badge product-delivers-badge" title="What a sale of this delivers">
+    <span class="integration-badge {{ 'is-on' if p.active else 'is-off' }}">{{ 'Available' if p.active else 'Unavailable' }}</span>
+    {% if rule %}<span class="integration-badge product-delivers-badge" title="What buying this delivers">
       {%- if rule.kind == 'credit' %}{{ rule.quantity }} session{{ 's' if rule.quantity != 1 }}
       {%- elif rule.kind == 'download' %}a download
       {%- elif rule.kind == 'physical' %}{{ rule.stock if rule.stock is not none else '—' }} in stock
@@ -241,7 +241,7 @@
             the old price, which is how a buyer pays and gets nothing. #}
         <span class="product-currency" title="A price cannot change currency once it exists. To sell this in {{ base_currency | upper }}, retire it and add it again.">{{ p.currency }}</span>
         <input type="hidden" name="current_currency" value="{{ p.currency | lower }}">
-        <select name="interval" title="A one-off sale, or something they pay for again">
+        <select name="interval" title="A one-off payment, or something they pay for again">
           {% for value, label in intervals %}
           <option value="{{ value }}" {{ 'selected' if p.interval == value }}>{{ label }}</option>
           {% endfor %}
@@ -255,14 +255,14 @@
 
       <div class="product-detail-actions">
         <button type="submit" class="btn btn-primary btn-small">Save changes</button>
-        {#  On-sale is a tick, not a button: it reads as the state it is,
-            and toggling it submits the archive form on its own. A ticked
-            box posts active=1; unticking posts nothing, which the route
-            reads as "off sale". #}
-        <label class="product-onsale" title="Untick to stop selling this. Nothing is deleted, and past orders are untouched.">
+        {#  Availability is a tick, not a button: it reads as the state it
+            is, and toggling it submits the archive form on its own. A
+            ticked box posts active=1; unticking posts nothing, which the
+            route reads as unavailable/taken out of the shop. #}
+        <label class="product-onsale" title="Ticked, customers can buy it. Untick to take it out of your shop — nothing is deleted, and past orders are untouched.">
           <input type="checkbox" name="active" value="1" form="onsale_{{ loop.index }}"
                  class="product-onsale-toggle" {{ 'checked' if p.active }}>
-          On sale
+          Available
         </label>
       </div>
     </form>
@@ -280,10 +280,10 @@
 {% if retired_count %}
 <p class="hint">
   {% if show_all %}
-  Showing {{ retired_count }} item{{ 's' if retired_count != 1 }} you&rsquo;ve taken off sale.
-  <a href="{{ url_for('admin.commerce_fulfilment') }}" title="Show only what's currently on sale">Hide them</a>
+  Showing {{ retired_count }} item{{ 's' if retired_count != 1 }} you&rsquo;ve taken out of your shop.
+  <a href="{{ url_for('admin.commerce_fulfilment') }}" title="Show only what customers can currently buy">Hide them</a>
   {% else %}
-  {{ retired_count }} item{{ 's' if retired_count != 1 }} taken off sale {{ 'are' if retired_count != 1 else 'is' }} hidden.
+  {{ retired_count }} item{{ 's' if retired_count != 1 }} you&rsquo;ve taken out of your shop {{ 'are' if retired_count != 1 else 'is' }} hidden.
   <a href="{{ url_for('admin.commerce_fulfilment', show='all') }}" title="Stripe never deletes a product that has been sold, so they stay here — this shows them">Show them</a>
   {% endif %}
 </p>

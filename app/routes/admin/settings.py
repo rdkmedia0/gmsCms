@@ -612,7 +612,7 @@ def commerce_fulfilment():
     #  delete at all, and a product that has been bought keeps its
     #  history — so an owner's list only ever grows. Retired items are
     #  therefore folded away by default rather than left to bury the
-    #  things actually on sale.
+    #  things actually available.
     show_all = request.args.get("show") == "all"
     retired = [p for p in products if not p["active"]]
     if not show_all:
@@ -906,7 +906,7 @@ def commerce_currency():
         flash(error, "error")
     else:
         db.commit()
-        flash("New products will be priced in %s. Anything already on sale keeps the "
+        flash("New products will be priced in %s. Anything already in your shop keeps the "
               "currency it was created with." % saved.upper(), "success")
     return redirect(url_for("admin.commerce_settings"))
 
@@ -978,7 +978,8 @@ def commerce_product_archive(product_id):
     db = get_db()
     active = request.form.get("active") == "1"
     ok, error = integrations.stripe_archive_product(db, product_id, active)
-    flash(error if not ok else ("Back on sale." if active else "Taken off sale."),
+    flash(error if not ok else ("Back in your shop — customers can buy it again." if active
+                                else "Taken out of your shop. Nothing is deleted, and past orders are untouched."),
           "error" if not ok else "success")
     return redirect(url_for("admin.commerce_fulfilment"))
 
