@@ -1812,7 +1812,7 @@
     {#  Where the palette-colour control saves -- the cell's own URL, but
         withheld from tools that already carry their own colour picker (the
         Tags block), so a tool never shows two "Colour" controls. #}
-    {% set cell_color_url = none if (cell.type in ('banner', 'card') or (cell.is_block and cell.block_key == 'tags')) else cell_save_url %}
+    {% set cell_color_url = none if (cell.type in ('banner', 'card', 'image', 'media') or (cell.is_block and cell.block_key == 'tags')) else cell_save_url %}
 
     {% if cell.type == 'empty' %}
       {% if editing %}<div class="cms-cell-empty-hint">Drop a tool here</div>{% endif %}
@@ -2402,7 +2402,7 @@
               generic tool colour on those would be a second, confusing
               one. #}
           {% set tool_can_be_colored = tool_can_be_shaped
-                                       and s.type not in ('banner', 'card')
+                                       and s.type not in ('banner', 'card', 'image', 'media')
                                        and not (s.is_block and s.block_key == 'tags') %}
           {# Remove sits in the panel's corner here too. A tool in a Columns
              cell has always had it; a tool that is its own section had it
