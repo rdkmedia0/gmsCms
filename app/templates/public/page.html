@@ -1774,9 +1774,9 @@
       {% set lvl = d.title_level_r %}{% set aln = d.title_align_r %}
       <span class="cms-heading-controls" data-save-url="{{ save_url }}">
         <label class="cms-th-toggle" title="Show a heading above this tool"><input type="checkbox" class="cms-th-on" {{ 'checked' if d.title_on_flag }}> Heading</label>
-        <select class="cms-th-level" title="How the heading reads: a heading, a smaller subheading, or plain text"{{ ' hidden' | safe if not d.title_on_flag }}>
-          <option value="h2" {{ 'selected' if lvl == 'h2' }}>Heading</option>
-          <option value="h3" {{ 'selected' if lvl == 'h3' }}>Subheading</option>
+        <select class="cms-th-level" title="How the heading reads: a big heading (H2), a smaller subheading (H3), or plain text"{{ ' hidden' | safe if not d.title_on_flag }}>
+          <option value="h2" {{ 'selected' if lvl == 'h2' }}>Heading (H2)</option>
+          <option value="h3" {{ 'selected' if lvl == 'h3' }}>Subheading (H3)</option>
           <option value="p" {{ 'selected' if lvl == 'p' }}>Paragraph</option>
         </select>
         <select class="cms-th-align" title="Which way the heading lines up"{{ ' hidden' | safe if not d.title_on_flag }}>
