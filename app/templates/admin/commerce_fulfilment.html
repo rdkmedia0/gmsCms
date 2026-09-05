@@ -40,10 +40,100 @@
 </div>
 {% endmacro %}
 
+{#  The delivery TYPE and the fields that type needs, in one place inside
+    the product form -- Add and Edit both call this. Choosing the type
+    reveals only its own fields (fulfilment.js keys off .fulfilment-kind).
+    `rule` is None on the add form; `idx` keeps ids unique per product. #}
+{% macro delivery_config(idx, rule, files, shipping_services, calcom_ready, event_types, event_error) %}
+<label for="kind_{{ idx }}">Type &mdash; what a sale delivers</label>
+<select id="kind_{{ idx }}" name="kind" class="fulfilment-kind" title="Pick what buying this should give the customer. The fields below change to match.">
+  <option value="" {{ 'selected' if not rule }}>Just take the payment</option>
+  <option value="credit" {{ 'selected' if rule and rule.kind == 'credit' }}>Sessions to book</option>
+  <option value="download" {{ 'selected' if rule and rule.kind == 'download' }}>A file to download</option>
+  <option value="physical" {{ 'selected' if rule and rule.kind == 'physical' }}>Something to post</option>
+</select>
+
+<div class="fulfilment-fields" data-for="credit" {{ 'hidden' if not rule or rule.kind != 'credit' }}>
+  <label for="qty_{{ idx }}">How many sessions</label>
+  <input type="number" id="qty_{{ idx }}" name="quantity" min="1" max="100"
+         value="{{ rule.quantity if rule and rule.kind == 'credit' else 1 }}"
+         title="A buyer can book this many times before paying again">
+  <label for="ref_{{ idx }}">Bookable against</label>
+  {% if calcom_ready and event_types %}
+  <select id="ref_{{ idx }}" name="ref" title="Which meeting on your calendar these sessions can be booked into">
+    <option value="">Choose a meeting…</option>
+    {% for et in event_types %}
+    <option value="{{ et.id }}" {{ 'selected' if rule and rule.ref == et.id }}>{{ et.label }}</option>
+    {% endfor %}
+  </select>
+  {% elif calcom_ready %}
+  <p class="hint">{{ event_error or 'No event types found on your Cal.com account yet.' }}</p>
+  {% else %}
+  <p class="hint">Connect Cal.com and your meetings will appear here. <a href="{{ url_for('admin.settings_integrations') }}">Open Integrations →</a></p>
+  {% endif %}
+</div>
+
+<div class="fulfilment-fields" data-for="download" {{ 'hidden' if not rule or rule.kind != 'download' }}>
+  <label>The file they download</label>
+  {#  Two ways to say which file, side by side: choose one already
+      uploaded, or upload a new one here (which is added to your files so
+      another product can reuse it). An upload wins over a chosen one --
+      see products-admin.js and _save_fulfilment. Managed here, on the
+      product, not in a separate list. #}
+  <div class="download-file" data-download-controls>
+    {% if files %}
+    <select name="ref" class="download-file-ref" title="Choose a file you have already uploaded">
+      <option value="">&mdash; choose from your files &mdash;</option>
+      {% for f in files %}
+      <option value="{{ f.id }}" {{ 'selected' if rule and rule.kind == 'download' and rule.ref == f.id|string }}>{{ f.original_name }}</option>
+      {% endfor %}
+    </select>
+    {% endif %}
+    <button type="button" class="btn btn-small" data-download-upload
+            title="Upload a new file to sell — it is added to your files for reuse">&#11014;&#65039; Upload a file</button>
+    <input type="file" name="download_file" hidden data-download-input
+           title="The file the buyer downloads — up to 250 MB">
+    <span class="download-file-chosen" data-download-chosen hidden></span>
+  </div>
+  <p class="hint">Kept private &mdash; it has no web address of its own, and only someone who has paid ever gets it.</p>
+
+  <label for="dl_{{ idx }}">How many times they can download it</label>
+  <input type="number" id="dl_{{ idx }}" name="quantity" min="1" max="50"
+         value="{{ rule.quantity if rule and rule.kind == 'download' else 5 }}"
+         title="A few is kind — people lose files and change phones. A very high number makes the link worth sharing.">
+  <p class="hint">Five is a sensible default: enough that an honest buyer never gets stuck, few enough that the link isn&rsquo;t worth passing around.</p>
+</div>
+
+<div class="fulfilment-fields" data-for="physical" {{ 'hidden' if not rule or rule.kind != 'physical' }}>
+  <label for="weight_{{ idx }}">Weight (kg)</label>
+  <input type="number" id="weight_{{ idx }}" name="weight_kg" step="0.001" min="0"
+         value="{{ '%.3f'|format(rule.weight_g / 1000) if rule and rule.weight_g else '' }}"
+         title="Used to work out delivery from your services' weight bands. Include the packaging.">
+  {% if shipping_services %}
+  <label for="svc_{{ idx }}">Ships by</label>
+  <select id="svc_{{ idx }}" name="shipping_service_id"
+          title="Which delivery service this ships by. Leave as ‘Any’ to offer all of them at checkout.">
+    <option value="">Any of my delivery services</option>
+    {% for sv in shipping_services %}
+    <option value="{{ sv.id }}" {{ 'selected' if rule and rule.shipping_service_id == sv.id }}>{{ sv.name }}</option>
+    {% endfor %}
+  </select>
+  {% else %}
+  <p class="hint">Set up delivery services under <a href="{{ url_for('admin.commerce_settings') }}">Store settings</a> so this can be priced by weight.</p>
+  {% endif %}
+
+  <label for="stock_{{ idx }}">How many you have</label>
+  <input type="number" id="stock_{{ idx }}" name="stock" min="0"
+         value="{{ rule.stock if rule and rule.stock is not none else 0 }}"
+         title="Counts down with each sale. Stripe has no stock field of its own, so this is the only place it lives.">
+  <p class="hint">Counts down as they sell. Stripe doesn&rsquo;t track stock at all, so this is the only record of it.</p>
+</div>
+{% endmacro %}
+
 {% block content %}
 {% include "partials/commerce_tabs.html" %}
 <h1>Products</h1>
-<p class="hint">Everything you sell, managed from here &mdash; add it, price it, photograph it, and say what a sale should actually deliver. Changes are pushed straight to Stripe, so there is no second place to keep up to date. The shop&rsquo;s own settings &mdash; what it charges in, delivery, and the files you sell as downloads &mdash; live under <a href="{{ url_for('admin.commerce_settings') }}">Store settings</a>.</p>
+<p class="hint">Everything you sell, managed from here &mdash; add it, choose what it is, price it, photograph it, and (for a download) upload or choose its file, all in the one form. Changes are pushed straight to Stripe, so there is no second place to keep up to date. The shop&rsquo;s own settings &mdash; what it charges in and what delivery costs &mdash; live under <a href="{{ url_for('admin.commerce_settings') }}">Store settings</a>.</p>
 
 {% if not stripe_ready %}
 <div class="card">
@@ -99,6 +189,8 @@
     {% if not public_url %}
     <p class="hint">Your picture will show on this site. Stripe&rsquo;s own payment page can only show it once this site has a public web address &mdash; set one under Email settings and it will be sent along from then on.</p>
     {% endif %}
+
+    {{ delivery_config('new', none, files, shipping_services, calcom_ready, event_types, event_error) }}
 
     <button type="submit" class="btn btn-primary btn-small">Create product</button>
   </form>
@@ -159,6 +251,8 @@
 
       {{ image_controls(loop.index, p.image, image_gen_ready) }}
 
+      {{ delivery_config(loop.index, rule, files, shipping_services, calcom_ready, event_types, event_error) }}
+
       <div class="product-detail-actions">
         <button type="submit" class="btn btn-primary btn-small">Save changes</button>
         {#  On-sale is a tick, not a button: it reads as the state it is,
@@ -176,97 +270,6 @@
         drawn on the Save row above via the form= attribute. #}
     <form method="post" id="onsale_{{ loop.index }}"
           action="{{ url_for('admin.commerce_product_archive', product_id=p.product_id) }}" hidden></form>
-
-    <div class="product-fulfilment">
-      <form method="post" action="{{ url_for('admin.commerce_fulfilment_save') }}" enctype="multipart/form-data" class="fulfilment-form">
-        <input type="hidden" name="price_id" value="{{ p.price_id }}">
-
-        <label for="kind_{{ loop.index }}">When someone buys this…</label>
-        <select id="kind_{{ loop.index }}" name="kind" class="fulfilment-kind" title="What this sale should unlock for the buyer">
-          <option value="" {{ 'selected' if not rule }}>Just take the payment</option>
-          <option value="credit" {{ 'selected' if rule and rule.kind == 'credit' }}>Give them sessions to book</option>
-          <option value="download" {{ 'selected' if rule and rule.kind == 'download' }}>Give them a file to download</option>
-          <option value="physical" {{ 'selected' if rule and rule.kind == 'physical' }}>Send them something — keep a stock count</option>
-        </select>
-
-        <div class="fulfilment-fields" data-for="credit" {{ 'hidden' if not rule or rule.kind != 'credit' }}>
-          <label for="qty_{{ loop.index }}">How many sessions</label>
-          <input type="number" id="qty_{{ loop.index }}" name="quantity" min="1" max="100"
-                 value="{{ rule.quantity if rule and rule.kind == 'credit' else 1 }}"
-                 title="A buyer can book this many times before paying again">
-          <label for="ref_{{ loop.index }}">Bookable against</label>
-          {% if calcom_ready and event_types %}
-          <select id="ref_{{ loop.index }}" name="ref" title="Which meeting on your calendar these sessions can be booked into">
-            <option value="">Choose a meeting…</option>
-            {% for et in event_types %}
-            <option value="{{ et.id }}" {{ 'selected' if rule and rule.ref == et.id }}>{{ et.label }}</option>
-            {% endfor %}
-          </select>
-          {% elif calcom_ready %}
-          <p class="hint">{{ event_error or 'No event types found on your Cal.com account yet.' }}</p>
-          {% else %}
-          <p class="hint">Connect Cal.com and your meetings will appear here. <a href="{{ url_for('admin.settings_integrations') }}">Open Integrations →</a></p>
-          {% endif %}
-        </div>
-
-        <div class="fulfilment-fields" data-for="download" {{ 'hidden' if not rule or rule.kind != 'download' }}>
-          <label>The file they download</label>
-          {#  Two ways to say which file, side by side: choose one already
-              uploaded, or upload a new one here (which is added to your
-              files so another product can reuse it). An upload wins over a
-              chosen one -- see products-admin.js and commerce_fulfilment_save. #}
-          <div class="download-file" data-download-controls>
-            {% if files %}
-            <select name="ref" class="download-file-ref" title="Choose a file you have already uploaded">
-              <option value="">&mdash; choose from your files &mdash;</option>
-              {% for f in files %}
-              <option value="{{ f.id }}" {{ 'selected' if rule and rule.kind == 'download' and rule.ref == f.id|string }}>{{ f.original_name }}</option>
-              {% endfor %}
-            </select>
-            {% endif %}
-            <button type="button" class="btn btn-small" data-download-upload
-                    title="Upload a new file to sell — it is added to your files for reuse">&#11014;&#65039; Upload a file</button>
-            <input type="file" name="download_file" hidden data-download-input
-                   title="The file the buyer downloads — up to 250 MB">
-            <span class="download-file-chosen" data-download-chosen hidden></span>
-          </div>
-          <p class="hint">Kept private &mdash; it has no web address of its own, and only someone who has paid ever gets it. A file you upload is added to your files, so another product can reuse it.</p>
-
-          <label for="dl_{{ loop.index }}">How many times they can download it</label>
-          <input type="number" id="dl_{{ loop.index }}" name="quantity" min="1" max="50"
-                 value="{{ rule.quantity if rule and rule.kind == 'download' else 5 }}"
-                 title="A few is kind — people lose files and change phones. A very high number makes the link worth sharing.">
-          <p class="hint">Five is a sensible default: enough that an honest buyer never gets stuck, few enough that the link isn&rsquo;t worth passing around.</p>
-        </div>
-
-        <div class="fulfilment-fields" data-for="physical" {{ 'hidden' if not rule or rule.kind != 'physical' }}>
-          <label for="weight_{{ loop.index }}">Weight (kg)</label>
-          <input type="number" id="weight_{{ loop.index }}" name="weight_kg" step="0.001" min="0"
-                 value="{{ '%.3f'|format(rule.weight_g / 1000) if rule and rule.weight_g else '' }}"
-                 title="Used to work out delivery from your services' weight bands. Include the packaging.">
-          {% if shipping_services %}
-          <label for="svc_{{ loop.index }}">Ships by</label>
-          <select id="svc_{{ loop.index }}" name="shipping_service_id"
-                  title="Which delivery service this ships by. Leave as ‘Any’ to offer all of them at checkout.">
-            <option value="">Any of my delivery services</option>
-            {% for sv in shipping_services %}
-            <option value="{{ sv.id }}" {{ 'selected' if rule and rule.shipping_service_id == sv.id }}>{{ sv.name }}</option>
-            {% endfor %}
-          </select>
-          {% else %}
-          <p class="hint">Set up delivery services under <a href="{{ url_for('admin.commerce_settings') }}">Store settings</a> so this can be priced by weight.</p>
-          {% endif %}
-
-          <label for="stock_{{ loop.index }}">How many you have</label>
-          <input type="number" id="stock_{{ loop.index }}" name="stock" min="0"
-                 value="{{ rule.stock if rule and rule.stock is not none else 0 }}"
-                 title="Counts down with each sale. Stripe has no stock field of its own, so this is the only place it lives.">
-          <p class="hint">Counts down as they sell. Stripe doesn&rsquo;t track stock at all, so this is the only record of it.</p>
-        </div>
-
-        <button type="submit" class="btn btn-small" title="Save what this product delivers when somebody buys it.">Save what it delivers</button>
-      </form>
-    </div>
   </div>{# .product-detail #}
 </div>{# .product-item #}
 {% else %}
@@ -284,30 +287,6 @@
   <a href="{{ url_for('admin.commerce_fulfilment', show='all') }}" title="Stripe never deletes a product that has been sold, so they stay here — this shows them">Show them</a>
   {% endif %}
 </p>
-{% endif %}
-
-{#  The files you sell, listed under the products that use them rather than
-    off in a settings tab. Uploaded from a download product's own config
-    above; shown here so they can be seen across products and deleted. #}
-{% if files %}
-<div class="card">
-  <h2>Files you sell</h2>
-  <p class="hint">Every file you&rsquo;ve uploaded to sell as a download. Choose one on any download product above, or reuse it across several. They&rsquo;re private &mdash; no web address of their own, and only a buyer who paid ever gets one.</p>
-  <ul class="hint order-entitlements">
-    {% for f in files %}
-    <li>
-      <strong>{{ f.original_name }}</strong>
-      {%- if f.size %} · {{ (f.size / 1048576) | round(1) }} MB{% endif %}
-      · <form method="post" action="{{ url_for('admin.commerce_file_delete', file_id=f.id) }}" class="inline-form is-inline">
-          <button type="submit" class="btn btn-small btn-danger"
-                  data-confirm="Delete “{{ f.original_name }}”? Any product set to deliver it will need a new file. Blocked while a buyer can still download it."
-                  data-confirm-danger="1"
-                  title="Delete this file — blocked while a buyer can still download it">Delete</button>
-        </form>
-    </li>
-    {% endfor %}
-  </ul>
-</div>
 {% endif %}
 
 {% endif %}

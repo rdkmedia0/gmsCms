@@ -1879,8 +1879,6 @@ button[aria-busy="true"] { opacity: .75; cursor: progress; }
 .product-onsale { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; cursor: pointer; }
 .product-onsale input { width: 16px; height: 16px; }
 
-/* What a sale delivers -- folded into the product, set off from its details. */
-.product-fulfilment { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border); }
 
 /* The three-way picture chooser (upload / library / describe). */
 .product-image-controls { margin: 6px 0 4px; }

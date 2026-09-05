@@ -803,8 +803,10 @@ def settings_site_address():
 @bp.route("/commerce/products/add", methods=["POST"])
 @login_required
 def commerce_product_add():
-    """Creates a product in Stripe from this site, so the owner never has
-    to open the Stripe dashboard to put something on sale."""
+    """Creates a product in Stripe from this site -- name, price, picture --
+    and, in the same submit, records what a sale of it DELIVERS from the
+    Type field on the form. The owner never opens the Stripe dashboard, and
+    never has to come back to a second screen to say what the product is."""
     db = get_db()
     image_url, image_error = _picture_for_product()
     if image_error:
@@ -821,8 +823,17 @@ def commerce_product_add():
     )
     if error:
         flash(f"Stripe wouldn't accept that — {integrations.explain(error, 'Stripe')}", "error")
+        return redirect(url_for("admin.commerce_fulfilment"))
+    #  The product exists now; set what it delivers from the same form. If
+    #  the type's fields are incomplete (a download with no file), the
+    #  product is still created -- as payment-only -- and the owner is told
+    #  what to finish, rather than losing the product they just made.
+    ok, ferr = _save_fulfilment(db, price_id)
+    db.commit()
+    if not ok:
+        flash("Product created — but " + ferr[0].lower() + ferr[1:], "warning")
     else:
-        flash("Product created. Now say what it delivers.", "success")
+        flash("Product created.", "success")
     return redirect(url_for("admin.commerce_fulfilment"))
 
 
@@ -881,23 +892,30 @@ def commerce_product_save(product_id):
     currency = ((request.form.get("current_currency") or "").strip().lower()
                 or integrations.base_currency(db))
     was = request.form.get("current_amount", type=int)
+    final_price_id = old_price_id
+    repriced = False
     if amount and (amount != was or interval != (request.form.get("current_interval") or "")):
         new_price_id, error = integrations.stripe_reprice(
             db, product_id, old_price_id, amount, currency, interval)
         if error:
             flash(f"The price could not be changed — {integrations.explain(error, 'Stripe')}", "error")
             return redirect(url_for("admin.commerce_fulfilment"))
-        if old_price_id and new_price_id:
-            #  The rule says what a sale delivers, and it is keyed by
-            #  price. Leaving it on the retired price would mean the next
-            #  buyer paid and got nothing.
-            db.execute("DELETE FROM fulfilment_rules WHERE price_id = ?", (new_price_id,))
-            db.execute("UPDATE fulfilment_rules SET price_id = ? WHERE price_id = ?",
-                       (new_price_id, old_price_id))
-            db.commit()
-        flash("Saved. The new price is live and the old one retired.", "success")
-    else:
-        flash("Saved.", "success")
+        if new_price_id:
+            #  The rule is keyed by price. The retired price's rule goes;
+            #  this submit's Type is written to the NEW price just below, so
+            #  the new price delivers exactly what the form now says --
+            #  never a stale copy of the old one.
+            final_price_id = new_price_id
+            repriced = True
+            db.execute("DELETE FROM fulfilment_rules WHERE price_id = ?", (old_price_id,))
+    #  What it delivers, from the Type field on this same form.
+    ok, ferr = _save_fulfilment(db, final_price_id)
+    if not ok:
+        db.commit()
+        flash(ferr, "error")
+        return redirect(url_for("admin.commerce_fulfilment"))
+    db.commit()
+    flash("Saved. The new price is live and the old one retired." if repriced else "Saved.", "success")
     return redirect(url_for("admin.commerce_fulfilment"))
 
 
@@ -985,42 +1003,26 @@ def commerce_shipping_service_delete(service_id):
     return redirect(url_for("admin.commerce_settings"))
 
 
-@bp.route("/commerce/files/<int:file_id>/delete", methods=["POST"])
-@login_required
-def commerce_file_delete(file_id):
-    """Remove a file from the ones this site sells. Listed under the
-    products that use it (not a settings tab); uploading happens inside a
-    download product's own config. Blocked while a buyer can still
-    download it -- see services/downloads.py."""
-    db = get_db()
-    ok, error = downloads.delete_file(db, file_id)
-    db.commit()
-    flash(error if error else "File deleted.", "error" if error else "success")
-    return redirect(url_for("admin.commerce_fulfilment"))
+def _save_fulfilment(db, price_id):
+    """Write (or clear) a product's fulfilment rule from the delivery TYPE
+    and its fields on the current form. Returns (ok, error_message).
 
-
-@bp.route("/commerce/fulfilment/save", methods=["POST"])
-@login_required
-def commerce_fulfilment_save():
-    db = get_db()
-    price_id = (request.form.get("price_id") or "").strip()
+    This is not a route of its own any more: the type is a field IN the
+    product form (Add and Edit), so it is saved in the same submit that
+    creates or edits the product -- the owner picks a type and fills the
+    fields that type needs, and one save does the lot. The caller commits.
+    """
     kind = (request.form.get("kind") or "").strip()
-    if not price_id:
-        flash("No product was selected.", "error")
-        return redirect(url_for("admin.commerce_fulfilment"))
     if kind not in ("credit", "physical", "download"):
         #  "Nothing extra" is expressed by having no rule at all, so the
         #  payment handler simply finds nothing to grant.
         db.execute("DELETE FROM fulfilment_rules WHERE price_id = ?", (price_id,))
-        db.commit()
-        flash("This product now just takes the payment, with nothing to unlock.", "success")
-        return redirect(url_for("admin.commerce_fulfilment"))
+        return True, None
     quantity = max(1, request.form.get("quantity", type=int) or 1)
     ref = (request.form.get("ref") or "").strip() or None
     stock = request.form.get("stock", type=int)
     if kind == "credit" and not ref:
-        flash("Choose which meeting these sessions can be booked against.", "error")
-        return redirect(url_for("admin.commerce_fulfilment"))
+        return False, "Choose which meeting these sessions can be booked against."
     if kind == "download":
         #  Say which file this delivers either way: a new upload wins (it
         #  is added to the shop's files, reusable on another product), or a
@@ -1029,16 +1031,14 @@ def commerce_fulfilment_save():
         if up and up.filename:
             file_id, up_error = downloads.save_upload(db, up)
             if up_error:
-                flash(up_error, "error")
-                return redirect(url_for("admin.commerce_fulfilment"))
+                return False, up_error
             ref = str(file_id)
         if not ref:
-            flash("Upload a file to sell, or choose one you have already uploaded.", "error")
-            return redirect(url_for("admin.commerce_fulfilment"))
+            return False, "Upload a file to sell, or choose one you have already uploaded."
     #  A posted product carries a weight (kg in, grams stored) that its
     #  delivery is priced from, and may name the service it ships by --
     #  otherwise the shop's services all apply. Only meaningful for the
-    #  physical kind; cleared for the others so a changed rule leaves
+    #  physical kind; cleared for the others so a changed type leaves
     #  nothing stale behind.
     weight_g = None
     service_id = None
@@ -1057,9 +1057,7 @@ def commerce_fulfilment_save():
         "weight_g = excluded.weight_g, shipping_service_id = excluded.shipping_service_id",
         (price_id, kind, ref, quantity, stock if kind == "physical" else None, weight_g, service_id),
     )
-    db.commit()
-    flash("Saved what this product delivers.", "success")
-    return redirect(url_for("admin.commerce_fulfilment"))
+    return True, None
 
 
 @bp.route("/commerce/credit-expiry", methods=["POST"])
