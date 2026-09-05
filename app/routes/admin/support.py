@@ -14,6 +14,7 @@ from ... import version
 def support_screen():
     return render_template("admin/support.html",
                            paypal_url=support.PAYPAL_URL,
+                           support_email=support.SUPPORT_EMAIL,
                            wallets=support.crypto_wallets(),
                            license=support.state(),
                            app_version=version.info())

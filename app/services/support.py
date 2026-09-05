@@ -40,6 +40,11 @@ from .support_key import make_key, parse_key  # noqa: F401 -- re-exported
 PAYPAL_URL = ("https://www.paypal.com/donate/?business=rdkmedia0%40gmail.com"
               "&no_recurring=1&item_name=gmsCms")
 
+#  Where a supporter writes to claim their key. The same address the
+#  PayPal link already exposes, so this reveals nothing new, and the
+#  Support screen is admin-only regardless.
+SUPPORT_EMAIL = "rdkmedia0@gmail.com"
+
 #  Crypto, for a supporter who would rather not go through PayPal. Hard-
 #  coded for the same reason PAYPAL_URL is: a wallet address that lived
 #  in a setting or a package could be pointed at somebody else's wallet,
@@ -63,16 +68,18 @@ CRYPTO_WALLETS = (
     {"name": "Solana", "symbol": "SOL", "uri": "solana:", "address": "", "note": ""},
 )
 
-#  The coin's own mark, drawn in the centre of its QR so a wallet of
-#  identical-looking codes is told apart at a glance. Each is (viewBox,
-#  path, brand colour); a QR at 30% error correction reconstructs the
-#  modules the mark covers, so the code still scans. Marks are the
-#  FontAwesome brand glyphs (the whole coin for Bitcoin, the diamond for
-#  Ethereum), drawn currentColour-free because a brand colour is the point.
+#  The coin's own mark, in the centre of its QR, drawn app-icon style --
+#  a rounded-square tile in the brand colour with a clean white glyph, the
+#  way a wallet like Coinbase Base shows it -- so a wallet of identical-
+#  looking codes is told apart at a glance. Each is (tile colour, glyph
+#  viewBox, glyph path); the glyph is the FontAwesome mark (the ₿ sign for
+#  Bitcoin, the diamond for Ethereum), painted white on the tile. A QR at
+#  30% error correction reconstructs the modules the tile covers, so the
+#  code still scans -- proved by decoding the rendered SVG.
 _COIN_MARKS = {
-    "BTC": ("0 0 512 512", "#F7931A",
-            "M504 256c0 137-111 248-248 248S8 393 8 256 119 8 256 8s248 111 248 248zm-141.7-35.33c4.937-32.1-19.796-49.36-53.63-60.86l10.97-44.02-26.8-6.68-10.68 42.85c-7.05-1.76-14.29-3.42-21.48-5.06l10.75-43.13-26.79-6.68-10.98 44c-5.84-1.33-11.57-2.64-17.13-4.02l.03-.14-36.96-9.23-7.13 28.65s19.9 4.56 19.48 4.84c10.86 2.71 12.82 9.9 12.5 15.6l-12.51 50.14c.75.19 1.72.47 2.79.9-.9-.22-1.85-.46-2.83-.7l-17.55 70.29c-1.33 3.3-4.7 8.25-12.31 6.37.27.39-19.5-4.87-19.5-4.87l-13.31 30.7 34.85 8.69c6.48 1.63 12.83 3.33 19.08 4.94l-11.09 44.52 26.77 6.68 10.98-44.03c7.31 1.98 14.41 3.81 21.36 5.54l-10.94 43.83 26.8 6.68 11.09-44.43c45.7 8.65 80.08 5.16 94.54-36.17 11.64-33.27-.58-52.48-24.63-65.02 17.52-4.04 30.71-15.58 34.23-39.39zM255.6 300.98c-8.28 33.27-64.28 15.28-82.44 10.77l14.72-59c18.16 4.53 76.36 13.5 67.72 48.23zm8.29-45.52c-7.55 30.27-54.15 14.89-69.28 11.13l13.34-53.53c15.13 3.77 63.87 10.79 55.94 42.4z"),
-    "ETH": ("0 0 320 512", "#627EEA",
+    "BTC": ("#F7931A", "0 0 320 512",
+            "M48 32C48 14.3 62.3 0 80 0s32 14.3 32 32V64h32V32c0-17.7 14.3-32 32-32s32 14.3 32 32V64c0 1.5-.1 3.1-.3 4.5C254.1 82.2 288 125.1 288 176c0 24.2-7.7 46.6-20.7 64.9c31.7 19.8 52.7 55 52.7 95.1c0 61.9-50.1 112-112 112v32c0 17.7-14.3 32-32 32s-32-14.3-32-32V448H112v32c0 17.7-14.3 32-32 32s-32-14.3-32-32V448H41.7C18.7 448 0 429.3 0 406.3V288 265.7 224 101.6C0 80.8 16.8 64 37.6 64H48V32zM64 224H176c26.5 0 48-21.5 48-48s-21.5-48-48-48H64v96zm112 64H64v96H208c26.5 0 48-21.5 48-48s-21.5-48-48-48H176z"),
+    "ETH": ("#627EEA", "0 0 320 512",
             "M311.9 260.8L160 353.6 8 260.8 160 0l151.9 260.8zM160 383.4L8 290.6 160 512l152-221.4-152 92.8z"),
 }
 
@@ -104,17 +111,21 @@ def wallet_qr_svg(text, symbol=""):
              '<path d="%s" fill="#000"/>' % cells]
     mark = _COIN_MARKS.get(symbol)
     if mark:
-        viewbox, colour, path = mark
-        box = n * 0.24              # the mark
-        clear = box * 1.32          # white plate cleared behind it
+        colour, viewbox, path = mark
+        tile = n * 0.26                    # the coloured squircle
+        clear = tile * 1.16                # a little white gap around it
+        c = n / 2
         parts.append('<rect x="%.3f" y="%.3f" width="%.3f" height="%.3f" rx="%.3f" fill="#fff"/>'
-                     % ((n - clear) / 2, (n - clear) / 2, clear, clear, clear * 0.16))
-        #  A nested SVG scales and centres the brand path by its own
-        #  viewBox, so a non-square mark (Ethereum is 320x512) sits right
-        #  with no transform arithmetic here.
+                     % (c - clear / 2, c - clear / 2, clear, clear, clear * 0.30))
+        parts.append('<rect x="%.3f" y="%.3f" width="%.3f" height="%.3f" rx="%.3f" fill="%s"/>'
+                     % (c - tile / 2, c - tile / 2, tile, tile, tile * 0.28, colour))
+        #  A nested SVG scales and centres the white glyph by its own
+        #  viewBox (xMidYMid meet), so a tall mark like the ₿ sign sits
+        #  centred in the square tile with no transform arithmetic here.
+        g = tile * 0.62
         parts.append('<svg x="%.3f" y="%.3f" width="%.3f" height="%.3f" viewBox="%s">'
-                     '<path d="%s" fill="%s"/></svg>'
-                     % ((n - box) / 2, (n - box) / 2, box, box, viewbox, path, colour))
+                     '<path d="%s" fill="#fff"/></svg>'
+                     % (c - g / 2, c - g / 2, g, g, viewbox, path))
     parts.append("</svg>")
     return "".join(parts)
 

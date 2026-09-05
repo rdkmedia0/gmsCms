@@ -31,7 +31,6 @@
     </div>
     {% endfor %}
   </div>
-  <p class="hint">After sending, reply to your receipt (or write with the transaction id) and the site&rsquo;s address &mdash; a key comes back by email.</p>
 </div>
 <script src="{{ static_url('js/admin/support.js') }}"></script>
 {% endif %}
@@ -52,13 +51,21 @@
   {% else %}
   <p>The line is currently <strong>showing</strong> on your site.</p>
   {% endif %}
+
+  {% set claim_subject = 'gmsCms key for ' ~ (site_base or request.host_url) %}
+  <p class="support-steps-intro"><strong>To get your key &mdash; two steps:</strong></p>
+  <ol class="support-steps">
+    <li>Give any amount above (PayPal or crypto).</li>
+    <li>Email <a href="mailto:{{ support_email }}?subject={{ claim_subject | urlencode }}">{{ support_email }}</a> &mdash; the web address of this site is already filled into the subject line, so just send it. Paid with crypto? Paste the transaction id in the message.</li>
+  </ol>
+  <p class="hint">Your key comes back by reply, usually within a day. Paste it here:</p>
   <form method="post" action="{{ url_for('admin.support_key') }}" class="inline-form">
     <input type="hidden" name="action" value="apply">
     <input type="text" name="key" placeholder="GMS-1A2B3C4D-A1B2C3D4E5F60718" size="34" maxlength="40" autocomplete="off" spellcheck="false"
            title="The supporter's key you received. Paste it exactly as it came; spaces at the ends are fine.">
     <button type="submit" class="btn btn-primary" title="Check the key and, if it is genuine, remove the line under your footer for good.">Apply the key</button>
   </form>
-  <p class="hint">Don't have one? Say thanks above and reply to the receipt with the site's address &mdash; a key comes back by email. The key is checked here, on your own server; nothing is sent anywhere to check it.</p>
+  <p class="hint">The key is checked here, on your own server; nothing is sent anywhere to check it.</p>
   {% endif %}
 </div>
 {% endblock %}
