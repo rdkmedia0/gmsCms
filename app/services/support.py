@@ -38,16 +38,26 @@ import urllib.error
 from ..db import DATA_DIR
 from .support_key import make_key, parse_key  # noqa: F401 -- re-exported
 
-#  Where support goes. Hard-coded on purpose -- see the module note. A
-#  PayPal donate link to the project's own account; `no_recurring=1`
-#  because a supporter's key is one-off and the ask should look like it.
-PAYPAL_URL = ("https://www.paypal.com/donate/?business=rdkmedia0%40gmail.com"
-              "&no_recurring=1&item_name=gmsCms")
+#  Where support goes. Hard-coded on purpose -- see the module note.
+#
+#  A raw `business=<email>` donate link shows the address on the URL and
+#  on PayPal's own page. A HOSTED donate button (made once in PayPal ->
+#  gives a `hosted_button_id`) hides it: the link carries only the id.
+#  Set the id and it is used; leave it blank and the email form is the
+#  fallback so the button still works today. `no_recurring=1` because a
+#  supporter's key is one-off and the ask should look like it.
+PAYPAL_HOSTED_BUTTON_ID = ""
+if PAYPAL_HOSTED_BUTTON_ID:
+    PAYPAL_URL = ("https://www.paypal.com/donate/?hosted_button_id="
+                  + PAYPAL_HOSTED_BUTTON_ID)
+else:
+    PAYPAL_URL = ("https://www.paypal.com/donate/?business=rdkmedia0%40gmail.com"
+                  "&no_recurring=1&item_name=gmsCms")
 
-#  Where a supporter writes to claim their key. The same address the
-#  PayPal link already exposes, so this reveals nothing new, and the
-#  Support screen is admin-only regardless.
-SUPPORT_EMAIL = "rdkmedia0@gmail.com"
+#  Where a supporter reaches the project to claim a key by hand (the
+#  PayPal path, or a crypto payment that didn't verify). GitHub rather
+#  than an email address, so no inbox is published on every install.
+GITHUB_CONTACT_URL = "https://github.com/rdkmedia0/gmsCms"
 
 #  Crypto, for a supporter who would rather not go through PayPal. Hard-
 #  coded for the same reason PAYPAL_URL is: a wallet address that lived
