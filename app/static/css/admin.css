@@ -569,6 +569,12 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--c
 .support-wallet-address { display: flex; gap: 6px; align-items: center; }
 .support-wallet-address input { flex: 1; min-width: 0; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
 .support-wallet-note { margin: 8px 0 0; }
+.support-warning {
+  margin: 14px 0 0; padding: 10px 14px; font-size: 13px; line-height: 1.5;
+  border: 1px solid color-mix(in srgb, var(--danger) 40%, var(--border));
+  border-left: 3px solid var(--danger);
+  border-radius: var(--cms-ui-radius-control); background: color-mix(in srgb, var(--danger) 7%, transparent);
+}
 .support-steps-intro { margin: 4px 0 6px; }
 .support-steps { margin: 0 0 12px; padding-left: 22px; }
 .support-steps li { margin: 4px 0; }

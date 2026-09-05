@@ -31,6 +31,7 @@
     </div>
     {% endfor %}
   </div>
+  <p class="support-warning"><strong>Send only the coin and network shown on each code.</strong> Only Bitcoin, and ETH or POL on the Ethereum, Base or Polygon networks, are received here. Anything else &mdash; another coin, a token, or the right coin on the wrong network &mdash; cannot be recovered and will be lost.</p>
 </div>
 <script src="{{ static_url('js/admin/support.js') }}"></script>
 {% endif %}
@@ -60,7 +61,7 @@
            title="The transaction id (hash) of your payment — a long string of letters and numbers. Bitcoin, or ETH/POL on Ethereum, Base or Polygon.">
     <button type="submit" class="btn btn-primary" title="Check your payment on the blockchain and, if it's confirmed and paid to this site, unlock now.">Get my key</button>
   </form>
-  <p class="hint">A confirmation can take a few minutes to appear on-chain &mdash; if it says &ldquo;not confirmed yet&rdquo;, wait a little and try again. Sent a token like USDC (not the coin itself)? Use the step below instead.</p>
+  <p class="hint">A confirmation can take a few minutes to appear on-chain &mdash; if it says &ldquo;not confirmed yet&rdquo;, wait a little and try again.</p>
   {% endif %}
 
   <p class="support-steps-intro"><strong>Paid with PayPal and didn&rsquo;t receive a key?</strong></p>

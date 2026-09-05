@@ -84,7 +84,7 @@ CRYPTO_WALLETS = (
      "note": "Bitcoin network only."},
     {"name": "Ethereum & EVM", "symbol": "ETH", "uri": "ethereum:",
      "address": "0xa2e66631f91673d549ae295773ca7fe7c60e7b76",
-     "note": "ETH and any token on Ethereum, Base, Polygon or another EVM network."},
+     "note": "ETH on Ethereum or Base, or POL on Polygon. The network's own coin only — not tokens."},
     {"name": "Litecoin", "symbol": "LTC", "uri": "litecoin:", "address": "", "note": ""},
     {"name": "Solana", "symbol": "SOL", "uri": "solana:", "address": "", "note": ""},
 )
