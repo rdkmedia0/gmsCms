@@ -63,7 +63,7 @@
   <p class="hint">A confirmation can take a few minutes to appear on-chain &mdash; if it says &ldquo;not confirmed yet&rdquo;, wait a little and try again. Sent a token like USDC (not the coin itself)? Use the email step below instead.</p>
   {% endif %}
 
-  <p class="support-steps-intro"><strong>Paid with PayPal, or crypto didn&rsquo;t verify?</strong></p>
+  <p class="support-steps-intro"><strong>Paid with PayPal and didn&rsquo;t receive a key?</strong></p>
   <p class="hint">Contact the project on <a href="{{ github_url }}" target="_blank" rel="noopener noreferrer">GitHub</a> with this site&rsquo;s web address (and the transaction id if you paid crypto). Your key comes back the same way; paste it here:</p>
   <form method="post" action="{{ url_for('admin.support_key') }}" class="inline-form">
     <input type="hidden" name="action" value="apply">
