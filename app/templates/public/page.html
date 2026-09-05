@@ -1730,12 +1730,18 @@
                  url_for('admin.section_banner_portrait_upload', section_id=section.id, col_index=col_index) ~ row_qs,
                  edit_view=edit_view) }}
           </form>
+          {# The overlay's headline/text is a full rich-text body (it saves
+             its innerHTML through section_update), so it gets the one
+             shared ribbon like Text — bold, colour, font, alignment. #}
+          {{ wysiwyg_toolbar() }}
           {%- endif %}
           {%- if item.type == 'card' -%}
           <form method="post" action="{{ url_for('admin.section_card_update', section_id=section.id, col_index=col_index) }}{{ row_qs }}" class="cms-inline-form cms-card-config-form">
             <input type="hidden" name="next" value="{{ current_path }}">
             {{ card_config_fields(item, url_for('admin.section_card_image_upload', section_id=section.id, col_index=col_index) ~ row_qs, url_for('admin.section_card_image_clear', section_id=section.id, col_index=col_index) ~ row_qs, url_for('admin.section_card_image_generate', section_id=section.id, col_index=col_index) ~ row_qs, url_for('admin.section_image_apply', section_id=section.id, col_index=col_index) ~ row_qs, url_for('admin.section_card_reset', section_id=section.id, col_index=col_index) ~ row_qs) }}
           </form>
+          {# The card's text is a rich-text body too — same ribbon. #}
+          {{ wysiwyg_toolbar() }}
           {%- endif %}
   {%- endmacro %}
 
@@ -2530,7 +2536,7 @@
           </section>
         {% elif s.type == 'banner' %}
           <section class="block block-banner" {{ ('data-corner-style="' ~ s.tool_corner_style ~ '"') | safe if s.tool_corner_style }} {{ ('data-shadow-style="' ~ s.tool_shadow_style ~ '"') | safe if s.tool_shadow_style }}>
-            {# The overlay's headline/text is still directly editable — just without the rich-text ribbon. #}
+            {# The overlay's headline/text is directly editable, with the shared rich-text ribbon in its tool header. #}
             {{ wysiwyg_body(s.content, url_for('admin.section_update', section_id=s.id), 'cms-html-preview') }}
           </section>
         {% elif s.type == 'card' %}

@@ -136,7 +136,10 @@ def bare(panel):
     #  writes to a differently-named field. That is the residue of
     #  "sections as pure containers" -- see BOW.md -- and it is
     #  invisible to whoever is using it.
-    text = re.sub(r'data-(corner|shadow)-field="[^"]*"', '', text)
+    #  Same for the tool's palette-colour control: a section writes
+    #  `tool_text_color`, a cell writes `text_color`. Same control, same
+    #  reason.
+    text = re.sub(r'data-(corner|shadow|color)-field="[^"]*"', '', text)
     #  And whether removing the tool asks first, which SHOULD differ:
     #  removing a tool that is its own section deletes the section, and
     #  that cannot be undone, while clearing a cell leaves the cell. The
