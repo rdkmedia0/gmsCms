@@ -15,6 +15,7 @@ def support_screen():
     return render_template("admin/support.html",
                            paypal_url=support.PAYPAL_URL,
                            wallets=support.crypto_wallets(),
+                           coinbase_url=support.COINBASE_COMMERCE_URL,
                            license=support.state(),
                            app_version=version.info())
 

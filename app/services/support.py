@@ -40,6 +40,13 @@ from .support_key import make_key, parse_key  # noqa: F401 -- re-exported
 PAYPAL_URL = ("https://www.paypal.com/donate/?business=rdkmedia0%40gmail.com"
               "&no_recurring=1&item_name=gmsCms")
 
+#  ONE crypto link that takes many currencies: a Coinbase Commerce
+#  checkout (commerce.coinbase.com/checkout/<id>), where the person paying
+#  picks the coin and the network and it lands in the project's Coinbase
+#  account. Preferred over per-coin addresses because there is one thing
+#  to check and nothing to get wrong about networks. Empty = not offered.
+COINBASE_COMMERCE_URL = ""
+
 #  Crypto, for a supporter who would rather not go through PayPal. Hard-
 #  coded for the same reason PAYPAL_URL is: a wallet address that lived
 #  in a setting or a package could be pointed at somebody else's wallet,
