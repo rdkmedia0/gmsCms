@@ -14,6 +14,53 @@ been published is left out too. Nothing here invents a page a crawler
 could not otherwise reach.
 """
 import json
+import re
+
+
+#  Sections that are navigation, a form, a file list or contact details --
+#  not prose. Their text ("Home About Contact", "Name Email Message", a
+#  download's file path, "Available on request Zurich") is noise in a
+#  description, so a summary skips them and reads the real content instead.
+_STRUCTURAL_MARKERS = ("cms-menu", "cms-breadcrumb", "cms-contact",
+                       "cms-wordmark", "cms-lang-switcher", "cms-basket",
+                       "cms-search", "cms-newsletter-signup", "cms-file-tool")
+
+
+def summarize_html(html, limit=160):
+    """A plain-text description from HTML content: the first ~limit
+    characters of real text, cut at a word boundary, with an ellipsis when
+    it was trimmed. No markup, whitespace collapsed."""
+    from bs4 import BeautifulSoup
+    text = BeautifulSoup(html or "", "html.parser").get_text(" ", strip=True)
+    #  A bare URL or a file path that slipped through as visible text is not
+    #  a description -- drop it before trimming.
+    text = re.sub(r"https?://\S+", " ", text)
+    text = re.sub(r"/\S*\.\w{2,5}\b", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    if len(text) <= limit:
+        return text
+    cut = text[:limit]
+    if " " in cut:
+        cut = cut[:cut.rfind(" ")]
+    return cut.rstrip(" .,;:—-") + "…"
+
+
+def _is_structural(content):
+    return any(m in (content or "") for m in _STRUCTURAL_MARKERS)
+
+
+def page_summary(db, page_id, limit=160):
+    """A description built FROM a page's own content -- so a page can
+    describe itself and nobody has to write a meta description by hand. The
+    prose sections in order, up to `limit`, with menus/forms/search skipped
+    as noise. Empty when a page has no readable text (a gallery, say),
+    which the caller falls back from."""
+    rows = db.execute(
+        "SELECT content FROM sections WHERE page_id = ? ORDER BY position",
+        (page_id,)).fetchall()
+    html = " ".join(r["content"] for r in rows
+                    if r["content"] and not _is_structural(r["content"]))
+    return summarize_html(html, limit)
 
 
 def _abs(base, path_or_url):
@@ -83,14 +130,21 @@ def head_meta(db, page, post, site_settings, base, path):
     base = base.rstrip("/")
     canonical = base + (path if path and path != "/" else "/")
     is_post = bool(post)
+    #  Description fallback chain: what the owner wrote, else a summary the
+    #  page builds from its OWN content (so nobody has to write one), else
+    #  the site tagline, else nothing.
     if is_post:
         title = post["title"]
-        desc = (post["excerpt"] or "") or ss.get("site_tagline") or ""
+        desc = ((post["excerpt"] or "").strip()
+                or summarize_html(post["content"])
+                or ss.get("site_tagline") or "")
         image = _abs(base, post["featured_image"])
         og_type = "article"
     else:
         title = site_title if page["is_home"] else page["title"]
-        desc = page["meta_description"] or ss.get("site_tagline") or ""
+        desc = ((page["meta_description"] or "").strip()
+                or page_summary(db, page["id"])
+                or ss.get("site_tagline") or "")
         image = None
         og_type = "website"
 

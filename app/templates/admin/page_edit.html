@@ -103,9 +103,12 @@
 
 <div class="card">
   <div class="card-header"><h2>SEO</h2></div>
-  <p class="hint">Search description — shown under this page's title in search results and link previews. Keep it to a sentence or two.</p>
+  <p class="hint">Search description — shown under this page's title in search results and link previews. You don't have to write one: leave it blank and the page summarises itself from its own content. Fill it in only if you want to say it differently.</p>
   <form method="post" action="{{ url_for('admin.page_seo', page_id=page.id) }}">
-    <textarea name="meta_description" rows="2" maxlength="300" placeholder="e.g. Small-batch coffee roasted daily in Asheville, NC — espresso, pour-over, and fresh pastries.">{{ page.meta_description or '' }}</textarea>
+    <textarea name="meta_description" rows="2" maxlength="300" title="Leave blank to use the summary below (built from this page's content), or type your own." placeholder="{{ seo_auto or 'e.g. Small-batch coffee roasted daily in Asheville — espresso, pour-over, and fresh pastries.' }}">{{ page.meta_description or '' }}</textarea>
+    {% if seo_auto and not page.meta_description %}
+    <p class="hint" style="margin-top:6px;">Auto-summary in use: &ldquo;{{ seo_auto }}&rdquo;</p>
+    {% endif %}
     <button type="submit" class="btn btn-small btn-primary" style="margin-top:8px;" title="Save these settings.">Save</button>
   </form>
   <p class="hint">Page address: <code>{{ request.host_url.rstrip('/') }}/{{ page.slug }}</code>{% if page.is_home %} (this page is also served at <code>/</code>, since it's Home){% endif %}</p>

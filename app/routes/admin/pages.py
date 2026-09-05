@@ -10,6 +10,7 @@ from . import bp
 from ..auth import login_required
 from ...db import get_db
 from ...services import packages
+from ...services import seo as seo_service
 from ...services.sections import (
     _list_media, PAGE_TYPES, PAGE_LAYOUTS, starter_page_sections,
 )
@@ -103,6 +104,10 @@ def page_edit(page_id):
     return render_template(
         "admin/page_edit.html",
         page=page,
+        #  The description the page would use on its own, built from its
+        #  content -- shown as the SEO field's placeholder so the owner sees
+        #  it is already handled and can override it if they want.
+        seo_auto=seo_service.page_summary(db, page_id),
         sections=sections,
         blog_posts=blog_posts,
         nav_layouts=NAV_LAYOUTS,
