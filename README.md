@@ -310,17 +310,14 @@ it with the latest commit on `main` to know whether a pull is due.
 
 ## The line under the footer
 
-gmsCms is free. Every site it builds shows one small line under its
-footer — *"Built with gmsCms, which is free to use. Site owners can
-remove this line by supporting the project."* — and that is the one
-thing it asks for. **Admin → ♥ Support** has the link to say thanks
-(PayPal, or a crypto address with a QR to scan) and
-a box for the supporter's key that removes the line — once, for good.
-A key is one-off, not a subscription, and never runs out; it is for one
-site, so a second site is a second key, and giving again afterwards is
-welcome and optional. The key is checked on your own server (`data/
-license.json`, beside the database, so it survives an upgrade); nothing
-is sent anywhere. The same screen removes a key again.
+gmsCms is free. Every site it builds shows one small credit under its
+footer — *"Built with gmsCms — a free, self-hosted CMS. If it's useful
+to you, support its development."* — on by default. It is not a licence
+and nothing needs buying to remove it: **Admin → ♥ Support** has a
+single Hide/Show switch (the choice is stored in `data/support.json`, so
+it survives an upgrade). That same screen is where you can show a little
+appreciation if you like — PayPal, or a crypto address with a QR to scan
+— which is a gift, never required and tied to nothing.
 
 ---
 

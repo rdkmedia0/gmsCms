@@ -7981,3 +7981,18 @@ made "support" mean a subscription, which is not what is being asked;
 a supporter pays once and the line is gone for good on that site, a
 second site is a second key, and giving again is a choice. The key is
 a signed random nonce now, with no date to run out.
+
+## 2026-09-05 (later) - The licence was too much machinery for a thank-you
+
+The footer credit started as a LICENCE: removed by a signed key, issued
+per payment, verified on-chain or issued by hand. Keys, a signing
+secret, blockchain lookups (BTC + EVM), a claims file, a key generator.
+All to gate one small credit line -- and it never actually gated
+anything, because the signing secret ships in the code, so any install
+could mint its own key. It was a courtesy wearing a lock's clothes.
+
+Cut back to what it always was: the line is a plain preference, on by
+default, off by one click (data/support.json). Donations are a separate,
+pure gift with nothing tied to them. Deleted support_key.py,
+tools/make_license.py, and the whole verify/claim path; support.notice()
+is now "show unless hidden". Less code, and honest about what it is.

@@ -2,16 +2,16 @@
 {% block title %}Support — My Site Admin{% endblock %}
 {% block content %}
 <h1>♥ Support gmsCms</h1>
-<p class="hint">gmsCms is free to use, on as many sites as you like, for as long as you like. It is built and kept up by one person. If it has been useful to you, this is where to say thanks.</p>
+<p class="hint">gmsCms is free to use, on as many sites as you like, for as long as you like &mdash; and it stays free. It is built and kept up by one person. If you found it useful, this is where to show a little appreciation. Nothing here is required, and no donation unlocks anything &mdash; it is a gift, and every one is genuinely appreciated and helps keep development going.</p>
 
 <div class="card">
-  <h2>Say thanks</h2>
-  <p>Anything at all helps keep it going &mdash; the hosting this is tested on, the time the next fix takes. You are running <strong>{{ app_version.name }} {{ app_version.label }}</strong>.</p>
+  <h2>Buy me a coffee ☕</h2>
+  <p>&hellip;or fund my next questionable decision. Give whatever you think it&rsquo;s worth &mdash; a one-off, never a subscription. You&rsquo;re running <strong>{{ app_version.name }} {{ app_version.label }}</strong>.</p>
   <p>
     <a href="{{ paypal_url }}" class="btn btn-primary" target="_blank" rel="noopener noreferrer"
-       title="Opens PayPal in a new tab. Give whatever you think it is worth — once, not a subscription.">☕ Buy me a coffee</a>
+       title="Opens PayPal in a new tab. Any amount, one-off.">☕ Donate with PayPal</a>
   </p>
-  <p class="hint">Opens PayPal in a new tab. A one-off amount, never a subscription. Nothing about your site is sent anywhere &mdash; it is a plain link. {% if license.valid %}Your site already has its key; giving again is welcome and entirely up to you.{% endif %}</p>
+  <p class="hint">Opens PayPal in a new tab. Nothing about your site is sent anywhere &mdash; it&rsquo;s a plain link.</p>
 </div>
 
 {% if wallets %}
@@ -32,46 +32,26 @@
     {% endfor %}
   </div>
   <p class="support-warning"><strong>Send only the coin and network shown on each code.</strong> Only Bitcoin, and ETH or POL on the Ethereum, Base or Polygon networks, are received here. Anything else &mdash; another coin, a token, or the right coin on the wrong network &mdash; cannot be recovered and will be lost.</p>
-
-  {% if not license.valid %}
-  <p class="support-steps-intro"><strong>Paid with crypto? Get your key now.</strong></p>
-  <p class="hint">Paste the transaction id from your wallet or Coinbase. This site checks it against the addresses above on the blockchain and, once it sees your confirmed payment, removes the footer line straight away &mdash; no waiting.</p>
-  <form method="post" action="{{ url_for('admin.support_claim') }}" class="inline-form">
-    <input type="text" name="txid" placeholder="Transaction id" size="40" maxlength="80" autocomplete="off" spellcheck="false"
-           title="The transaction id (hash) of your payment — a long string of letters and numbers. Bitcoin, or ETH/POL on Ethereum, Base or Polygon.">
-    <button type="submit" class="btn btn-primary" title="Check your payment on the blockchain and, if it's confirmed and paid to this site, unlock now.">Get my key</button>
-  </form>
-  <p class="hint">A confirmation can take a few minutes to appear on-chain &mdash; if it says &ldquo;not confirmed yet&rdquo;, wait a little and try again.</p>
-  {% endif %}
 </div>
 <script src="{{ static_url('js/admin/support.js') }}"></script>
 {% endif %}
 
 <div class="card">
   <h2>The line under your footer</h2>
-  <p>Every site built with gmsCms shows one small line under its footer &mdash; <em>&ldquo;Built with gmsCms, which is free to use. Site owners can remove this line by supporting the project.&rdquo;</em> &mdash; and that is the one thing it asks for. A supporter receives a <strong>key</strong> that removes it &mdash; once, for good. A key does not run out and is not a subscription. It is for one site; a second site is a second key.</p>
-
-  {% if license.valid %}
-  <p><strong>Removed.</strong> Your key is on this site{% if license.since %} since {{ license.since }}{% endif %}. The line is not shown to visitors, and there is nothing to renew.</p>
-  <form method="post" action="{{ url_for('admin.support_key') }}" class="inline-form">
-    <input type="hidden" name="action" value="remove">
-    <button type="submit" class="btn" data-confirm="Remove the key? The line under your footer comes back straight away. You can enter the key again later." title="Take the key off this site. The line under your footer comes back straight away.">Remove the key</button>
+  <p>Every site built with gmsCms shows one small line under its footer &mdash; <em>&ldquo;Built with gmsCms &mdash; a free, self-hosted CMS. If it&rsquo;s useful to you, support its development.&rdquo;</em> &mdash; a quiet credit and a gentle nudge, nothing more. It costs nothing to leave on and nothing to take off; it is entirely your choice, and it is not tied to donating.</p>
+  {% if notice_hidden %}
+  <p>The line is currently <strong>hidden</strong> from your site.</p>
+  <form method="post" action="{{ url_for('admin.support_line') }}" class="inline-form">
+    <input type="hidden" name="action" value="show">
+    <button type="submit" class="btn btn-primary" title="Show the small gmsCms credit under your footer again.">Show the line</button>
   </form>
   {% else %}
-  {% if license.installed %}
-  <p class="flash flash-error">The key on this site isn&rsquo;t a genuine gmsCms key, so the line is showing. Enter the one you received below.</p>
-  {% else %}
-  <p>The line is currently <strong>showing</strong> on your site.{% if wallets %} Paid with crypto? It comes off automatically in the section above.{% endif %}</p>
-  {% endif %}
-
-  <p class="support-steps-intro"><strong>Have a key? Paste it here.</strong></p>
-  <form method="post" action="{{ url_for('admin.support_key') }}" class="inline-form">
-    <input type="hidden" name="action" value="apply">
-    <input type="text" name="key" placeholder="GMS-1A2B3C4D-A1B2C3D4E5F60718" size="34" maxlength="40" autocomplete="off" spellcheck="false"
-           title="The supporter's key you received. Paste it exactly as it came; spaces at the ends are fine.">
-    <button type="submit" class="btn btn-primary" title="Check the key and, if it is genuine, remove the line under your footer for good.">Apply the key</button>
+  <p>The line is currently <strong>showing</strong> on your site.</p>
+  <form method="post" action="{{ url_for('admin.support_line') }}" class="inline-form">
+    <input type="hidden" name="action" value="hide">
+    <button type="submit" class="btn" title="Remove the small gmsCms credit from under your footer. You can bring it back any time.">Hide the line</button>
   </form>
-  <p class="hint"><strong>Paid with PayPal?</strong> PayPal payments can&rsquo;t be checked automatically, so message the project on <a href="{{ github_url }}" target="_blank" rel="noopener noreferrer">GitHub</a> with this site&rsquo;s web address &mdash; a key comes back, and you paste it above.</p>
+  <p class="hint">If you keep it, thank you &mdash; it&rsquo;s how other people find the tool.</p>
   {% endif %}
 </div>
 {% endblock %}

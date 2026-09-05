@@ -1,6 +1,6 @@
-"""The Support screen: where to say thanks, and the supporter's key that
-removes the credit line under the site's footer. The logic is in
-services/support.py; this only asks and answers."""
+"""The Support screen: where to show appreciation, and the one switch for
+the small credit line under the footer. Logic is in services/support.py;
+this only asks and answers."""
 from flask import request, flash, redirect, url_for, render_template
 
 from . import bp
@@ -16,38 +16,19 @@ def support_screen():
                            paypal_url=support.PAYPAL_URL,
                            github_url=support.GITHUB_CONTACT_URL,
                            wallets=support.crypto_wallets(),
-                           license=support.state(),
+                           notice_hidden=support.notice_hidden(),
                            app_version=version.info())
 
 
-@bp.route("/support/key", methods=["POST"])
+@bp.route("/support/line", methods=["POST"])
 @login_required
-def support_key():
-    """Apply or remove a supporter's key. Back to the same screen either
-    way -- the answer belongs where the question was asked."""
-    action = request.form.get("action", "apply")
-    if action == "remove":
-        if support.remove():
-            flash("The key is removed. The line under your footer is back.", "success")
-        else:
-            flash("There was no key to remove.", "success")
+def support_line():
+    """Show or hide the footer credit line. No payment, no key -- the
+    owner's choice, taken and reversed here."""
+    hide = request.form.get("action") == "hide"
+    support.set_notice_hidden(hide)
+    if hide:
+        flash("The gmsCms line is hidden from your footer. You can bring it back here any time.", "success")
     else:
-        try:
-            support.install_key(request.form.get("key", ""))
-        except ValueError as e:
-            flash(str(e), "error")
-        else:
-            flash("Thank you. The line under your footer is gone.", "success")
-    return redirect(url_for("admin.support_screen"))
-
-
-@bp.route("/support/claim", methods=["POST"])
-@login_required
-def support_claim():
-    """Claim a key with a crypto transaction id: verify it on-chain against
-    the project's addresses, and if it is a confirmed payment to us, issue
-    the key on the spot. The on-chain calls can take a few seconds; the
-    poller lives in the service, not here."""
-    ok, message = support.claim_with_txid(request.form.get("txid", ""))
-    flash(message, "success" if ok else "error")
+        flash("The gmsCms line is showing under your footer again. Thank you!", "success")
     return redirect(url_for("admin.support_screen"))

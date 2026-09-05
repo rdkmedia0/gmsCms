@@ -2626,15 +2626,15 @@
     {% else %}
     <p>&copy; {{ page.title }}</p>
     {% endif %}
-    {#  gmsCms is free, and this is the one line that says so on the site
-        it built -- shown to visitors under the footer until the owner
-        supports the project and enters the key that comes with it
-        (Admin → Support). The link is the project's own, hard-coded in
-        services/support.py; nothing on the site can change where it
-        points. Inside the footer, not beside it, so the sidebar layouts
-        that place body's direct children by hand are untouched. #}
+    {#  A small credit for the free tool the site was built with -- shown
+        by default, and switched off by the owner whenever they like
+        (Admin → Support). No payment removes it; a click does. The donate
+        link is the project's own, hard-coded in services/support.py;
+        nothing on the site can change where it points. Inside the footer,
+        not beside it, so the sidebar layouts that place body's direct
+        children by hand are untouched. #}
     {% if support_notice %}
-    <p class="cms-support-notice">Built with <a href="{{ support_notice.url }}" target="_blank" rel="noopener noreferrer">gmsCms</a>, which is free to use. Site owners can remove this line by supporting the project.</p>
+    <p class="cms-support-notice">Built with <a href="{{ support_notice.project_url }}" target="_blank" rel="noopener noreferrer">gmsCms</a> &mdash; a free, self-hosted CMS. If it&rsquo;s useful to you, <a href="{{ support_notice.url }}" target="_blank" rel="noopener noreferrer">support its development</a>.</p>
     {% endif %}
   </footer>
 
