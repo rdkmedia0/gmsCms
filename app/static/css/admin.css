@@ -234,7 +234,12 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--c
   background: var(--card-bg, #fff); color: var(--text); cursor: pointer; list-style: none;
 }
 .favicon-text-btn:hover { border-color: var(--cms-ui-accent); }
-.favicon-row .favicon-upload-form { margin: 0; display: contents; }
+/*  These two forms wrap a single button each. `display: contents` drops
+    the form box so the button sits DIRECTLY in the favicon row's flex line
+    -- otherwise .inline-form's margin-top:10px pushes it out of line with
+    the others (which is exactly what happened to Library). */
+.favicon-row .favicon-upload-form,
+.favicon-row .favicon-library-form { margin: 0; display: contents; }
 .favicon-emoji-picker, .favicon-ai-gen { position: relative; }
 .favicon-emoji-picker summary, .favicon-ai-gen summary { list-style: none; cursor: pointer; }
 .favicon-emoji-picker summary::-webkit-details-marker, .favicon-ai-gen summary::-webkit-details-marker { display: none; }
