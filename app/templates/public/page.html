@@ -24,6 +24,24 @@
   {% endif %}
   <title>{{ (site_settings.site_title ~ ' — ' ~ site_settings.site_tagline) if (page.is_home and site_settings.site_tagline) else (site_settings.site_title if page.is_home else ((page_title_tr or page.title) ~ ' — ' ~ site_settings.site_title)) }}</title>
   {% if page.meta_description %}<meta name="description" content="{{ page.meta_description }}">{% elif site_settings.site_tagline %}<meta name="description" content="{{ site_settings.site_tagline }}">{% endif %}
+  {#  SEO: canonical URL, Open Graph + Twitter tags for a rich share
+      preview, and JSON-LD (a WebSite always, an Article for a blog post).
+      All built server-side from the site's public address -- see
+      services/seo.py; the JSON is already escaped for a <script> block. #}
+  {% if seo %}
+  <link rel="canonical" href="{{ seo.canonical }}">
+  <meta property="og:type" content="{{ seo.og_type }}">
+  <meta property="og:site_name" content="{{ seo.og_site_name }}">
+  <meta property="og:title" content="{{ seo.title }}">
+  <meta property="og:url" content="{{ seo.canonical }}">
+  {% if seo.description %}<meta property="og:description" content="{{ seo.description }}">{% endif %}
+  {% if seo.og_image %}<meta property="og:image" content="{{ seo.og_image }}">{% endif %}
+  <meta name="twitter:card" content="{{ seo.twitter_card }}">
+  <meta name="twitter:title" content="{{ seo.title }}">
+  {% if seo.description %}<meta name="twitter:description" content="{{ seo.description }}">{% endif %}
+  {% if seo.og_image %}<meta name="twitter:image" content="{{ seo.og_image }}">{% endif %}
+  <script type="application/ld+json">{{ seo.json_ld | safe }}</script>
+  {% endif %}
   {% if site_settings.favicon_url %}<link rel="icon" href="{{ site_settings.favicon_url }}">{% endif %}
   <link rel="stylesheet" href="{{ static_url('css/site-base.css') }}">
   {% if google_fonts_url %}

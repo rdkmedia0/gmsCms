@@ -13,6 +13,8 @@ from .. import version as _version
 from ..services import support
 from ..services import analytics
 from ..services import maintenance
+from ..services import seo as seo_service
+from ..services import site as site_service
 from ..services import patterns as _patterns
 from ..services.sections import (
     MEDIA_IMAGE_EXTS,
@@ -1084,6 +1086,26 @@ def healthz():
         return Response("unhealthy\n", status=503, mimetype="text/plain")
     return Response("ok\n", status=200, mimetype="text/plain",
                     headers={"Cache-Control": "no-store"})
+
+
+@bp.route("/robots.txt")
+def robots_txt():
+    """Tell crawlers what they may fetch, and where the sitemap is. Built
+    from the site's own public address (services/seo.py)."""
+    base = site_service.public_base(get_db(), request.host_url)
+    return Response(seo_service.robots_txt(base), mimetype="text/plain",
+                    headers={"Cache-Control": "public, max-age=3600"})
+
+
+@bp.route("/sitemap.xml")
+def sitemap_xml():
+    """Every public URL a crawler should see -- home, public pages,
+    published posts -- as a standard XML sitemap."""
+    db = get_db()
+    base = site_service.public_base(db, request.host_url)
+    xml = seo_service.sitemap_xml(seo_service.sitemap_entries(db, base))
+    return Response(xml, mimetype="application/xml",
+                    headers={"Cache-Control": "public, max-age=3600"})
 
 
 @bp.before_request
@@ -2542,6 +2564,11 @@ def _render_page(db, page, post=None, post_content=""):
         captcha_token=captcha_token,
         captcha_field=captcha.HONEYPOT_FIELD,
         page=page,
+        #  Canonical URL, Open Graph / Twitter tags and JSON-LD for the
+        #  <head> -- built from the site's public address (services/seo.py).
+        seo=seo_service.head_meta(db, page, post, get_site_settings(db),
+                                  site_service.public_base(db, request.host_url),
+                                  request.path),
         post=post,
         post_content=post_content,
         blog=(blog_service.get_blog(db, post["blog_id"]) if post else None),
