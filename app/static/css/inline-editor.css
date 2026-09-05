@@ -1241,11 +1241,20 @@ html:has(.cms-dock-panel), body:has(.cms-dock-panel) { overflow-x: clip; }
   font-size: 12px; color: var(--cms-ui-text);
 }
 .cms-file-row .cms-file-row-label { flex: 1; min-width: 90px; }
+/*  Upload / Choose are icon buttons (an up-arrow tray, a picture): the
+    action is the glyph and the sentence is its title, the same convention
+    the pencil/× actions use. Square-ish, so a row of them reads as a
+    toolbar and takes less width than the old text buttons did. */
 .cms-file-row-upload, .cms-file-row-choose {
-  font-size: 12px; line-height: 1; padding: 4px 8px; border-radius: var(--cms-ui-radius-control);
-  border: 1px solid #d5d8de; background: #fff; cursor: pointer; white-space: nowrap; min-height: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  line-height: 1; padding: 5px 6px; border-radius: var(--cms-ui-radius-control);
+  border: 1px solid #d5d8de; background: #fff; color: var(--cms-ui-text);
+  cursor: pointer; min-height: 0;
 }
-.cms-file-row-upload:hover, .cms-file-row-choose:hover { border-color: var(--cms-ui-accent); }
+.cms-file-row-upload svg, .cms-file-row-choose svg { display: block; }
+.cms-file-row-upload:hover, .cms-file-row-choose:hover {
+  border-color: var(--cms-ui-accent); color: var(--cms-ui-accent);
+}
 /*  A drawn icon on a line's icon button sits on the line like the emoji do. */
 .cms-rows-icon-pick .cms-icon { display: inline-flex; vertical-align: middle; }
 .cms-rows-icon-pick .cms-icon svg { width: 16px; height: 16px; }
