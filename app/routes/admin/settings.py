@@ -470,6 +470,45 @@ def commerce_order_resend(order_id):
     })
 
 
+@bp.route("/commerce/orders/<int:order_id>/delete", methods=["POST"])
+@login_required
+def commerce_order_delete(order_id):
+    """Remove one order and anything it granted. Orders live HERE, not in
+    Stripe, so switching or disconnecting Stripe never clears them -- this
+    is how a test order gets tidied away. A real order is a record you
+    usually keep, so the button asks first."""
+    db = get_db()
+    db.execute("DELETE FROM entitlements WHERE order_id = ?", (order_id,))
+    db.execute("DELETE FROM orders WHERE id = ?", (order_id,))
+    db.commit()
+    flash("Order deleted.", "success")
+    return redirect(url_for("admin.commerce_orders"))
+
+
+@bp.route("/commerce/orders/purge", methods=["POST"])
+@login_required
+def commerce_orders_purge():
+    """Clear orders in bulk -- for wiping test data before going live,
+    since swapping Stripe keys leaves the orders untouched. `scope=test`
+    removes only test-mode ones (a Stripe test id carries "test"); anything
+    else removes every order. Their granted entitlements go with them."""
+    db = get_db()
+    if request.form.get("scope") == "test":
+        rows = db.execute("SELECT id FROM orders WHERE provider_ref LIKE '%test%'").fetchall()
+        what = "test order"
+    else:
+        rows = db.execute("SELECT id FROM orders").fetchall()
+        what = "order"
+    ids = [r["id"] for r in rows]
+    if ids:
+        marks = ",".join("?" * len(ids))
+        db.execute("DELETE FROM entitlements WHERE order_id IN (%s)" % marks, ids)
+        db.execute("DELETE FROM orders WHERE id IN (%s)" % marks, ids)
+    db.commit()
+    flash("Removed %d %s%s." % (len(ids), what, "" if len(ids) == 1 else "s"), "success")
+    return redirect(url_for("admin.commerce_orders"))
+
+
 @bp.route("/commerce/customers/<int:customer_id>/unlock", methods=["POST"])
 @login_required
 def commerce_customer_unlock(customer_id):

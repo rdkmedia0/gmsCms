@@ -127,9 +127,36 @@
   </div>
   <p class="integration-result" hidden></p>
   {% endif %}
+  <form method="post" action="{{ url_for('admin.commerce_order_delete', order_id=order.id) }}" style="margin-top:8px;">
+    <button type="submit" class="btn btn-small btn-danger"
+            data-confirm="Delete this order and anything it unlocked? This can't be undone. Orders aren't stored in Stripe, so deleting here doesn't touch Stripe."
+            data-confirm-danger="1"
+            title="Remove this order from your records — handy for tidying a test order.">Delete order</button>
+  </form>
 </div>
 {% endfor %}
 {% endif %}
+
+<div class="card">
+  <h2>Tidy up</h2>
+  <p class="hint">Orders live here, not in Stripe &mdash; switching or disconnecting Stripe does <strong>not</strong> clear them. Use these to wipe test data before you go live. Deleting an order also removes whatever it unlocked (session credits, downloads).</p>
+  <div class="integration-actions">
+    <form method="post" action="{{ url_for('admin.commerce_orders_purge') }}" style="display:inline;">
+      <input type="hidden" name="scope" value="test">
+      <button type="submit" class="btn btn-small"
+              data-confirm="Delete every TEST order (Stripe test-mode payments) and what they unlocked? Real orders are kept. This can't be undone."
+              data-confirm-danger="1"
+              title="Remove only test-mode orders. Real (live) orders are left alone.">Delete test orders</button>
+    </form>
+    <form method="post" action="{{ url_for('admin.commerce_orders_purge') }}" style="display:inline;">
+      <input type="hidden" name="scope" value="all">
+      <button type="submit" class="btn btn-small btn-danger"
+              data-confirm="Delete ALL orders and everything they unlocked? Every record here goes, real and test alike. This can't be undone."
+              data-confirm-danger="1"
+              title="Remove every order — real and test. Use only if you really want a clean slate.">Delete all orders</button>
+    </form>
+  </div>
+</div>
 
 <script src="{{ static_url('js/admin/orders.js') }}"></script>
 {% endblock %}
