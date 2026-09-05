@@ -2186,9 +2186,17 @@ a.cms-slot-btn { display: inline-flex; align-items: center; justify-content: cen
 .cms-block:first-child { margin-top: 0; }
 
 /* --- Pricing ------------------------------------------------------- */
-.cms-price-grid { display: grid; gap: 18px;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); align-items: stretch; }
-.cms-price-tier { display: flex; flex-direction: column; gap: 12px; padding: var(--site-radius-pad, 26px 22px);
+/*  Flex, not grid, so an incomplete last row CENTRES instead of dropping
+    its leftover tier into the first column with an empty gap beside it (a
+    grid's auto-fit leaves the orphan left-aligned, which no one chose).
+    The tiers take a fixed basis and do not grow, so every card is the same
+    width whether its row is full or not, and justify-content:center then
+    centres each row -- the wrapped one included. flex-shrink keeps them
+    responsive on a phone. */
+.cms-price-grid { display: flex; flex-wrap: wrap; justify-content: center;
+  gap: 18px; align-items: stretch; }
+.cms-price-tier { flex: 0 1 300px;
+  display: flex; flex-direction: column; gap: 12px; padding: var(--site-radius-pad, 26px 22px);
   border: 1px solid var(--primary-200, rgba(128,128,128,.28));
   border-radius: var(--site-radius, 10px);
   /*  --primary-50 is the palest step of the brand and it is that on
