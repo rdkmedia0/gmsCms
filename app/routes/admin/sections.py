@@ -20,7 +20,7 @@ from ...services.sections import (
     MEDIA_TYPES, VIDEO_EXTENSIONS, AUDIO_EXTENSIONS, FILE_DISPLAYS, FILE_ICONS, MEDIA_IMAGE_EXTS,
     _breadcrumb_starter_html, _divider_starter_html, _resolve_tool_content,
     apply_contact_form, apply_lang_switcher_form, read_lang_switcher_opts,
-    apply_file_form, set_file_item, file_items_for,
+    apply_file_form, set_file_item, file_items_for, tool_color_valid,
     _columns_section_or_404, _get_columns_cells, _save_columns_cells, _normalize_cell, _cell_slot,
     set_columns_width, set_columns_widths, COLUMN_WIDTHS,
     _update_banner_classes, _update_banner_overlay_style, _card_div, _update_card_classes,
@@ -581,6 +581,8 @@ def section_column_update(section_id, col_index):
         value = request.form["shadow_style"]
         if value in SHADOW_PRESETS or value == "":
             cell["shadow_style"] = value
+    if "text_color" in request.form and tool_color_valid(request.form["text_color"]):
+        cell["text_color"] = request.form["text_color"]
     container[idx] = cell
     _save_columns_cells(db, section_id, cells)
     if wants_json():
@@ -1297,6 +1299,9 @@ def section_update(section_id):
         if value in SHADOW_PRESETS or value == "":
             fields.append("tool_shadow_style = ?")
             values.append(value or None)
+    if "tool_text_color" in request.form and tool_color_valid(request.form["tool_text_color"]):
+        fields.append("tool_text_color = ?")
+        values.append(request.form["tool_text_color"] or None)
     if "file_display" in request.form and request.form["file_display"] in FILE_DISPLAYS:
         fields.append("file_display = ?")
         values.append(request.form["file_display"])

@@ -1559,13 +1559,17 @@ video, .cms-media video, .cms-video {
 /*  The download's icon is a drawn SVG now (icon_svg), not an emoji, so it is
     sized in px/em here rather than by font-size, and follows the text colour
     (currentColor) so it fits the theme -- the same move the contact icons made. */
-.cms-file-icon { display: inline-flex; flex: 0 0 auto; color: var(--primary, #2563eb); }
+/*  --tool-accent is the tool's optional palette colour (Colour control in
+    its header). Unset, each falls back to its usual --primary, so nothing
+    changes until an owner picks a colour to make a hard-to-read link
+    legible. See services/sections.py tool_accent_style. */
+.cms-file-icon { display: inline-flex; flex: 0 0 auto; color: var(--tool-accent, var(--primary, #2563eb)); }
 .cms-file-icon svg { width: 30px; height: 30px; }
 .cms-file-info { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 .cms-file-name { font-weight: 700; }
 .cms-file-size { font-size: 13px; color: var(--site-ink-soft, #5b6472); }
 .cms-file-download {
-  background: var(--primary, #2563eb); color: #fff; text-decoration: none; font-weight: 600;
+  background: var(--tool-accent, var(--primary, #2563eb)); color: #fff; text-decoration: none; font-weight: 600;
   padding: 8px 16px; border-radius: var(--site-radius, 8px); white-space: nowrap;
 }
 .cms-file-placeholder { color: var(--site-ink-soft, #5b6472); font-size: 14px; }
@@ -1574,17 +1578,17 @@ video, .cms-media video, .cms-video {
    icon with its label; the icon takes the text colour and sits on the line. */
 .cms-file-btn {
   display: inline-flex; align-items: center; gap: 9px;
-  background: var(--primary, #2563eb); color: #fff; text-decoration: none;
+  background: var(--tool-accent, var(--primary, #2563eb)); color: #fff; text-decoration: none;
   font-weight: 700; padding: 12px 28px; border-radius: var(--site-radius, 8px);
 }
-.cms-file-btn:hover { background: var(--primary-dark, #1d4ed8); }
+.cms-file-btn:hover { filter: brightness(0.92); }
 .cms-file-btn svg, .cms-file-textlink svg { width: 1.1em; height: 1.1em; flex: 0 0 auto; }
 .cms-file-btn .cms-icon, .cms-file-textlink .cms-icon { margin: 0; }
 .cms-file-textlink {
   display: inline-flex; align-items: center; gap: 7px; max-width: 100%;
-  color: var(--primary, #2563eb); text-decoration: underline; font-size: 15px;
+  color: var(--tool-accent, var(--primary, #2563eb)); text-decoration: underline; font-size: 15px;
 }
-.cms-file-icon-only { text-decoration: none; display: inline-flex; color: var(--primary, #2563eb); }
+.cms-file-icon-only { text-decoration: none; display: inline-flex; color: var(--tool-accent, var(--primary, #2563eb)); }
 .cms-file-icon-only svg { width: 40px; height: 40px; }
 
 /* Media player: YouTube embed, uploaded video, uploaded audio.

@@ -424,6 +424,9 @@ def create_app():
     app.jinja_env.globals["card_button_settings"] = card_button_settings
     app.jinja_env.globals["banner_button_settings"] = banner_button_settings
     app.jinja_env.globals["table_style_choices"] = TABLE_STYLE_CHOICES
+    from .services.sections import TOOL_TEXT_COLORS as _tool_text_colors, tool_accent_style as _tool_accent_style
+    app.jinja_env.globals["tool_text_colors"] = _tool_text_colors
+    app.jinja_env.globals["tool_accent_style"] = _tool_accent_style
     from .services.sections import FILE_DISPLAY_CHOICES as _file_displays, FILE_EXTENSIONS as _file_exts
     app.jinja_env.globals["file_displays"] = _file_displays
     #  What the File tool's chooser offers, and the icon a file wears by

@@ -91,6 +91,39 @@ TABLE_STYLE_CHOICES = (
 #  a blog is a tool now, and how its posts are laid out is that tool's
 #  business rather than a column on the page that used to be the blog.
 
+#  A tool's text/accent colour, picked from the active template's palette
+#  -- a role slug, never a raw hex, so it re-themes with the palette and
+#  stays on-brand. The reported need: the File tool's link on a dark ground
+#  was hard to read; "Body text" (the theme's own ink) or a palette role
+#  fixes it. Stored on the section (tool_text_color) or the cell
+#  (text_color); rendered as --tool-accent, which the File tool and html
+#  tools read via var(--tool-accent, <their default>).
+TOOL_TEXT_COLORS = (
+    ("", "Colour: default"),
+    ("primary", "Colour: primary"),
+    ("secondary", "Colour: secondary"),
+    ("accent", "Colour: accent"),
+    ("ink", "Colour: body text"),
+    ("ink-soft", "Colour: muted"),
+)
+_TOOL_COLOR_VARS = {
+    "primary": "--primary", "secondary": "--secondary", "accent": "--accent",
+    "ink": "--site-ink", "ink-soft": "--site-ink-soft",
+}
+
+
+def tool_color_valid(value):
+    return value == "" or value in _TOOL_COLOR_VARS
+
+
+def tool_accent_style(value):
+    """The `--tool-accent` declaration for a chosen palette role, or "" for
+    the default. Goes into a wrapper's inline style; the tool's own CSS
+    reads var(--tool-accent, <its default>)."""
+    var = _TOOL_COLOR_VARS.get((value or "").strip())
+    return ("--tool-accent:var(%s)" % var) if var else ""
+
+
 MEDIA_TYPES = ("youtube", "video", "audio")
 VIDEO_EXTENSIONS = (".mp4", ".webm", ".ogg", ".ogv", ".mov")
 AUDIO_EXTENSIONS = (".mp3", ".wav", ".ogg", ".oga", ".m4a", ".aac")

@@ -453,10 +453,26 @@
     </section>
   {%- endmacro %}
 
-  {% macro tool_header(label, remove_url=none, remove_confirm=none, corner_save_url=none, corner_current=none, corner_field='tool_corner_style', shadow_current=none, shadow_field='tool_shadow_style') %}
+  {% macro tool_color_select(save_url, current, field='tool_text_color') %}
+    {# The tool's text/accent colour, from the template palette. A role
+       slug, not a hex, so it re-themes; the value becomes --tool-accent on
+       the tool's wrapper and the File tool's links/buttons and html-tool
+       links read var(--tool-accent, <default>). Fixes an accent that is
+       hard to read on a given ground by letting the owner pick "Body
+       text" or another palette role. #}
+    <select class="cms-tool-color-select" data-color-field="{{ field }}"
+            title="Text/link colour for this tool, from your template palette — use this if the default is hard to read"
+            data-save-url="{{ save_url }}">
+      {% for key, label in tool_text_colors %}
+      <option value="{{ key }}" {{ 'selected' if current == key }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  {% endmacro %}
+
+  {% macro tool_header(label, remove_url=none, remove_confirm=none, corner_save_url=none, corner_current=none, corner_field='tool_corner_style', shadow_current=none, shadow_field='tool_shadow_style', color_save_url=none, color_current=none, color_field='tool_text_color') %}
     <div class="cms-tool-header">
       <span class="cms-tool-header-label">{{ label }}</span>
-      <div class="cms-tool-header-controls">{{ caller() if caller }}{% if corner_save_url %}{{ tool_corner_select(corner_save_url, corner_current, corner_field) }}{{ tool_shadow_select(corner_save_url, shadow_current, shadow_field) }}{% endif %}</div>
+      <div class="cms-tool-header-controls">{{ caller() if caller }}{% if corner_save_url %}{{ tool_corner_select(corner_save_url, corner_current, corner_field) }}{{ tool_shadow_select(corner_save_url, shadow_current, shadow_field) }}{% endif %}{% if color_save_url %}{{ tool_color_select(color_save_url, color_current, color_field) }}{% endif %}</div>
       {% if remove_url %}
       {# cms-delete-form is what binds the "are you sure" dialog (see
          inline-editor.js) — data-confirm alone does nothing, and a × that
@@ -1782,7 +1798,7 @@
     {% elif cell.type == 'rows' %}
       <div class="cms-column-rows cms-column-rows-{{ cell.rows_list | length }}"{% if editing %} data-rows-reorder-url="{{ url_for('admin.section_column_reorder_rows', section_id=s.id, col_index=col_index) }}"{% endif %}>
         {% for row_cell in cell.rows_list %}
-        <div class="cms-row-cell"{% if editing %} data-row-index="{{ loop.index0 }}" data-set-tool-url="{{ url_for('admin.section_column_set_tool', section_id=s.id, col_index=col_index) }}?row={{ loop.index0 }}"{% endif %} {{ ('data-corner-style="' ~ row_cell.corner_style ~ '"') | safe if row_cell.corner_style }}>
+        <div class="cms-row-cell"{% if editing %} data-row-index="{{ loop.index0 }}" data-set-tool-url="{{ url_for('admin.section_column_set_tool', section_id=s.id, col_index=col_index) }}?row={{ loop.index0 }}"{% endif %} {{ ('data-corner-style="' ~ row_cell.corner_style ~ '"') | safe if row_cell.corner_style }} {{ ('style="' ~ tool_accent_style(row_cell.text_color) ~ '"') | safe if row_cell.text_color }}>
           {% if editing %}<span class="cms-row-drag-handle" draggable="true" title="Drag to reorder this row">⠿</span>{% endif %}
           {{ render_cell(row_cell, s, col_index, loop.index0) }}
         </div>
@@ -1803,7 +1819,8 @@
     {% elif cell.type == 'image' %}
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
-                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style',
+                          color_save_url=(cell_save_url if cell.type == 'file' else none), color_current=cell.text_color, color_field='text_color') %}
         {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -1814,7 +1831,8 @@
     {% elif cell.type == 'media' %}
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
-                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style',
+                          color_save_url=(cell_save_url if cell.type == 'file' else none), color_current=cell.text_color, color_field='text_color') %}
         {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -1824,7 +1842,8 @@
     {% elif cell.type == 'file' %}
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
-                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style',
+                          color_save_url=(cell_save_url if cell.type == 'file' else none), color_current=cell.text_color, color_field='text_color') %}
         {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -1836,7 +1855,8 @@
     {% elif cell.type == 'banner' %}
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
-                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style',
+                          color_save_url=(cell_save_url if cell.type == 'file' else none), color_current=cell.text_color, color_field='text_color') %}
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -1846,7 +1866,8 @@
     {% elif cell.type == 'card' %}
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
-                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style',
+                          color_save_url=(cell_save_url if cell.type == 'file' else none), color_current=cell.text_color, color_field='text_color') %}
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -1857,7 +1878,8 @@
       {% if editing %}
       {% set menu_label = 'Menu (Dropdown)' if cell.menu_style == 'dropdown' else ('Menu (Buttons)' if cell.menu_style == 'buttons' else 'Menu') %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
-                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style',
+                          color_save_url=(cell_save_url if cell.type == 'file' else none), color_current=cell.text_color, color_field='text_color') %}
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -1867,7 +1889,8 @@
     {% elif cell.is_breadcrumb %}
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
-                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style',
+                          color_save_url=(cell_save_url if cell.type == 'file' else none), color_current=cell.text_color, color_field='text_color') %}
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -1877,7 +1900,8 @@
     {% elif cell.is_lang_switcher %}
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
-                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style',
+                          color_save_url=(cell_save_url if cell.type == 'file' else none), color_current=cell.text_color, color_field='text_color') %}
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -1887,7 +1911,8 @@
     {% elif cell.is_buy_button %}
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
-                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style',
+                          color_save_url=(cell_save_url if cell.type == 'file' else none), color_current=cell.text_color, color_field='text_color') %}
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -1897,7 +1922,8 @@
     {% elif cell.is_block %}
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
-                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style',
+                          color_save_url=(cell_save_url if cell.type == 'file' else none), color_current=cell.text_color, color_field='text_color') %}
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -1907,7 +1933,8 @@
     {% elif cell.is_shop %}
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
-                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style',
+                          color_save_url=(cell_save_url if cell.type == 'file' else none), color_current=cell.text_color, color_field='text_color') %}
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -1917,7 +1944,8 @@
     {% elif cell.is_faq_reader %}
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
-                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style',
+                          color_save_url=(cell_save_url if cell.type == 'file' else none), color_current=cell.text_color, color_field='text_color') %}
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -1947,7 +1975,8 @@
     {% elif cell.is_blog %}
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
-                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style',
+                          color_save_url=(cell_save_url if cell.type == 'file' else none), color_current=cell.text_color, color_field='text_color') %}
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -1957,7 +1986,8 @@
     {% elif cell.is_search %}
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
-                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style',
+                          color_save_url=(cell_save_url if cell.type == 'file' else none), color_current=cell.text_color, color_field='text_color') %}
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -1967,7 +1997,8 @@
     {% elif cell.is_faq %}
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
-                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style',
+                          color_save_url=(cell_save_url if cell.type == 'file' else none), color_current=cell.text_color, color_field='text_color') %}
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -1977,7 +2008,8 @@
     {% elif cell.is_video_gallery %}
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
-                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style',
+                          color_save_url=(cell_save_url if cell.type == 'file' else none), color_current=cell.text_color, color_field='text_color') %}
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -1989,7 +2021,8 @@
          tool's own controls, cell text straight into the live table. #}
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
-                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style',
+                          color_save_url=(cell_save_url if cell.type == 'file' else none), color_current=cell.text_color, color_field='text_color') %}
         {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -1999,7 +2032,8 @@
     {% elif cell.is_image_accordion %}
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
-                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style',
+                          color_save_url=(cell_save_url if cell.type == 'file' else none), color_current=cell.text_color, color_field='text_color') %}
       {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -2021,7 +2055,8 @@
          Same fields the section renders, same service behind them. #}
       {% if editing %}
       {% call tool_header(cell.display_label, cell_clear_url, corner_save_url=cell_save_url, corner_current=cell.corner_style, corner_field='corner_style',
-                          shadow_current=cell.shadow_style, shadow_field='shadow_style') %}
+                          shadow_current=cell.shadow_style, shadow_field='shadow_style',
+                          color_save_url=(cell_save_url if cell.type == 'file' else none), color_current=cell.text_color, color_field='text_color') %}
         {{- tool_config_forms(cell, s, cell_save_url, col_index, row_qs) }}
       {% endcall %}
       {% endif %}
@@ -2117,6 +2152,7 @@
       {% if s.border_color %}{% set _ = section_style_parts.append('border: 2px solid ' ~ s.border_color) %}{% endif %}
       {% if effective_width == 'custom' %}{% set _ = section_style_parts.append('--cms-width-pct:' ~ effective_pct) %}{% endif %}
       {% if effective_width == 'custompx' %}{% set _ = section_style_parts.append('--cms-width-px:' ~ (s.layout_width_px or 800) ~ 'px') %}{% endif %}
+      {% if s.tool_text_color %}{% set _ = section_style_parts.append(tool_accent_style(s.tool_text_color)) %}{% endif %}
       {% set is_sidebar_zone = s.zone in ('sidebar', 'sidebar_right') %}
       {# The height constraint goes on --cms-content-height-px (a custom
          property) plus a marker class, applied by CSS to .cms-section's
@@ -2323,6 +2359,13 @@
              box (Banner, Card, File) or contains one that inherits the
              value (a Table's rows, a Pricing tier, an Accordion). #}
           {% set tool_can_be_shaped = s.type != 'text' and not s.is_divider and not s.is_contact_info %}
+          {#  A palette text/accent colour. Wired for the File tool, whose
+              link/button/icon read var(--tool-accent, ...) -- the reported
+              case of an accent too dark to read on some grounds. Offered
+              only where it actually recolours something, so it never reads
+              as a dead control; extending it to other tools means wiring
+              each tool's CSS to --tool-accent first. #}
+          {% set tool_can_be_colored = s.type == 'file' %}
           {# Remove sits in the panel's corner here too. A tool in a Columns
              cell has always had it; a tool that is its own section had it
              only on the bar above, so the same × was in two different
@@ -2334,7 +2377,9 @@
                               remove_confirm='Delete this section? This cannot be undone.',
                               corner_save_url=(url_for('admin.section_update', section_id=s.id) if tool_can_be_shaped else none),
                               corner_current=s.tool_corner_style,
-                              shadow_current=s.tool_shadow_style) %}
+                              shadow_current=s.tool_shadow_style,
+                              color_save_url=(url_for('admin.section_update', section_id=s.id) if tool_can_be_colored else none),
+                              color_current=s.tool_text_color) %}
           {#  Every tool's controls, from the one list below. A section
               passes no column index, so each URL comes out exactly as
               it always did -- Flask drops a None and picks the rule
@@ -2386,7 +2431,10 @@
                  {%- if editing and (s.columns_list | length) == 2 %} data-col-resize-url="{{ url_for('admin.section_columns_widths', section_id=s.id) }}" data-next="{{ current_path }}"{% endif %}>
               {% for cell in s.columns_list %}
               {% set col_index = loop.index0 %}
-              <div class="cms-column"{% if editing %} data-col-index="{{ col_index }}" data-set-tool-url="{{ url_for('admin.section_column_set_tool', section_id=s.id, col_index=col_index) }}"{% endif %} {{ ('data-corner-style="' ~ cell.corner_style ~ '"') | safe if cell.corner_style }} {{ ('style="--sm-order: ' ~ s.columns_sm_order[col_index] ~ '"') | safe if s.columns_sm_order and s.columns_sm_order[col_index] != col_index }}>
+              {% set col_style_parts = [] %}
+              {% if s.columns_sm_order and s.columns_sm_order[col_index] != col_index %}{% set _ = col_style_parts.append('--sm-order: ' ~ s.columns_sm_order[col_index]) %}{% endif %}
+              {% if cell.text_color %}{% set _ = col_style_parts.append(tool_accent_style(cell.text_color)) %}{% endif %}
+              <div class="cms-column"{% if editing %} data-col-index="{{ col_index }}" data-set-tool-url="{{ url_for('admin.section_column_set_tool', section_id=s.id, col_index=col_index) }}"{% endif %} {{ ('data-corner-style="' ~ cell.corner_style ~ '"') | safe if cell.corner_style }} {{ ('style="' ~ col_style_parts | join('; ') ~ '"') | safe if col_style_parts }}>
                 {% if editing %}
                 <div class="cms-column-tools">
                   {% if (s.columns_list | length) > 1 %}

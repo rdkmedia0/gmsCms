@@ -2255,6 +2255,26 @@
     });
   });
 
+  //  The tool's text/accent colour, from the palette. Sets --tool-accent
+  //  on the tool's wrapper so links/buttons/text recolour live, then
+  //  saves. The same slug->var map as services/sections.py.
+  const TOOL_ACCENT_VARS = {
+    primary: "--primary", secondary: "--secondary", accent: "--accent",
+    ink: "--site-ink", "ink-soft": "--site-ink-soft",
+  };
+  bindEach(".cms-tool-color-select", (select) => {
+    select.addEventListener("change", async () => {
+      const scope = select.closest(".cms-column, .cms-row-cell")
+        || select.closest(".cms-section");
+      if (scope) {
+        const v = TOOL_ACCENT_VARS[select.value];
+        if (v) scope.style.setProperty("--tool-accent", "var(" + v + ")");
+        else scope.style.removeProperty("--tool-accent");
+      }
+      await saveField(select.dataset.saveUrl, select.dataset.colorField, select.value);
+    });
+  });
+
   //  Depth's tool level, the counterpart to the corner select above.
   bindEach(".cms-tool-shadow-select", (select) => {
     select.addEventListener("change", async () => {

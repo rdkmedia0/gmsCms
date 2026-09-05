@@ -337,6 +337,12 @@ def _migrate(db):
     #  card inside a flat section. Same three tiers as Corners, resolved
     #  the same way — by which element sets --site-shadow closest.
     _add_column(db, "sections", "tool_shadow_style", "TEXT")
+    #  The tool's own text/accent colour, chosen from the template palette
+    #  (a role slug like "primary" or "ink", not a raw hex, so it re-themes
+    #  and stays on-brand and legible). Sets --tool-accent on the section,
+    #  which the File tool's links/buttons and html-tool links read. A cell
+    #  keeps its own on the cell dict (`text_color`), like corners.
+    _add_column(db, "sections", "tool_text_color", "TEXT")
     #  How colourful the shades derived from each palette colour are
     #  (SHADE_SPREADS in services/design.py). NULL means "balanced", which
     #  is exactly what every site got before the control existed.
