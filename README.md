@@ -252,4 +252,4 @@ Free software under the **GNU Affero General Public License v3.0**
 (AGPL-3.0) — see [LICENSE](LICENSE). Run a modified version as a network
 service and you must offer your users the source of your changes.
 
-Copyright (C) 2026 the gmsCms authors.
+Copyright (C) 2026 [rdkmedia0](https://github.com/rdkmedia0).
