@@ -1,189 +1,109 @@
-# A self-hosted website, with the templates built in
+# gmsCms — a self-hosted website, templates built in
 
-A small CMS you run yourself. It ships sixteen complete looks — a bakery,
-a garage, a clinic, a shop, a CV — each one a real design with its own
-pages, and you edit your site **on the site**: open a page, click a
-heading, type. There is no separate editor to learn.
+A small CMS you run yourself. It ships **20 ready-made designs** — bakery,
+garage, clinic, shop, CV and more — each a complete site with its own
+pages. You edit **on the page**: open it, click a heading, type. There's
+no separate editor to learn.
 
-It also does the parts a website usually needs something else for: a
-blog, a newsletter with double opt-in, contact forms, a shop with Stripe,
-bookings with Cal.com, legal pages written from your own details, and
-scheduled backups.
+It also covers the parts a site usually needs a plugin for: a blog, a
+newsletter (double opt-in), contact forms, a shop with Stripe, bookings
+with Cal.com, SEO, a maintenance page, legal pages built from your own
+details, and scheduled backups.
 
 ---
 
 ## What you need
 
-- **A server you control** — a VPS (IONOS, Hetzner, DigitalOcean, Linode,
-  a machine at home) with Docker on it. 1 GB of RAM is enough.
-- **Docker** and the Compose plugin.
-- **A domain name** pointed at that server.
+- A **server you control** — a VPS (Hetzner, DigitalOcean, Linode, a box
+  at home) with **Docker** and the Compose plugin. 1 GB RAM is enough.
+- A **domain** pointed at it.
 
-**Classic shared web hosting will not run this.** If your plan is the one
-with a control panel and PHP, there is nowhere for a container to run.
-You need a VPS, or a host that takes a Docker image.
+Classic shared/PHP hosting won't run this — you need somewhere a container
+can run.
 
 ---
 
 ## Install
 
 ```bash
-git clone git@github.com:rdkmedia0/gmsCms.git mysite
+git clone https://github.com/rdkmedia0/gmsCms.git mysite
 cd mysite
-git config core.hooksPath .githooks   # refuses commits carrying credentials
-cp .env.example .env      # optional — see "Settings" below
-docker compose pull
-docker compose up -d
+git config core.hooksPath .githooks    # blocks commits that carry credentials
+cp .env.example .env                    # optional — see Settings
+docker compose up -d --build            # builds the image from this source
 ```
 
-That pulls a ready-built image rather than compiling one — see below for
-the one-time login it needs. To build from this source instead (while
-developing, or to run a change you have not pushed), use
-`docker compose up -d --build`, which ignores the registry entirely. It
-takes a few minutes and about 2 GB of disk, most of it packing the sixteen
-templates.
+Prefer a pre-built image? `docker compose pull && docker compose up -d`
+instead of the last line. (If the registry package is private, run
+`echo <github-token-with-read:packages> | docker login ghcr.io -u rdkmedia0 --password-stdin`
+once first.)
 
-### Run the published image
+The first boot creates the database, installs the templates, turns one on
+and makes your admin account — so there's a real site to look at right
+away.
 
-Every push to `main` builds an image for **amd64 and arm64** and publishes
-it to this repository's own registry. The package is private, like the
-repository, so a host has to identify itself once:
+### First sign-in
 
-1. Make a token at **github.com → Settings → Developer settings → Personal
-   access tokens → Tokens (classic)** with the single scope
-   **`read:packages`**.
-2. On the host:
-
-```bash
-echo YOUR_TOKEN | docker login ghcr.io -u rdkmedia0 --password-stdin
-```
-
-That is stored in `~/.docker/config.json` and does not need repeating.
-From then on:
-
-```bash
-docker compose pull && docker compose up -d
-```
-
-is the whole upgrade — no `git pull`, no build, and about 30 seconds of
-downtime. `latest` follows `main`; every build is also tagged with its
-commit, so `ghcr.io/rdkmedia0/gmscms:sha-<full-sha>` pins an exact one and
-is the thing to roll back to.
-
-If you would rather not hold a token on the host, clone the repository and
-build from source with `--build` as above — the image is a convenience,
-not a requirement.
-
-That is the whole install. The first boot creates the database, installs
-the sixteen templates, turns one of them on and creates your admin
-account — so there is a real site to look at immediately, rather than an
-empty page and a list of things to configure.
-
-### Signing in the first time
-
-If you left `ADMIN_PASSWORD` blank, one was generated for you. It is in
-two places:
-
-```bash
-docker compose logs web | grep -A4 "FIRST RUN"
-```
+If you didn't set `ADMIN_PASSWORD` in `.env`, one was generated:
 
 ```bash
 cat data/initial-admin-password.txt
 ```
 
-Sign in at `http://your-server:5000/admin` as `admin`. **The first thing
-it does is make you set your own password** — nothing else opens until
-you have. Doing that deletes `data/initial-admin-password.txt` for you.
-
-If you would rather choose the password up front, put it in `.env` as
-`ADMIN_PASSWORD=` before the first `docker compose up`, and none of the
-above applies.
-
-### Then walk through the setup
-
-Once you are in, the bar at the top offers a six-step walk-through: what
-the site is called, how it looks, who is behind it, where it lives,
-sending email, and what you have not set up yet. It takes a couple of
-minutes, every step can be skipped, and you can re-run it later from the
-Dashboard.
-
-The name you give it in step one is yours permanently — trying on another
-template afterwards changes the look and the pages, never your identity.
+Sign in at `http://your-server:5000/admin` as `admin`. It makes you set
+your own password first, then deletes that file. A short setup walk-through
+(name, look, contact, address, email) runs at the top of the screen — every
+step is skippable.
 
 ---
 
-## Selling things
+## What it does
 
-Connect a Stripe key and the **Commerce** tab opens: Products, Orders,
-Bookings, and Store settings. You never open the Stripe dashboard — the
-whole shop is run from here.
+- **Edit on the page** — click text to change it, drag tools (Text, Image,
+  Columns, Table, Menu, Banner, Card…) onto any page.
+- **Templates** — try on any of the 20 looks; your name and details always
+  stay yours. Save your own site as a reusable template.
+- **Blog, newsletter, contact forms** — the newsletter is double opt-in
+  with an unsubscribe link; forms email you.
+- **Shop with Stripe** — see below.
+- **Bookings** — sell sessions that a buyer books against a Cal.com meeting.
+- **SEO, maintenance mode, legal pages, backups** — all from the admin.
 
-### Products
+### Selling things
 
-![Products screen — Active/Archived tabs, an inline editor with Type and Available/Archived ticks, and Available/Unavailable badges](docs/screenshots/products.png)
+Add a Stripe key and the **Commerce** tab opens (Products, Orders,
+Bookings, Store settings) — you never touch the Stripe dashboard.
 
-Add a product and it is created in Stripe for you. In the one form you
-choose a **Type** — *just take the payment*, *sessions to book* (against a
-Cal.com meeting), *a file to download* (upload it or pick one you have
-already sold), or *something to post* — and the fields for that type
-appear. A picture is uploaded, chosen from your Media Library, or
-generated by AI. A product has two independent states, each its own tick:
+**Products.** Add one, choose a **Type** (take payment / sessions to book /
+a file to download / something to post), fill the fields that appear, and
+set a picture (upload, Media Library, or AI). Each product is **Available**
+(shown in the shop) or not, and can be **Archived** (retired in Stripe) —
+both are ticks, and you can archive/restore in bulk. Nothing is deleted.
 
-- **Available / Unavailable** — whether it shows in your shop. An
-  unavailable product stays live in Stripe (a direct Buy link still works)
-  but is kept off the listing.
-- **Archived** — Stripe's own retire. Archived products move to their own
-  tab, and can be restored. Nothing is ever deleted — Stripe will not
-  delete a product that has sold, and neither will this.
+![Products screen](docs/screenshots/products.png)
 
-Tick the box on any rows and archive or restore them in bulk.
+**Delivery** is by weight, region and carrier — set up services with
+weight-band prices (editable Swiss Post presets included), pick regions
+(Switzerland, Europe, UK, USA, North America, Worldwide), and give each
+physical product a weight. Checkout prices it from the basket weight.
 
-### Delivery — by weight, region and carrier
+![Delivery services](docs/screenshots/delivery.png)
 
-![Delivery services as expandable rows, each with a weight-band price table](docs/screenshots/delivery.png)
+**Orders** are a filterable table you can **export to CSV**. Buyers get a
+link by email (no accounts) that stays valid while they still have a
+session or download to use. Orders are a cache of Stripe; a keep-from date
+tidies settled old ones and anything can be re-pulled.
 
-A parcel is not a flat fee. Under **Store settings → Delivery** you set up
-one or more services — a carrier, a destination region, and a table of
-weight bands (up to *N* kg → a price). It ships with editable Swiss Post
-presets; add your own, choose from Switzerland, Europe, the UK, the USA,
-North America or Worldwide, and each physical product carries a weight.
-At checkout the basket's total weight picks the band and the buyer chooses
-their service. (Stripe can't re-price from the address typed on its own
-page, so each service is offered ready-priced.)
-
-### Orders — a ledger you can export
-
-![Orders as a filterable table with CSV export and per-order status badges](docs/screenshots/orders.png)
-
-Every sale is a filterable table — by buyer, product, kind, status,
-live/test, whether it is still to use, and date — with a **CSV export**
-of exactly what the filters show. Buyers have no accounts: they reach
-their purchases through a link you email them, which stays valid as long
-as they have a session or download left to use. Resend it from any row.
-
-Orders are a cache of Stripe (the golden record). The table keeps itself
-lean without ever cutting a buyer off: a **keep-from** date on *Sync*
-clears *settled* old orders (nothing left to use) while keeping any a
-buyer can still use, whatever its age — and everything cleared can be
-pulled back from Stripe for an audit.
+![Orders ledger](docs/screenshots/orders.png)
 
 ---
 
 ## HTTPS
 
-There are three ways to run this and **none of them requires a reverse
-proxy**. Pick the one that matches where it is hosted.
+Three ways to run it — none needs a reverse proxy.
 
-### 1. On its own — this container is the whole web server
-
-Give it a certificate and let it listen on 443. Nothing else is involved.
-
-```bash
-sudo certbot certonly --standalone -d yoursite.example
-```
-
-Then in `.env`:
+**1. Standalone (this container serves 443).** Get a certificate and point
+`.env` at it:
 
 ```
 WEB_PORT=443
@@ -191,56 +111,16 @@ TLS_CERT_FILE=/etc/letsencrypt/live/yoursite.example/fullchain.pem
 TLS_KEY_FILE=/etc/letsencrypt/live/yoursite.example/privkey.pem
 ```
 
-and mount the certificates in, by uncommenting the line already in
-`docker-compose.yml`:
+Uncomment the cert mount in `docker-compose.yml`
+(`- /etc/letsencrypt:/etc/letsencrypt:ro`). Certs must be readable by
+uid 1000, and a renewed cert is picked up on restart.
 
-```yaml
-      - /etc/letsencrypt:/etc/letsencrypt:ro
-```
+**2. A platform terminates TLS for you.** Leave `WEB_PORT=5000`, let the
+platform route to it — nothing to configure.
 
-Both variables must be set and both files must be readable by uid 1000 —
-it refuses to start on half a pair rather than quietly falling back to
-plain HTTP.
-
-Two things to know about renewal. `certbot renew` wants port 80, so give
-it a hook that stands this container aside for the minute it takes:
-
-```
-# /etc/letsencrypt/renewal-hooks/pre/stop-site
-#!/bin/sh
-cd /path/to/mysite && docker compose stop web
-```
-
-```
-# /etc/letsencrypt/renewal-hooks/post/start-site
-#!/bin/sh
-cd /path/to/mysite && docker compose start web
-```
-
-(A DNS challenge avoids the downtime entirely if your registrar supports
-one.) And a renewed certificate is only picked up on restart, which the
-post-hook above already does.
-
-**Nothing listens on port 80 in this shape**, which is deliberate — it
-leaves the port free for certbot — but it means a visitor who types
-`yoursite.example` into an older browser, and gets sent to `http://`,
-sees a connection refused rather than your site. Most current browsers
-try HTTPS first and are unaffected. If you want the redirect, that is the
-one job a two-line proxy is genuinely good at (shape 3), or a `redir` line
-in a Caddyfile.
-
-### 2. On a platform that terminates TLS for you
-
-A PaaS, a load balancer, a cloud front end. Leave `WEB_PORT` at 5000, let
-the platform route to it, and there is nothing to configure: the app reads
-`X-Forwarded-Proto` and behaves as though it served the HTTPS itself.
-
-### 3. Behind a proxy you run
-
-If you already have nginx, Caddy or Traefik, use it. Set
-`WEB_PORT=127.0.0.1:5000` so the port is reachable only from that machine.
-
-**Caddy**, which gets a certificate on its own:
+**3. Behind your own proxy.** Set `WEB_PORT=127.0.0.1:5000` and proxy to
+it. With nginx, forward `X-Forwarded-Proto $scheme` (required — it's how
+the app knows it's on HTTPS) and set `client_max_body_size 250M`. Caddy:
 
 ```
 yoursite.example {
@@ -248,221 +128,100 @@ yoursite.example {
 }
 ```
 
-**nginx**, with certbot for the certificate:
-
-```nginx
-server {
-    listen 443 ssl;
-    server_name yoursite.example;
-
-    ssl_certificate     /etc/letsencrypt/live/yoursite.example/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/yoursite.example/privkey.pem;
-
-    # 250 MB, matching the app's own upload limit — video files are large.
-    client_max_body_size 250M;
-
-    location / {
-        proxy_pass         http://127.0.0.1:5000;
-        proxy_set_header   Host              $host;
-        proxy_set_header   X-Real-IP         $remote_addr;
-        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
-        proxy_set_header   X-Forwarded-Proto $scheme;   # required
-        proxy_read_timeout 2000s;   # AI video generation is slow
-    }
-}
-```
-
-`X-Forwarded-Proto` is not optional in this shape. It is how the app knows
-it is being served over HTTPS, and that decides three things: the session
-cookie gets its `Secure` flag, an HSTS header is sent, and the links it
-emails out are built with `https://`.
-
-### Who is allowed to say what the request was
-
-Those `X-Forwarded-*` headers are believed **only from a private or
-loopback peer** — a proxy on this machine, this docker network, or the
-LAN. From anyone else they are stripped, so a container exposed directly
-to the internet cannot be told by a visitor that their request was
-something it was not. Shapes 2 and 3 work; shape 1 cannot be lied to.
-
-If your proxy or load balancer reaches this container from a *public*
-address, set `TRUST_PROXY=always`. To trust nothing at all, `never`.
-
-Serve it at a **domain root**, not a sub-path like `/blog`.
+Serve it at a **domain root**, not a sub-path. If your proxy reaches the
+container from a public address, set `TRUST_PROXY=always`.
 
 ---
 
 ## Settings
 
-Everything is configurable from the admin screens. `.env` exists only so
-you can fill things in on a server you have not opened a browser on yet —
-**every value is read once, on the first boot**, copied into the site's
-own database (secrets encrypted), and ignored from then on. Editing `.env`
-later does nothing; use the admin screens.
+Everything is set from the admin screens. `.env` is only for the very first
+boot: every value is read once, copied into the database (secrets
+encrypted), then ignored — editing `.env` later does nothing.
 
-`.env.example` has the full annotated list. The ones that matter most:
+`.env.example` lists them all. The ones that matter:
 
 | | |
 |---|---|
-| `ADMIN_PASSWORD` | choose your own instead of being given one |
-| `ADMIN_GOOGLE_EMAIL` + `GOOGLE_CLIENT_ID`/`SECRET` | sign in with Google — setting all three switches password sign-in off |
-| `SMTP_*` | sending email: contact forms, newsletters, order receipts |
-| `STRIPE_SECRET_KEY` | taking payments |
-| `ENCRYPTION_KEY` | see below — worth doing once you are live |
+| `ADMIN_PASSWORD` | set your own instead of a generated one |
+| `SMTP_*` | send email (contact forms, newsletters, receipts) |
+| `STRIPE_SECRET_KEY` | take payments |
+| `ENCRYPTION_KEY` | decrypts saved keys — see Backups |
+| `ADMIN_GOOGLE_EMAIL` + `GOOGLE_CLIENT_ID`/`SECRET` | sign in with Google |
 
 ---
 
-## Backing up
+## Backups
 
-Three directories hold everything, and all three sit next to
-`docker-compose.yml`:
+Everything lives in three folders next to `docker-compose.yml`:
 
 | | |
 |---|---|
-| `data/` | the database, the encryption key, the session key, backups |
-| `uploads/` | every picture and file you have uploaded |
-| `themes/` | installed and saved templates |
+| `data/` | database, keys, backups |
+| `uploads/` | uploaded pictures and files |
+| `themes/` | installed/saved templates |
 
-The app takes its own scheduled backups (Dashboard → Backups) into
-`data/backups/` as `.zip` archives, and restores one from the same screen.
-Copy them off the server: a backup on the same disk is not a backup.
+Take backups from **Dashboard → Backups** (into `data/backups/`) and copy
+them **off the server**. Don't copy `data/cms.db` while running (WAL mode —
+it's missing recent writes); the app's backup takes a consistent copy.
 
-**Do not copy `data/cms.db` while the site is running.** The database runs
-in WAL mode, so that file on its own is missing recent writes. Use the
-app's own backup, which takes a consistent copy.
-
-**`data/.encryption_key` is unrecoverable.** It decrypts your saved API
-keys. Lose it and nothing looks broken — the site simply reports every
-integration as "not connected" and you re-enter each key. Keep a copy
-somewhere other than the backup holding the database (backups exclude the
-key by default for exactly this reason). Once you are live, consider
-moving it out of `data/` altogether: put its contents in `ENCRYPTION_KEY`
-and delete the file, so anyone who copies the volume has only one half.
+`data/.encryption_key` decrypts your saved API keys and is
+**unrecoverable** — keep a copy somewhere other than the DB backup.
 
 ---
 
 ## Upgrading
 
-Running the published image:
-
 ```bash
-docker compose pull && docker compose up -d
+docker compose pull && docker compose up -d      # published image
+git pull && docker compose up -d --build         # from source
 ```
 
-Building from source instead:
-
-```bash
-git pull && docker compose up -d --build
-```
-
-Your data lives in the mounted directories, not in the image. Migrations
-run at boot. Take a backup first anyway.
-
-**Which version is running?** The bar at the top of every signed-in
-screen ends with it — `v0.9.0 (53e3520)`, the number from the `VERSION`
-file and, for a published image, the commit it was built from. Compare
-it with the latest commit on `main` to know whether a pull is due.
-
----
-
-## The line under the footer
-
-gmsCms is free. Every site it builds shows one small credit under its
-footer — *"Built with gmsCms — a free, self-hosted CMS. If it's useful
-to you, support its development."* — on by default. It is not a licence
-and nothing needs buying to remove it: **Admin → ♥ Support** has a
-single Hide/Show switch (the choice is stored in `data/support.json`, so
-it survives an upgrade). That same screen is where you can show a little
-appreciation if you like — PayPal, or a crypto address with a QR to scan
-— which is a gift, never required and tied to nothing.
-
----
-
-## Is it running?
-
-```bash
-curl http://127.0.0.1:5000/healthz
-```
-
-```bash
-docker compose ps
-```
-
-```bash
-docker compose logs -f web
-```
-
-`/healthz` touches the database, so it answers `unhealthy` (503) if the
-data volume did not mount — the failure that otherwise looks like a
-perfectly healthy container serving a broken site. Docker asks it every
-30 seconds, and `restart: unless-stopped` acts on the answer.
+Data lives in the mounted folders, not the image; migrations run at boot.
+Take a backup first. The version + commit shows at the top of every
+signed-in screen.
 
 ---
 
 ## If something goes wrong
 
-**Locked out.** Failed sign-ins are rate-limited per IP for 15 minutes;
-wait it out. If the password is genuinely lost, set a new one directly:
-
-```bash
-docker compose run --rm web python -c "from app import create_app; from app.db import get_db; from werkzeug.security import generate_password_hash; app=create_app(); ctx=app.app_context(); ctx.push(); db=get_db(); db.execute('UPDATE users SET password_hash = ?', (generate_password_hash('a-new-password'),)); db.commit(); print('done')"
-```
-
-**"database is locked".** Should not happen — WAL plus a 30-second wait
-covers normal contention. If it does, `data/` is probably on a network
-filesystem (NFS, SMB), where WAL cannot work. Move it to local disk.
-
-**Email is not arriving.** Settings → Email, then the send log under
-Newsletters. Gmail needs an App Password, not your account password.
-
-**Links in emails point at the wrong address.** Settings → the site's web
-address. The site learns it from the first admin request, so if you set it
-up on one address and serve it on another, set it explicitly.
-
----
-
-## What this is not
-
-- **Not multi-tenant.** One install is one website, by design.
-- **Not clustered.** SQLite on one machine. It will comfortably serve a
-  small business site; it is not built to run behind a load balancer with
-  several containers sharing one database.
-- **Not a certificate authority.** It will serve a certificate you
-  give it, but it does not obtain or renew one — that is certbot's
-  job, or your proxy's, or your platform's.
-- **Admin is a trusted role.** Anyone with an admin login can enter raw
-  HTML through the Embed tool. Do not hand out admin accounts you would
-  not hand the server to.
+- **Locked out / lost password** — sign-ins are rate-limited 15 min; wait.
+  To reset:
+  ```bash
+  docker compose run --rm web python -c "from app import create_app; from app.db import get_db; from werkzeug.security import generate_password_hash; app=create_app(); ctx=app.app_context(); ctx.push(); db=get_db(); db.execute('UPDATE users SET password_hash = ?', (generate_password_hash('a-new-password'),)); db.commit(); print('done')"
+  ```
+- **"database is locked"** — `data/` is on a network filesystem (NFS/SMB);
+  move it to local disk.
+- **Email not arriving** — check Settings → Email; Gmail needs an App
+  Password.
+- **Email links use the wrong address** — set the site's web address in
+  Settings.
+- **Is it running?** — `curl http://127.0.0.1:5000/healthz` (checks the DB
+  too), `docker compose ps`, `docker compose logs -f web`.
 
 ---
 
 ## Support the project — buy me a coffee ☕
 
 gmsCms is free and always will be. If it saved you the cost of a hosted
-website and you'd like to say thanks, a coffee is very welcome — it's a
-gift, never required, and tied to nothing (no feature is locked behind it).
+site and you'd like to say thanks, a coffee is welcome — a gift, never
+required, and it unlocks nothing.
 
 - **PayPal** — [paypal.me/rdkmedia0](https://www.paypal.com/paypalme/rdkmedia0)
-- **Bitcoin** (BTC network) — `bc1qkxc695rp49sjjuj2egwhp3k8w4we0359z0vmux`
+- **Bitcoin** — `bc1qkxc695rp49sjjuj2egwhp3k8w4we0359z0vmux`
 - **Ethereum / EVM** — `0xa2e66631f91673d549ae295773ca7fe7c60e7b76`
-  (ETH on Ethereum or Base, or POL on Polygon — the network's own coin
-  only, not tokens)
+  (ETH on Ethereum or Base, or POL on Polygon — the coin only, not tokens)
 
-There's a **Support** screen inside the admin with the same options and a
-scannable QR for each address. Prefer to help in kind? A star on
-[the repo](https://github.com/rdkmedia0/gmsCms), a bug report, or a pull
-request is just as appreciated.
+The admin's **♥ Support** screen has the same options with QR codes, and a
+switch for the small footer credit. A star, a bug report or a PR is just as
+welcome.
 
 ---
 
 ## License
 
-gmsCms is free software, licensed under the **GNU Affero General Public
-License v3.0** (AGPL-3.0) — see [LICENSE](LICENSE).
-
-In short: you may run, study, modify and share it. If you run a **modified**
-version as a network service, the AGPL requires you to offer your users the
-source of your modifications. That is the licence's whole point here — a
-self-hosted CMS that stays free for everyone who builds on it.
+Free software under the **GNU Affero General Public License v3.0**
+(AGPL-3.0) — see [LICENSE](LICENSE). Run a modified version as a network
+service and you must offer your users the source of your changes.
 
 Copyright (C) 2026 the gmsCms authors.
