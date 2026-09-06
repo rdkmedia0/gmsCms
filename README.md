@@ -436,6 +436,25 @@ up on one address and serve it on another, set it explicitly.
 
 ---
 
+## Support the project — buy me a coffee ☕
+
+gmsCms is free and always will be. If it saved you the cost of a hosted
+website and you'd like to say thanks, a coffee is very welcome — it's a
+gift, never required, and tied to nothing (no feature is locked behind it).
+
+- **PayPal** — [paypal.me/rdkmedia0](https://www.paypal.com/paypalme/rdkmedia0)
+- **Bitcoin** (BTC network) — `bc1qkxc695rp49sjjuj2egwhp3k8w4we0359z0vmux`
+- **Ethereum / EVM** — `0xa2e66631f91673d549ae295773ca7fe7c60e7b76`
+  (ETH on Ethereum or Base, or POL on Polygon — the network's own coin
+  only, not tokens)
+
+There's a **Support** screen inside the admin with the same options and a
+scannable QR for each address. Prefer to help in kind? A star on
+[the repo](https://github.com/rdkmedia0/gmsCms), a bug report, or a pull
+request is just as appreciated.
+
+---
+
 ## License
 
 gmsCms is free software, licensed under the **GNU Affero General Public
