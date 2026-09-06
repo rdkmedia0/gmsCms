@@ -33,22 +33,30 @@ can run.
 
 ## Install
 
+You run a **pre-built image** — no source to compile, no toolchain. All you
+need is Docker and the compose file:
+
 ```bash
-git clone https://github.com/rdkmedia0/gmsCms.git mysite
-cd mysite
-git config core.hooksPath .githooks    # blocks commits that carry credentials
-cp .env.example .env                    # optional — see Settings
-docker compose up -d --build            # builds the image from this source
+mkdir mysite && cd mysite
+curl -O https://raw.githubusercontent.com/rdkmedia0/gmsCms/main/docker-compose.yml
+curl -o .env https://raw.githubusercontent.com/rdkmedia0/gmsCms/main/.env.example   # optional — see Settings
+docker compose pull
+docker compose up -d
 ```
 
-Prefer a pre-built image? `docker compose pull && docker compose up -d`
-instead of the last line. (If the registry package is private, run
-`echo <github-token-with-read:packages> | docker login ghcr.io -u rdkmedia0 --password-stdin`
-once first.)
+Every push to `main` publishes a fresh multi-arch image (amd64 + arm64) to
+this repo's registry; `latest` follows it. If the package is private,
+`docker login ghcr.io -u rdkmedia0` with a `read:packages` token once
+first.
 
 The first boot creates the database, installs the templates, turns one on
 and makes your admin account — so there's a real site to look at right
 away.
+
+> **Forking or building from source?** Clone the repo and
+> `docker compose up -d --build` instead — you'll find your way around from
+> there. (Enable the credential-blocking commit hook with
+> `git config core.hooksPath .githooks`.)
 
 ### First sign-in
 
