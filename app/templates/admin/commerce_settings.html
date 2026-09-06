@@ -169,6 +169,25 @@
 <h2 class="section-heading">How long things stay good for</h2>
 
 <div class="card">
+  <h2>Booking ahead</h2>
+  <form method="post" action="{{ url_for('admin.commerce_booking_window') }}" class="inline-form">
+    <label for="booking_window_days">How far ahead can a buyer book a session?</label>
+    <select id="booking_window_days" name="days"
+            title="The calendar on a buyer's page offers free times up to this far ahead, a month at a time. The meeting's own limit in Cal.com still applies.">
+      {% set choices = [(14, '2 weeks'), (30, 'A month'), (60, '2 months (recommended)'), (90, '3 months'), (180, '6 months'), (365, 'A year')] %}
+      {% for days, label in choices %}
+      <option value="{{ days }}" {{ 'selected' if booking_window_days == days }}>{{ label }}</option>
+      {% endfor %}
+      {% if booking_window_days not in choices | map(attribute=0) | list %}
+      <option value="{{ booking_window_days }}" selected>{{ booking_window_days }} days</option>
+      {% endif %}
+    </select>
+    <button type="submit" class="btn btn-small" title="Save how far ahead sessions can be booked">Save</button>
+  </form>
+  <p class="hint">Buyers page through the calendar a month at a time, up to this limit. If the meeting in Cal.com has a shorter limit of its own, Cal.com&rsquo;s wins &mdash; it simply shows no free times past it.</p>
+</div>
+
+<div class="card">
   <h2>Session credits</h2>
   <form method="post" action="{{ url_for('admin.commerce_credit_expiry') }}" class="inline-form">
     <label for="months">How long do unused sessions stay bookable?</label>

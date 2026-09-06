@@ -2059,7 +2059,12 @@ body.cms-editing .cms-video-thumb-empty::after {
 
 /* Booking calendar on the buyer's own page. A grid people already know
    how to read, rather than a long list of every free time at once. */
-.cms-cal { margin: 16px 0 22px; }
+.cms-cal-nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 16px 0 4px; }
+.cms-cal-nav-label { font-weight: 700; }
+.cms-cal-nav-btn { display: inline-flex; align-items: center; justify-content: center; min-width: 40px; min-height: 40px;
+  border-radius: var(--site-radius, 8px); text-decoration: none; font-size: 1.5rem; line-height: 1; }
+.cms-cal-nav-btn.is-off { opacity: .25; }
+.cms-cal { margin: 4px 0 22px; }
 .cms-cal-head, .cms-cal-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
 .cms-cal-head { margin-bottom: 6px; font-size: .78rem; letter-spacing: .04em;
   text-transform: uppercase; opacity: .6; text-align: center; }

@@ -79,7 +79,7 @@
       <input type="hidden" name="tz" class="cms-tz-field" value="{{ tz }}">
       <div class="cms-confirm-actions">
         <button type="submit" class="cms-action-btn" title="Book this time and use one session">Confirm booking</button>
-        <a class="cms-confirm-back" href="{{ url_for('public.my_account', token=token, tz=tz) }}" title="Go back without using a session">Pick a different time</a>
+        <a class="cms-confirm-back" href="{{ url_for('public.my_account', token=token, tz=tz, month=confirm[:7]) }}" title="Go back without using a session">Pick a different time</a>
       </div>
     </form>
   </section>
@@ -91,10 +91,26 @@
       <p>Booking isn't available just now — please get in touch and we'll arrange a time with you.</p>
     {% elif slot_error %}
       <p>We couldn't load available times just now. Please try again in a minute.</p>
-    {% elif not calendar %}
-      <p>There's nothing free in the next couple of weeks. Get in touch and we'll find you a time.</p>
     {% else %}
       <p class="cms-account-sub">Pick a day with free times, then choose a time. You'll confirm before any session is used.</p>
+      {#  One month at a time. An arrow at the edge of what can be booked
+          is drawn but does nothing, so the calendar keeps its shape. #}
+      <nav class="cms-cal-nav" aria-label="Month">
+        {% if prev_month %}
+        <a class="cms-cal-nav-btn" href="{{ url_for('public.my_account', token=token, tz=tz, month=prev_month) }}" title="Free times in the month before">&lsaquo;</a>
+        {% else %}
+        <span class="cms-cal-nav-btn is-off" aria-hidden="true">&lsaquo;</span>
+        {% endif %}
+        <span class="cms-cal-nav-label">{{ month_label }}</span>
+        {% if next_month %}
+        <a class="cms-cal-nav-btn" href="{{ url_for('public.my_account', token=token, tz=tz, month=next_month) }}" title="Free times in the month after">&rsaquo;</a>
+        {% else %}
+        <span class="cms-cal-nav-btn is-off" aria-hidden="true">&rsaquo;</span>
+        {% endif %}
+      </nav>
+      {% if not has_times %}
+      <p class="cms-account-sub">Nothing free in {{ month_label }}{% if next_month %} &mdash; try the month after.{% elif prev_month %} &mdash; try the month before.{% else %}. Get in touch and we&rsquo;ll find you a time.{% endif %}</p>
+      {% endif %}
       <div class="cms-cal" data-empty-note="Nothing free that day.">
         <div class="cms-cal-head">
           {% for w in weekdays %}<span>{{ w }}</span>{% endfor %}

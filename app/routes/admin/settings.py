@@ -696,6 +696,7 @@ def commerce_settings():
         zones=integrations.SHIPPING_ZONES,
         credit_expiry_months=(expiry_row["value"] if expiry_row else "") or "",
         download_expiry_days=(download_row["value"] if download_row else None),
+        booking_window_days=integrations.booking_window_days(db),
     )
 
 
@@ -1197,6 +1198,21 @@ def commerce_credit_expiry():
     db.commit()
     flash("Session credits never expire." if months <= 0
           else f"Session credits now expire {months} months after purchase.", "success")
+    return redirect(url_for("admin.commerce_settings"))
+
+
+@bp.route("/commerce/booking-window", methods=["POST"])
+@login_required
+def commerce_booking_window():
+    """How far ahead the calendar on a buyer's page reaches. A window,
+    not a rule about the sessions themselves -- a credit's own term is
+    the setting below this one."""
+    db = get_db()
+    days = request.form.get("days", type=int) or 0
+    days = min(days, 730) if days > 0 else integrations.DEFAULT_BOOKING_WINDOW_DAYS
+    _set_setting(db, "commerce_booking_window_days", str(days))
+    db.commit()
+    flash(f"Buyers can book sessions up to {days} days ahead.", "success")
     return redirect(url_for("admin.commerce_settings"))
 
 

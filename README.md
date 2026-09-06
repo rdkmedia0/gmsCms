@@ -463,7 +463,8 @@ Appears once Stripe is connected.
 - **Store settings** — your shop's **currency** (one per shop) and
   **Delivery**: weight-band prices per carrier and region (editable Swiss
   Post presets), each physical product carrying a weight, priced at checkout
-  from the basket.
+  from the basket — and how far ahead a buyer can book a session (they
+  page through the calendar a month at a time, up to that limit).
 
 #### ⚖️ Legal pages
 

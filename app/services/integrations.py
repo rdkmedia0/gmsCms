@@ -746,28 +746,82 @@ def calcom_create_booking(db, event_type_id, start, name, email, timezone="UTC")
 
 WEEKDAY_LABELS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 
+DEFAULT_BOOKING_WINDOW_DAYS = 60
 
-def slots_calendar(slots_by_day, start_date, days):
+
+def booking_window_days(db):
+    """How far ahead a buyer may book, in days -- the owner's setting.
+
+    It was a constant of fourteen days, chosen so the slot list stayed
+    readable on a phone. The month grid answers that on its own (a month
+    is a month whatever is in it), and a fortnight was too short for what
+    this sells: a buyer with ten sessions lines several weeks up at once,
+    and anyone who has used the owner's own Cal.com page expects to page
+    ahead. Cal.com keeps a limit of its own per meeting; this is the one
+    the owner can see and change.
+    """
+    row = db.execute(
+        "SELECT value FROM settings WHERE key = 'commerce_booking_window_days'"
+    ).fetchone()
+    try:
+        days = int(row["value"]) if row else 0
+    except (TypeError, ValueError):
+        days = 0
+    return days if days > 0 else DEFAULT_BOOKING_WINDOW_DAYS
+
+
+def _next_month(day):
+    return (day.replace(day=28) + datetime.timedelta(days=4)).replace(day=1)
+
+
+def booking_month(requested, today, window_end):
+    """Which month the calendar shows, and where it can page to.
+
+    `requested` is the "YYYY-MM" from the URL, or None for the month the
+    window opens in. Clamped to the months the window touches: a buyer
+    cannot page back past today or forward past what the owner allows,
+    and an out-of-range value shows the nearest end rather than an empty
+    grid. Returns (month_start, month_end, prev, next) -- the last two as
+    "YYYY-MM" for a link, or None at an edge.
+    """
+    first = today.replace(day=1)
+    last = (window_end - datetime.timedelta(days=1)).replace(day=1)
+    month = first
+    if requested:
+        try:
+            month = datetime.date(int(requested[:4]), int(requested[5:7]), 1)
+        except (TypeError, ValueError):
+            month = first
+    month = max(first, min(month, last))
+    month_end = _next_month(month)
+    prev_month = (month - datetime.timedelta(days=1)).replace(day=1) if month > first else None
+    next_month = month_end if month_end <= last else None
+    return (month, month_end,
+            prev_month.strftime("%Y-%m") if prev_month else None,
+            next_month.strftime("%Y-%m") if next_month else None)
+
+
+def slots_calendar(slots_by_day, month_start, month_end, window_start, window_end):
     """Lays Cal.com's free times out as a real month grid.
 
     A flat list of days reads as a form; a calendar reads as a calendar —
     people already know how to use one, and can see at a glance that
-    Tuesday is full and Thursday is wide open. The grid covers exactly the
-    bookable window (no paging into months that cannot be booked), padded
-    to whole weeks so the columns line up under Mon..Sun.
+    Tuesday is full and Thursday is wide open. One whole month, padded to
+    whole weeks so the columns line up under Mon..Sun; a day outside the
+    month, or inside it but before today or past the owner's limit, is
+    drawn dimmed and offers nothing.
     """
-    end = start_date + datetime.timedelta(days=days)
-    cursor = start_date - datetime.timedelta(days=start_date.weekday())
+    cursor = month_start - datetime.timedelta(days=month_start.weekday())
     weeks, week = [], []
-    while cursor < end or week:
+    while cursor < month_end or week:
         iso = cursor.isoformat()
-        times = list(slots_by_day.get(iso) or [])
+        in_month = month_start <= cursor < month_end
         week.append({
             "iso": iso,
             "day": cursor.day,
             "label": cursor.strftime("%A %d %B"),
-            "bookable": start_date <= cursor < end,
-            "times": times,
+            "bookable": in_month and window_start <= cursor < window_end,
+            "times": list(slots_by_day.get(iso) or []) if in_month else [],
         })
         cursor += datetime.timedelta(days=1)
         if len(week) == 7:

@@ -65,10 +65,6 @@ bp = Blueprint("public", __name__)
 
 SITE_TITLE = "My Site"
 
-#  How far ahead a buyer can book. Long enough to be useful, short
-#  enough that the slot list stays readable on a phone.
-BOOKING_WINDOW_DAYS = 14
-
 
 def _public_url(endpoint, **values):
     """An address that works from somewhere other than this machine.
@@ -201,6 +197,8 @@ def my_account(token):
     credits = [e for e in entitlements if e["kind"] == commerce.KIND_CREDIT and e["used"] < e["granted"]]
     tz = request.args.get("tz") or "UTC"
     calendar, slot_error, booking_for = ([], None, None)
+    month = month_label = prev_month = next_month = None
+    has_times = False
     if credits and calcom_ready:
         #  Only the first unspent credit's calendar is offered. Someone
         #  with sessions against two different meetings picks one at a
@@ -208,11 +206,20 @@ def my_account(token):
         #  a matrix.
         booking_for = credits[0]
         today = datetime.date.today()
+        #  One month at a time, paged with ‹ ›, as far ahead as the owner
+        #  allows (Store settings). Cal.com is asked only for the part of
+        #  the month that can actually be booked.
+        window_end = today + datetime.timedelta(days=integrations.booking_window_days(db))
+        month_start, month_end, prev_month, next_month = integrations.booking_month(
+            request.args.get("month"), today, window_end)
         slots, slot_error = integrations.calcom_slots(
-            db, booking_for["ref"], today.isoformat(),
-            (today + datetime.timedelta(days=BOOKING_WINDOW_DAYS)).isoformat(), tz,
+            db, booking_for["ref"], max(month_start, today).isoformat(),
+            min(month_end, window_end).isoformat(), tz,
         )
-        calendar = integrations.slots_calendar(slots, today, BOOKING_WINDOW_DAYS)
+        calendar = integrations.slots_calendar(slots, month_start, month_end, today, window_end)
+        month = month_start.strftime("%Y-%m")
+        month_label = month_start.strftime("%B %Y")
+        has_times = any(cell["times"] for week in calendar for cell in week)
     #  Booking is never one click. The confirm step exists because a
     #  mis-click here spends something the visitor paid for — they get to
     #  read the day and time back before anything is taken.
@@ -245,6 +252,11 @@ def my_account(token):
         credits=sum(e["granted"] - e["used"] for e in entitlements if e["kind"] == "credit"),
         calendar=calendar,
         weekdays=integrations.WEEKDAY_LABELS,
+        month=month,
+        month_label=month_label,
+        prev_month=prev_month,
+        next_month=next_month,
+        has_times=has_times,
         slot_error=slot_error,
         booking_for=booking_for,
         bookings=upcoming,
