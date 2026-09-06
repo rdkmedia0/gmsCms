@@ -70,6 +70,9 @@ step is skippable.
 - **AI helpers** — generate a product or banner image from a description,
   ask the built-in assistant to draft or reword content, or generate a
   whole coordinated look (colours, fonts, shape) from a brief or a picture.
+  Connect a provider (Gemini, or a local Ollama / Open WebUI) under
+  **Dashboard → 🔌 Connections → AI**; without one, these simply aren't
+  offered.
 - **Start from a template, or your own** — try on any of the 20 built-in
   looks (your name and details always stay yours), or save your current
   site as a reusable template.
@@ -81,8 +84,9 @@ step is skippable.
 
 ### Selling things
 
-Add a Stripe key and the **Commerce** tab opens (Products, Orders,
-Bookings, Store settings) — you never touch the Stripe dashboard.
+Add your Stripe secret key — **Dashboard → 🔌 Connections → Stripe**, or
+`STRIPE_SECRET_KEY` in `.env` — and the **Commerce** tab opens (Products,
+Orders, Bookings, Store settings). You never touch the Stripe dashboard.
 
 **Products.** Add one, choose a **Type** (take payment / sessions to book /
 a file to download / something to post), fill the fields that appear, and
@@ -92,10 +96,11 @@ both are ticks, and you can archive/restore in bulk. Nothing is deleted.
 
 ![Products screen](docs/screenshots/products.png)
 
-**Delivery** is by weight, region and carrier — set up services with
-weight-band prices (editable Swiss Post presets included), pick regions
-(Switzerland, Europe, UK, USA, North America, Worldwide), and give each
-physical product a weight. Checkout prices it from the basket weight.
+**Delivery** is by weight, region and carrier. Under **Commerce → Store
+settings → Delivery** you set up services with weight-band prices (editable
+Swiss Post presets included) for a region (Switzerland, Europe, UK, USA,
+North America, Worldwide), and each physical product carries a weight.
+Checkout prices it from the basket weight.
 
 ![Delivery services](docs/screenshots/delivery.png)
 
