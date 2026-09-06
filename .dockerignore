@@ -24,7 +24,11 @@ themes/
 # from compose, so this was pure leakage -- and silent, because an image
 # carrying an extra file behaves exactly like one that does not.
 #
-# By PATTERN rather than by name, so the next one is caught too.
+# These exist in a working folder BY DESIGN -- the site's own config and
+# keys, mounted or read from the environment -- so they are named here.
+# A file holding a password does not exist here by design and is not
+# hidden by a pattern: it is removed, and the pre-commit hook refuses to
+# commit one.
 .env
 .env.*
 !.env.example
@@ -33,15 +37,7 @@ themes/
 *.pfx
 id_rsa
 id_ed25519
-*password*
-*passwd*
-# "initpwd.txt" matches neither of the two patterns above, which is how it
-# ended up inside an image built one minute after they were written. A
-# pattern that only catches the spellings you thought of is a pattern that
-# catches the ones you were never going to leak.
-*pwd*
 *.key
-*token*
 .githooks/
 
 # Development material, not product -- same reason as tools/ below. The
@@ -58,8 +54,12 @@ Dockerfile
 docker-compose.yml
 
 # Development material, not product. Nothing at runtime reads any of it,
-# and a distributed image should carry the app, not its checkers.
+# and a distributed image should carry the app, not its checkers -- nor
+# any working notes kept locally (these are gitignored too).
 tools/
+CLAUDE.md
+CLAUDE.local.md
+BOW.md
 
 # Built by the packager stage from app/data/templates — never carried in
 # from a developer's machine, where it may be stale.
