@@ -44,20 +44,6 @@ docker compose pull
 docker compose up -d
 ```
 
-Every push to `main` publishes a fresh multi-arch image (amd64 + arm64) to
-this repo's registry; `latest` follows it. If the package is private,
-`docker login ghcr.io -u rdkmedia0` with a `read:packages` token once
-first.
-
-The first boot creates the database, installs the templates, turns one on
-and makes your admin account — so there's a real site to look at right
-away.
-
-> **Forking or building from source?** Clone the repo and
-> `docker compose up -d --build` instead — you'll find your way around from
-> there. (Enable the credential-blocking commit hook with
-> `git config core.hooksPath .githooks`.)
-
 ### First sign-in
 
 If you didn't set `ADMIN_PASSWORD` in `.env`, one was generated:
