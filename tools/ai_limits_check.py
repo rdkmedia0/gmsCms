@@ -161,13 +161,25 @@ with app.test_request_context("/"):
                   encoding="utf-8").read()
     check("a new product can be given a description to generate from",
           "_generated_product_image_url" in routes and 'name="image_prompt"' in screen)
+    #  The description box lives in one shared chooser (the image_controls
+    #  macro), so it is written once and RENDERED on both forms rather than
+    #  copied. "Edit can generate too" is therefore that the chooser is
+    #  placed on both -- the add form and each product's editor -- not that
+    #  the input's markup appears twice in the source.
     check("...and so can one being edited",
-          screen.count('name="image_prompt"') == 2, str(screen.count('name="image_prompt"')))
+          screen.count("{{ image_controls(") == 2,
+          str(screen.count("{{ image_controls(")))
     check("both forms go through one function",
           routes.count("= _picture_for_product()") == 2,
           str(routes.count("= _picture_for_product()")))
+    #  Not a comment that says so, but the order the code actually reads its
+    #  sources in: _picture_for_product looks at the attached file before it
+    #  looks at the description box, and returns on the file, so a prompt
+    #  left over from last time can never beat a file just attached.
+    picker = routes[routes.index("def _picture_for_product"):
+                    routes.index("def _library_image_url")]
     check("an uploaded file wins over a description",
-          "Upload wins when both are given" in routes,
+          picker.index('request.files.get("image")') < picker.index("image_prompt"),
           "a prompt left in the box from last time is not a deliberate act")
     #  A Generate control that cannot generate is a control that lies.
     check("the control is offered only when it would work",
