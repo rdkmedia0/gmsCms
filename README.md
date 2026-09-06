@@ -5,7 +5,7 @@ your site **on the page** — click any heading to type, and drag tools
 (text, image, gallery, columns, table, menu, banner, card, a blog, forms…)
 from a toolbar straight onto the page. Styling is a click, not code: a
 colour palette, fonts, and corner and shadow styles that restyle the whole
-site at once. There's no separate editor and nothing to learn.
+site at once. There's no separate editor — what you see is the site.
 
 Helpers do the heavy lifting when you want them: **generate an image** from
 a few words, **draft or rewrite copy** with the built-in AI assistant, or
