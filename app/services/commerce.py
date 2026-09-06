@@ -390,19 +390,19 @@ def _stripe_created_at(session):
 
 def reconcile_stripe(db, integrations, limit=100, since=None, credit_expiry_at=None):
     """Pull paid checkouts from Stripe and record any this site has missed;
-    with `since` (a 'YYYY-MM-DD'), only from that day on -- and then PRUNE
-    the local copy of anything before it. Returns (recorded, checked,
-    pruned, error).
+    with `since` (a 'YYYY-MM-DD'), reach further back and pull from that day
+    on. Returns (recorded, checked, error).
 
     A webhook is a push, and a push can be missed — the endpoint was down,
     the site was mid-deploy, or (in development) there is no public address
     for Stripe to reach at all. Pulling is the same truth from the other
     direction, and it makes the whole design work with no webhook at all.
 
-    The `since` window is how an owner gets rid of old or test orders
-    WITHOUT diverging from the golden source: move the start date forward
-    and the next sync drops the local rows before it. Because the very same
-    date bounds the pull, nothing dropped is ever fetched back.
+    It only ever ADDS. Stripe is the golden source and the local table is a
+    cache of it, so nothing here deletes: to review older orders you pull
+    them back with an earlier `since`, and to set clutter aside you filter
+    the view, never the data. `since` is a reach, not a horizon to drop
+    behind.
 
     Safe to run repeatedly: record_checkout skips a session already stored,
     so this can never double-grant an entitlement no matter how often it
@@ -427,7 +427,7 @@ def reconcile_stripe(db, integrations, limit=100, since=None, credit_expiry_at=N
             path += f"&starting_after={starting_after}"
         data, error = integrations.stripe_call(db, path)
         if error:
-            return recorded, checked, 0, error
+            return recorded, checked, error
         sessions = data.get("data", [])
         checked += len(sessions)
         for session in sessions:
@@ -440,28 +440,8 @@ def reconcile_stripe(db, integrations, limit=100, since=None, credit_expiry_at=N
         if not sessions or not data.get("has_more"):
             break
         starting_after = sessions[-1].get("id")
-    pruned = 0
-    if since:
-        #  Drop the local copy of old orders -- but NEVER one that still has
-        #  something the buyer can use. A session not yet booked or a
-        #  download not yet spent outlives any tidy-up date; pruning it would
-        #  take back what somebody paid for. So an order with a live
-        #  entitlement is kept, however old; only the truly finished ones go.
-        rows = db.execute(
-            "SELECT o.id FROM orders o WHERE o.created_at < ? "
-            "AND NOT EXISTS (SELECT 1 FROM entitlements e WHERE e.order_id = o.id "
-            "  AND e.revoked_at IS NULL AND e.used < e.granted "
-            "  AND (e.expires_at IS NULL OR e.expires_at > CURRENT_TIMESTAMP))",
-            (since,),
-        ).fetchall()
-        ids = [r["id"] for r in rows]
-        if ids:
-            marks = ",".join("?" * len(ids))
-            db.execute("DELETE FROM entitlements WHERE order_id IN (%s)" % marks, ids)
-            db.execute("DELETE FROM orders WHERE id IN (%s)" % marks, ids)
-            pruned = len(ids)
     db.commit()
-    return recorded, checked, pruned, None
+    return recorded, checked, None
 
 
 #  ---------------------------------------------------------------------

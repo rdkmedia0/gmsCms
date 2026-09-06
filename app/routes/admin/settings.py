@@ -1305,15 +1305,14 @@ def _orders_sync_from(db):
     return (row["value"] if row else "") or ""
 
 
-def _sync_message(recorded, checked, pruned, since):
-    """One line summarising a sync for the owner: what it checked, what it
-    recorded, and what the window dropped (named as kept-in-Stripe, so it
-    never reads as loss)."""
-    parts = ["recorded %d new order%s" % (recorded, "" if recorded == 1 else "s")
-             if recorded else "nothing new to record"]
-    if pruned:
-        parts.append("dropped %d from before %s (Stripe still has them)" % (pruned, since))
-    return "Checked %d checkout%s — %s." % (checked, "" if checked == 1 else "s", ", ".join(parts))
+def _sync_message(recorded, checked, since):
+    """One line summarising a sync for the owner: what it reached back to,
+    and what it recorded. Only ever adds -- nothing is dropped."""
+    recorded_part = ("recorded %d new order%s" % (recorded, "" if recorded == 1 else "s")
+                     if recorded else "nothing new to record")
+    reach = (" since %s" % since) if since else ""
+    return "Checked %d checkout%s%s — %s." % (
+        checked, "" if checked == 1 else "s", reach, recorded_part)
 
 
 @bp.route("/settings/integrations/stripe/sync", methods=["POST"])
@@ -1321,30 +1320,30 @@ def _sync_message(recorded, checked, pruned, since):
 def settings_stripe_sync():
     """Pulls paid checkouts from Stripe and records anything missed. The
     counterpart to the webhook, and the whole answer while this site has no
-    public address for Stripe to reach. Honours the orders 'keep from' date
-    if one is set, pulling and pruning to that same window."""
+    public address for Stripe to reach. Reaches back to the orders 'from'
+    date if one is set. Only ever adds -- it never deletes."""
     db = get_db()
     from ...routes.public import _credit_expiry_at
     since = _orders_sync_from(db) or None
-    recorded, checked, pruned, error = commerce.reconcile_stripe(
+    recorded, checked, error = commerce.reconcile_stripe(
         db, integrations, since=since, credit_expiry_at=_credit_expiry_at(db)
     )
     if error:
         return jsonify({"ok": False, "message": f"Couldn't read orders from Stripe — {integrations.explain(error, 'Stripe')}"})
-    return jsonify({"ok": True, "message": _sync_message(recorded, checked, pruned, since)})
+    return jsonify({"ok": True, "message": _sync_message(recorded, checked, since)})
 
 
 @bp.route("/commerce/orders/sync", methods=["POST"])
 @login_required
 def commerce_orders_sync():
-    """Set the date this site keeps orders FROM, then sync to it.
+    """Pull orders from Stripe, optionally reaching back to a chosen date.
 
-    Orders are a cache of Stripe. This saves a 'keep from' date, pulls paid
-    checkouts from Stripe on and after it, and drops this site's copy of
-    anything before it. Stripe keeps every payment, and the pull is bounded
-    by the same date -- so nothing dropped is ever fetched back, and this
-    is how old or test sales are set aside without diverging from the
-    golden source. Blank keeps everything.
+    Orders are a cache of Stripe, the golden source. This only ever ADDS:
+    it pulls paid checkouts on and after the given date and records any this
+    site is missing -- nothing is deleted. So to review last year's sales
+    you pull them back with an earlier date; to set clutter aside you filter
+    the view. The date is remembered as the reach for the next sync; blank
+    means recent only.
     """
     db = get_db()
     if not integrations.is_configured(db, "stripe"):
@@ -1360,13 +1359,13 @@ def commerce_orders_sync():
     _set_setting(db, "orders_sync_from", since or "")
     db.commit()
     from ...routes.public import _credit_expiry_at
-    recorded, checked, pruned, error = commerce.reconcile_stripe(
+    recorded, checked, error = commerce.reconcile_stripe(
         db, integrations, since=since, credit_expiry_at=_credit_expiry_at(db)
     )
     if error:
         flash(f"Couldn't read orders from Stripe — {integrations.explain(error, 'Stripe')}", "error")
     else:
-        flash(_sync_message(recorded, checked, pruned, since), "success")
+        flash(_sync_message(recorded, checked, since), "success")
     return redirect(url_for("admin.commerce_orders"))
 
 
