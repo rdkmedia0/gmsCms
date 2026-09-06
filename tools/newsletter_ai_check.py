@@ -56,7 +56,7 @@ REPLY = ('{"subject": "Autumn hours", "opening": "Hello,",'
 
 def stub(reply, configured=True):
     assistant.is_configured = lambda db: configured
-    assistant._call_provider = lambda db, msgs, tools: {"content": reply}
+    assistant._call_provider = lambda db, msgs, tools, *a, **k: {"content": reply}
 
 
 app = create_app()
