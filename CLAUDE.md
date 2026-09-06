@@ -1598,13 +1598,14 @@ actual running app (Docker rebuild + live clicks/fetches through the admin
 UI and public site, not just "it imports without error") before moving to
 the next.
 
-**This repository starts at a single commit**, so `git log` is NOT the
-design record here — the reasoning that would have been in those commit
-messages lives in this file and in BOW.md, which is why both are as long
-as they are. Keep it that way: a decision explained only in a commit
-message is a decision this project cannot read back. Going forward, write
-commits as design notes anyway — they will be the record for everything
-after today.
+**The de-monolithing itself landed as a single squashed commit**, so for
+that work `git log` is NOT the design record — the reasoning that would
+have been in those commit messages lives in this file and in BOW.md, which
+is why both are as long as they are. Keep it that way: a decision
+explained only in a commit message is a decision this project cannot read
+back. Everything since HAS been written as design-note commits (the log is
+now hundreds of them) — carry that on, and keep the durable "why" here as
+well, because a commit is found by whoever already knows to look for it.
 
 A later pass unified Activate/Load Content/Save-as-template/per-page
 layout overrides into the single system described above (retiring
