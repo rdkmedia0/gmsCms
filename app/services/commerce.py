@@ -442,7 +442,18 @@ def reconcile_stripe(db, integrations, limit=100, since=None, credit_expiry_at=N
         starting_after = sessions[-1].get("id")
     pruned = 0
     if since:
-        rows = db.execute("SELECT id FROM orders WHERE created_at < ?", (since,)).fetchall()
+        #  Drop the local copy of old orders -- but NEVER one that still has
+        #  something the buyer can use. A session not yet booked or a
+        #  download not yet spent outlives any tidy-up date; pruning it would
+        #  take back what somebody paid for. So an order with a live
+        #  entitlement is kept, however old; only the truly finished ones go.
+        rows = db.execute(
+            "SELECT o.id FROM orders o WHERE o.created_at < ? "
+            "AND NOT EXISTS (SELECT 1 FROM entitlements e WHERE e.order_id = o.id "
+            "  AND e.revoked_at IS NULL AND e.used < e.granted "
+            "  AND (e.expires_at IS NULL OR e.expires_at > CURRENT_TIMESTAMP))",
+            (since,),
+        ).fetchall()
         ids = [r["id"] for r in rows]
         if ids:
             marks = ",".join("?" * len(ids))
@@ -594,29 +605,50 @@ def page_password_ok(db, customer_id, password):
     return check_password_hash(row["page_password_hash"], password or "")
 
 
+def has_remaining_entitlements(db, customer_id):
+    """Does this buyer still have anything left to use -- a session not yet
+    booked, a download not yet spent? Revoked and expired rows don't count."""
+    return db.execute(
+        "SELECT 1 FROM entitlements WHERE customer_id = ? AND revoked_at IS NULL "
+        "AND used < granted AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP) "
+        "LIMIT 1",
+        (customer_id,),
+    ).fetchone() is not None
+
+
 def customer_for_token(db, token):
-    """The customer a link belongs to, or None if it is unknown, expired
-    or tampered with. Looked up by hash, so the raw token never has to
-    exist anywhere but the buyer's inbox."""
+    """The customer a link belongs to, or None if it is unknown or tampered
+    with. Looked up by hash, so the raw token never has to exist anywhere
+    but the buyer's inbox.
+
+    The link does NOT expire while the buyer still has sessions or downloads
+    left: "yours until you use them" has to mean the way back to them stays
+    open too. The 30-day window is only a broom for links with nothing left
+    to spend -- once everything is used up, an abandoned link ages out; a
+    lapsed one is revived the moment it is opened while credits remain, and
+    every use pushes the window out again.
+    """
     if not token:
         return None
-    row = db.execute(
-        "SELECT c.* FROM access_tokens t JOIN customers c ON c.id = t.customer_id "
-        "WHERE t.token_hash = ? AND t.expires_at > CURRENT_TIMESTAMP",
-        (hashlib.sha256(token.encode()).hexdigest(),),
+    h = hashlib.sha256(token.encode()).hexdigest()
+    tok = db.execute(
+        "SELECT customer_id, (expires_at > CURRENT_TIMESTAMP) AS live "
+        "FROM access_tokens WHERE token_hash = ?", (h,),
     ).fetchone()
-    if row:
-        #  Using the link pushes its expiry out again. A download never
-        #  expires and sessions may be spent over months, so a link that
-        #  died on a fixed date would strand somebody who did exactly what
-        #  the email told them to do -- keep it. An abandoned link still
-        #  ages out; one that is in use does not.
-        db.execute(
-            "UPDATE access_tokens SET last_used_at = CURRENT_TIMESTAMP, "
-            "expires_at = datetime('now', ?) WHERE token_hash = ?",
-            (f"+{ACCESS_TOKEN_DAYS} days", hashlib.sha256(token.encode()).hexdigest()),
-        )
-    return row
+    if not tok:
+        return None
+    if not tok["live"] and not has_remaining_entitlements(db, tok["customer_id"]):
+        return None
+    #  Using it -- or reviving it while entitlements remain -- renews the
+    #  window, so an in-use link never lapses.
+    db.execute(
+        "UPDATE access_tokens SET last_used_at = CURRENT_TIMESTAMP, "
+        "expires_at = datetime('now', ?) WHERE token_hash = ?",
+        (f"+{ACCESS_TOKEN_DAYS} days", h),
+    )
+    return db.execute(
+        "SELECT * FROM customers WHERE id = ?", (tok["customer_id"],)
+    ).fetchone()
 
 
 def entitlements_for(db, customer_id):
