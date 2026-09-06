@@ -287,26 +287,23 @@
     </form>
     {% endif %}
 
-    {{ panel_section("Light or dark", "Which way round the whole site reads. Everything else — the writing, the band colours, the lines, the cards — is worked out from this, so it is one choice rather than a dozen.") }}
-    <div class="cms-color-preset-gallery">
-      {% for key, ground in grounds.items() %}
-      <form method="post" action="{{ url_for('admin.template_ground', template_id=template.id) }}">
-        <input type="hidden" name="next" value="{{ current_path }}">
-        <input type="hidden" name="ground" value="{{ key }}">
-        <button type="submit" class="cms-color-preset-swatch" title="{{ ground.blurb }}">
-          <span class="cms-color-preset-dot" style="background: {{ ground.value or '#ffffff' }}; border: 1px solid var(--cms-ui-line, #d9e0dd);"></span>
-          <span class="cms-color-preset-label">{{ ground.name }}</span>
-        </button>
-      </form>
-      {% endfor %}
-    </div>
-    {% if template.ground_color %}
-    <form method="post" action="{{ url_for('admin.template_ground', template_id=template.id) }}">
+    {{ panel_section("Background", "The colour of the whole page. Everything else — the writing, the band colours, the lines, the cards — is worked out from it and kept readable, so it is one choice rather than a dozen. Pale or dark, it all follows. To colour one section instead, click it on the page first.") }}
+    {#  Any colour, not a light/dark pair: the page works its ink out from
+        whatever ground it is given (palette.page_colours measures which
+        ink reads, rather than assuming a side), so the only thing a
+        two-way switch ever added was a limit. #}
+    <form method="post" action="{{ url_for('admin.template_ground', template_id=template.id) }}" class="cms-color-picker-form">
       <input type="hidden" name="next" value="{{ current_path }}">
-      <input type="hidden" name="ground" value="default">
-      <button type="submit" class="btn btn-small" title="Put the ground back to the one this template ships with">Reset</button>
+      <label class="cms-color-picker-item">
+        <input type="color" name="ground" value="{{ ground or '#ffffff' }}"
+               title="The page's background colour. The text and everything else are re-coloured to stay readable on it.">
+        Page
+      </label>
+      <button type="submit" class="btn btn-small btn-primary" title="Use this colour as the site's background.">Save</button>
+      {% if template.ground_color %}
+      <button type="submit" name="ground" value="default" class="btn btn-small" title="Put the background back to the one this template ships with">Reset</button>
+      {% endif %}
     </form>
-    {% endif %}
 
     {{ panel_section("Depth", "Raises Cards, Images, Banners and file cards off the page with a soft shadow, tinted from the words around it rather than a fixed black or palette colour — so it shows on a dark theme as a soft lift and on a light one as a shadow. A full-width section stays flat on purpose: a shadow says 'this sits above the page', which reads as a mistake on something that IS the page.") }}
     <div class="cms-color-preset-gallery">

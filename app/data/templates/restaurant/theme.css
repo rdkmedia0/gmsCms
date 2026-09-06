@@ -6,10 +6,8 @@
   --site-heading-font-family: "Cormorant Garamond", Georgia, serif;
   --site-font-family: "Jost", -apple-system, "Segoe UI", sans-serif;
   --site-heading-weight: 600;
-  --site-body-bg: var(--secondary-700, #1c1917);
 }
-body { background: var(--site-body-bg, #1c1917); color: var(--accent-base, #d8c9b4); }
-.site-header { background: rgba(28,25,23,.9); border-bottom: 1px solid var(--accent-950, #38312c); }
+.site-header { background: var(--site-header-bg, color-mix(in srgb, var(--site-ground, #1c1917) 90%, transparent)); border-bottom: 1px solid var(--site-line, #38312c); }
 .site-brand { font-family: "Cormorant Garamond", Georgia, serif; font-size: 1.5rem;
   letter-spacing: .14em; text-transform: uppercase; color: var(--accent-base, #d8c9b4); }
 .site-nav a { color: var(--accent-600, #b9ab97); letter-spacing: .1em; text-transform: uppercase; font-size: .76rem; }
@@ -17,7 +15,7 @@ body { background: var(--site-body-bg, #1c1917); color: var(--accent-base, #d8c9
 .site-footer { background: var(--secondary-900, #141210); color: var(--accent-600, #b9ab97); border-top: 1px solid var(--accent-950, #38312c); }
 .site-footer a { color: var(--accent-600, #b9ab97); }
 h1, h2, h3 { color: var(--accent-300, #e8dcc9); font-weight: 500; letter-spacing: .01em; }
-p, li { color: #c4b7a3; }
+p, li { color: var(--site-ink, #c4b7a3); }
 .cms-table { color: var(--accent-base, #d8c9b4); }
 .cms-table th { background: transparent; color: var(--neutral-500, #8d8274); border-bottom: 1px solid var(--accent-950, #38312c);
   text-transform: uppercase; letter-spacing: .12em; font-size: .72rem; }

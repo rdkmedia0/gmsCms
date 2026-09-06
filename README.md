@@ -556,8 +556,10 @@ editor.
 **The three docked panels** (right edge, edit mode):
 
 - **🧰 Tools** — the tools you drag onto the page.
-- **🎨 Colors** — the active template's colour palette: pick a preset or
-  fine-tune each colour. This restyles the whole site at once.
+- **🎨 Colors** — the active template's colour palette (pick a preset or
+  fine-tune each colour), the page **Background** colour (any colour —
+  the text and everything else are re-coloured to stay readable on it),
+  corners, composition and depth. Each restyles the whole site at once.
 - **💬 AI Assistant** — a chat that can look at your real page content and
   **propose** edits (nothing is applied until you click **Apply**), and can
   take an attached image as guidance.

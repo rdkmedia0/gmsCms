@@ -21,6 +21,7 @@
       "color": "#7b3247"
     }
   ],
+  "ground_color": "#fdf9f3",
   "nav_layout": "centered",
   "page_layout": "none",
   "footer_layout": "centered",

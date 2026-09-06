@@ -26,7 +26,6 @@
   --pad-hero: 80px 24px 48px;
   --pad-panel: 24px;
 }
-body { background: var(--site-body-bg, var(--wp--preset--color--primary, #0d0d0d)); color: var(--primary-50, #ededed); }
 .site-header { background: var(--site-header-bg, var(--wp--preset--color--primary, #0d0d0d)); border-bottom: var(--site-header-border, 1px solid var(--primary-400, #2a2a2a)); }
 .site-brand {
   color: var(--secondary-50, #ffffff); font-family: var(--site-heading-font-family);

@@ -50,7 +50,6 @@ from ..services import (blocks, captcha, cart as cart_service, commerce, downloa
                         integrations, legal, newsletter, ratelimit, site, site_emails,
                         subscribers)
 from ..services import palette as palette_mod
-from .admin.templates import GROUNDS
 from .admin import (
     _list_tools, get_email_settings, get_layout_settings, get_site_settings, COLOR_PRESETS,
     NAV_LAYOUTS, get_nav_layout, SIDEBAR_LAYOUT_PRESETS, FOOTER_LAYOUT_PRESETS,
@@ -2375,6 +2374,22 @@ def _theme_override_css(template):
     return "\n".join([root] + extra_rules) if extra_rules else root
 
 
+def _effective_ground(template):
+    """The colour the page is actually painted -- the owner's choice, or
+    the template's own, or the palest step of its primary -- so the
+    Background picker opens on what is there rather than on white."""
+    if not template:
+        return ""
+    try:
+        return palette_mod.page_colours(
+            json.loads(template["palette_json"] or "[]"),
+            _column(template, "ground_color") or "",
+            _column(template, "ink_color") or "",
+        ).get("--site-ground", "")
+    except (ValueError, TypeError):
+        return ""
+
+
 def _role_color_ramps(template):
     """The Colors panel's depth preview. The work is in the palette
     service now: the newsletter needs the same answer -- what colour is
@@ -2670,7 +2685,7 @@ def _render_page(db, page, post=None, post_content=""):
         #  for the same reason Corners and Depth are: a value an owner
         #  cannot change is a decision taken away from them.
         composition_presets=COMPOSITION_PRESETS if editing else {},
-        grounds=GROUNDS if editing else {},
+        ground=_effective_ground(template) if editing else "",
         shade_spreads=SHADE_SPREADS if editing else {},
         shade_previews=_shade_previews(template) if editing else {},
         stripe_catalogue=(integrations.stripe_catalogue_cached(db)[0]

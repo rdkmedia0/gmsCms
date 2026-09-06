@@ -22,8 +22,7 @@
   --corner-post: 0;
   --pad-panel: 24px;
 }
-body { background: var(--site-body-bg, #ffffff); color: var(--primary-base, #1a1a1a); }
-.site-header { background: var(--site-header-bg, #ffffff); border-bottom: var(--site-header-border, 3px solid var(--primary-base, #1a1a1a)); }
+.site-header { background: var(--site-header-bg, var(--site-ground, #ffffff)); border-bottom: var(--site-header-border, 3px solid var(--primary-base, #1a1a1a)); }
 .site-footer { background: var(--site-footer-bg, #1a1a1a); border-top: var(--site-footer-border, none); color: var(--primary-50, #f4f4f4); }
 .site-footer a { color: var(--primary-50, #f4f4f4); }
 .site-brand { color: var(--primary-base, #1a1a1a); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
@@ -44,9 +43,9 @@ h2::before {
   background: var(--wp--preset--color--accent, #2f6fed); border-radius: 50%; vertical-align: middle;
 }
 
-.block-html { background: var(--accent-50, #ffffff); border: 2px solid var(--primary-base, #1a1a1a); }
+.block-html { background: var(--site-surface, #ffffff); border: 2px solid var(--site-ink, #1a1a1a); }
 
-.cms-card-shape { border: 2px solid var(--primary-base, #1a1a1a); background: var(--accent-50, #ffffff); }
+.cms-card-shape { border: 2px solid var(--site-ink, #1a1a1a); background: var(--site-surface, #ffffff); }
 
 .cms-blog-card { border: 2px solid var(--primary-base, #1a1a1a); }
 .cms-table thead { background: var(--primary-base, #1a1a1a); color: var(--accent-50, #ffffff); }

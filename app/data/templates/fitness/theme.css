@@ -5,9 +5,7 @@
   --site-heading-font-family: "Anton", "Arial Narrow", sans-serif;
   --site-font-family: "Manrope", -apple-system, "Segoe UI", sans-serif;
   --site-heading-weight: 400;
-  --site-body-bg: var(--accent-50, #ffffff);
 }
-body { background: var(--site-body-bg, #fff); color: var(--primary-base, #15181c); }
 .site-header { color: var(--primary-on, #fff); background: var(--primary-base, #15181c); }
 .site-brand { color: var(--accent-50, #fff); text-transform: uppercase; letter-spacing: .04em;
   font-family: "Anton", sans-serif; }

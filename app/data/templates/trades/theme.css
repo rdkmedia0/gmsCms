@@ -5,9 +5,7 @@
   --site-heading-font-family: "Archivo", -apple-system, "Segoe UI", sans-serif;
   --site-font-family: "Barlow", -apple-system, "Segoe UI", sans-serif;
   --site-heading-weight: 700;
-  --site-body-bg: var(--secondary-50, #f7f9fb);
 }
-body { background: var(--site-body-bg, #f7f9fb); color: var(--secondary-900, #1b2733); }
 .site-header { color: var(--primary-on, #fff); background: var(--primary-base, #1c3d5a); }
 .site-brand { color: var(--accent-50, #fff); font-weight: 700; letter-spacing: -.01em; }
 .site-nav a { color: var(--secondary-100, #cfdbe6); font-weight: 500; }
@@ -17,4 +15,4 @@ body { background: var(--site-body-bg, #f7f9fb); color: var(--secondary-900, #1b
 h1, h2 { letter-spacing: -.02em; }
 h2 { border-left: 5px solid var(--wp--preset--color--accent, #c1642b); padding-left: 12px; }
 .cms-cta-solid { background: var(--wp--preset--color--accent, #c1642b); color: var(--accent-on, #111); }
-.cms-stat-value { color: var(--wp--preset--color--accent, #c1642b); }
+.cms-stat-value { color: var(--site-accent-text, #c1642b); }

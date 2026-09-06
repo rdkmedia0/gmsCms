@@ -25,11 +25,10 @@
   --pad-hero: 80px 48px;
   --pad-panel: 30px;
 }
-body { background: var(--site-body-bg, #f6f4f0); color: var(--primary-800, #4a463f); }
-.site-header { background: var(--site-header-bg, #f6f4f0); border-bottom: var(--site-header-border, 1px solid var(--accent-100, #e4e0d8)); }
-.site-footer { background: var(--site-footer-bg, #eeece5); border-top: var(--site-footer-border, 1px solid var(--accent-100, #e4e0d8)); }
-.site-brand { color: var(--wp--preset--color--primary, #7c8c74); letter-spacing: 0.03em; }
-.site-nav a { color: #7a7568; font-weight: 400; }
+.site-header { background: var(--site-header-bg, var(--site-ground, #f6f4f0)); border-bottom: var(--site-header-border, 1px solid var(--accent-100, #e4e0d8)); }
+.site-footer { background: var(--site-footer-bg, var(--site-tint, #eeece5)); border-top: var(--site-footer-border, 1px solid var(--accent-100, #e4e0d8)); }
+.site-brand { color: var(--site-primary-text, #7c8c74); letter-spacing: 0.03em; }
+.site-nav a { color: var(--site-ink-soft, #7a7568); font-weight: 400; }
 .site-nav a:hover { color: var(--wp--preset--color--primary, #7c8c74); }
 
 .block-header {
@@ -39,17 +38,17 @@ body { background: var(--site-body-bg, #f6f4f0); color: var(--primary-800, #4a46
 .block-header .lead { color: var(--secondary-100, #e7ecdf); }
 
 h2, .block-text h2, .block-image h2, .block-html h2 {
-  border-left: none; padding-left: 0; color: var(--wp--preset--color--primary, #7c8c74);
+  border-left: none; padding-left: 0; color: var(--site-primary-text, #7c8c74);
   font-weight: 400;
 }
 
-.block-html { background: var(--accent-50, #fbfaf7); border: none; }
+.block-html { background: var(--site-surface, #fbfaf7); border: none; }
 
 .cms-card-shape {
-  border: none; background: var(--accent-50, #fbfaf7);
+  border: none; background: var(--site-surface, #fbfaf7);
 }
 
-.cms-blog-card { border-color: var(--accent-100, #e4e0d8); background: var(--accent-50, #fbfaf7); }
+.cms-blog-card { border-color: var(--site-line, #e4e0d8); background: var(--site-surface, #fbfaf7); }
 .cms-blog-date { color: var(--wp--preset--color--secondary, #c9a89a); }
 
 a { color: var(--wp--preset--color--accent, #a56b4b); }

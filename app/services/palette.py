@@ -500,10 +500,10 @@ def page_colours(palette, ground="", ink=""):
     if not (ink and _rgb(ink) and contrast(ink, ground) >= 7.0):
         ink = tones.step_that_reads(primary, ground, 7.0, dark=dark_page)
 
-    return _with_ink(ground, ink, primary, accent, dark_page)
+    return _with_ink(ground, ink, primary, accent, dark_page, secondary=roles.get("secondary"))
 
 
-def _with_ink(ground, ink, primary, accent, dark_page=None):
+def _with_ink(ground, ink, primary, accent, dark_page=None, secondary=None):
     """The rest of a page, given a ground and the ink that reads on it.
 
     Both paths end here -- the ink the picture supplied and the ink the
@@ -554,6 +554,25 @@ def _with_ink(ground, ink, primary, accent, dark_page=None):
             accent_text = candidate
             break
 
+    #  A BRAND COLOUR as a heading. Four templates set their headings in
+    #  the primary or the secondary, which read on the pale ground each
+    #  was designed on and came out at 1.9:1 the moment an owner chose a
+    #  navy page -- the ramps are ground-blind, so `--primary-600` is the
+    #  same green whatever it sits on. A heading is large text, so the
+    #  brand colour itself is kept while it clears 3:1 on every surface
+    #  (the design survives on the ground it was made for); otherwise
+    #  the nearest step of it that reads comfortably.
+    def as_text(colour):
+        if min(contrast(colour, on) for on in surfaces) >= 3.0:
+            return colour
+        for candidate in tones.scale(colour, dark=dark_page):
+            if min(contrast(candidate, on) for on in surfaces) >= 4.5:
+                return candidate
+        return ink
+
+    primary_text = as_text(primary)
+    secondary_text = as_text(secondary) if secondary and _rgb(secondary) else primary_text
+
     #  `--primary-on` is NOT here. It is emitted beside `--primary`
     #  itself (routes/public.py), because an owner's colour override
     #  lands there and never reaches this function -- so a value derived
@@ -562,6 +581,7 @@ def _with_ink(ground, ink, primary, accent, dark_page=None):
         "--site-ground": ground, "--site-ink": ink, "--site-ink-soft": ink_soft,
         "--site-tint": tint, "--site-line": line, "--site-card-bg": card,
         "--site-accent-ink": accent_ink, "--site-accent-text": accent_text,
+        "--site-primary-text": primary_text, "--site-secondary-text": secondary_text,
         "--site-on-white": tones.step_that_reads(primary, "#ffffff", 4.5),
     }
 

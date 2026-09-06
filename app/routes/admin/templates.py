@@ -593,53 +593,49 @@ def template_composition_reset(template_id):
     return _redirect_next("admin.dashboard")
 
 
-#  Light, dark, or whatever the template's own picture was.
-GROUNDS = {
-    "light": {"name": "Light", "blurb": "Dark words on a pale page.", "value": ""},
-    "dark": {"name": "Dark", "blurb": "Pale words on a near-black page.",
-             "value": "#0b0b0d"},
-}
+_HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 
 
 @bp.route("/templates/<int:template_id>/ground", methods=["POST"])
 @login_required
 def template_ground(template_id):
-    """Whether this site is a light one or a dark one.
+    """The colour of the whole page.
 
     Everything downstream -- the ink, the band tints, the hairlines, the
     card surfaces -- is worked out from this one colour (see
     palette.page_colours), so it is one choice rather than a dozen.
 
-    It exists as a control because the generator can set it: a template
-    made from a dark photograph comes out dark, and an owner who wanted
-    the opposite needs somewhere to say so that is not "generate again
-    and hope".
+    It was a Light/Dark pair. The page has never needed to know which
+    side a ground is on -- page_colours MEASURES which ink reads on it
+    -- so the pair was a limit and nothing else: an owner who wanted
+    cream, navy or sage had no way to say so. Any colour now; the
+    template's own is the reset.
     """
     db = get_db()
     if not db.execute("SELECT 1 FROM templates WHERE id = ?", (template_id,)).fetchone():
         return redirect(url_for("admin.dashboard"))
-    choice = request.form.get("ground", "")
+    choice = (request.form.get("ground") or "").strip().lower()
     #  The ink goes with the ground, because they are one decision.
     #
     #  A template can arrive carrying the ink its reference picture was
-    #  written in. The moment an owner says "make this a light site",
-    #  that ink is an answer to a question they have just changed -- so
-    #  it is cleared and worked out afresh to suit the ground they
-    #  chose. Reset puts both back to whatever the template shipped
-    #  with.
+    #  written in. The moment an owner changes the ground, that ink is
+    #  an answer to a question they have just changed -- so it is
+    #  cleared and worked out afresh to suit the ground they chose.
+    #  Reset puts both back to whatever the template shipped with.
     if choice == "default":
         db.execute("UPDATE templates SET ground_color = NULL, ink_color = NULL "
                    "WHERE id = ?", (template_id,))
         db.commit()
-        flash("Ground reset to the one this template ships with.", "success")
+        flash("Background put back to the one this template ships with.", "success")
         return _redirect_next("admin.dashboard")
-    if choice not in GROUNDS:
-        flash("Unknown ground.", "error")
-        return redirect(url_for("admin.dashboard"))
+    if not _HEX.match(choice):
+        flash("That isn't a colour.", "error")
+        return _redirect_next("admin.dashboard")
     db.execute("UPDATE templates SET ground_color = ?, ink_color = NULL WHERE id = ?",
-               (GROUNDS[choice]["value"] or None, template_id))
+               (choice, template_id))
     db.commit()
-    flash("This site is now %s." % GROUNDS[choice]["name"].lower(), "success")
+    flash(f"Background set to {choice}. The text and everything else have been "
+          "re-coloured to stay readable on it.", "success")
     return _redirect_next("admin.dashboard")
 
 

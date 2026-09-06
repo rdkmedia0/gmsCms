@@ -24,14 +24,13 @@
   --pad-hero: 72px 32px;
   --pad-panel: 28px;
 }
-body { background: var(--site-body-bg, #faf3e8); color: #3d3226; }
-.site-header { background: var(--site-header-bg, #faf3e8); border-bottom: var(--site-header-border, 1px solid var(--primary-100, #e8d9c3)); }
-.site-footer { background: var(--site-footer-bg, #f3e8d7); border-top: var(--site-footer-border, 1px solid var(--primary-100, #e8d9c3)); }
+.site-header { background: var(--site-header-bg, var(--site-ground, #faf3e8)); border-bottom: var(--site-header-border, 1px solid var(--primary-100, #e8d9c3)); }
+.site-footer { background: var(--site-footer-bg, var(--site-tint, #f3e8d7)); border-top: var(--site-footer-border, 1px solid var(--primary-100, #e8d9c3)); }
 .site-brand {
-  color: var(--wp--preset--color--primary, #b5541e); font-family: var(--site-heading-font-family);
+  color: var(--site-primary-text, #b5541e); font-family: var(--site-heading-font-family);
   font-style: italic; letter-spacing: 0.02em;
 }
-.site-nav a { color: #6b5c48; text-transform: lowercase; letter-spacing: 0.03em; }
+.site-nav a { color: var(--site-ink-soft, #6b5c48); text-transform: lowercase; letter-spacing: 0.03em; }
 .site-nav a:hover { color: var(--wp--preset--color--primary, #b5541e); }
 
 .block-header {
@@ -44,7 +43,7 @@ body { background: var(--site-body-bg, #faf3e8); color: #3d3226; }
 .block-header .lead { color: var(--primary-100, #f3ddc2); }
 
 h2, .block-text h2, .block-image h2, .block-html h2 {
-  font-family: var(--site-heading-font-family); font-style: italic; color: var(--wp--preset--color--primary, #b5541e);
+  font-family: var(--site-heading-font-family); font-style: italic; color: var(--site-primary-text, #b5541e);
   border-left: none; padding-left: 0; position: relative;
 }
 h2::after {
@@ -52,15 +51,20 @@ h2::after {
   background: var(--wp--preset--color--accent, #d4a017); border-radius: 2px;
 }
 
+/*  Every surface that sits on the page is the site's ONE surface
+    (--site-surface), worked out from the ground -- white on a pale
+    page, a lifted step on a dark one. Pinned to --accent-50 these
+    stayed cream on a navy page while the words on them took the pale
+    ink, and vanished. */
 .block-html {
-  background: var(--accent-50, #fffbf3); border: 1px solid var(--primary-100, #ecdec5);
+  background: var(--site-surface, #fffbf3); border: 1px solid var(--site-line, #ecdec5);
 }
 
 .cms-card-shape {
-  border: 1px solid var(--primary-100, #ecdec5); background: var(--accent-50, #fffbf3);
+  border: 1px solid var(--site-line, #ecdec5); background: var(--site-surface, #fffbf3);
 }
 
-.cms-blog-card { border-color: var(--primary-100, #ecdec5); background: var(--accent-50, #fffbf3); }
+.cms-blog-card { border-color: var(--site-line, #ecdec5); background: var(--site-surface, #fffbf3); }
 .cms-blog-date { color: var(--wp--preset--color--secondary, #4a5d3a); font-style: italic; }
 
-a { color: var(--wp--preset--color--primary, #b5541e); }
+a { color: var(--site-primary-text, #b5541e); }

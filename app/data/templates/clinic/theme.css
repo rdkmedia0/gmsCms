@@ -6,14 +6,12 @@
   --site-heading-font-family: "Lexend", -apple-system, "Segoe UI", sans-serif;
   --site-font-family: "Source Sans 3", -apple-system, "Segoe UI", sans-serif;
   --site-heading-weight: 500;
-  --site-body-bg: var(--accent-50, #ffffff);
 }
-body { background: var(--site-body-bg, #fff); color: var(--primary-800, #253634); }
-.site-header { background: var(--accent-50, #fff); border-bottom: 1px solid var(--secondary-100, #e6eded); }
+.site-header { background: var(--site-header-bg, var(--site-ground, #fff)); border-bottom: 1px solid var(--site-line, #e6eded); }
 .site-brand { color: var(--wp--preset--color--primary, #2c6e6b); font-weight: 500; }
 .site-nav a { color: var(--secondary-800, #3f5654); }
 .site-nav a:hover { color: var(--wp--preset--color--primary, #2c6e6b); }
-.site-footer { background: var(--primary-50, #f3f7f7); color: var(--secondary-800, #3f5654); border-top: 1px solid var(--secondary-100, #e6eded); }
+.site-footer { background: var(--site-footer-bg, var(--site-tint, #f3f7f7)); color: var(--site-ink, var(--secondary-800, #3f5654)); border-top: 1px solid var(--site-line, #e6eded); }
 .site-footer a { color: var(--primary-base, #2c6e6b); }
 h1, h2, h3 { font-weight: 500; letter-spacing: -.01em; }
 p { max-width: 68ch; }

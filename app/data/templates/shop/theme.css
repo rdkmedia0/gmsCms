@@ -5,10 +5,8 @@
   --site-heading-font-family: "Outfit", -apple-system, "Segoe UI", sans-serif;
   --site-font-family: "Inter", -apple-system, "Segoe UI", sans-serif;
   --site-heading-weight: 600;
-  --site-body-bg: var(--secondary-50, #fcfcfa);
 }
-body { background: var(--site-body-bg, #fcfcfa); color: var(--accent-base, #2f3733); }
-.site-header { background: rgba(252,252,250,.94); border-bottom: 1px solid var(--secondary-100, #e8e8e2); }
+.site-header { background: var(--site-header-bg, color-mix(in srgb, var(--site-ground, #fcfcfa) 94%, transparent)); border-bottom: 1px solid var(--site-line, #e8e8e2); }
 .site-brand { letter-spacing: -.02em; color: var(--accent-base, #2f3733); }
 .site-nav a { color: var(--accent-400, #4a544d); }
 .site-nav a:hover { color: var(--wp--preset--color--primary, #5a6b57); }

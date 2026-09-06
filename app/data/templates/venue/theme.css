@@ -6,10 +6,8 @@
   --site-heading-font-family: "Cormorant Garamond", Georgia, serif;
   --site-font-family: "Lato", -apple-system, "Segoe UI", sans-serif;
   --site-heading-weight: 500;
-  --site-body-bg: var(--accent-50, #faf8f5);
 }
-body { background: var(--site-body-bg, #faf8f5); color: var(--secondary-900, #3a3730); }
-.site-header { background: rgba(250,248,245,.9); border-bottom: none; }
+.site-header { background: var(--site-header-bg, color-mix(in srgb, var(--site-ground, #faf8f5) 90%, transparent)); border-bottom: none; }
 .site-brand { font-family: "Cormorant Garamond", Georgia, serif; font-size: 1.55rem;
   letter-spacing: .1em; text-transform: uppercase; color: var(--primary-base, #42566b); }
 .site-nav a { color: var(--secondary-800, #5c5647); letter-spacing: .14em; text-transform: uppercase; font-size: .74rem; }
