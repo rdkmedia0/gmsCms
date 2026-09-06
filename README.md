@@ -57,6 +57,10 @@ your own password first, then deletes that file. A short setup walk-through
 (name, look, contact, address, email) runs at the top of the screen — every
 step is skippable.
 
+> **New here?** The [setup & usage guide](docs/GUIDE.md) walks through
+> configuring email and integrations, every admin screen, all the content
+> tools, and how the project is laid out.
+
 ---
 
 ## What it does

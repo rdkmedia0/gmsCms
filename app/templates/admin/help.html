@@ -22,16 +22,28 @@
     <li><strong>File / Download</strong> — a list of files to download, one line each like Contact Info: upload a file or choose one from the Media Library, pick its icon (or leave it to follow the file's type — PDF, DOC, XLS…), and give it a name to show or keep the file's own. Shown as cards, buttons, plain links or icons. Files keep their own names when downloaded.</li>
     <li><strong>Table (Data)</strong> — click any cell to type in it; the tool's own controls set the look (bordered/striped/colored header/plain), turn the header row on or off, and add or remove rows and columns.</li>
     <li><strong>Video Gallery</strong> — a grid of YouTube clips: paste a link for each one, give it an optional caption, and choose how many sit side by side. Visitors play a clip in a popup without leaving the page.</li>
-    <li><strong>Image Accordion</strong> — five picture panels, each with its own image (upload or AI-generate) and caption. Three displays: Panels (hover to expand), Carousel (swipe or arrows), Masonry (staggered grid) — the same panels either way, so switching display never loses anything. Tick "Click to enlarge" and visitors can click any panel to see the full picture in a popup — that works with all three displays.</li>
-    <li><strong>Columns</strong> — splits a frame into side-by-side cells, each holding its own tool.</li>
+    <li><strong>Accordion</strong> — five picture panels, each with its own image (upload or AI-generate) and caption. Three displays: Panels (hover to expand), Carousel (swipe or arrows), Masonry (staggered grid) — the same panels either way, so switching display never loses anything. Tick "Click to enlarge" and visitors can click any panel to see the full picture in a popup — that works with all three displays.</li>
     <li><strong>Menu</strong> — pick pages to link, plus custom links, dividers, and per-item icons. Styles: Plain / Buttons / Pill badge on the page you are on / Dropdown (with submenus). Button style: Solid, Outline, Soft, Floating, Tabs, Fade. Submenu style (Dropdown only): Card, Minimal, Dark, Bordered, Pill.</li>
     <li><strong>Breadcrumb</strong> — size/style.</li>
+    <li><strong>Language</strong> — lets a visitor switch the site's language, showing whatever languages you've enabled (Design → Languages).</li>
     <li><strong>Site name</strong>, <strong>Version</strong> — the site's own name (follows a rename), and the version of gmsCms the site runs on (follows an upgrade). Both are filled in when the page is drawn; neither is typed.</li>
     <li><strong>Banner</strong> — background image + overlay headline/text, optional shape mask, AI ✨ Generate button.</li>
     <li><strong>Card</strong> — a background shape (rectangle/rounded/oval/circle/pill) with an optional custom color and/or AI-generated image, that you write text directly over.</li>
     <li><strong>Divider</strong> — a styled horizontal rule: line style/width/spacing/color.</li>
     <li><strong>Embed</strong> — raw HTML/script. Only for third-party widgets that need real embed code (a Cal.com booking calendar, a Stripe button) — never for styling or layout, which always has a dedicated tool instead.</li>
+    <li><strong>FAQ Content</strong> / <strong>FAQ Reader</strong> — Content holds your questions and answers as one document (shown read-through or folded into rows); a Reader elsewhere shows a chosen set of them, so a wording change follows everywhere it's repeated.</li>
+    <li><strong>Search</strong> — a search box that filters whatever on the page has said it is searchable (e.g. FAQ answers).</li>
+    <li><strong>Blog</strong> — shows a blog's posts wherever you drop it.</li>
+    <li><strong>Contact Form</strong> — a form visitors write to you with (emailed to your contact address; rate-limited and spam-trapped).</li>
+    <li><strong>Contact Info</strong> — your phone, email, address and social row, laid out.</li>
   </ul>
+
+  <h3>Ready-made content blocks</h3>
+  <p>Filled in through a simple form, never by typing markup: <strong>Pricing</strong> tiers, <strong>Testimonial</strong>, <strong>Numbers</strong> (stats), <strong>Logo row</strong>, <strong>The team</strong>, <strong>Tags</strong>, <strong>Timeline</strong>, <strong>Call to action</strong>, and <strong>Email sign-up</strong> (a double-opt-in newsletter sign-up).</p>
+
+  <h3>Shop tools</h3>
+  <p>Available once Stripe is connected (Commerce): <strong>Shop</strong> (your product catalogue), <strong>Buy Button</strong> (one product), and <strong>Basket</strong> (a floating cart). See Commerce, above.</p>
+
   <p class="hint">Default tools always exist and can't be removed and can't be created — but a custom tool from a Template Package, or one someone shares with you, can be imported via the Tools panel's "📦 Toolkits" section, and deleted again afterward.</p>
 </div>
 
@@ -44,10 +56,11 @@
     <li><strong>🎨 Colors</strong> — the active theme/template's colors: pick a curated preset collection, or fine-tune each color under "Advanced". Per the currently <em>active</em> template, not a Dashboard setting.</li>
   </ul>
   <p class="hint">Drag the small handle in a panel's top-left corner to resize it wider/taller — this is remembered across visits.</p>
-  <p>The bar at the very top also has <strong>📱 Preview at&hellip;</strong> &mdash; it
-    opens the page at a phone, tablet or desktop width, exactly as a visitor sees it,
-    in a frame over the editor. It is a real preview rather than the page squeezed
-    narrow, so anything that changes on a small screen actually changes.</p>
+  <p>The bar at the very top also has a <strong>screen-size dropdown</strong>
+    (Desktop / Laptop / Tablet / Mobile). It narrows the canvas while you edit, and
+    when you switch to <em>Viewing</em> it opens the page in a real device frame of that
+    width, exactly as a visitor sees it &mdash; a real preview rather than the page
+    squeezed narrow, so anything that changes on a small screen actually changes.</p>
 </div>
 
 <div class="card">
@@ -55,12 +68,14 @@
   <p>The Dashboard is a row of buttons. Each opens its own screen, and the bigger
     ones group related screens behind tabs along the top.</p>
   <ul>
-    <li><strong>🎨 Design</strong> &mdash; four tabs.
+    <li><strong>🎨 Design</strong> &mdash; five tabs.
       <em>Pages</em> adds, renames, reorders and deletes pages and sets the home page.
       <em>Templates</em> is your library of looks: activate one, export it as a .zip,
       import somebody else&rsquo;s, or save your current site as a new template.
       <em>Layout</em> decides where the header, sidebars and footer sit.
-      <em>Theme Generator</em> writes a whole look and its words from a description.</li>
+      <em>Theme Generator</em> writes a whole look and its words from a description, and
+      <em>Languages</em> is where you enable the languages a visitor can switch between
+      and have the site translated.</li>
     <li><strong>📰 Blog</strong> &mdash; your blogs and every post in them. A blog is a
       named set of posts with its own address; the Blog tool shows one wherever you
       drop it, on as many pages as you like.</li>
@@ -71,14 +86,22 @@
     <li><strong>🔌 Connections</strong> &mdash; Stripe, Cal.com and your AI provider,
       with a Test button beside each. &ldquo;Connected&rdquo; means a real call
       succeeded, not that a key is stored.</li>
-    <li><strong>✉️ Email</strong> &mdash; three tabs. <em>Newsletters</em> writes and
-      sends them, <em>Email list</em> is who has confirmed, <em>Sending email</em> is
-      the mail server it all goes through.</li>
-    <li><strong>🛍️ Commerce</strong> &mdash; three tabs. <em>Products</em> is what you
+    <li><strong>✉️ Email</strong> &mdash; four tabs. <em>Newsletters</em> writes and
+      sends them, <em>Email list</em> is who has confirmed, <em>System emails</em> is
+      the wording of the messages your site sends itself (orders, sales, sign-ups),
+      <em>Sending email</em> is the mail server it all goes through.</li>
+    <li><strong>🛍️ Commerce</strong> &mdash; four tabs. <em>Products</em> is what you
       sell and what each sale delivers, <em>Orders</em> is every sale (filter by buyer,
-      product, kind or date), <em>Bookings</em> is your diary.</li>
+      product, kind or date), <em>Bookings</em> is your diary, and <em>Store settings</em>
+      is your currency and delivery.</li>
     <li><strong>⚖️ Legal pages</strong>, <strong>💾 Backups</strong> &mdash; written
       from your own details, and a copy of everything you can restore.</li>
+    <li><strong>🕒 Schedules</strong> &mdash; the times this site acts at, named once
+      and reused wherever a time is picked: sending a newsletter, publishing a post,
+      running a backup. A second tab lists everything on the clock and everything
+      that has been.</li>
+    <li><strong>📋 Activity</strong> &mdash; a log of everything the site has done
+      (what a template changed, what was removed, what was sent), newest first.</li>
     <li><strong>📈 Visitors</strong> &mdash; how many people visited, when, and roughly
       which countries. It is an anonymous count &mdash; no IP address or visitor is
       ever stored, only totals per day, country and page, and your own visits (while
@@ -149,7 +172,7 @@
 
 <div class="card">
   <h2>AI Settings</h2>
-  <p>🔌 <strong>Connections</strong> → the AI tab.</p>
+  <p>🔌 <strong>Connections</strong> → the <strong>✨ AI</strong> card.</p>
   <ul>
     <li><strong>Provider</strong> — Open WebUI, Ollama, or Google Gemini. Fill in its URL/key, then use "Load Models" to pick from a live list instead of typing a name. This is what powers the 💬 AI Assistant chat.</li>
     <li><strong>Image generation</strong> (the ✨ Generate buttons on Image/Banner/Card) — works via Gemini (needs a <em>billing-enabled</em> account — the free tier doesn't support image output) or Open WebUI (proxies to whatever image backend it's configured with, e.g. ComfyUI — set an "Image Generation Model/Workflow" name if it needs one). Ollama has no image-generation API of its own.</li>
