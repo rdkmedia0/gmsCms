@@ -62,7 +62,8 @@ with app.app_context():
     check("it made an admin to sign in as",
           db.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 1)
     check("and says the password it generated has to be replaced",
-          bootstrap.using_generated_password(db))
+          bootstrap.using_generated_password(
+              db, db.execute("SELECT id FROM users LIMIT 1").fetchone()["id"]))
     check("writing that password down where the owner can find it",
           os.path.exists(os.path.join(DATA_DIR, "initial-admin-password.txt")))
 
@@ -144,7 +145,7 @@ with app.app_context():
     uid = db.execute("SELECT id FROM users LIMIT 1").fetchone()["id"]
     #  Signing in is the one thing this check skips: the generated
     #  password gate is doing its job and is tested by its own flow.
-    bootstrap.clear_generated_password_flag(db)
+    bootstrap.clear_generated_password_flag(db, uid)
     db.commit()
     slugs = [("/" if p["is_home"] else "/" + p["slug"]) for p in
              db.execute("SELECT slug, is_home FROM pages").fetchall()]

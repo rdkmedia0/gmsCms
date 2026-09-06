@@ -14,7 +14,15 @@ set -e
 # be there: half a pair is a misconfiguration, and starting on plain HTTP
 # because a path was mistyped is the kind of quiet downgrade nobody
 # notices until it matters, so say so and stop.
-if [ -n "$TLS_CERT_FILE" ] || [ -n "$TLS_KEY_FILE" ]; then
+#
+# Only when what is being started IS the web server. `docker compose run
+# web python -m app.recover_admin` comes through here too, and handing
+# python a --certfile it never asked for turned the one command an owner
+# runs when locked out into a traceback -- on exactly the installs that
+# had done everything right.
+serving=0
+case "${1##*/}" in gunicorn) serving=1 ;; esac
+if [ "$serving" = 1 ] && { [ -n "$TLS_CERT_FILE" ] || [ -n "$TLS_KEY_FILE" ]; }; then
     if [ -z "$TLS_CERT_FILE" ] || [ -z "$TLS_KEY_FILE" ]; then
         echo "TLS_CERT_FILE and TLS_KEY_FILE must be set together." >&2
         exit 1
@@ -54,7 +62,7 @@ if [ "$(id -u)" = "0" ]; then
     # read as cms is the same outage as no certificate at all, arriving
     # one second later with a worse error. Ask now, while there is
     # still somebody to tell.
-    if [ -n "$TLS_CERT_FILE" ]; then
+    if [ "$serving" = 1 ] && [ -n "$TLS_CERT_FILE" ]; then
         for f in "$TLS_CERT_FILE" "$TLS_KEY_FILE"; do
             if ! setpriv --reuid=cms --regid=cms --init-groups test -r "$f"; then
                 echo "$f cannot be read by the app's own user (uid 1000)." >&2

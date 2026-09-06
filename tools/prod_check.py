@@ -26,7 +26,7 @@ app = create_app()
 #  Flask refuses a new route once it has served its first request, and the
 #  first section below serves several.
 from flask import request as flask_request                       # noqa: E402
-from app import TrustedProxyFix, FORWARDED_HEADERS               # noqa: E402
+from app import TrustedProxyFix, FORWARDED_HEADERS, SECRET_KEY_PATH  # noqa: E402
 
 
 @app.route("/__scheme_probe")
@@ -257,14 +257,53 @@ print("-" * 60)
 check("it was written down for the owner", os.path.exists(bootstrap.PASSWORD_FILE))
 with app.app_context():
     db = get_db()
-    check("and every screen says it is still in use", bootstrap.using_generated_password(db))
+    check("and every screen says it is still in use", bootstrap.using_generated_password(db, uid))
     #  What the Account screen does when somebody sets their own.
     db.execute("UPDATE users SET password_hash = ? WHERE id = ?",
                (generate_password_hash("a real password"), uid))
-    bootstrap.clear_generated_password_flag(db)
+    bootstrap.clear_generated_password_flag(db, uid)
     db.commit()
-    check("changing it stops the reminder", not bootstrap.using_generated_password(db))
+    check("changing it stops the reminder", not bootstrap.using_generated_password(db, uid))
 check("and takes the plaintext file with it", not os.path.exists(bootstrap.PASSWORD_FILE))
+
+print()
+print("Resetting it from the server")
+print("-" * 60)
+with open(SECRET_KEY_PATH, encoding="utf-8") as _fh:
+    old_secret = _fh.read()
+with app.app_context():
+    db = get_db()
+    ok, lines = bootstrap.reset_admin_password(db, app, "no-such-admin")
+    check("an unknown name is refused and the real ones are listed",
+          not ok and "'admin'" in " ".join(lines), " ".join(lines))
+    db.execute("INSERT INTO settings (key, value) VALUES ('password_login_disabled', '1') "
+               "ON CONFLICT(key) DO UPDATE SET value = '1'")
+    db.commit()
+    ok, lines = bootstrap.reset_admin_password(db, app, None)
+    check("with one admin the name may be left out", ok, " ".join(lines))
+    check("the one-use password was written down again", os.path.exists(bootstrap.PASSWORD_FILE))
+    check("and that admin is back on a generated password", bootstrap.using_generated_password(db, uid))
+    check("password sign-in was switched back on",
+          db.execute("SELECT value FROM settings WHERE key = 'password_login_disabled'").fetchone()["value"] == "0")
+    with open(SECRET_KEY_PATH, encoding="utf-8") as _fh:
+        check("the session key was rotated, so every session ends on restart", _fh.read() != old_secret)
+    check("and the reset is in the Activity log",
+          db.execute("SELECT 1 FROM admin_notes WHERE message LIKE '%reset from the server%'").fetchone() is not None)
+    #  The flag names ONE admin. A colleague is not marched to the Account
+    #  screen for a password that was never theirs, and changing their own
+    #  must not delete the one-use password out from under the admin it
+    #  was made for.
+    other = db.execute("INSERT INTO users (username, password_hash) VALUES ('second', ?)",
+                       (generate_password_hash("theirs"),)).lastrowid
+    check("another admin is not told to change theirs", not bootstrap.using_generated_password(db, other))
+    bootstrap.clear_generated_password_flag(db, other)
+    check("and cannot clear it for them", bootstrap.using_generated_password(db, uid)
+          and os.path.exists(bootstrap.PASSWORD_FILE))
+    ok, lines = bootstrap.reset_admin_password(db, app, None)
+    check("with two admins the name is required", not ok and "'second'" in " ".join(lines))
+    db.execute("DELETE FROM users WHERE id = ?", (other,))
+    bootstrap.clear_generated_password_flag(db, uid)
+    db.commit()
 
 print()
 print("%d checks, %d failed" % (passed + failed, failed))

@@ -272,6 +272,14 @@ yourself out), **Admins** (add/remove; the last admin and your own account
 can't be removed), and **Google Sign-In** (OAuth Client ID + Secret, and the
 exact redirect URI to paste into Google Cloud).
 
+**If a password is forgotten**, there are three ways back in, most
+convenient first: sign in with Google if you linked it; have another admin
+remove and re-add your account; or, with server access, run
+`docker compose run --rm web python -m app.recover_admin <username>` —
+it issues a new one-use password exactly like the first boot did (see the
+README's *If something goes wrong*). Before going live, set up at least one
+of the first two.
+
 ---
 
 ## 4. Editing your site

@@ -67,7 +67,7 @@ with app.app_context():
     #  redirect every request below. This site exists for ten seconds and
     #  is thrown away, so the flag is simply cleared.
     from app import bootstrap
-    bootstrap.clear_generated_password_flag(db)
+    bootstrap.clear_generated_password_flag(db, uid)
     #  One confirmed subscriber, the honest way: through the service.
     status, token = subscribers.add(db, "reader@example.com", "Yes please.", source="/", ip="1.2.3.4")
     subscribers.confirm(db, token, ip="1.2.3.4")

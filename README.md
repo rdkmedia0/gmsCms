@@ -223,10 +223,18 @@ signed-in screen.
 ## If something goes wrong
 
 - **Locked out / lost password** — sign-ins are rate-limited 15 min; wait.
-  To reset:
+  Forgotten entirely? Another admin can remove and re-add your account
+  under **Account → Admins**. If there's no other admin, run this on the
+  server:
   ```bash
-  docker compose run --rm web python -c "from app import create_app; from app.db import get_db; from werkzeug.security import generate_password_hash; app=create_app(); ctx=app.app_context(); ctx.push(); db=get_db(); db.execute('UPDATE users SET password_hash = ?', (generate_password_hash('a-new-password'),)); db.commit(); print('done')"
+  docker compose run --rm web python -m app.recover_admin admin
   ```
+  It works exactly like day one: a new one-use password is printed and
+  saved to `data/initial-admin-password.txt`, you're made to set your own
+  on first sign-in, and the file is deleted. It also turns password
+  sign-in back on if you'd switched to Google-only, and signs everyone out
+  at the next `docker compose restart`. Nothing is typed on the command
+  line, and nobody else's password changes.
 - **"database is locked"** — `data/` is on a network filesystem (NFS/SMB);
   move it to local disk.
 - **Email not arriving** — check Settings → Email; Gmail needs an App

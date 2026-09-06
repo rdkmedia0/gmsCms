@@ -239,7 +239,7 @@ def login():
             session.clear()
             session["user_id"] = user["id"]
             session["username"] = user["username"]
-            if bootstrap.using_generated_password(db):
+            if bootstrap.using_generated_password(db, user["id"]):
                 #  Straight to the one screen that fixes it. The password
                 #  they just used is sitting in a file in the data volume
                 #  and was printed to the container log, so it should stop
@@ -455,12 +455,12 @@ def account():
             )
             #  Whatever it is now, it is no longer the one this app
             #  generated, so the reminder stops.
-            bootstrap.clear_generated_password_flag(db)
+            bootstrap.clear_generated_password_flag(db, user["id"])
             db.commit()
             flash("Password updated!", "success")
     return render_template(
         "admin/account.html",
-        using_generated_password=bootstrap.using_generated_password(db),
+        using_generated_password=bootstrap.using_generated_password(db, session["user_id"]),
         fallback_open=fallback_open(db),
         password_login_env=bootstrap.password_login_env(),
         google_oauth_configured=google_oauth_configured(db),
@@ -529,7 +529,7 @@ def toggle_password_login():
         #  Three things have to be true before the password stops being a
         #  way in, and each one is a different way of being locked out.
         me = db.execute("SELECT * FROM users WHERE id = ?", (session["user_id"],)).fetchone()
-        if bootstrap.using_generated_password(db):
+        if bootstrap.using_generated_password(db, me["id"] if me else None):
             flash("Change your password first. Turning this off while the generated password "
                   "is still in place would leave that password sitting in the container log "
                   "and the data volume as the only thing standing between anyone and this site.",

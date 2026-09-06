@@ -49,8 +49,8 @@ client = app.test_client()
 
 with app.app_context():
     db = get_db()
-    bootstrap.clear_generated_password_flag(db)
     uid = db.execute("SELECT id FROM users LIMIT 1").fetchone()["id"]
+    bootstrap.clear_generated_password_flag(db, uid)
     page = db.execute("SELECT id FROM pages ORDER BY id LIMIT 1").fetchone()
     #  One Image section, and one Columns section with a cell to drop into.
     cur = db.execute("INSERT INTO sections (page_id, type, title, content, position) "

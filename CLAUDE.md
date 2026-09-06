@@ -1558,6 +1558,27 @@ part that constrains the CODE.
   never matches over http -- so the preview would have stayed broken on
   every install without a certificate. It names `'self'` explicitly
   rather than depending on the scheme to say it by accident.
+- **A forgotten password is reset from the server, and only from there**
+  (`bootstrap.reset_admin_password`, run as `python -m app.recover_admin
+  <username>` through `docker compose run` -- not `reset_password.py`,
+  because the pre-commit hook refuses a file named like a credential, and
+  bypassing it for a false alarm is how it stops being believed). It does
+  not take a password:
+  it re-runs the first boot for ONE admin -- a generated one-use password
+  written to the same file and log, the first sign-in forced to replace it,
+  the file deleted then -- so nothing is typed on a command line and
+  nothing new has to be secured. It replaced a README one-liner whose
+  UPDATE had no WHERE clause and reset every admin to the same password
+  silently. Three things came with it: the "generated password" flag names
+  the user it was made for (`using_generated_password(db, user_id)`),
+  because a site-wide flag marched every admin to the Account screen for a
+  password that was never theirs; the reset switches password sign-in back
+  on and rotates `.secret_key`, because a reset that leaves the door locked
+  or somebody else signed in has not reset anything; and the entrypoint
+  appends the TLS flags only when `$1` is gunicorn, because it used to hand
+  `--certfile` to whatever command came through it -- which broke the one
+  command an owner runs when locked out, on exactly the installs that had
+  set HTTPS up properly.
 - **`tools/prod_check.py`** is the net under all of the above: it proves
   the pragmas are live by holding a write open and reading through it,
   proves the ordering cannot tie by racing three writes, asks for the

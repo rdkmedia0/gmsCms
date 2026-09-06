@@ -163,7 +163,7 @@
   <h2>Account &amp; Admins</h2>
   <p>All on the <strong>Account</strong> page (top nav).</p>
   <ul>
-    <li><strong>Change Password</strong> — current password, new password, confirm. This <em>is</em> the password reset flow — there's no email-a-link option, no cPanel. If a password is forgotten entirely, another admin needs to remove and re-add that account.</li>
+    <li><strong>Change Password</strong> — current password, new password, confirm. This <em>is</em> the password reset flow — there's no email-a-link option, no cPanel. If a password is forgotten entirely, another admin can remove and re-add that account; with no other admin, whoever runs the server runs <code>docker compose run --rm web python -m app.recover_admin &lt;username&gt;</code>, which issues a new one-use password the same way a first boot does.</li>
     <li><strong>Sign-In Method</strong> — once Google Sign-In works, password sign-in can be disabled entirely (Google-only from then on), and re-enabled the same way.</li>
     <li><strong>Admins</strong> — everyone who can sign in and fully manage the site (no limited/read-only role). Add an admin (username/password, optionally a linked Google account) or remove one. The last remaining admin can't be removed, and you can't remove your own account while logged in as it.</li>
     <li><strong>Google Sign-In</strong> — Client ID/Secret for Google OAuth (encrypted once saved). Once set, admins can sign in with Google instead of a password.</li>

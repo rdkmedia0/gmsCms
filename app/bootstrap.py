@@ -102,7 +102,7 @@ def initial_admin_password():
     return secrets.token_urlsafe(12), True
 
 
-def announce_admin_password(app, password, generated, username):
+def announce_admin_password(app, password, generated, username, occasion="FIRST RUN"):
     """Tells the owner what their password is, twice, because a container
     log scrolls away and a file does not.
 
@@ -131,7 +131,7 @@ def announce_admin_password(app, password, generated, username):
         app.logger.warning("Could not write %s: %s", PASSWORD_FILE, e)
     app.logger.warning(
         "\n" + "=" * 62 +
-        f"\n  FIRST RUN: sign in at /admin as '{username}' with password:\n\n    {password}\n\n"
+        f"\n  {occasion}: sign in at /admin as '{username}' with password:\n\n    {password}\n\n"
         f"  Also saved to {PASSWORD_FILE}\n  {state}" + "=" * 62
     )
 
@@ -163,24 +163,37 @@ def seed_admin(db, app):
     email = (os.environ.get("ADMIN_GOOGLE_EMAIL") or "").strip().lower() or None
     username = (os.environ.get("ADMIN_USERNAME") or "").strip() or "admin"
     password, generated = initial_admin_password()
-    made = db.execute(
+    cursor = db.execute(
         "INSERT OR IGNORE INTO users (username, password_hash, google_email) VALUES (?, ?, ?)",
         (username, generate_password_hash(password), email),
-    ).rowcount
-    if not made:
+    )
+    if not cursor.rowcount:
         return False
     if generated:
-        _write(db, GENERATED_FLAG, "1")
+        _write(db, GENERATED_FLAG, str(cursor.lastrowid))
     announce_admin_password(app, password, generated, username)
     return True
 
 
-def using_generated_password(db):
+def using_generated_password(db, user_id):
+    """Whether THIS admin is still on a password this app generated.
+
+    The flag names the one user it was made for. It used to be a plain
+    site-wide "1", which was fine while the only way to get a generated
+    password was the first boot of a site with one admin. A reset from
+    the server (reset_admin_password) puts ONE admin back on a generated
+    password while the others keep their own -- and a site-wide flag
+    would have marched every one of them to the Account screen to change
+    a password that was never theirs. (The old "1" still reads correctly:
+    the seeded admin is user 1.)
+    """
+    if user_id is None:
+        return False
     row = db.execute("SELECT value FROM settings WHERE key = ?", (GENERATED_FLAG,)).fetchone()
-    return bool(row and row["value"] == "1")
+    return bool(row and str(row["value"]) == str(user_id))
 
 
-def clear_generated_password_flag(db):
+def clear_generated_password_flag(db, user_id):
     """The generated password is no longer the password -- so stop saying
     it is, and stop keeping it.
 
@@ -192,7 +205,13 @@ def clear_generated_password_flag(db):
     static directories -- but "not reachable today" is a weak thing to be
     relying on. The moment the password changes there is nothing in it
     worth keeping, so this removes it rather than asking again.
+
+    Only for the admin it was generated for: another admin changing their
+    own password must not delete a colleague's one-use password out from
+    under them.
     """
+    if not using_generated_password(db, user_id):
+        return
     db.execute("DELETE FROM settings WHERE key = ?", (GENERATED_FLAG,))
     try:
         os.remove(PASSWORD_FILE)
@@ -201,6 +220,76 @@ def clear_generated_password_flag(db):
         #  instruction), or not ours to delete. Neither is worth an error
         #  on a password change that otherwise succeeded.
         pass
+
+
+def reset_admin_password(db, app, username=None):
+    """The way back in when every password is forgotten. Run on the
+    server, never from a screen -- anyone who can run it already owns
+    the database, so it grants nothing a shell did not.
+
+    Deliberately NOT "set the password to X". It re-runs the first boot
+    for one admin: a fresh one-use password is generated, written to the
+    same file and log as on day one, and the first sign-in with it goes
+    straight to the Account screen where nothing else opens until it has
+    been replaced -- at which point the file is deleted. Nothing is typed
+    on a command line, so nothing lands in shell history or in `ps`.
+
+    One user, by name. This replaces a one-line UPDATE with no WHERE
+    clause, which reset every admin to the same password and told nobody.
+
+    Three things a reset has to do besides the password, and the reason
+    each is not optional:
+
+      * Password sign-in is switched back on. An owner who went
+        Google-only and then lost access to Google has a reset that
+        opens nothing otherwise.
+      * Every signed-in session is ended, by rotating the key that signs
+        them. The person who forgot has no session to lose; anyone
+        else's is exactly what a reset exists to end. Takes effect when
+        the running site restarts, since that is when the key is read.
+      * It is written to the Activity log, because a reset nobody asked
+        for is the thing the log is there to show.
+
+    Returns (ok, lines) -- the lines are for whoever is at the terminal.
+    """
+    users = db.execute("SELECT id, username FROM users ORDER BY id").fetchall()
+    names = ", ".join(f"'{u['username']}'" for u in users) or "(none)"
+    if username is None:
+        if len(users) != 1:
+            return False, [f"This site has {len(users)} admins: {names}.",
+                           "Say which one: python -m app.recover_admin <username>"]
+        user = users[0]
+    else:
+        user = next((u for u in users if u["username"] == username), None)
+        if user is None:
+            return False, [f"There is no admin called '{username}'. The admins are: {names}."]
+
+    password = secrets.token_urlsafe(12)
+    db.execute("UPDATE users SET password_hash = ? WHERE id = ?",
+               (generate_password_hash(password), user["id"]))
+    _write(db, GENERATED_FLAG, str(user["id"]))
+    db.execute("DELETE FROM settings WHERE key = 'password_login_fallback_until'")
+    _write(db, "password_login_disabled", "0")
+    with open(os.path.join(DATA_DIR, ".secret_key"), "w", encoding="utf-8") as handle:
+        handle.write(secrets.token_hex(32))
+    db.execute(
+        "INSERT INTO admin_notes (category, message) VALUES (?, ?)",
+        ("warning", f"The password for '{user['username']}' was reset from the server. A new "
+                    "one-use password was written to data/initial-admin-password.txt and the "
+                    "container log; password sign-in was switched on; every signed-in session "
+                    "ends at the next restart."))
+    db.commit()
+    announce_admin_password(app, password, True, user["username"], occasion="PASSWORD RESET")
+
+    lines = [f"Password reset for '{user['username']}'.",
+             f"The new one-use password is printed above and saved to {PASSWORD_FILE}.",
+             "Sign in with it and you will be asked to set your own; the file is deleted then.",
+             "Password sign-in is switched on. Run `docker compose restart` to end every "
+             "session that was signed in."]
+    if password_login_env() is False:
+        lines.append("WARNING: PASSWORD_LOGIN=0 is set in your compose file, so the next "
+                     "restart switches password sign-in OFF again. Remove it first.")
+    return True, lines
 
 
 TRUE_WORDS = {"1", "true", "yes", "on", "enabled"}

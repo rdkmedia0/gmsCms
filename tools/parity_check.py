@@ -51,8 +51,8 @@ def starter_for(tool):
 
 with app.app_context():
     db = get_db()
-    bootstrap.clear_generated_password_flag(db)
     uid = db.execute("SELECT id FROM users ORDER BY id LIMIT 1").fetchone()["id"]
+    bootstrap.clear_generated_password_flag(db, uid)
     tools = [t for t in _list_tools(db) if t["section_type"] != "columns"]
     #  A page each. On a shared page the panels can only be told apart by
     #  their label, and several tools appear in more than one starter --
