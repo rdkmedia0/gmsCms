@@ -1,14 +1,22 @@
-# gmsCms — a self-hosted website, templates built in
+# gmsCms — a self-hosted website builder
 
-A small CMS you run yourself. It ships **20 ready-made designs** — bakery,
-garage, clinic, shop, CV and more — each a complete site with its own
-pages. You edit **on the page**: open it, click a heading, type. There's
-no separate editor to learn.
+A simple, single-site content management system you run yourself. You build
+your site **on the page** — click any heading to type, and drag tools
+(text, image, gallery, columns, table, menu, banner, card, a blog, forms…)
+from a toolbar straight onto the page. Styling is a click, not code: a
+colour palette, fonts, and corner and shadow styles that restyle the whole
+site at once. There's no separate editor and nothing to learn.
 
-It also covers the parts a site usually needs a plugin for: a blog, a
-newsletter (double opt-in), contact forms, a shop with Stripe, bookings
-with Cal.com, SEO, a maintenance page, legal pages built from your own
-details, and scheduled backups.
+Helpers do the heavy lifting when you want them: **generate an image** from
+a few words, **draft or rewrite copy** with the built-in AI assistant, or
+**generate a whole coordinated look**. And if you'd rather start from
+something finished, **20 ready-made designs** ship with it — edit over one,
+or save your own site as a reusable template.
+
+It also covers what a site usually needs a plugin for: a blog, a newsletter
+(double opt-in), contact forms, a shop with Stripe, bookings with Cal.com,
+SEO, a maintenance page, legal pages built from your own details, and
+scheduled backups.
 
 ---
 
@@ -59,10 +67,18 @@ step is skippable.
 
 ## What it does
 
-- **Edit on the page** — click text to change it, drag tools (Text, Image,
-  Columns, Table, Menu, Banner, Card…) onto any page.
-- **Templates** — try on any of the 20 looks; your name and details always
-  stay yours. Save your own site as a reusable template.
+- **Build on the page** — click text to change it; drag tools (Text, Image,
+  Media, Columns, Table, Menu, Banner, Card, Divider, FAQ, Search, Embed…)
+  onto any page or column. No code, no separate editor.
+- **Style with a click** — a colour palette, font pairings, and corner and
+  shadow styles that reshape the whole site at once, or one section on its
+  own.
+- **AI helpers** — generate a product or banner image from a description,
+  ask the built-in assistant to draft or reword content, or generate a
+  whole coordinated look (colours, fonts, shape) from a brief or a picture.
+- **Start from a template, or your own** — try on any of the 20 built-in
+  looks (your name and details always stay yours), or save your current
+  site as a reusable template.
 - **Blog, newsletter, contact forms** — the newsletter is double opt-in
   with an unsubscribe link; forms email you.
 - **Shop with Stripe** — see below.
