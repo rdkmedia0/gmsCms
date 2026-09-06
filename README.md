@@ -207,14 +207,28 @@ gmsCms is free and always will be. If it saved you the cost of a hosted
 site and you'd like to say thanks, a coffee is welcome — a gift, never
 required, and it unlocks nothing.
 
-- **PayPal** — [paypal.me/rdkmedia0](https://www.paypal.com/paypalme/rdkmedia0)
-- **Bitcoin** — `bc1qkxc695rp49sjjuj2egwhp3k8w4we0359z0vmux`
-- **Ethereum / EVM** — `0xa2e66631f91673d549ae295773ca7fe7c60e7b76`
-  (ETH on Ethereum or Base, or POL on Polygon — the coin only, not tokens)
+<p align="center">
+  <a href="https://www.paypal.com/paypalme/rdkmedia0"><img src="https://img.shields.io/badge/PayPal-Buy%20me%20a%20coffee-00457C?style=for-the-badge&logo=paypal&logoColor=white" alt="Donate with PayPal"></a>
+  &nbsp;
+  <a href="https://github.com/rdkmedia0/gmsCms"><img src="https://img.shields.io/github/stars/rdkmedia0/gmsCms?style=for-the-badge&logo=github&logoColor=white&label=Star&color=444" alt="Star on GitHub"></a>
+</p>
 
-The admin's **♥ Support** screen has the same options with QR codes, and a
-switch for the small footer credit. A star, a bug report or a PR is just as
-welcome.
+<table align="center">
+  <tr>
+    <td align="center" width="280">
+      <img src="docs/qr-btc.png" width="180" alt="Bitcoin address QR code"><br>
+      <b>Bitcoin</b><br>
+      <code>bc1qkxc695rp49sjjuj2egwhp3k8w4we0359z0vmux</code>
+    </td>
+    <td align="center" width="280">
+      <img src="docs/qr-eth.png" width="180" alt="Ethereum / EVM address QR code"><br>
+      <b>Ethereum / EVM</b><br>
+      <code>0xa2e66631f91673d549ae295773ca7fe7c60e7b76</code>
+    </td>
+  </tr>
+</table>
+
+<p align="center"><sub>Scan with a wallet app. ETH on Ethereum or Base, or POL on Polygon — the network's own coin only, not tokens.<br>The admin's <b>♥ Support</b> screen shows the same, plus a switch for the small footer credit. A star, an issue or a PR is just as welcome.</sub></p>
 
 ---
 
