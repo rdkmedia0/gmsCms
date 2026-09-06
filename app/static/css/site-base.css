@@ -2992,7 +2992,7 @@ body.cms-logged-in .cms-basket-link.cms-basket-align-float-top { top: 60px; }
 
 /*  The Site name tool. Content, not chrome: it wears the site's own
     heading face and ink, because it IS the site's name on the site's
-    own page -- see the chrome-vs-content rule in CLAUDE.md. */
+    own page -- the chrome-vs-content rule: could a visitor see it? */
 .cms-wordmark {
   display: inline-flex; flex-direction: column; gap: 2px;
   text-decoration: none; color: inherit;

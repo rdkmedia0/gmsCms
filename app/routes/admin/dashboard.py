@@ -42,8 +42,8 @@ def _screen_context(db):
             (active_tpl["id"],),
         ).fetchone())
 
-    # Every template can optionally carry content now (see CLAUDE.md's
-    # Template Packages section) — active_content is the single "Load
+    # Every template can optionally carry content now — active_content
+    # is the single "Load
     # Content" action, scoped to whichever template is active right now,
     # and activate_conflict_map tells each "Use This Look" button whether
     # it needs to confirm before it's clicked (see template-panel.js) —

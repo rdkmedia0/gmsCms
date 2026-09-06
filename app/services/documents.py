@@ -15,8 +15,8 @@ thing to slip in -- but that is a reason for the code to know, not a
 sentence for the screen.)
 
 A .docx is an ARCHIVE, so it gets the treatment every archive gets in
-this codebase (see packages.safe_extract_zip and CLAUDE.md's "Security
-is not optional"): nothing is written to disk, one named member is read
+this codebase (see packages.safe_extract_zip -- security is not
+optional): nothing is written to disk, one named member is read
 and no other, and the size is capped BEFORE decompressing rather than
 discovered afterwards -- a few hundred kilobytes of zip can be gigabytes
 of XML, and "the request body was small" is not a bound on that.

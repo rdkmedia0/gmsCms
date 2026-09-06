@@ -13,7 +13,7 @@ One switch and one message, both in `settings`. When it is on:
 
 Read-only here (is it on, what does it say); the writing is one settings
 row each and stays in the route, because a service never reaches up into
-request/flash/redirect (see CLAUDE.md, import direction).
+request/flash/redirect (import direction is one-way).
 """
 
 #  The words the site ships with -- a real, friendly message an owner can

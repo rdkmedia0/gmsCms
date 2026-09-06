@@ -151,7 +151,7 @@ with app.test_request_context("/"):
     print()
     print("The prompt is content, not code")
     print("-" * 70)
-    #  CLAUDE.md: a prompt sent to a provider is content and lives in a
+    #  The rule: a prompt sent to a provider is content and lives in a
     #  template, not in a Python string.
     check("it lives in a template",
           os.path.exists("/app/app/templates/prompts/newsletter_brief.j2"))

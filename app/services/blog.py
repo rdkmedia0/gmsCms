@@ -12,7 +12,7 @@ Posts therefore belong to a blog, never to a page (see `blog_posts.blog_id`).
 The blog's own slug is what a post's address is built from, so a post keeps
 its URL no matter which page happens to display it -- or if none does.
 
-Follows the rule in CLAUDE.md: services take `db` and plain arguments, and
+Follows the service rule: services take `db` and plain arguments, and
 the tool's display settings live in its own markup rather than in a column
 on some other table.
 """

@@ -3,7 +3,7 @@ BLOCK_LIBRARY), how raw HTML gets classified into native sections
 (_classify_layout_chunk, used by the AI Theme Generator and package content),
 Columns-cell manipulation, and Banner/Card/Image styling and uploads. Pure
 content-shaping logic plus direct db/request reads — no route decorators,
-no flash/redirect (see CLAUDE.md's layering rule)."""
+no flash/redirect (routes -> services -> db, never back up)."""
 import os
 import re
 import json
@@ -2621,7 +2621,7 @@ def _installed_template_media(db, image_only=False):
 #  ---------------------------------------------------------------------
 #  Both tools shipped as a tool tile plus starter markup with no dedicated
 #  editing form, so the only way to change a table's shape or a gallery's
-#  clips was the raw "Edit HTML" escape hatch — exactly what CLAUDE.md's
+#  clips was the raw "Edit HTML" escape hatch — exactly what the
 #  tool-usage rule exists to prevent (same gap Image Accordion had). The
 #  two are fixed differently on purpose:
 #
@@ -3539,7 +3539,7 @@ def youtube_id(url):
 #  A YouTube thumbnail is the one part of a gallery that would otherwise be
 #  fetched from a third party on every page load, by every visitor, before
 #  anyone has clicked anything — the same exposure self-hosting the fonts
-#  removed (see CLAUDE.md), and the reason the player itself already uses
+#  removed, and the reason the player itself already uses
 #  youtube-nocookie. So the thumbnail is pulled once, at save time, into
 #  the site's own uploads, and the markup points at that copy: a visitor
 #  who never presses play never talks to Google at all.

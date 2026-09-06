@@ -54,8 +54,8 @@ AI_SECRET_KEYS = {
 
 def _system_prompt():
     """The assistant's persona + full feature-set description — content,
-    not code, so it lives in its own template (see CLAUDE.md's "AI prompts
-    live in template files" rule) rather than a Python string literal."""
+    not code, so it lives in its own template (AI prompts live in template
+    files) rather than a Python string literal."""
     return render_template("prompts/assistant_system_prompt.j2")
 
 

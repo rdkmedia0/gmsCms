@@ -792,7 +792,7 @@ def template_preview(template_id):
     the same argument the plan already makes at the other end of the run.
 
     A frame rather than a picture: nothing on the server can take a
-    screenshot (this app deliberately ships no browser -- see BOW.md),
+    screenshot (this app deliberately ships no browser),
     and the page itself is better anyway, because it is live and it
     responds to a width.
     """
@@ -1164,8 +1164,8 @@ def package_import():
         with open(manifest_path, "w", encoding="utf-8") as f:
             json.dump({k: v for k, v in pack.items() if k not in ("pages", "blog_posts")}, f)
         #  Every package becomes a template row and keeps its whole
-        #  package folder, CSS or no CSS — see CLAUDE.md's "Template
-        #  Packages". It used to install only when the upload happened to
+        #  package folder, CSS or no CSS. It used to install only when
+        #  the upload happened to
         #  carry a theme.css, so a content package arrived, was applied
         #  once, and left nothing behind to activate again.
         packages.install_theme_package(

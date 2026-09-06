@@ -101,7 +101,7 @@ AUDIT_JS = """
       id + ' [' + Math.round(b.left) + '..' + Math.round(b.right) + ']');
   });
 
-  //  This project requires a title on every control (CLAUDE.md), because
+  //  This project requires a title on every control, because
   //  the label is often a glyph and the title is then the only text there
   //  is. No exclusions here: a control inside a closed panel is still one
   //  somebody will open and have to understand.
@@ -129,7 +129,7 @@ AUDIT_JS = """
     if (lab && lab.title.trim()) return;
 
     //  A control with a VISIBLE label in words is already explained, and
-    //  that is the whole reason the rule exists: CLAUDE.md asks for a
+    //  that is the whole reason the rule exists: this project asks for a
     //  title because "the label is often a glyph and the title is then
     //  the only text there is". Where there IS text, the requirement is
     //  met. A contact form's Name field does not need a tooltip saying

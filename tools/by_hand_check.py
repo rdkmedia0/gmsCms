@@ -4,7 +4,7 @@ For every template this app ships, and every page and zone in it: what
 section types does it use, what markup does it contain, and is there a
 TOOL that produces each of them?
 
-The rule this enforces is one of the oldest in CLAUDE.md: demo and
+The rule this enforces is one of this project's oldest: demo and
 generated content "must compose only from the Tool menu's actual
 primitives -- if a real admin couldn't reproduce a piece of content by
 picking tools from the panel, neither can generated content." The

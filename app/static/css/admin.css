@@ -735,7 +735,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--c
 .integration-badge.is-off  { background: #eceef2; color: #6b7280; border: 1px solid #d5d8de; }
 /*  A section that holds several screens shows them as tabs. Chrome, so
     it takes the editor's own colours and corners and never the site's
-    (see CLAUDE.md): a rule under the row, and the open tab sitting on
+    (chrome, not content): a rule under the row, and the open tab sitting on
     top of that rule rather than being a filled block, which is what
     tells you it is the page you are on rather than a button to press. */
 .tabs {

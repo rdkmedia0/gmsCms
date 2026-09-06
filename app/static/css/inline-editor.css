@@ -165,8 +165,8 @@ body.cms-placing-tool .cms-editing .cms-column:hover {
     It did not, and the labels on it — "Divide", and anything else without
     a colour of its own — inherited the SITE's text colour instead: near
     black on a dark navy bar, on any template with dark body text. Same
-    inheritance that made the Numbers panel unreadable; see CLAUDE.md's
-    rule about the app's controls being the app's. */
+    inheritance that made the Numbers panel unreadable; the app's
+    controls are the app's, never the site's. */
 .cms-section-toolbar label, .cms-section-toolbar span,
 .cms-section-toolbar .cms-inline-form label, .cms-section-toolbar .cms-stepper {
   color: #e5e7eb;

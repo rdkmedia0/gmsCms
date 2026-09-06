@@ -333,7 +333,7 @@
     measured on a real render: three stat boxes as ovals inside an oval,
     and a CTA drawn as a blue lozenge.
 
-    CLAUDE.md already names the rule and the variable: anything that
+    The rule and the variable already exist: anything that
     cannot wear the real shape takes `--site-radius-safe`, which is
     always a plain length. These are those things -- the wide, tall
     surfaces a page is made of, as against the small objects on it. */
@@ -344,7 +344,7 @@
 
 /*  A SURFACE STATES ITS OWN INK.
     ----------------------------
-    CLAUDE.md says this about the editor's chrome and it is just as true
+    The editor's chrome already follows this and it is just as true
     of the page: anything that paints a background of its own must say
     what colour text on it is, and never let the site's colour reach it
     by inheritance. On a light site nobody notices, because the
@@ -495,7 +495,7 @@
   border-radius: var(--portrait-radius, 50%);
 }
 /*  And a wide surface anywhere takes the shape as a plain LENGTH --
-    `--site-radius-safe` is what CLAUDE.md already prescribes for
+    `--site-radius-safe` is what is already prescribed for
     anything that cannot wear a lens or a pill. */
 .cms-card, .cms-card-shape, .cms-stat, .cms-quote, .cms-quote-large, .cms-cta {
   border-radius: var(--site-radius-safe, 10px);

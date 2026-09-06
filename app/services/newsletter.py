@@ -577,7 +577,7 @@ def _first_words(content, words=6):
 #  these rules that drifts from the first. So they live here, answering in
 #  plain data, and both callers say what they like about the answer.
 #
-#  CLAUDE.md already says this about `_send_it`: extract the guards first,
+#  The same rule already applies to `_send_it`: extract the guards first,
 #  then add the caller, or the two drift.
 
 class Blocked(object):

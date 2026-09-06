@@ -1,6 +1,6 @@
 // Integrations panel: test a connection, and confirm a disconnect.
 //
-// One file per admin template, per CLAUDE.md — admin/base.html loads no
+// One file per admin template — admin/base.html loads no
 // scripts of its own, so each page brings what it needs.
 (function () {
   "use strict";

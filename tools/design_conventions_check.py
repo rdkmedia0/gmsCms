@@ -121,7 +121,7 @@ check("and neither runs execCommand for the toolbar itself",
 print()
 print("Nobody is asked to type HTML")
 print("-" * 70)
-#  CLAUDE.md: never a raw HTML textarea as the way to accomplish ordinary
+#  The rule: never a raw HTML textarea as the way to accomplish ordinary
 #  styling or layout. The page editor had one removed once already; the
 #  blog post editor still had one, showing <p> tags to somebody writing a
 #  post.

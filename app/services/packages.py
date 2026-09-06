@@ -2,8 +2,7 @@
 
 A package is a directory under PACKAGES_DIR (built-in, shipped with the
 app) or under an install's app/static/themes/<slug>/ (admin-imported or
-saved from the live site, in the persistent volume). See CLAUDE.md's
-"Template Packages" section for the on-disk shape. Every package becomes
+saved from the live site, in the persistent volume). Every package becomes
 a `templates` row (see install_theme_package) whether or not it ships a
 pages/ directory — a template's LOOK (activate) and its CONTENT (load)
 are independent actions available on any installed template, not two
@@ -705,9 +704,9 @@ def point_media_at_installed_copy(pack, slug):
 # ---------- Zip import/export ----------
 # An admin builds a look (or a full demo site) in the tool, then exports it
 # as a .zip to reuse on another install or share with someone else — the
-# same package format either way, just a .zip instead of a folder. See
-# CLAUDE.md's "Template Packages" section and the Security section for why
-# the extraction step below is this careful about an untrusted upload.
+# same package format either way, just a .zip instead of a folder. An
+# uploaded archive is untrusted input, which is why the extraction step
+# below is this careful about it.
 
 ALLOWED_PACKAGE_EXTENSIONS = {".json", ".css", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"}
 MAX_PACKAGE_FILES = 500

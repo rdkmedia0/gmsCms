@@ -5,7 +5,7 @@ styling column that decides how it looks (corners, depth, colour, width,
 background, heading, and the per-tool file/media settings) -- so putting it
 on another page recreates exactly what you made, not a blank starting
 point. It composes only from the tools the section already used, because
-it IS that section; there is no bespoke markup here (see CLAUDE.md).
+it IS that section; there is no bespoke markup here.
 
 Kept local to this install: a pattern reuses the site's own uploads and
 tools, so it is a within-site convenience rather than a travelling

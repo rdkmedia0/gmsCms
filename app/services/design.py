@@ -4,8 +4,8 @@ font pairings, the individual font list, corner styles and depth.
 They live here rather than in the admin Blueprint because they are data,
 not routing — a route should read them, never own them. They were the
 largest tenant of a 1,200-line route package, which is the exact shape
-CLAUDE.md warns about ("a big config dict does not belong as a Python
-literal inside a route file"), and every one of them is read from more
+this project warns about (a big config dict does not belong as a Python
+literal inside a route file), and every one of them is read from more
 than one place: the public site bridges shape and depth into CSS
 variables, the seeder reads the palettes, and the admin panels render
 all five.
@@ -98,7 +98,7 @@ FONT_PAIRINGS = {
     #  Every family here is already bundled and self-hosted: these are
     #  faces from GOOGLE_FONT_CHOICES, so they share `choices.css` the
     #  same way an individually-picked font does. No new download, no
-    #  live Google link -- see the fonts rule in CLAUDE.md.
+    #  live Google link -- fonts are fully self-hosted, always.
     "abril-lato": {
         "name": "Abril Fatface + Lato",
         "heading": "\"Abril Fatface\", Georgia, serif",
@@ -309,7 +309,7 @@ SHADOW_PRESETS = {
 #  and cannot picture "0.62".
 #
 #  Two rules bound any change to these numbers, both measured over all 72
-#  shipped colours (see BOW.md, "Shade spreads"):
+#  shipped colours:
 #
 #    * `spread` must not go below 0.85, and `dark_curve` must stay at 1.0
 #      for the lighter settings. Both compress the gap between the light

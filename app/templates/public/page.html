@@ -467,8 +467,8 @@
        missing the Corners and Depth controls every other cell tool had,
        and carried none of the tool-level attributes that make those
        controls work, so the footer's Text was quietly a lesser tool than
-       the body's. See BOW.md's "one renderer per tool" -- this is that
-       job, done for the first of them. #}
+       the body's. One renderer per tool -- this is that job, done for
+       the first of them. #}
     {%- set text_classes = ['block', 'block-text'] + ([extra_class] if extra_class else []) -%}
     <section class="{{ text_classes | join(' ') }}"
              {{ ('data-corner-style="' ~ corner_style ~ '"') | safe if corner_style }}
@@ -1602,8 +1602,7 @@
         always had: Flask drops a None value and picks the rule that
         does not need one. A cell passes its index and its ?row=
         suffix. Both chains carried this list until the routes
-        underneath them became one -- see BOW.md, "One list of tool
-        controls". -#}
+        underneath them became one -- one list of tool controls. -#}
           {{ heading_controls(item, save_url) }}
           {%- if item.type == 'html' and not item.is_menu and not item.is_breadcrumb and not item.is_lang_switcher and not item.is_divider and not item.is_image_accordion and not item.is_video_gallery and not item.is_faq and not item.is_faq_reader and not item.is_search and not item.is_blog and not item.is_basket and not item.is_contact_form and not item.is_contact_info and not item.is_buy_button and not item.is_shop and not item.is_block and not item.is_version -%}
           {# A Table keeps the rich-text ribbon (its cells are real text) but
@@ -2778,7 +2777,7 @@
 
   {# The Image Library, for any control that needs to show pictures rather
      than filenames. A data block, read with JSON.parse — never JS built
-     per-template (see CLAUDE.md). #}
+     per-template. #}
   <script type="application/json" id="cms-media-images">{{ media_images | tojson }}</script>
 
   <div id="cms-image-picker-backdrop" class="cms-modal-backdrop" hidden>

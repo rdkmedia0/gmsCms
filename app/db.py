@@ -1291,8 +1291,8 @@ def _installed_package_dirs():
     AUTHORING tree: the packager stage builds it into zips and deletes it,
     so on any real install it does not exist, and code globbing it found
     nothing and returned quietly. A missing folder is not an error, so
-    nothing ever said so -- see BOW.md, 2026-08-25, where the same mistake
-    had silently disabled a guard in `_apply_pack_identity`.
+    nothing ever said so -- the same mistake had earlier silently
+    disabled a guard in `_apply_pack_identity`.
 
     Installed packages unpack to `static/themes/<slug>/`, builtin and
     imported alike, and carry the same `manifest.json`, `pages/` and
@@ -1569,8 +1569,9 @@ def _drop_handwritten_contact_blocks(db):
     rows out of it, so saving would have replaced the lot with an empty
     block.
 
-    Which makes it the thing CLAUDE.md warns against in as many words:
-    markup hand-built to look like a tool instead of composed from one. The
+    Which makes it the thing this project's content rule warns against in
+    as many words: markup hand-built to look like a tool instead of
+    composed from one. The
     templates no longer ship it, and the address it carried now travels in
     the footer's real Contacts tool, which is where these sites already
     show the rest of their details.
@@ -1879,8 +1880,8 @@ def _sends_can_be_posts(db):
     a page -- it belongs to a blog -- so that column points at the wrong
     owner the moment a post can be sent. This codebase has met that tell
     before: `blog_posts.page_id` was NOT NULL for the same reason, and
-    the table had to be rebuilt then too. See CLAUDE.md, "Features are
-    tools, never page types".
+    the table had to be rebuilt then too. Features are tools, never page
+    types.
 
     So: a kind and an id. The foreign key goes with it, deliberately --
     the target is polymorphic, and more to the point a record that you

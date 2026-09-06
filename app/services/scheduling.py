@@ -262,7 +262,7 @@ def start(app, run_one):
 
     `run_one(app, row)` is passed in rather than imported, because the
     sending lives in the routes layer and a service never reaches back up
-    into it (CLAUDE.md: import direction is one-way).
+    into it (import direction is one-way).
     """
     global _running
     with _started:

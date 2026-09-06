@@ -44,8 +44,8 @@ id_ed25519
 *token*
 .githooks/
 
-# Development material, not product -- same reason as CLAUDE.md and tools/
-# below. The workflow that builds this image does not need to be in it,
+# Development material, not product -- same reason as tools/ below. The
+# workflow that builds this image does not need to be in it,
 # and a compose file for somebody else's deployment is not either.
 .github/
 deploy/
@@ -57,11 +57,8 @@ deploy/
 Dockerfile
 docker-compose.yml
 
-# Development material, not product. Nothing at runtime reads any of it —
-# the code only mentions CLAUDE.md inside comments — and a distributed
-# image should carry the app, not the notes about how it was built.
-CLAUDE.md
-BOW.md
+# Development material, not product. Nothing at runtime reads any of it,
+# and a distributed image should carry the app, not its checkers.
 tools/
 
 # Built by the packager stage from app/data/templates — never carried in

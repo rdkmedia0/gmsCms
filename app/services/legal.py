@@ -103,8 +103,8 @@ def settings_for(db):
         ).fetchall()
     }
     #  One install is one website, so it has ONE name -- but it is stored
-    #  in two places (see CLAUDE.md, "The site's identity is the site's"),
-    #  and two places that can disagree eventually do: this very install
+    #  in two places (site_title and the legal_* settings), and two places
+    #  that can disagree eventually do: this very install
     #  had a tab reading one business and a Terms page naming another.
     #
     #  So the legal name FALLS BACK to the site's rather than standing
@@ -391,7 +391,8 @@ def _append_section(db, page_id, html, slug):
     #  heading button like anywhere else on their site. As an Embed they
     #  got a code box, which is this app's marker for "third-party
     #  script", offered to somebody looking at their own refund policy.
-    #  The rule is in CLAUDE.md and this was breaking it.
+    #  Embed is for real third-party code only, and this was breaking
+    #  that rule.
     db.execute(
         "INSERT INTO sections (page_id, type, title, content, position) "
         "VALUES (?, 'text', '', ?, (SELECT COALESCE(MAX(position),0)+1 FROM sections WHERE page_id = ?))",

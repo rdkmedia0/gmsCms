@@ -9,7 +9,7 @@ much an introduction as a configuration -- an owner who finishes should
 know the Tools panel exists, know the Colors panel exists, and know
 which integrations they have not set up.
 
-Three rules shape the whole thing (see BOW.md's specification):
+Three rules shape the whole thing:
 
 * **One install is one website.** The name, the business details and the
   contact are captured ONCE here and are then what everything else

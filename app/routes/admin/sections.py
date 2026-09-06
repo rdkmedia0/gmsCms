@@ -58,8 +58,8 @@ def _saved_upload(field, allowed, refusal, keep_name=False):
     Three routes wrote this out in full -- choose the file, secure the
     name, check the extension against an allowlist, generate a unique
     name, make the folder, save -- and a fourth would have written it
-    again. The rule that matters is in CLAUDE.md: never trust a
-    client-supplied filename on disk, so `secure_filename` plus a
+    again. The rule that matters: never trust a client-supplied filename
+    on disk, so `secure_filename` plus a
     generated name, always, and an allowlist rather than a denylist.
 
     `keep_name` is for a file people DOWNLOAD (the File tool): a picture
@@ -80,7 +80,7 @@ def _saved_upload(field, allowed, refusal, keep_name=False):
     #  checked against what is actually IN the library, and the value
     #  used is the library's own, not the string that was sent. Anything
     #  else is a path handed to us by a client, which is the one thing
-    #  CLAUDE.md's path rule is about.
+    #  the path rule (stay inside the intended directory) is about.
     picked = (request.form.get("library_url") or "").strip()
     if picked:
         known = {item["url"]: item for item in _list_media()}

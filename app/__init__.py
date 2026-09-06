@@ -543,8 +543,7 @@ def _seed(app):
 
         #  Every shipped package becomes a `templates` row, whether or
         #  not it has pages: a template's LOOK and its CONTENT are
-        #  independent actions on any installed template. See CLAUDE.md,
-        #  "Template Packages".
+        #  independent actions on any installed template.
         #
         #  They arrive as one .zip each and are installed through the same
         #  extractor and installer an uploaded package goes through --

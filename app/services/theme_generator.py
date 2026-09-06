@@ -18,8 +18,8 @@ none of them had to be built here:
   * its pictures belong to it rather than to a shared folder;
   * `package_inventory()` can say what it will do before it does it.
 
-CLAUDE.md named this as a deferred follow-up -- "a Theme Generator layout
-is structurally a package with no content". It is a package with content
+This was long a deferred follow-up -- "a Theme Generator layout is
+structurally a package with no content". It is a package with content
 now, which is the same insight from the other side.
 
 What has NOT changed, and must not: everything it emits is built from
@@ -1049,7 +1049,7 @@ def _prompt(kit, schema, page_title=""):
     which runs the app's context processors -- and one of those reads the
     session. A service must be callable without a request: from a script,
     from a checker, from the scheduler. Dragging Flask's request context
-    into one is the thing CLAUDE.md's service rule exists to prevent, and
+    into one is the thing the service rule exists to prevent, and
     it showed up here as "Working outside of request context" the first
     time this was tested outside a browser.
     """
@@ -2749,7 +2749,7 @@ def _carry_media(pkg_dir, slug):
     correct for the site and wrong for a package, because that URL means
     nothing anywhere else. Exported, the template arrived with a broken
     picture; installed on another site, the same. This is the rule
-    CLAUDE.md already states for authored templates -- a template's
+    that already holds for authored templates -- a template's
     pictures belong to the template -- applied to the one path that was
     not following it.
 
@@ -3294,8 +3294,8 @@ def _fonts_url(pairing):
 
     Local, always: every selectable font in this app is bundled as real
     .woff2 files and nothing here fetches Google at runtime, by design.
-    Never write a fonts.googleapis.com URL into a package -- see
-    CLAUDE.md's "Fonts are fully self-hosted".
+    Never write a fonts.googleapis.com URL into a package -- fonts are
+    fully self-hosted.
     """
     if not pairing:
         return None

@@ -11,7 +11,7 @@ An earlier design used bundled SVG icon sets, which is why these
 functions once carried source/style parameters and why a set of Bootstrap
 SVGs sat under static/icons/. Both are gone: nothing read the parameters,
 nothing referenced the files, and carrying a removed feature's shape
-around is exactly the drift CLAUDE.md exists to prevent.
+around is exactly the drift this project's rules exist to prevent.
 """
 import os
 from html import escape as html_escape
@@ -511,8 +511,7 @@ def icon_choices_for():
 #  fill its line — about 1.37em wide at any size — while © and its
 #  relatives are ordinary typography and come out around 0.71em, so at one
 #  font-size the same setting produces three different-looking marks. The
-#  class lets the CSS even them up; measured rather than guessed (see
-#  BOW.md, 2026-08-25).
+#  class lets the CSS even them up; measured rather than guessed.
 TEXT_GLYPH_ICONS = {"©", "®", "™"}
 
 

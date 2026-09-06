@@ -224,8 +224,8 @@ def settings_email():
         #  These are the SAME two settings the legal pages are written
         #  from -- deliberately the same keys, not a second copy, because
         #  one install is one business and its name and address should be
-        #  asked for once (see CLAUDE.md, "The site's identity is the
-        #  site's"). They live here as well because this is where somebody
+        #  asked for once (the site's identity is the site's). They live
+        #  here as well because this is where somebody
         #  goes when mail is not working, and mail to a list without a
         #  postal identity is refused rather than sent.
         for key in ("legal_business", "legal_address"):

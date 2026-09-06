@@ -1,6 +1,6 @@
 """Admin blueprint package. `bp` and the constants/helpers below are shared
-across the domain route modules imported at the bottom of this file (see
-CLAUDE.md's Template Packages / no-monolith rules) — each of those modules
+across the domain route modules imported at the bottom of this file (one
+file per feature area, never one monolith) — each of those modules
 does `from . import bp` plus whichever of these names it needs."""
 import os
 import re
@@ -458,7 +458,7 @@ def _retire_foreign_pack_pages(db, slug):
     #  still says which of these pages had the owner's own writing in
     #  them, and the caller WARNS with that instead of vetoing. The
     #  confirm dialog already offers to save the current site as a new
-    #  template first, which is this app's undo (see CLAUDE.md) -- so
+    #  template first, which is this app's one undo mechanism -- so
     #  the work is recoverable, by an act the owner chose, rather than
     #  preserved by a flag they cannot see.
     doomed = db.execute(
@@ -585,8 +585,8 @@ def _apply_default_layout(db, template_id, manifest, force=False):
     template the admin just clicked Activate on"). That duplicate path,
     and the companion-theme-by-name indirection itself, are both gone —
     every built-in content pack now ships its own theme.css/palette
-    directly (see CLAUDE.md's Template Packages section) and a content
-    pack's layout keys apply to its own template, same as a saved
+    directly and a content pack's layout keys apply to its own template,
+    same as a saved
     template's do, via this one function only.
 
     page_ids=None throughout (the site's real pages, current at the
@@ -630,7 +630,7 @@ def _apply_default_layout(db, template_id, manifest, force=False):
     elif page_layout or footer_layout or manifest.get("header_menu"):
         # A content pack that declares any default layout wants a real
         # page-nav menu built into its header too (header_menu defaults
-        # to True for those — see CLAUDE.md) — a saved template without
+        # to True for those) — a saved template without
         # its own page_layout/footer_layout preset (e.g. a plain theme)
         # has no opinion here and leaves the header alone.
         _demo_set_header_menu(db, template_id, page_ids)

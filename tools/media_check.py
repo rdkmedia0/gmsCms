@@ -95,7 +95,7 @@ for slug in slugs:
 #
 #  The distinction that matters is WHERE the copies are. Two templates
 #  holding identical bytes is CORRECT and must not be "fixed" -- a
-#  template's pictures belong to the template (CLAUDE.md), and a shared
+#  template's pictures belong to the template, and a shared
 #  app-wide folder is exactly what made an exported package silently
 #  incomplete. A fork carrying its own copy of what it forked is the
 #  same thing and equally right. Two copies inside ONE template, or two

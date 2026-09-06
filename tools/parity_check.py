@@ -134,8 +134,8 @@ def bare(panel):
     #  tool's is `tool_corner_style`, while a cell has only the tool's
     #  and calls it `corner_style`. The control is the same control; it
     #  writes to a differently-named field. That is the residue of
-    #  "sections as pure containers" -- see BOW.md -- and it is
-    #  invisible to whoever is using it.
+    #  "sections as pure containers", and it is invisible to whoever is
+    #  using it.
     #  Same for the tool's palette-colour control: a section writes
     #  `tool_text_color`, a cell writes `text_color`. Same control, same
     #  reason.
