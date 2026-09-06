@@ -407,6 +407,10 @@ def role_ramps(template):
 
 def _rgb(colour):
     colour = (colour or "").strip().lstrip("#")
+    #  #fff is a colour too. Two shipped manifests declare their ground
+    #  that way and were silently handed a tint of the primary instead.
+    if len(colour) == 3:
+        colour = "".join(ch * 2 for ch in colour)
     if len(colour) != 6:
         return None
     try:
@@ -482,6 +486,9 @@ def page_colours(palette, ground="", ink=""):
 
     if not (ground and _rgb(ground)):
         ground = (tones.scale(primary) or ["#ffffff"])[0]
+    #  Six digits, whatever was written: what comes out of here is put
+    #  into a colour input, which rejects #fff and shows black.
+    ground = _hex(_rgb(ground))
 
     #  Which way up the page is. MEASURED -- whichever ink wins on this
     #  ground -- rather than thresholded, because a mid ground has no
@@ -499,6 +506,8 @@ def page_colours(palette, ground="", ink=""):
     #  workshop has no writing in it at all. Taken when it reads.
     if not (ink and _rgb(ink) and contrast(ink, ground) >= 7.0):
         ink = tones.step_that_reads(primary, ground, 7.0, dark=dark_page)
+    else:
+        ink = _hex(_rgb(ink))
 
     return _with_ink(ground, ink, primary, accent, dark_page, secondary=roles.get("secondary"))
 

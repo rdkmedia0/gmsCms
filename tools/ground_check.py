@@ -127,9 +127,74 @@ client.post(f"/admin/templates/{active}/ground", data={"ground": "not a colour"}
 check("nonsense is refused and changes nothing", page_vars().get("--site-ground") == before)
 client.post(f"/admin/templates/{active}/ground", data={"ground": "default"}, headers=ORIGIN)
 with app.app_context():
-    row = get_db().execute("SELECT ground_color, ink_color FROM templates WHERE id = ?", (active,)).fetchone()
-check("reset puts the template's own back", row["ground_color"] is None and row["ink_color"] is None)
-check("and the page still has a ground to paint", bool(page_vars().get("--site-ground")))
+    row = get_db().execute("SELECT slug, is_builtin, ground_color, ink_color, ground_default "
+                           "FROM templates WHERE id = ?", (active,)).fetchone()
+check("reset clears the owner's choice", row["ground_color"] is None and row["ink_color"] is None)
+#  ...and what the page is painted afterwards is what the template SHIPPED,
+#  read from its own manifest -- not a tint of the primary, which is what
+#  a cleared column fell back to while default and choice shared one.
+from app.services.packages import template_package_dir           # noqa: E402
+with open(os.path.join(template_package_dir(app.static_folder, row["slug"], row["is_builtin"]),
+                       "manifest.json"), encoding="utf-8") as fh:
+    shipped = json.load(fh).get("ground_color", "")
+shipped6 = "#" + "".join(ch * 2 for ch in shipped[1:]) if len(shipped) == 4 else shipped
+check("the template's own ground is recorded as its default", row["ground_default"] == shipped, row["ground_default"])
+check("and reset paints the page with it", page_vars().get("--site-ground") == shipped6.lower(),
+      (page_vars().get("--site-ground"), shipped6))
+
+print()
+print("The picker")
+print("-" * 70)
+client.get("/admin/view-mode/editing?next=/")
+
+
+def picker():
+    html = client.get("/").get_data(as_text=True)
+    value = re.search(r'name="ground" value="(#[0-9a-fA-F]{6})"', html)
+    return (value.group(1).lower() if value else None), 'name="ground" value="default"' in html
+
+
+value, has_reset = picker()
+check("opens on the colour the template loaded with", value == shipped6.lower(), (value, shipped6))
+check("and offers no Reset until a choice has been made", not has_reset)
+client.post(f"/admin/templates/{active}/ground", data={"ground": "#336699"}, headers=ORIGIN)
+value, has_reset = picker()
+check("a choice takes over", value == "#336699", value)
+check("and Reset appears", has_reset)
+client.post(f"/admin/templates/{active}/ground", data={"ground": "default"}, headers=ORIGIN)
+value, has_reset = picker()
+check("Reset returns to the template's colour", value == shipped6.lower() and not has_reset, value)
+client.get("/admin/view-mode/viewing?next=/")
+
+print()
+print("A ground written as #fff")
+print("-" * 70)
+from app.services import palette                                   # noqa: E402
+short = palette.page_colours([{"slug": "primary", "color": "#2c6e6b"}], "#fff", "")
+check("is honoured, as white, in six digits", short.get("--site-ground") == "#ffffff", short.get("--site-ground"))
+
+print()
+print("Installs that predate the default/choice split")
+print("-" * 70)
+from app.services.packages import backfill_ground_defaults          # noqa: E402
+with app.app_context():
+    db = get_db()
+    #  The installer used to write the shipped ground into the CHOICE
+    #  column. Put a row back in that state and see it un-chosen...
+    db.execute("UPDATE templates SET ground_color = ground_default, ground_default = NULL WHERE id = ?", (active,))
+    db.commit()
+    backfill_ground_defaults(db, app.static_folder)
+    row = db.execute("SELECT ground_color, ground_default FROM templates WHERE id = ?", (active,)).fetchone()
+    check("the installer's own write is not mistaken for a choice",
+          row["ground_color"] is None and row["ground_default"] == shipped, dict(row))
+    #  ...while a colour the owner really chose is kept.
+    db.execute("UPDATE templates SET ground_color = '#654321' WHERE id = ?", (active,))
+    db.commit()
+    backfill_ground_defaults(db, app.static_folder)
+    row = db.execute("SELECT ground_color, ground_default FROM templates WHERE id = ?", (active,)).fetchone()
+    check("a real choice survives the backfill", row["ground_color"] == "#654321" and row["ground_default"] == shipped)
+    db.execute("UPDATE templates SET ground_color = NULL WHERE id = ?", (active,))
+    db.commit()
 
 print()
 print("A zone override on the body still wins")

@@ -518,11 +518,18 @@ def _migrate(db):
     #  package shipped, and what the owner chose instead.
     _add_column(db, "templates", "composition_default", "TEXT")
     _add_column(db, "templates", "composition_override", "TEXT")
-    #  The ground a template's own picture sat on. A dark one makes a
-    #  dark site -- see palette.page_colours.
+    #  The page's ground and the ink on it, as TWO pairs -- the same shape
+    #  Corners, Depth and Composition have: what the package shipped
+    #  (*_default, written by the installer from the manifest) and what
+    #  the owner chose instead (ground_color / ink_color, written only by
+    #  the Background control). They were one column, so "Reset" could
+    #  only clear it -- which threw the template's own colour away and
+    #  fell back to a tint of the primary. See packages.install_theme_
+    #  package and backfill_ground_defaults.
     _add_column(db, "templates", "ground_color", "TEXT")
-    #  The colour the reference picture was written in.
     _add_column(db, "templates", "ink_color", "TEXT")
+    _add_column(db, "templates", "ground_default", "TEXT")
+    _add_column(db, "templates", "ink_default", "TEXT")
     # Elevation, the same preset-only override as shape_override above
     # (SHADOW_PRESETS). NULL means "whatever the theme itself does".
     _add_column(db, "templates", "shadow_override", "TEXT")

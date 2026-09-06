@@ -556,6 +556,12 @@ def _seed(app):
             #  still adopts them — that is the admin asking for it.
             packages.install_template_zip(db, slug, zip_path, app.static_folder,
                                           adopt_manifest_overrides=False)
+        #  Every row's shipped ground, from its manifest -- including the
+        #  ones the loop above skipped because their archive is unchanged,
+        #  and the ones that were saved or generated here. See
+        #  packages.backfill_ground_defaults for why a reinstall is not
+        #  enough.
+        packages.backfill_ground_defaults(db, app.static_folder)
 
         # One-time carry-over for installs that had the earlier per-theme
         # nav_layout column set (briefly shipped, now replaced by the

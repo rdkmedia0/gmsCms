@@ -531,9 +531,18 @@ def install_theme_package(db, slug, static_folder, pkg_dir_override=None, is_bui
         #  or not: they are what the package SAYS about itself, and an
         #  owner's own choice lives in the *_override columns beside them.
         db.execute("UPDATE templates SET shape_default = ?, shadow_default = ?, "
-                   "composition_default = ? WHERE id = ?",
+                   "composition_default = ?, ground_default = ?, ink_default = ? WHERE id = ?",
                    (manifest.get("shape_override"), manifest.get("shadow_override"),
-                    manifest.get("composition"), existing["id"]))
+                    manifest.get("composition"), manifest.get("ground_color"),
+                    manifest.get("ink_color"), existing["id"]))
+        #  A ground the owner "chose" that is exactly the shipped one is
+        #  the installer's own earlier write, from when the two shared a
+        #  column -- not a choice. Clearing it is what lets Reset mean
+        #  "the template's own" on an install that predates the split.
+        db.execute("UPDATE templates SET ground_color = NULL WHERE id = ? "
+                   "AND ground_color IS NOT NULL AND ground_color = ground_default", (existing["id"],))
+        db.execute("UPDATE templates SET ink_color = NULL WHERE id = ? "
+                   "AND ink_color IS NOT NULL AND ink_color = ink_default", (existing["id"],))
         if adopt_manifest_overrides and manifest.get("shape_override"):
             db.execute("UPDATE templates SET shape_override = ? WHERE id = ?", (manifest["shape_override"], existing["id"]))
         if adopt_manifest_overrides and manifest.get("shadow_override"):
@@ -541,12 +550,6 @@ def install_theme_package(db, slug, static_folder, pkg_dir_override=None, is_bui
         if adopt_manifest_overrides and manifest.get("composition"):
             db.execute("UPDATE templates SET composition_override = ? WHERE id = ?",
                        (manifest["composition"], existing["id"]))
-        if adopt_manifest_overrides and manifest.get("ground_color"):
-            db.execute("UPDATE templates SET ground_color = ? WHERE id = ?",
-                       (manifest["ground_color"], existing["id"]))
-        if adopt_manifest_overrides and manifest.get("ink_color"):
-            db.execute("UPDATE templates SET ink_color = ? WHERE id = ?",
-                       (manifest["ink_color"], existing["id"]))
         if adopt_manifest_overrides and manifest.get("zone_style_overrides"):
             db.execute(
                 "UPDATE templates SET zone_style_overrides = ? WHERE id = ?",
@@ -567,7 +570,9 @@ def install_theme_package(db, slug, static_folder, pkg_dir_override=None, is_bui
             #  freshly generated one, which is every generated one, came
             #  out unshaped.
             "shape_default, shadow_default, composition_default, composition_override, "
-            "ground_color, ink_color) "
+            #  The ground is what the package SAYS, so it is a default; the
+            #  owner's own colour (ground_color) starts empty.
+            "ground_default, ink_default) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 manifest["name"], slug, css_path,
@@ -590,6 +595,40 @@ def install_theme_package(db, slug, static_folder, pkg_dir_override=None, is_bui
         return cur.lastrowid
     except sqlite3.IntegrityError:
         return db.execute("SELECT id FROM templates WHERE slug = ?", (slug,)).fetchone()["id"]
+
+
+def backfill_ground_defaults(db, static_folder):
+    """Gives every template row its shipped ground, from the manifest on
+    disk, and un-chooses a "choice" that was only ever the installer's.
+
+    ground_default arrived after the installer had already been writing
+    the manifest's ground into ground_color for a while. Reinstalling
+    fixes a row -- but a package whose archive has not changed is not
+    reinstalled, by design, so a row that predates the split would keep
+    an empty default and a full override for ever, and Reset would keep
+    throwing the template's own colour away. Cheap enough to run every
+    boot: twenty small files. A row without a manifest is left alone.
+    """
+    rows = db.execute("SELECT id, slug, is_builtin, ground_color, ink_color, ground_default, ink_default "
+                      "FROM templates").fetchall()
+    for row in rows:
+        folder = template_package_dir(static_folder, row["slug"], row["is_builtin"])
+        path = os.path.join(folder, "manifest.json")
+        if not os.path.exists(path):
+            continue
+        try:
+            with open(path, encoding="utf-8") as fh:
+                manifest = json.load(fh)
+        except (OSError, ValueError):
+            continue
+        ground, ink = manifest.get("ground_color"), manifest.get("ink_color")
+        db.execute("UPDATE templates SET ground_default = ?, ink_default = ? WHERE id = ?",
+                   (ground, ink, row["id"]))
+        if ground and row["ground_color"] == ground:
+            db.execute("UPDATE templates SET ground_color = NULL WHERE id = ?", (row["id"],))
+        if ink and row["ink_color"] == ink:
+            db.execute("UPDATE templates SET ink_color = NULL WHERE id = ?", (row["id"],))
+    db.commit()
 
 
 def load_package_dir(pkg_dir):
@@ -799,6 +838,19 @@ def _build_package_dir(db, tpl, static_folder, page_ids, work_dir, slug, name=No
         manifest["shape_override"] = tpl["shape_override"]
     if tpl["shadow_override"]:
         manifest["shadow_override"] = tpl["shadow_override"]
+    #  The ground the page is actually painted -- the owner's choice, else
+    #  what this template shipped. A saved template is a new template, so
+    #  what it carries is its default. Exported without this, a navy site
+    #  saved as a template came back on a tint of the primary.
+    cols = tpl.keys()
+    ground = (tpl["ground_color"] if "ground_color" in cols else None) or \
+             (tpl["ground_default"] if "ground_default" in cols else None)
+    ink = (tpl["ink_color"] if "ink_color" in cols else None) or \
+          (tpl["ink_default"] if "ink_default" in cols else None)
+    if ground:
+        manifest["ground_color"] = ground
+    if ink:
+        manifest["ink_color"] = ink
     #  Which composition the template wears -- the layout that gates
     #  composition.css (the banded hero, the white overlay button, the gutters).
     #  Dropped on export, the imported template loaded none of it: the banner

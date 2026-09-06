@@ -2288,10 +2288,12 @@ def _theme_override_css(template):
     #  taste, and getting them wrong is how a correct palette produces an
     #  inaccessible page.
     try:
+        #  The owner's choice, else what the template shipped -- the same
+        #  override-then-default pair Corners and Depth read.
         for name, value in palette_mod.page_colours(
                 json.loads(template["palette_json"] or "[]"),
-                _column(template, "ground_color") or "",
-                _column(template, "ink_color") or "").items():
+                _column(template, "ground_color") or _column(template, "ground_default") or "",
+                _column(template, "ink_color") or _column(template, "ink_default") or "").items():
             lines.append("%s: %s;" % (name, value))
     except (ValueError, TypeError):
         pass
@@ -2383,8 +2385,8 @@ def _effective_ground(template):
     try:
         return palette_mod.page_colours(
             json.loads(template["palette_json"] or "[]"),
-            _column(template, "ground_color") or "",
-            _column(template, "ink_color") or "",
+            _column(template, "ground_color") or _column(template, "ground_default") or "",
+            _column(template, "ink_color") or _column(template, "ink_default") or "",
         ).get("--site-ground", "")
     except (ValueError, TypeError):
         return ""
