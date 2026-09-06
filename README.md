@@ -119,27 +119,18 @@ tidies settled old ones and anything can be re-pulled.
 
 ## HTTPS
 
-Three ways to run it — none needs a reverse proxy.
+Your site needs to be reached at `https://yoursite.example` (the padlock),
+which takes a certificate. Pick the situation that matches yours.
 
-**1. Standalone (this container serves 443).** Get a certificate and point
-`.env` at it:
+**A. Your hosting already gives you HTTPS** (a platform with a load
+balancer in front, e.g. Railway, Fly, Coolify). Nothing to do — leave
+`WEB_PORT=5000` and let the platform route to it.
 
-```
-WEB_PORT=443
-TLS_CERT_FILE=/etc/letsencrypt/live/yoursite.example/fullchain.pem
-TLS_KEY_FILE=/etc/letsencrypt/live/yoursite.example/privkey.pem
-```
-
-Uncomment the cert mount in `docker-compose.yml`
-(`- /etc/letsencrypt:/etc/letsencrypt:ro`). Certs must be readable by
-uid 1000, and a renewed cert is picked up on restart.
-
-**2. A platform terminates TLS for you.** Leave `WEB_PORT=5000`, let the
-platform route to it — nothing to configure.
-
-**3. Behind your own proxy.** Set `WEB_PORT=127.0.0.1:5000` and proxy to
-it. With nginx, forward `X-Forwarded-Proto $scheme` (required — it's how
-the app knows it's on HTTPS) and set `client_max_body_size 250M`. Caddy:
+**B. A plain server — the easy way.** Put **Caddy** in front: a small web
+server that fetches the certificate itself, renews it, and passes visitors
+through to gmsCms. In `.env` set `WEB_PORT=127.0.0.1:5000` (so only Caddy
+can reach the app), [install Caddy](https://caddyserver.com/docs/install),
+and put this in `/etc/caddy/Caddyfile`:
 
 ```
 yoursite.example {
@@ -147,8 +138,36 @@ yoursite.example {
 }
 ```
 
-Serve it at a **domain root**, not a sub-path. If your proxy reaches the
-container from a public address, set `TRUST_PROXY=always`.
+Then `sudo systemctl reload caddy`. Done — certificates are automatic from
+here on. (Using nginx instead? Pass `X-Forwarded-Proto $scheme` and set
+`client_max_body_size 250M`.)
+
+**C. A plain server — no extra software.** The container serves HTTPS
+itself from a certificate you provide. Get one from Let's Encrypt while the
+container is stopped (it needs port 80 for a minute):
+
+```bash
+docker compose down && sudo certbot certonly --standalone -d yoursite.example && docker compose up -d
+```
+
+Point `.env` at it:
+
+```
+WEB_PORT=443
+TLS_CERT_FILE=/etc/letsencrypt/live/yoursite.example/fullchain.pem
+TLS_KEY_FILE=/etc/letsencrypt/live/yoursite.example/privkey.pem
+```
+
+and in `docker-compose.yml` uncomment the line
+`- /etc/letsencrypt:/etc/letsencrypt:ro`. The app runs as user **1000** and
+must be able to read both files — it refuses to start and names the file if
+it can't. Certificates expire every 90 days: repeat the `certbot` line above
+to renew, then `docker compose restart`.
+
+Whichever you choose, serve it at the **domain root**
+(`https://yoursite.example`), not a sub-path. In B, if your proxy is on a
+different machine and reaches this one over a public address, add
+`TRUST_PROXY=always` to `.env`.
 
 ---
 

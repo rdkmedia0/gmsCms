@@ -4,8 +4,7 @@ services:
     #  edited. `docker compose pull` fetches the published image and
     #  `up -d` runs it; `up -d --build` ignores the registry and compiles
     #  this working tree instead, which is what you want while developing.
-    #  The published image is private, so a host pulls it with a token —
-    #  see README.md, "Run the published image".
+    #  The published image is public — see README.md, "Install".
     image: ghcr.io/rdkmedia0/gmscms:latest
     build: .
     ports:
