@@ -3,7 +3,7 @@
 {% block content %}
 {% include "partials/commerce_tabs.html" %}
 <h1>Orders</h1>
-<p class="hint">Every sale, who made it, and what they&rsquo;re still owed &mdash; a filterable ledger you can export. Buyers don&rsquo;t have accounts &mdash; they reach their purchases through a link we email them &mdash; so if someone says they never got theirs, resend it from here. Orders mirror Stripe (the record of every payment); nothing is deleted here, so to set aside test or old sales you <em>filter</em> them out rather than removing them.</p>
+<p class="hint">Every sale, who made it, and what they&rsquo;re still owed &mdash; a filterable ledger you can export. Buyers don&rsquo;t have accounts &mdash; they reach their purchases through a link we email them &mdash; so if someone says they never got theirs, resend it from here. This list is a cache of Stripe, which keeps the full record; an order a buyer can still use always stays, and settled ones are only tidied by the keep-from window at the bottom &mdash; everything is pullable back from Stripe.</p>
 
 {% if not email_ready %}
 <p class="flash flash-warning">Email isn&rsquo;t set up, so order emails aren&rsquo;t being sent and Resend won&rsquo;t work. <a href="{{ url_for('admin.settings_email') }}">Set it up →</a></p>
@@ -55,6 +55,13 @@
         <option value="test"{{ ' selected' if filters.mode == 'test' }}>Test only</option>
       </select>
     </label>
+    <label for="active">Still to use
+      <select id="active" name="active" title="Active = the buyer still has a session or download to use. Settled = nothing left. Only settled orders are ever cleaned up.">
+        <option value="">Any</option>
+        <option value="active"{{ ' selected' if filters.active == 'active' }}>Active — still to use</option>
+        <option value="settled"{{ ' selected' if filters.active == 'settled' }}>Settled — nothing left</option>
+      </select>
+    </label>
     <label for="since">From
       <input type="date" id="since" name="since" value="{{ filters.since }}"
              title="Only orders on or after this day. Leave blank for no earliest date.">
@@ -78,7 +85,7 @@
   <span class="hint">{{ orders | length }} order{{ 's' if orders | length != 1 }}{% if filtered %} match these filters{% endif %}.</span>
   {% if orders %}
   <a class="btn btn-small" download
-     href="{{ url_for('admin.commerce_orders_export', who=filters.who, what=filters.what, kind=filters.kind, status=filters.status, mode=filters.mode, since=filters.since, until=filters.until) }}"
+     href="{{ url_for('admin.commerce_orders_export', who=filters.who, what=filters.what, kind=filters.kind, status=filters.status, mode=filters.mode, active=filters.active, since=filters.since, until=filters.until) }}"
      title="Download these orders as a CSV spreadsheet — the same filters you have on now">&#8681; Export CSV</a>
   {% endif %}
 </div>
@@ -113,6 +120,8 @@
         <td>
           <span class="integration-badge {{ 'is-on' if order.status == 'paid' else 'is-off' }}">{{ order.status }}</span>
           {% if entry.is_test %}<span class="integration-badge order-test-tag" title="A Stripe test-mode order">test</span>{% endif %}
+          {% if entry.is_active %}<span class="integration-badge is-on" title="The buyer still has a session or download to use — this order is never cleaned up">active</span>
+          {% else %}<span class="integration-badge is-off" title="Nothing left to use — a candidate for cleanup once it's older than your keep-from date">settled</span>{% endif %}
         </td>
         <td class="order-delivers">{{ entry.delivers }}</td>
         <td class="order-actions">
@@ -141,14 +150,14 @@
 
 {% if stripe_ready %}
 <div class="card orders-sync">
-  <h2>Sync from Stripe</h2>
-  <p class="hint">Orders are a cache of Stripe, which holds the record of every payment. Sync pulls in any paid checkouts this site missed (a closed tab, or a spell offline). To review older sales, pull them back from an earlier date. <strong>Nothing is ever deleted here</strong> &mdash; to set old or test sales aside, filter the view above; the record itself always lives in Stripe. Leave the date blank to pull recent orders only.</p>
+  <h2>Sync &amp; keep</h2>
+  <p class="hint">Orders here are a cache of Stripe, which holds the full record of every payment. Sync pulls in any checkouts this site missed and keeps this list to a window: a <strong>keep-from</strong> date below, before which <strong>settled</strong> orders (nothing left to use) are cleared to stop the table growing forever. They stay in full in Stripe &mdash; pull them back any time with an earlier date, e.g. for an audit. An order a buyer can <strong>still use</strong> (a session or download left) is <strong>never</strong> cleared, whatever its age. Blank keeps everything.</p>
   <form method="post" action="{{ url_for('admin.commerce_orders_sync') }}" class="inline-form orders-sync-form">
-    <label for="sync_from">Pull orders since</label>
+    <label for="sync_from">Keep orders from</label>
     <input type="date" id="sync_from" name="sync_from" value="{{ sync_from }}"
-           title="Reach back to this date when pulling from Stripe — set it to last year to pull last year's orders in. Blank pulls recent orders only.">
+           title="Pull from and keep detail from this date. Settled orders before it are cleared (kept in Stripe); active ones stay. Blank keeps everything.">
     <button type="submit" class="btn orders-sync-btn"
-            title="Pull paid checkouts from Stripe, reaching back to the date on the left. Only ever adds — nothing is deleted.">&#8635; Sync from Stripe</button>
+            title="Pull checkouts from Stripe from this date, and clear settled orders before it. Active orders and Stripe are never touched.">&#8635; Sync from Stripe</button>
   </form>
 </div>
 {% endif %}

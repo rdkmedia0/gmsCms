@@ -398,11 +398,14 @@ def reconcile_stripe(db, integrations, limit=100, since=None, credit_expiry_at=N
     for Stripe to reach at all. Pulling is the same truth from the other
     direction, and it makes the whole design work with no webhook at all.
 
-    It only ever ADDS. Stripe is the golden source and the local table is a
-    cache of it, so nothing here deletes: to review older orders you pull
-    them back with an earlier `since`, and to set clutter aside you filter
-    the view, never the data. `since` is a reach, not a horizon to drop
-    behind.
+    `since` is the retention window. Stripe is the golden source and the
+    local table is only a cache of it, so with a window set this keeps the
+    table lean: it pulls from that date on, and CLEANS UP orders before it
+    that have nothing left to use -- those live in full in Stripe and can be
+    pulled back any time (an earlier `since`) for an audit. It NEVER touches
+    an order a buyer can still use: a session unbooked or a download unspent
+    keeps the whole order, and its Stripe id, whatever its age. Blank keeps
+    everything.
 
     Safe to run repeatedly: record_checkout skips a session already stored,
     so this can never double-grant an entitlement no matter how often it
@@ -427,7 +430,7 @@ def reconcile_stripe(db, integrations, limit=100, since=None, credit_expiry_at=N
             path += f"&starting_after={starting_after}"
         data, error = integrations.stripe_call(db, path)
         if error:
-            return recorded, checked, error
+            return recorded, checked, 0, error
         sessions = data.get("data", [])
         checked += len(sessions)
         for session in sessions:
@@ -440,8 +443,28 @@ def reconcile_stripe(db, integrations, limit=100, since=None, credit_expiry_at=N
         if not sessions or not data.get("has_more"):
             break
         starting_after = sessions[-1].get("id")
+    cleaned = 0
+    if since:
+        #  Keep the cache lean: drop orders before the window that have
+        #  nothing left to use. They live in full in Stripe (pull them back
+        #  with an earlier date). NEVER an order a buyer can still use -- a
+        #  session unbooked or a download unspent keeps the whole order, and
+        #  its Stripe id, however old it is.
+        rows = db.execute(
+            "SELECT o.id FROM orders o WHERE o.created_at < ? "
+            "AND NOT EXISTS (SELECT 1 FROM entitlements e WHERE e.order_id = o.id "
+            "  AND e.revoked_at IS NULL AND e.used < e.granted "
+            "  AND (e.expires_at IS NULL OR e.expires_at > CURRENT_TIMESTAMP))",
+            (since,),
+        ).fetchall()
+        ids = [r["id"] for r in rows]
+        if ids:
+            marks = ",".join("?" * len(ids))
+            db.execute("DELETE FROM entitlements WHERE order_id IN (%s)" % marks, ids)
+            db.execute("DELETE FROM orders WHERE id IN (%s)" % marks, ids)
+            cleaned = len(ids)
     db.commit()
-    return recorded, checked, None
+    return recorded, checked, cleaned, None
 
 
 #  ---------------------------------------------------------------------

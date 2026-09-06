@@ -408,6 +408,7 @@ def _load_orders(db):
     kind = (request.args.get("kind") or "").strip()
     status = (request.args.get("status") or "").strip()
     mode = (request.args.get("mode") or "").strip()
+    active = (request.args.get("active") or "").strip()
     since = (request.args.get("since") or "").strip()
     until = (request.args.get("until") or "").strip()
 
@@ -443,12 +444,26 @@ def _load_orders(db):
         found = {e["kind"] for e in ents_by_order.get(order_id, [])}
         return found or {"payment"}
 
+    #  An order is ACTIVE while a buyer can still use it -- a session
+    #  unbooked or a download unspent. Settled means nothing is left (all
+    #  used/expired, or it delivered nothing). This is the status the owner
+    #  can filter on, and the one the sync cleanup keeps.
+    active_ids = {r["order_id"] for r in db.execute(
+        "SELECT DISTINCT order_id FROM entitlements WHERE order_id IS NOT NULL "
+        "AND revoked_at IS NULL AND used < granted "
+        "AND (expires_at IS NULL OR expires_at > CURRENT_TIMESTAMP)").fetchall()}
+
     orders = []
     for row in rows:
         names = _order_bought(row)
         if what and what not in [n for n, _ in names]:
             continue
         if kind and kind not in kinds_of(row["id"]):
+            continue
+        is_active = row["id"] in active_ids
+        if active == "active" and not is_active:
+            continue
+        if active == "settled" and is_active:
             continue
         #  Not "items": Jinja resolves entry.items to dict.items, the
         #  method, and hands the template something it cannot loop over.
@@ -457,6 +472,7 @@ def _load_orders(db):
             "bought": names,
             "delivers": _delivers_text(ents_by_order.get(row["id"], [])),
             "is_test": _order_is_test(row["provider_ref"]),
+            "is_active": is_active,
         })
 
     #  The choices offered are the ones actually present, so a filter can
@@ -476,8 +492,8 @@ def _load_orders(db):
         "products": products,
         "statuses": statuses,
         "filters": {"who": who, "what": what, "kind": kind, "status": status,
-                    "mode": mode, "since": since, "until": until},
-        "filtered": bool(who or what or kind or status or mode or since or until),
+                    "mode": mode, "active": active, "since": since, "until": until},
+        "filtered": bool(who or what or kind or status or mode or active or since or until),
     }
 
 
@@ -515,7 +531,7 @@ def commerce_orders_export():
     buf = io.StringIO()
     writer = csv.writer(buf)
     writer.writerow(["Date", "Order ref", "Mode", "Buyer email", "Buyer name",
-                     "Items", "Amount", "Currency", "Status", "Delivers", "Invoice ref"])
+                     "Items", "Amount", "Currency", "Status", "Active", "Delivers", "Invoice ref"])
     for entry in ctx["orders"]:
         o = entry["row"]
         items = "; ".join("%s%s" % (n, (" x%d" % q) if q > 1 else "")
@@ -530,6 +546,7 @@ def commerce_orders_export():
             "%.2f" % ((o["amount_total"] or 0) / 100),
             (o["currency"] or "").upper(),
             o["status"] or "",
+            "active" if entry["is_active"] else "settled",
             entry["delivers"],
             o["invoice_ref"] or "",
         ])
@@ -1305,14 +1322,17 @@ def _orders_sync_from(db):
     return (row["value"] if row else "") or ""
 
 
-def _sync_message(recorded, checked, since):
-    """One line summarising a sync for the owner: what it reached back to,
-    and what it recorded. Only ever adds -- nothing is dropped."""
+def _sync_message(recorded, checked, cleaned, since):
+    """One line summarising a sync: what it reached back to, what it
+    recorded, and how many settled old orders it cleared (kept in Stripe)."""
     recorded_part = ("recorded %d new order%s" % (recorded, "" if recorded == 1 else "s")
                      if recorded else "nothing new to record")
     reach = (" since %s" % since) if since else ""
-    return "Checked %d checkout%s%s — %s." % (
-        checked, "" if checked == 1 else "s", reach, recorded_part)
+    tail = ""
+    if cleaned:
+        tail = ", cleared %d settled order%s (kept in Stripe)" % (cleaned, "" if cleaned == 1 else "s")
+    return "Checked %d checkout%s%s — %s%s." % (
+        checked, "" if checked == 1 else "s", reach, recorded_part, tail)
 
 
 @bp.route("/settings/integrations/stripe/sync", methods=["POST"])
@@ -1325,25 +1345,26 @@ def settings_stripe_sync():
     db = get_db()
     from ...routes.public import _credit_expiry_at
     since = _orders_sync_from(db) or None
-    recorded, checked, error = commerce.reconcile_stripe(
+    recorded, checked, cleaned, error = commerce.reconcile_stripe(
         db, integrations, since=since, credit_expiry_at=_credit_expiry_at(db)
     )
     if error:
         return jsonify({"ok": False, "message": f"Couldn't read orders from Stripe — {integrations.explain(error, 'Stripe')}"})
-    return jsonify({"ok": True, "message": _sync_message(recorded, checked, since)})
+    return jsonify({"ok": True, "message": _sync_message(recorded, checked, cleaned, since)})
 
 
 @bp.route("/commerce/orders/sync", methods=["POST"])
 @login_required
 def commerce_orders_sync():
-    """Pull orders from Stripe, optionally reaching back to a chosen date.
+    """Pull orders from Stripe and keep the local cache to a window.
 
-    Orders are a cache of Stripe, the golden source. This only ever ADDS:
-    it pulls paid checkouts on and after the given date and records any this
-    site is missing -- nothing is deleted. So to review last year's sales
-    you pull them back with an earlier date; to set clutter aside you filter
-    the view. The date is remembered as the reach for the next sync; blank
-    means recent only.
+    Orders are a cache of Stripe, the golden source. This pulls paid
+    checkouts on and after the given date, AND cleans up settled orders
+    before it -- ones with nothing left to use -- to keep the table lean;
+    they stay in full in Stripe and can be pulled back with an earlier
+    date. An order a buyer can still use is never touched, whatever its
+    age. The date is the retention window, remembered for the next sync;
+    blank keeps everything.
     """
     db = get_db()
     if not integrations.is_configured(db, "stripe"):
@@ -1359,13 +1380,13 @@ def commerce_orders_sync():
     _set_setting(db, "orders_sync_from", since or "")
     db.commit()
     from ...routes.public import _credit_expiry_at
-    recorded, checked, error = commerce.reconcile_stripe(
+    recorded, checked, cleaned, error = commerce.reconcile_stripe(
         db, integrations, since=since, credit_expiry_at=_credit_expiry_at(db)
     )
     if error:
         flash(f"Couldn't read orders from Stripe — {integrations.explain(error, 'Stripe')}", "error")
     else:
-        flash(_sync_message(recorded, checked, since), "success")
+        flash(_sync_message(recorded, checked, cleaned, since), "success")
     return redirect(url_for("admin.commerce_orders"))
 
 
