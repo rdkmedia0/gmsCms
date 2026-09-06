@@ -188,8 +188,7 @@ it's missing recent writes); the app's backup takes a consistent copy.
 ## Upgrading
 
 ```bash
-docker compose pull && docker compose up -d      # published image
-git pull && docker compose up -d --build         # from source
+docker compose pull && docker compose up -d
 ```
 
 Data lives in the mounted folders, not the image; migrations run at boot.
