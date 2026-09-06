@@ -2467,8 +2467,19 @@ def _render_page(db, page, post=None, post_content=""):
     #  show the real page inside a frame while the editor stays open
     #  behind it. A visitor gains nothing by passing it: they were never
     #  editing.
-    preview = request.args.get("preview") == "1"
+    #
+    #  A navigation INSIDE the frame -- a menu link clicked in the preview
+    #  -- arrives without ?preview=1, and used to be answered with the
+    #  full logged-in page: admin bar, frame shell, and view-frame.js
+    #  opening a second frame inside the first, one deeper per click. The
+    #  browser says what a request is FOR (Sec-Fetch-Dest: iframe), so a
+    #  framed request is a preview whatever its query string, at the size
+    #  the frame was opened for -- the session's choice, since that is
+    #  what opened it.
+    framed = logged_in and request.headers.get("Sec-Fetch-Dest", "") == "iframe"
+    preview = request.args.get("preview") == "1" or framed
     if preview:
+        frame_size = preview_view
         editing = False
         view_mode = "viewing"
         #  The body-class view stays clean (no cms-view-* narrowing, no
@@ -2479,6 +2490,8 @@ def _render_page(db, page, post=None, post_content=""):
         preview_view = "desktop"
         edit_view = "desktop"
         _vv = (request.args.get("view") or "").lower()
+        if _vv not in ("laptop", "tablet", "mobile") and framed:
+            _vv = frame_size
         if _vv in ("laptop", "tablet", "mobile"):
             viewport_view = _vv
             force_viewport = True

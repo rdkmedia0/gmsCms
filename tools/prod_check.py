@@ -6,6 +6,7 @@ schemes, the password file is looked for on disk after a real password
 change, and two connections are made to fight over the database.
 """
 import os
+import re
 import sys
 import tempfile
 import threading
@@ -304,6 +305,27 @@ with app.app_context():
     db.execute("DELETE FROM users WHERE id = ?", (other,))
     bootstrap.clear_generated_password_flag(db, uid)
     db.commit()
+
+print()
+print("The device frame does not nest")
+print("-" * 60)
+#  A link clicked INSIDE the preview frame navigates the frame to a plain
+#  URL. The browser marks such a request (Sec-Fetch-Dest: iframe); the
+#  page must answer it as a visitor sees it, at the frame's size -- not
+#  with the admin bar and a second frame shell inside the first.
+_c = app.test_client()
+with _c.session_transaction() as s:
+    s["user_id"] = uid
+    s["view_mode"] = "viewing"
+    s["preview_view"] = "mobile"
+_outer = _c.get("/").get_data(as_text=True)
+check("viewing at Mobile, the page carries the frame shell", 'id="cms-preview-frame"' in _outer)
+_inner = _c.get("/", headers={"Sec-Fetch-Dest": "iframe"}).get_data(as_text=True)
+check("a request from inside the frame gets no shell", 'id="cms-preview-frame"' not in _inner)
+check("and no admin bar", "cms-admin-bar" not in _inner)
+check("and is laid out at the frame's own width", 'content="width=390"' in _inner, re.search(r'name="viewport"[^>]*', _inner))
+_plain = _c.get("/", headers={"Sec-Fetch-Dest": "document"}).get_data(as_text=True)
+check("while a normal navigation still gets the shell", 'id="cms-preview-frame"' in _plain)
 
 print()
 print("%d checks, %d failed" % (passed + failed, failed))
