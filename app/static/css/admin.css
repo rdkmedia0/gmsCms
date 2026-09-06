@@ -1814,11 +1814,11 @@ button[aria-busy="true"] { opacity: .75; cursor: progress; }
   border: 1px solid var(--cms-ui-border, #d7dbe0); border-radius: var(--cms-ui-radius-control, 4px);
 }
 
-/* === Products screen: scannable list / gallery with edit-on-click ======
+/* === Products screen: scannable list with edit-on-click ================
    Every product was a full open edit form stacked down the page. It is a
-   compact summary now -- thumbnail, name, price, on/off badge -- that
-   opens its editor inline on click, one at a time, in a list or a gallery
-   of cards (toggle remembered in localStorage). See products-admin.js. */
+   compact summary row now -- thumbnail, name, price, state badge -- that
+   opens its editor inline on click, one at a time. The same rows are
+   reused by the Delivery services list. See products-admin.js. */
 .products-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 16px 0 10px; }
 .products-toolbar #products-search {
   flex: 1; min-width: 180px; padding: 8px 10px; font: inherit;

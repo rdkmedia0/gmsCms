@@ -422,18 +422,23 @@ def stripe_catalogue(db, limit=100):
 #  Where a shop will post things. Stripe needs the countries listed
 #  explicitly, so these are presets rather than a free-text box — an owner
 #  picks where they ship, not a list of ISO codes.
+_EUROPE = [
+    "AT", "BE", "BG", "CH", "CY", "CZ", "DE", "DK", "EE", "ES", "FI", "FR",
+    "GB", "GR", "HR", "HU", "IE", "IS", "IT", "LI", "LT", "LU", "LV", "MT",
+    "NL", "NO", "PL", "PT", "RO", "SE", "SI", "SK",
+]
 SHIPPING_ZONES = {
     "ch": ("Switzerland and Liechtenstein", ["CH", "LI"]),
-    "europe": ("Europe", [
-        "AT", "BE", "BG", "CH", "CY", "CZ", "DE", "DK", "EE", "ES", "FI", "FR",
-        "GB", "GR", "HR", "HU", "IE", "IS", "IT", "LI", "LT", "LU", "LV", "MT",
-        "NL", "NO", "PL", "PT", "RO", "SE", "SI", "SK",
-    ]),
-    "wide": ("Europe and the main overseas markets", [
-        "AT", "BE", "BG", "CH", "CY", "CZ", "DE", "DK", "EE", "ES", "FI", "FR",
-        "GB", "GR", "HR", "HU", "IE", "IS", "IT", "LI", "LT", "LU", "LV", "MT",
-        "NL", "NO", "PL", "PT", "RO", "SE", "SI", "SK",
+    "europe": ("Europe", _EUROPE),
+    "uk": ("United Kingdom", ["GB"]),
+    "usa": ("United States", ["US"]),
+    "north-america": ("North America", ["US", "CA", "MX"]),
+    "wide": ("Europe and the main overseas markets", _EUROPE + [
         "AE", "AU", "BR", "CA", "HK", "IL", "JP", "KR", "MX", "NZ", "SG", "US", "ZA",
+    ]),
+    "worldwide": ("Worldwide", _EUROPE + [
+        "AE", "AR", "AU", "BR", "CA", "CL", "CN", "HK", "ID", "IL", "IN", "JP",
+        "KR", "MX", "MY", "NZ", "PH", "SA", "SG", "TH", "TR", "US", "VN", "ZA",
     ]),
 }
 

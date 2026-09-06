@@ -117,21 +117,45 @@
   <p class="hint">When an order&rsquo;s items come to more than this, the buyer sees &ldquo;Free delivery&rdquo; instead of a charge. Leave blank to always charge.</p>
 </div>
 
-{% for s in shipping_services %}
-<div class="card shipping-service">
-  {{ service_form(s, base_currency, zones) }}
-  <form method="post" action="{{ url_for('admin.commerce_shipping_service_delete', service_id=s.id) }}" class="inline-form shipping-service-delete">
-    <button type="submit" class="btn btn-small btn-danger"
-            data-confirm="Remove the “{{ s.name }}” delivery service and its prices? Products set to use it fall back to your other services."
-            data-confirm-danger="1"
-            title="Remove this delivery service. Nothing sold is affected.">Delete service</button>
-  </form>
+{#  Delivery services as expandable rows, like the Products list: a
+    compact summary per service, click to open its editor, one at a time.
+    Add with the ＋ button; delete from inside a service's own editor.
+    Reuses the .product-item/-summary/-detail styling; the accordion and
+    the add-toggle are wired in shipping-admin.js. #}
+<div class="products-toolbar">
+  <button type="button" class="btn btn-small btn-primary" id="shipping-add-toggle"
+          aria-expanded="false" aria-controls="shipping-add-panel"
+          title="Add a new delivery service">&#65291; Add delivery service</button>
 </div>
-{% endfor %}
 
-<div class="card">
+<div class="card shipping-add-panel" id="shipping-add-panel" hidden>
   <h2>Add a delivery service</h2>
   {{ service_form(none, base_currency, zones) }}
+</div>
+
+<div class="products-grid" id="shipping-grid">
+{% for s in shipping_services %}
+<div class="product-item{{ ' is-off' if not s.enabled }}">
+  <button type="button" class="product-summary" aria-expanded="false" title="Click to edit “{{ s.name }}”">
+    <span class="product-summary-name">{{ s.name }}</span>
+    <span class="product-summary-price">{{ zones[s.zone][0] if s.zone in zones else s.zone }}</span>
+    <span class="integration-badge product-delivers-badge">{{ s.rates | length }} band{{ 's' if s.rates | length != 1 }}</span>
+    <span class="integration-badge {{ 'is-on' if s.enabled else 'is-off' }}">{{ 'Offered' if s.enabled else 'Off' }}</span>
+    <span class="product-summary-caret" aria-hidden="true">&#9662;</span>
+  </button>
+  <div class="product-detail" hidden>
+    {{ service_form(s, base_currency, zones) }}
+    <form method="post" action="{{ url_for('admin.commerce_shipping_service_delete', service_id=s.id) }}" class="inline-form shipping-service-delete">
+      <button type="submit" class="btn btn-small btn-danger"
+              data-confirm="Remove the “{{ s.name }}” delivery service and its prices? Products set to use it fall back to your other services."
+              data-confirm-danger="1"
+              title="Remove this delivery service. Nothing sold is affected.">Delete service</button>
+    </form>
+  </div>
+</div>
+{% else %}
+<div class="card"><p>No delivery services yet. Click <strong>&#65291; Add delivery service</strong> to create one.</p></div>
+{% endfor %}
 </div>
 
 <template id="shipping-band-template">
