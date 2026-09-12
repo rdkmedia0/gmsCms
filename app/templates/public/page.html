@@ -1252,6 +1252,9 @@
         — see build_newsletter — and the wording now names what is actually
         clickable rather than one block's furniture. #}
     <p class="hint">Everything you can see on the page is edited on the page — click any heading, line of text or button label and type.</p>
+    {%- if cell.block_key == 'tags' %}
+    <p class="hint">To reorder them, drag a tag by the ⠿ handle that appears next to it.</p>
+    {%- endif %}
     {# No Apply button. Every other tool in this app changes the page as
        you change the control — a Banner's shape, an Image's size, a
        Card's colour — and a declared block asking to be submitted was the

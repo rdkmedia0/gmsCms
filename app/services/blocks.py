@@ -644,6 +644,32 @@ def apply_form(key, form, current=""):
             if used > 1:
                 for field in group["fields"]:
                     values.pop(f"{prefix}{used}_{field['name']}", None)
+    elif op.startswith("reorder_"):
+        #  Drag-to-reorder (currently just Tags). A group's position IS its
+        #  identity -- tag3_label means "third pill" wherever its text came
+        #  from -- so reordering means renumbering, not moving DOM nodes.
+        #  `order` is the entries' CURRENT numbers, read off in the NEW
+        #  order the admin dragged them into; a snapshot is read from
+        #  before any slot is written, since slot 2 may still need to read
+        #  its OLD value after slot 1 has already claimed a new one.
+        prefix = op[8:]
+        group = next((e for e in BLOCKS[key]["fields"] if e.get("group") == prefix), None)
+        if group:
+            used = _group_count(values, group)
+            try:
+                order = [int(n) for n in (form.get("order") or "").split(",")]
+            except ValueError:
+                order = []
+            if sorted(order) == list(range(1, used + 1)):
+                old = dict(values)
+                for new_i, old_i in enumerate(order, start=1):
+                    for field in group["fields"]:
+                        new_key = f"{prefix}{new_i}_{field['name']}"
+                        old_key = f"{prefix}{old_i}_{field['name']}"
+                        if old_key in old:
+                            values[new_key] = old[old_key]
+                        else:
+                            values.pop(new_key, None)
     return build(key, values)
 
 

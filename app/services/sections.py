@@ -1850,6 +1850,15 @@ def _style_str(props):
 #  cannot save what they typed.
 EDITOR_ONLY_CLASSES = ("cms-block-editable",)
 
+#  A tag's drag handle -- pure editing chrome, no content of its own, so it
+#  is dropped outright rather than just unclassed. Its wrapper exists only
+#  to give the handle somewhere to sit beside a pill without going INSIDE
+#  the pill's own contenteditable span (see wireTagsDragToReorder in
+#  inline-editor.js), so it is unwrapped: the pill inside it stays, the
+#  wrapper itself does not.
+EDITOR_ONLY_ELEMENTS = ("cms-tag-drag-handle",)
+EDITOR_ONLY_WRAPPERS = ("cms-tag-wrap",)
+
 
 def strip_editor_markup(html):
     """Removes editing scaffolding from content on its way to storage.
@@ -1860,7 +1869,8 @@ def strip_editor_markup(html):
     than only in the browser so it holds for every route that stores
     content, including one written later.
     """
-    if not html or ("contenteditable" not in html and "cms-block-editable" not in html):
+    markers = ("contenteditable", "cms-block-editable", "cms-tag-drag-handle", "cms-tag-wrap")
+    if not html or not any(marker in html for marker in markers):
         return html
     soup = BeautifulSoup(html, "html.parser")
     for el in soup.find_all(attrs={"contenteditable": True}):
@@ -1871,6 +1881,10 @@ def strip_editor_markup(html):
             el["class"] = remaining
         else:
             del el["class"]
+    for el in soup.find_all(class_=list(EDITOR_ONLY_ELEMENTS)):
+        el.decompose()
+    for el in soup.find_all(class_=list(EDITOR_ONLY_WRAPPERS)):
+        el.unwrap()
     return str(soup)
 
 def _card_div(content):

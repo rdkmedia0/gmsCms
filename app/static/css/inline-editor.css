@@ -1352,6 +1352,24 @@ body.cms-preview-open { overflow: hidden; }
 }
 .cms-column-rows.cms-rows-dragging .cms-row-cell { transition: none; }
 
+/* A tag pill's own drag handle (see wireTagsDragToReorder in
+   inline-editor.js). The wrapper carries no look of its own -- the pill
+   inside it is still exactly the pill site-base.css draws -- it only gives
+   the handle somewhere to sit beside it. Hidden until the row is hovered,
+   the same reveal-on-hover the row/cell handles above use, so eleven tags
+   don't read as eleven grab dots until somebody is actually there to drag
+   one; unlike those, ALL of a row's handles reveal together, since a
+   handle three pills away from the pointer is still one worth seeing. */
+.cms-tag-wrap { display: inline-flex; align-items: center; gap: 2px; }
+.cms-tag-drag-handle {
+  cursor: grab; color: var(--cms-ui-muted, #6b7280); font-size: 11px; line-height: 1;
+  user-select: none; padding: 2px 3px; border-radius: var(--cms-ui-radius-control, 4px);
+  background: rgba(255,255,255,.85); opacity: 0; transition: opacity .12s;
+}
+.cms-tag-drag-handle:active { cursor: grabbing; }
+.cms-tag-row:hover .cms-tag-drag-handle { opacity: .8; }
+.cms-tag-row.cms-tags-dragging .cms-tag-wrap { transition: none; }
+
 /* Optional heading above any tool (see block-html in page.html). While
    editing, an empty one shows a prompt so it can be filled; a visitor
    never sees the empty state (it is gated on `editing` in the template). */

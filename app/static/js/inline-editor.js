@@ -933,6 +933,84 @@
   }
   bindEach(".cms-block-host[data-save-url]", makeBlockFieldsEditable);
 
+  //  ---------- Tags: drag a pill's handle to reorder it ----------
+  //  A tag's position IS its identity server-side (tag1_label, tag2_label,
+  //  ... -- see build_tags), so reordering isn't a text edit and doesn't go
+  //  through push() above: it goes through the same toolbar round-trip as
+  //  the count stepper, ending in apply_form's reorder_ op (blocks.py).
+  //
+  //  The handle is a separate element, outside the pill's own
+  //  contenteditable span: a contenteditable ancestor claims mouse-drag for
+  //  text selection before a draggable descendant ever gets a chance to
+  //  start its own drag (see the Menu tool's live links, wired further up,
+  //  for the same fix applied the other way -- keeping the whole
+  //  draggable scope out of contenteditable). Both the handle and its
+  //  wrapper are added here purely for the editing session; strip_editor_
+  //  markup (services/sections.py) removes them again before a block's
+  //  markup is stored, so a save always round-trips back to exactly what
+  //  build_tags would produce.
+  //
+  //  Tracks which rows already have their drag listeners, the same way
+  //  bindEach tracks bound hosts -- a WeakSet rather than a DOM marker,
+  //  because a marker on the row would be genuine cms-tag-row content
+  //  (unlike the handle/wrapper, nothing strips it) and would round-trip
+  //  into storage the moment any tag's text was next saved.
+  const rowsWiredForDrag = new WeakSet();
+  function wireTagsDragToReorder(host) {
+    if (!host || !host.dataset || !host.dataset.saveUrl) return;
+    if (!host.querySelector(".cms-block-tags")) return;
+    const row = host.querySelector(".cms-tag-row");
+    if (!row) return;
+    row.querySelectorAll(":scope > .cms-tag[data-field]").forEach((tag) => {
+      const wrap = document.createElement("span");
+      wrap.className = "cms-tag-wrap";
+      tag.before(wrap);
+      const handle = document.createElement("span");
+      handle.className = "cms-tag-drag-handle";
+      handle.draggable = true;
+      handle.title = "Drag to reorder this tag";
+      handle.setAttribute("aria-hidden", "true");
+      handle.textContent = "⠿";
+      wrap.append(handle, tag);
+    });
+    if (rowsWiredForDrag.has(row)) return;
+    rowsWiredForDrag.add(row);
+    let dragWrap = null;
+    row.addEventListener("dragstart", (e) => {
+      const handle = e.target.closest(".cms-tag-drag-handle");
+      dragWrap = handle ? handle.closest(".cms-tag-wrap") : null;
+      if (!dragWrap) return;
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", "");
+      row.classList.add("cms-tags-dragging");
+    });
+    row.addEventListener("dragover", (e) => {
+      if (!dragWrap) return;
+      e.preventDefault();
+      const target = e.target.closest(".cms-tag-wrap");
+      if (!target || target === dragWrap || target.parentElement !== row) return;
+      const rect = target.getBoundingClientRect();
+      const before = (e.clientX - rect.left) < rect.width / 2;
+      row.insertBefore(dragWrap, before ? target : target.nextSibling);
+    });
+    row.addEventListener("drop", (e) => { if (dragWrap) e.preventDefault(); });
+    row.addEventListener("dragend", () => {
+      row.classList.remove("cms-tags-dragging");
+      if (!dragWrap) return;
+      dragWrap = null;
+      //  The wrapper order after the drag IS the new order; what the
+      //  server needs is each pill's OLD number, read off in that order.
+      const order = [].slice.call(row.querySelectorAll(".cms-tag[data-field]"))
+        .map((el) => (/^tag(\d+)_label$/.exec(el.getAttribute("data-field")) || [])[1])
+        .filter(Boolean);
+      if (order.length < 2) return;
+      const form = host.closest(".cms-section, .cms-column, .cms-row-cell")
+        ?.querySelector(".cms-block-config-form");
+      if (form) submitBlockConfig(form, { op: "reorder_tag", order: order.join(",") });
+    });
+  }
+  bindEach(".cms-block-host[data-save-url]", wireTagsDragToReorder);
+
   //  Write each stepper's count from what the block actually renders now.
   //  A stepper's "+" carries value="add_<prefix>"; the rendered items carry
   //  data-field="<prefix><n>_...", so the number of distinct <n> is the
@@ -1812,42 +1890,50 @@
     else form.submit();
   });
 
-  bindEach(".cms-block-config-form", (form) => {
-    const host = () => form.closest(".cms-section, .cms-column, .cms-row-cell")
+  //  Shared by a real toolbar submit (stepper, colour, ...) and the tags
+  //  drag-to-reorder handler above, which has no submitter button of its
+  //  own to carry `op`/`order` -- both just need `extraFields` merged in.
+  async function submitBlockConfig(form, extraFields) {
+    const host = form.closest(".cms-section, .cms-column, .cms-row-cell")
       ?.querySelector(".cms-block-host");
-    form.addEventListener("submit", async (e) => {
+    const body = new FormData(form);
+    if (extraFields) for (const k in extraFields) body.set(k, extraFields[k]);
+    try {
+      const res = await fetch(form.action, {
+        method: "POST", headers: { "X-Inline-Edit": "1" }, body,
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        if (host) {
+          host.innerHTML = data.html;
+          //  The new fields carry none of the editing wiring the old ones
+          //  had (bindEach tracks the host, which did not change) -- so
+          //  re-apply it, or a tag just added cannot be typed into.
+          makeBlockFieldsEditable(host);
+          wireTagsDragToReorder(host);
+          //  The steppers live in THIS form, not in the host that was
+          //  just swapped, so their counts would otherwise stay stale:
+          //  add three tags and the number still reads what it did. Read
+          //  the true counts back from the new markup and write them in.
+          syncBlockStepperCounts(form, host);
+        }
+        document.dispatchEvent(new CustomEvent("cms:site-refreshed"));
+      } else {
+        toast(data.error || "Couldn't save — please try again");
+      }
+    } catch {
+      toast("Couldn't save — check your connection");
+    }
+  }
+
+  bindEach(".cms-block-config-form", (form) => {
+    form.addEventListener("submit", (e) => {
       e.preventDefault();
-      const body = new FormData(form);
       //  The +/- buttons carry their instruction in the button itself, so
       //  it has to be put back — FormData never includes the submitter.
-      if (e.submitter && e.submitter.name) body.append(e.submitter.name, e.submitter.value);
-
-      try {
-        const res = await fetch(form.action, {
-          method: "POST", headers: { "X-Inline-Edit": "1" }, body,
-        });
-        const data = await res.json();
-        if (res.ok && data.ok) {
-          const target = host();
-          if (target) {
-            target.innerHTML = data.html;
-            //  The new fields carry none of the editing wiring the old ones
-            //  had (bindEach tracks the host, which did not change) -- so
-            //  re-apply it, or a tag just added cannot be typed into.
-            makeBlockFieldsEditable(target);
-            //  The steppers live in THIS form, not in the host that was
-            //  just swapped, so their counts would otherwise stay stale:
-            //  add three tags and the number still reads what it did. Read
-            //  the true counts back from the new markup and write them in.
-            syncBlockStepperCounts(form, target);
-          }
-          document.dispatchEvent(new CustomEvent("cms:site-refreshed"));
-        } else {
-          toast(data.error || "Couldn't save — please try again");
-        }
-      } catch {
-        toast("Couldn't save — check your connection");
-      }
+      const extra = {};
+      if (e.submitter && e.submitter.name) extra[e.submitter.name] = e.submitter.value;
+      submitBlockConfig(form, extra);
     });
     //  A dropdown or a colour lands as soon as it changes; typing waits
     //  for a pause, the same debounce the rest of the editor uses.
