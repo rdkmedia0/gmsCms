@@ -116,6 +116,13 @@
         var cmd = btn.dataset.cmd;
         var value = btn.dataset.value || null;
         var body = findBody(btn);
+        if (cmd === "formatBlock") {
+          var currentTag = "";
+          try { currentTag = (document.queryCommandValue("formatBlock") || "").toLowerCase(); } catch (e) {}
+          if (currentTag === (value || "").toLowerCase() && value.toLowerCase() !== "p") {
+            value = "p"; // Toggle back to paragraph
+          }
+        }
         //  Alignment set DIRECTLY on the block, not via execCommand.
         //  execCommand("justifyCenter") is unreliable on an editable that
         //  is a single block (it may style the wrong node, or nothing),

@@ -84,8 +84,8 @@
                {{ 'checked' if post.published_at }}>
         Published
       </label>
-      <input type="text" name="published_at" value="{{ post.published_at or '' }}"
-             placeholder="Today's date"
+      <input type="date" name="published_at" value="{{ (post.published_at or '')[:10] }}"
+             aria-label="Publish date"
              title="The date readers see on the post. Leave it empty and today's date is used when you publish.">
       <span class="cms-compose-note">A draft is visible only to you.</span>
     </div>

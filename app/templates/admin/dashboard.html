@@ -1,17 +1,82 @@
 {% extends "admin/base.html" %}
 {% block title %}Dashboard — My Site Admin{% endblock %}
 {% block content %}
-{#  The Dashboard was six long sections on one screen: blogs, settings,
-    pages, the theme generator, templates and layout, one after another.
-    It is a row of buttons now, and each of those is its own screen --
-    Design groups pages, templates, layout and the generator behind tabs,
-    the way Commerce and Email already work.
+{#  The Overview: where the site stands, the things done most often, and
+    the way back to what was being worked on. Settings have a page of
+    their own and the sidebar is the way to everything else. #}
+<div class="cms-page-head">
+  <h1>Overview</h1>
+  <span class="cms-page-actions">
+    <a class="btn btn-primary" href="{{ url_for('public.home') }}" title="Open your site. Signed in, you edit it right on the page.">✏️ Edit your site</a>
+  </span>
+</div>
 
-    What stays here is what a dashboard is for: where you are, what still
-    needs doing, and the way to everything else. #}
-<h1>Dashboard</h1>
-<p class="hint">Tip: to edit your page content, click &ldquo;View Site&rdquo; and edit directly on the page &mdash; headings, text, images and sections are all editable right there while you are logged in.</p>
-{% include "partials/dash/settings.html" %}
-<script src="{{ static_url('js/admin/image-picker.js') }}"></script>
-<script src="{{ static_url('js/admin/dashboard.js') }}"></script>
+<div class="cms-stats">
+  <a class="cms-stat-tile" href="{{ url_for('admin.pages_screen') }}" title="See and manage your pages">
+    <span>Pages</span><strong>{{ pages|length }}</strong>
+  </a>
+  <a class="cms-stat-tile" href="{{ url_for('admin.blogs_screen') }}" title="See your blogs and posts">
+    <span>Published posts</span><strong>{{ overview.published }}</strong>
+    <small>{{ overview.drafts }} {{ 'draft' if overview.drafts == 1 else 'drafts' }}</small>
+  </a>
+  <a class="cms-stat-tile{{ ' is-warning' if overview.maintenance }}" href="{{ url_for('admin.general_settings') }}#maintenance" title="Turn maintenance mode on or off">
+    <span>Visitors see</span><strong>{{ 'Holding page' if overview.maintenance else 'Your site' }}</strong>
+    <small>{{ 'Maintenance mode is on' if overview.maintenance else 'Maintenance mode is off' }}</small>
+  </a>
+  <a class="cms-stat-tile{{ ' is-warning' if not overview.last_backup }}" href="{{ url_for('admin.backups') }}" title="Back up or restore the site">
+    <span>Last backup</span><strong>{{ overview.last_backup or 'None yet' }}</strong>
+  </a>
+</div>
+
+<div class="cms-columns-2">
+  <section class="card cms-wide">
+    <h2>Quick actions</h2>
+    <div class="cms-actions">
+      {% if blogs %}
+      <form method="post" action="{{ url_for('admin.blog_post_start') }}">
+        <input type="hidden" name="blog" value="{{ blogs[0].id }}">
+        <button type="submit" class="btn" title="Start a new draft in {{ blogs[0].name }}">📝 Write a post</button>
+      </form>
+      {% else %}
+      <a class="btn" href="{{ url_for('admin.blogs_screen') }}" title="Start a blog, then write in it">📝 Start a blog</a>
+      {% endif %}
+      <a class="btn" href="{{ url_for('admin.pages_screen') }}" title="Add or manage pages">📄 Add a page</a>
+      <a class="btn" href="{{ url_for('admin.image_library') }}" title="Upload pictures and files">🖼️ Add media</a>
+      <a class="btn" href="{{ url_for('admin.templates_screen') }}" title="Choose a different look">🎨 Change look</a>
+      <a class="btn" href="{{ url_for('admin.backups') }}" title="Make a copy of everything">💾 Back up</a>
+      <a class="btn" href="{{ url_for('admin.general_settings') }}" title="Site name, address and icon">⚙️ Site settings</a>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Recent posts</h2>
+    {% if overview.recent %}
+    <ul class="cms-list">
+      {% for post in overview.recent %}
+      <li>
+        <a href="{{ url_for('admin.blog_post_edit', blog_id=post.blog_id, post_id=post.id) }}">{{ post.title or 'Untitled' }}</a>
+        <span class="cms-meta">{{ post.blog_name }}</span>
+        {% if post.published_at %}<span class="cms-badge">Published</span>
+        {% else %}<span class="cms-badge is-draft">Draft</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted">No posts yet.</p>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <h2>Your pages</h2>
+    <ul class="cms-list">
+      {% for p in pages %}
+      <li>
+        <a href="{{ url_for('public.home') if p.is_home else url_for('public.page', slug=p.slug) }}" title="Open and edit this page">{{ p.title }}</a>
+        {% if p.is_home %}<span class="cms-meta">Home page</span>{% endif %}
+        <a class="cms-meta" href="{{ url_for('admin.page_edit', page_id=p.id) }}" title="This page's name, address and options">Options</a>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+</div>
 {% endblock %}

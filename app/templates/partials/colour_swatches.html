@@ -1,0 +1,27 @@
+{#  A colour for one item, picked from the site's own palette so it follows
+    every palette change. The dots are painted with the live CSS variables,
+    so they show the colours that are on the site right now.
+    See services/colour_choice.py for what each choice stores. #}
+{% macro colour_swatches(label, choice_name, hex_name, choice, hex) %}
+<fieldset class="cms-swatches">
+  <legend>{{ label }}</legend>
+  <span class="cms-swatch-row">
+    {% if choice == 'keep' %}
+    <label class="cms-swatch cms-swatch-keep" title="The colour it has now">
+      <input type="radio" name="{{ choice_name }}" value="keep" checked><span></span>
+    </label>
+    {% endif %}
+    {% for key, name in [('', 'Auto — the theme decides'), ('primary', 'Primary'), ('secondary', 'Secondary'), ('accent', 'Accent'), ('light', 'Light'), ('dark', 'Dark')] %}
+    <label class="cms-swatch cms-swatch-{{ key or 'auto' }}" title="{{ name }}">
+      <input type="radio" name="{{ choice_name }}" value="{{ key }}" aria-label="{{ label }}: {{ name }}"
+             {{ 'checked' if choice == key }} onchange="this.form.requestSubmit()"><span>{{ 'A' if not key }}</span>
+    </label>
+    {% endfor %}
+    <label class="cms-swatch cms-swatch-custom{{ ' is-current' if choice == 'custom' }}" title="Any other colour (this one will not follow the palette)">
+      <input type="radio" name="{{ choice_name }}" value="custom" aria-label="{{ label }}: custom colour" {{ 'checked' if choice == 'custom' }}>
+      <input type="color" name="{{ hex_name }}" value="{{ hex }}" aria-label="{{ label }}: pick a custom colour"
+             onchange="this.previousElementSibling.checked = true; this.form.requestSubmit()">
+    </label>
+  </span>
+</fieldset>
+{% endmacro %}

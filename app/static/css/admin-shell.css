@@ -1,0 +1,94 @@
+/*  The admin's frame and its newer pieces: the sidebar, the Overview and
+    the Settings page, and one look for the cards, buttons and fields on
+    every admin screen. Loaded after admin.css, on admin screens only.
+
+    The app's own colours, fixed: this is the editor talking, not the site. */
+:root {
+  --ui-bg: #ffffff; --ui-soft: #f4f5f7; --ui-line: #e3e5ea; --ui-line-strong: #cfd3da;
+  --ui-text: #1d222b; --ui-muted: #667085; --ui-accent: #2563eb; --ui-accent-soft: #e8effd;
+}
+
+.cms-admin-shell { display: flex; align-items: flex-start; min-height: calc(100vh - 48px); }
+.cms-admin-shell > .admin-main { flex: 1; min-width: 0; max-width: 1040px; margin: 0 auto; padding: 24px 28px 48px; }
+
+/* ---------- Sidebar ---------- */
+.cms-admin-nav {
+  flex: 0 0 210px; align-self: stretch; background: var(--ui-bg); border-right: 1px solid var(--ui-line);
+}
+.cms-admin-nav-fold { position: sticky; top: 48px; max-height: calc(100vh - 48px); overflow-y: auto; padding: 8px 10px 20px; }
+.cms-admin-nav-fold > summary { display: none; }
+.cms-admin-nav-heading {
+  margin: 14px 10px 4px; font-size: 11px; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ui-muted);
+}
+.cms-admin-nav a {
+  display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: 8px;
+  color: var(--ui-text); font-size: 14px; font-weight: 500; text-decoration: none;
+}
+.cms-admin-nav a:hover { background: var(--ui-soft); text-decoration: none; }
+.cms-admin-nav a.is-current { background: var(--ui-accent-soft); color: var(--ui-accent); font-weight: 600; }
+.cms-admin-nav a:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: 1px; }
+.cms-admin-nav-icon { width: 20px; text-align: center; flex: none; }
+
+/*  The sidebar has these, so the top bar keeps only what it does not. */
+.cms-has-sidebar .cms-admin-bar-links a:not([data-bar-keep]) { display: none; }
+
+@media (max-width: 860px) {
+  .cms-admin-shell { display: block; }
+  .cms-admin-nav { border-right: 0; border-bottom: 1px solid var(--ui-line); }
+  .cms-admin-nav-fold { position: static; max-height: none; padding: 6px 12px; }
+  .cms-admin-nav-fold > summary {
+    display: block; cursor: pointer; list-style: none; padding: 9px 4px; font-weight: 600;
+  }
+  .cms-admin-nav-fold[open] { padding-bottom: 14px; }
+  .cms-admin-shell > .admin-main { padding: 16px; }
+}
+
+/* ---------- One look across the admin screens ---------- */
+.cms-has-sidebar .card { border-radius: 12px; border-color: var(--ui-line); box-shadow: 0 1px 2px rgba(16, 24, 40, .04); }
+.cms-has-sidebar .btn { border-radius: 8px; font-weight: 500; }
+.cms-has-sidebar .admin-main :is(input[type="text"], input[type="password"], input[type="email"], input[type="number"],
+                                  input[type="url"], input[type="date"], input[type="datetime-local"], select, textarea) {
+  border-radius: 8px; border-color: var(--ui-line-strong);
+}
+.cms-has-sidebar .admin-main :is(a, button, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--ui-accent); outline-offset: 2px;
+}
+
+/* ---------- Overview ---------- */
+.cms-page-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 16px; }
+.cms-page-head h1 { margin: 0; }
+.cms-page-head .cms-page-actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+.cms-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.cms-stat-tile {
+  display: block; background: var(--ui-bg); border: 1px solid var(--ui-line); border-radius: 12px;
+  padding: 12px 16px; color: var(--ui-text); text-decoration: none;
+}
+a.cms-stat-tile:hover { border-color: var(--ui-accent); text-decoration: none; }
+.cms-stat-tile span { display: block; font-size: 12px; color: var(--ui-muted); }
+.cms-stat-tile strong { display: block; font-size: 22px; font-weight: 650; margin-top: 2px; }
+.cms-stat-tile small { display: block; font-size: 12px; color: var(--ui-muted); }
+.cms-stat-tile.is-warning { background: #fffbeb; border-color: #fcd34d; }
+.cms-columns-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start; }
+.cms-columns-2 > .card { margin: 0; }
+.cms-columns-2 > .cms-wide { grid-column: 1 / -1; }
+.cms-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 8px; margin-top: 12px; }
+.cms-actions form { display: contents; }
+.cms-actions .btn { width: 100%; text-align: left; justify-content: flex-start; }
+.cms-list { list-style: none; margin: 8px 0 0; padding: 0; }
+.cms-list li { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--ui-line); }
+.cms-list li > a:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cms-list .cms-meta { font-size: 12px; color: var(--ui-muted); white-space: nowrap; }
+.cms-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: #dcfce7; color: #166534; }
+.cms-badge.is-draft { background: #fef3c7; color: #92400e; }
+
+/* ---------- Settings ---------- */
+.cms-setting h2 { margin-bottom: 4px; }
+.cms-setting > p { margin: 0 0 12px; }
+.cms-setting .inline-form { flex-wrap: wrap; }
+.cms-setting-stack { display: flex; flex-direction: column; align-items: stretch; gap: 8px; max-width: 560px; }
+.cms-setting-stack textarea { width: 100%; font-family: inherit; padding: 8px; }
+.cms-setting-stack .btn { align-self: flex-start; }
+.cms-setting-on { color: #b45309; font-weight: 600; }
+.cms-setting details.cms-more { margin: -6px 0 12px; font-size: 13px; color: var(--ui-muted); }
+.cms-setting details.cms-more summary { cursor: pointer; color: var(--ui-accent); }

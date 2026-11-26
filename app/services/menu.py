@@ -288,7 +288,7 @@ def _build_menu_links_html(db, items, style="plain", size="medium", bg_color="",
         parts = []
         for it in top_level:
             if it["type"] == "divider":
-                parts.append('<li class="cms-menu-divider" data-menu-key="' + html_escape(it["key"]) + '" aria-hidden="true"></li>')
+                parts.append(f'<li class="cms-menu-divider" data-menu-key="{html_escape(it["key"])}" aria-hidden="true"></li>')
                 continue
             href, label = _href_label(it)
             kids = children_of.get(it["key"], [])

@@ -119,7 +119,7 @@ TOOL_CATEGORIES = (
 TOOL_CATEGORY_BY_NAME = {
     "Text": "text", "FAQ Content": "text", "FAQ Reader": "text",
     "Image": "media", "Media Player": "media", "Video Gallery": "media",
-    "Accordion": "media", "File / Download": "media",
+    "Accordion": "media", "File / Download": "media", "Gallery": "media",
     "Divider": "layout", "Card": "layout", "Banner": "layout",
     "Table (Data)": "layout", "Embed": "layout",
     "Menu": "navigation", "Breadcrumb": "navigation", "Search": "navigation",
@@ -145,8 +145,8 @@ DEFAULT_TOOLS = [
     ("Media Player", "🎬", "media", None),
     ("File / Download", "📎", "file", None),
     ("Table (Data)", "▦", "html", "table"),
+    ("Gallery", "🗂️", "html", "block:gallery"),
     ("Video Gallery", "🎞️", "html", "video-gallery"),
-    ("Accordion", "🖼️", "html", "image-accordion"),
     ("Embed", "</>", "html", None),
     ("Menu", "📋", "html", None),
     ("Breadcrumb", "🧭", "html", None),
@@ -1198,6 +1198,10 @@ def _migrate(db):
         "DELETE FROM content_tools WHERE is_builtin = 1 AND block_key IN "
         "('table-plain', 'cards-2', 'cards-3')"
     )
+    #  Accordion's displays are Gallery layouts now, so it is no longer
+    #  offered as a tool. Only the tile goes: accordions already on a page
+    #  keep working, with their own toolbar.
+    db.execute("DELETE FROM content_tools WHERE is_builtin = 1 AND block_key = 'image-accordion'")
     # Columns is a section-layout concern (the section's own "Divide"
     # control), not something a tool should offer — remove the leftover
     # builtin tile from DBs seeded before this was corrected.

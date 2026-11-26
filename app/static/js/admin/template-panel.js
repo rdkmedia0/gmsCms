@@ -25,6 +25,129 @@
     });
   }
 
+  //  Everything in this panel changes the whole site, so everything in
+  //  it needs the page re-rendered afterwards. Not reloaded: the dock is
+  //  the admin's own workspace, and closing the panel/popover they had
+  //  open is their decision, not a side effect of picking a colour. The
+  //  one argument is where the server says they should end up — after
+  //  activating a template that does not have the page they were
+  //  looking at, that is somewhere else, and a real navigation.
+  function refresh(go) {
+    const url = go && go !== location.pathname ? go : null;
+    if (window.cmsRefreshSite) return window.cmsRefreshSite(url ? { url } : {});
+    if (url) location.href = url;
+    else location.reload();
+    return Promise.resolve(false);
+  }
+
+  //  A control in the dock never navigates. The Corners, Depth and "Save
+  //  site" forms used to post as plain forms and land the owner on the
+  //  Dashboard (or reload the page and lose the open dock): a `next` that
+  //  fails the safety check, or a Referer the browser or prod's proxy does
+  //  not send, and _redirect_next fell through. Applying a corner style is
+  //  not a navigation. So any form.cms-dock-form submits in place, the page
+  //  re-renders with the same live refresh the colour picker uses, and a
+  //  toast says what changed. Delegated on the document, because the dock
+  //  is re-rendered by that refresh and a listener bound to the old form
+  //  would be gone by the second click.
+  document.addEventListener("submit", async (e) => {
+    const form = e.target;
+    if (!(form instanceof HTMLFormElement) || !form.classList.contains("cms-dock-form")) return;
+    e.preventDefault();
+    //  One change at a time per control: a second click while the first
+    //  is still saving would only queue the same change again.
+    if (form.dataset.busy) return;
+    form.dataset.busy = "1";
+    try { await submitDockForm(form, e.submitter); } finally { delete form.dataset.busy; }
+  });
+
+  async function submitDockForm(form, submitter) {
+    const body = new FormData(form);
+    //  FormData leaves out the button that was pressed, and some buttons
+    //  carry the instruction ("remove the picture").
+    if (submitter && submitter.name) body.set(submitter.name, submitter.value);
+    body.set("next", location.pathname);   // the no-JS fallback stays on this page too
+    let data = null;
+    try {
+      const res = await fetch(form.action, { method: "POST", body, headers: { "X-Inline-Edit": "1" } });
+      try { data = await res.json(); } catch { data = null; }
+      if (!res.ok) {
+        if (data && data.needs_fork) {
+          const retry = await askToFork(data);
+          if (!retry) return;
+          const parts = retry.split("=");
+          body.append(parts[0], decodeURIComponent(parts[1]));
+          const again = await fetch(form.action, { method: "POST", body, headers: { "X-Inline-Edit": "1" } });
+          if (!again.ok) {
+             try { data = await again.json(); } catch { data = null; }
+             throw new Error((data && data.error) || String(again.status));
+          }
+          try { data = await again.json(); } catch { data = null; }
+        } else {
+          throw new Error((data && data.error) || String(res.status));
+        }
+      }
+    } catch (e) {
+      if (window.cmsToast) window.cmsToast(e.message === "403" || e.message === "409" ? "That didn't save — please try again." : e.message);
+      return;
+    }
+    let msg = form.dataset.toast || "Applied.";
+    if (data && data.name) msg = msg.replace("{name}", data.name);
+    //  A site-wide Corners or Depth is shadowed by any section carrying
+    //  its own setting -- and the one thing the owner is looking at may be
+    //  exactly that section. Say so, or the control reads as dead.
+    const attr = form.dataset.shadows;
+    if (attr) {
+      const own = document.querySelectorAll(`.cms-section[${attr}]:not([${attr}=""])`).length;
+      if (own) msg += ` — ${own} section${own === 1 ? " keeps its own" : "s keep their own"} setting`;
+    }
+    if (form.dataset.refresh !== "0") await refresh();
+    if (window.cmsToast) window.cmsToast(msg);
+  }
+
+  //  "You have changed a starting point. What would you like instead?"
+  //
+  //  Two answers, and only the owner can pick: overwrite a copy they
+  //  already made, or make another. That is the exact question that
+  //  produced three identically-named copies on a live install when
+  //  the code tried to answer it itself.
+  async function askToFork(info) {
+    if (info.copies && info.copies.length) {
+      const { confirmed, alt } = await window.cmsModal({
+        message: info.template + " is a starting point, so it does not change. "
+          + "You already have a copy of it (" + info.copies[0].name + "). "
+          + "Put this change there, or start another copy?",
+        confirmLabel: "Use " + info.copies[0].name,
+        altLabel: "Start another",
+        danger: false,
+      });
+      if (confirmed) return "fork_into=" + encodeURIComponent(info.copies[0].id);
+      if (!alt) return null;
+    }
+    const { confirmed, value } = await window.cmsModal({
+      message: info.template + " is a starting point, so it does not change. "
+        + "Make it yours to work on? Give the copy a name you will recognise.",
+      showInput: true,
+      defaultValue: info.suggested || "",
+      confirmLabel: "Make it mine",
+      danger: false,
+    });
+    if (!confirmed) return null;
+    return "fork_as=" + encodeURIComponent((value || info.suggested || "").trim());
+  }
+
+  //  "Choose picture" in the Background controls. Delegated for the same
+  //  reason the submit handler above is: the panel is redrawn on refresh.
+  document.addEventListener("click", async (e) => {
+    const button = e.target.closest(".cms-bg-choose");
+    if (!button || !window.cmsImagePicker) return;
+    const form = button.closest("form");
+    const chosen = await window.cmsImagePicker.open();
+    if (!chosen) return;
+    form.elements.bg_image.value = chosen;
+    form.requestSubmit();
+  });
+
   function init() {
     const themeGrid = document.getElementById("cms-tpl-theme-grid");
     const structureGrid = document.getElementById("cms-tpl-structure-grid");
@@ -43,21 +166,6 @@
     // the Dashboard's Templates list.
     const saveTemplateUrl = document.body.dataset.saveTemplateUrl;
 
-    //  Everything in this panel changes the whole site, so everything in
-    //  it needs the page re-rendered afterwards. Not reloaded: the dock is
-    //  the admin's own workspace, and closing the panel/popover they had
-    //  open is their decision, not a side effect of picking a colour. The
-    //  one argument is where the server says they should end up — after
-    //  activating a template that does not have the page they were
-    //  looking at, that is somewhere else, and a real navigation.
-    function refresh(go) {
-      const url = go && go !== location.pathname ? go : null;
-      if (window.cmsRefreshSite) return window.cmsRefreshSite(url ? { url } : {});
-      if (url) location.href = url;
-      else location.reload();
-      return Promise.resolve(false);
-    }
-
     async function maybeSaveTemplate(shouldSave) {
       if (!shouldSave || !saveTemplateUrl) return;
       try {
@@ -65,76 +173,6 @@
       } catch {
         // Best-effort — the main action still proceeds even if the save failed.
       }
-    }
-
-    //  A control in the dock never navigates. The Corners, Depth and "Save
-    //  site" forms used to post as plain forms and land the owner on the
-    //  Dashboard (or reload the page and lose the open dock): a `next` that
-    //  fails the safety check, or a Referer the browser or prod's proxy does
-    //  not send, and _redirect_next fell through. Applying a corner style is
-    //  not a navigation. So any form.cms-dock-form submits in place, the page
-    //  re-renders with the same live refresh the colour picker uses, and a
-    //  toast says what changed. Delegated on the document, because the dock
-    //  is re-rendered by that refresh and a listener bound to the old form
-    //  would be gone by the second click.
-    document.addEventListener("submit", async (e) => {
-      const form = e.target;
-      if (!(form instanceof HTMLFormElement) || !form.classList.contains("cms-dock-form")) return;
-      e.preventDefault();
-      const body = new FormData(form);
-      body.set("next", location.pathname);   // the no-JS fallback stays on this page too
-      let data = null;
-      try {
-        const res = await fetch(form.action, { method: "POST", body, headers: { "X-Inline-Edit": "1" } });
-        if (!res.ok) throw new Error(String(res.status));
-        data = await res.json().catch(() => null);
-      } catch {
-        if (window.cmsToast) window.cmsToast("That didn't save — please try again.");
-        return;
-      }
-      let msg = form.dataset.toast || "Applied.";
-      if (data && data.name) msg = msg.replace("{name}", data.name);
-      //  A site-wide Corners or Depth is shadowed by any section carrying
-      //  its own setting -- and the one thing the owner is looking at may be
-      //  exactly that section. Say so, or the control reads as dead.
-      const attr = form.dataset.shadows;
-      if (attr) {
-        const own = document.querySelectorAll(`.cms-section[${attr}]:not([${attr}=""])`).length;
-        if (own) msg += ` — ${own} section${own === 1 ? " keeps its own" : "s keep their own"} setting`;
-      }
-      if (form.dataset.refresh !== "0") await refresh();
-      if (window.cmsToast) window.cmsToast(msg);
-    });
-
-    //  "You have changed a starting point. What would you like instead?"
-    //
-    //  Two answers, and only the owner can pick: overwrite a copy they
-    //  already made, or make another. That is the exact question that
-    //  produced three identically-named copies on a live install when
-    //  the code tried to answer it itself.
-    async function askToFork(info) {
-      if (info.copies && info.copies.length) {
-        const { confirmed, alt } = await window.cmsModal({
-          message: info.template + " is a starting point, so it does not change. "
-            + "You already have a copy of it (" + info.copies[0].name + "). "
-            + "Put this change there, or start another copy?",
-          confirmLabel: "Use " + info.copies[0].name,
-          altLabel: "Start another",
-          danger: false,
-        });
-        if (confirmed) return "fork_into=" + encodeURIComponent(info.copies[0].id);
-        if (!alt) return null;
-      }
-      const { confirmed, value } = await window.cmsModal({
-        message: info.template + " is a starting point, so it does not change. "
-          + "Make it yours to work on? Give the copy a name you will recognise.",
-        showInput: true,
-        defaultValue: info.suggested || "",
-        confirmLabel: "Make it mine",
-        danger: false,
-      });
-      if (!confirmed) return null;
-      return "fork_as=" + encodeURIComponent((value || info.suggested || "").trim());
     }
 
     async function apply(btn, url, body) {

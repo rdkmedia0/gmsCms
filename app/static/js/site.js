@@ -159,6 +159,15 @@ cmsSiteSetup(function () {
       openImage(panelImageUrl(panel), caption ? caption.textContent : "");
       return;
     }
+    var pictured = editing ? null : e.target.closest(".cms-gallery-zoom-on:not(.cms-gallery-layout-deck) .cms-gallery-item");
+    if (pictured && !e.target.closest("a")) {
+      var shot = pictured.querySelector("img");
+      if (shot) {
+        e.preventDefault();
+        openImage(shot.currentSrc || shot.src, shot.alt);
+        return;
+      }
+    }
     if (e.target === modal || e.target.closest(".cms-lightbox-close")) {
       closeLightbox();
     }
@@ -535,3 +544,100 @@ cmsSiteSetup(function () {
     paint();
   });
 });
+
+// ---------- Gallery: cover flow and deck ----------
+// Its own block, and safe to run again: the editor redraws a gallery in
+// place, and the new markup needs the same wiring.
+(function () {
+  "use strict";
+  function arrows(track, step) {
+    if (track.nextElementSibling && track.nextElementSibling.classList.contains("cms-gallery-nav")) return;
+    var nav = document.createElement("div");
+    nav.className = "cms-gallery-nav";
+    [["\u2039", "Previous picture", -1], ["\u203a", "Next picture", 1]].forEach(function (spec) {
+      var button = document.createElement("button");
+      button.type = "button";
+      button.textContent = spec[0];
+      button.setAttribute("aria-label", spec[1]);
+      button.addEventListener("click", function (e) { e.preventDefault(); step(spec[2]); });
+      nav.appendChild(button);
+    });
+    //  Beside the gallery, never inside it: while editing, the gallery's
+    //  own markup is what gets saved.
+    var block = track.closest(".cms-block") || track;
+    var host = block.parentElement;
+    if (host.querySelector(":scope > .cms-gallery-nav")) host.querySelector(":scope > .cms-gallery-nav").remove();
+    block.after(nav);
+  }
+
+  function coverflow(track) {
+    var items = function () { return [].slice.call(track.querySelectorAll(".cms-gallery-item")); };
+    var middle = 0;
+    function mark() {
+      var centre = track.getBoundingClientRect().left + track.clientWidth / 2;
+      var best = Infinity;
+      items().forEach(function (item, i) {
+        //  offsetWidth, not the turned box: the transform must not move
+        //  the measurement that decides the transform.
+        var at = track.getBoundingClientRect().left + item.offsetLeft - track.offsetLeft
+                 - track.scrollLeft + item.offsetWidth / 2;
+        if (Math.abs(at - centre) < best) { best = Math.abs(at - centre); middle = i; }
+      });
+      items().forEach(function (item, i) {
+        item.classList.toggle("is-before", i < middle);
+        item.classList.toggle("is-after", i > middle);
+      });
+    }
+    function go(by) {
+      var all = items();
+      var item = all[Math.max(0, Math.min(all.length - 1, middle + by))];
+      if (!item) return;
+      track.scrollTo({ left: item.offsetLeft - track.offsetLeft - (track.clientWidth - item.offsetWidth) / 2,
+                       behavior: "smooth" });
+    }
+    track.addEventListener("scroll", function () { window.requestAnimationFrame(mark); }, { passive: true });
+    arrows(track, go);
+    mark();
+  }
+
+  function deck(track) {
+    var top = 0;
+    function lay() {
+      var all = [].slice.call(track.querySelectorAll(".cms-gallery-item"));
+      all.forEach(function (item, i) {
+        var place = (i - top + all.length) % all.length;
+        item.style.setProperty("--deck", place);
+        item.classList.toggle("is-front", place === 0);
+      });
+    }
+    function go(by) {
+      var count = track.querySelectorAll(".cms-gallery-item").length;
+      if (count) { top = (top + by + count) % count; lay(); }
+    }
+    track.addEventListener("click", function (e) {
+      if (document.body.classList.contains("cms-editing")) return;
+      if (e.target.closest(".cms-gallery-item")) go(1);
+    });
+    arrows(track, go);
+    lay();
+  }
+
+  function wire() {
+    //  A flag on the element object, not an attribute, so that it is never
+    //  saved with the page.
+    [].forEach.call(document.querySelectorAll(".cms-gallery-layout-coverflow"), function (el) {
+      if (!el.cmsWired) { el.cmsWired = true; coverflow(el); }
+    });
+    [].forEach.call(document.querySelectorAll(".cms-gallery-layout-deck"), function (el) {
+      if (!el.cmsWired) { el.cmsWired = true; deck(el); }
+    });
+    //  Arrows left behind by a gallery that has changed layout.
+    [].forEach.call(document.querySelectorAll(".cms-gallery-nav"), function (nav) {
+      if (!nav.parentElement.querySelector(".cms-gallery-layout-coverflow, .cms-gallery-layout-deck")) nav.remove();
+    });
+  }
+  document.addEventListener("cms:site-refreshed", wire);
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", wire);
+  else wire();
+})();
+

@@ -1,0 +1,242 @@
+/*  The editor's look: its toolbars, section buttons, side rail and panels.
+
+    All of it is the app's own chrome, so its colours are fixed here and
+    never the site's -- an owner's palette must not be able to make the
+    controls unreadable. Loaded only when editing; every rule starts at
+    body.cms-editing so that it outranks the older sheets without
+    !important, whichever order they arrive in. */
+
+body.cms-editing {
+  --ui-bg: #ffffff;
+  --ui-soft: #f4f5f7;
+  --ui-line: #e3e5ea;
+  --ui-line-strong: #cfd3da;
+  --ui-text: #1d222b;
+  --ui-muted: #667085;
+  --ui-accent: #2563eb;
+  --ui-accent-soft: #e8effd;
+  --ui-radius: 8px;
+  --ui-radius-lg: 12px;
+  --ui-shadow: 0 8px 28px rgba(16, 24, 40, .14), 0 1px 3px rgba(16, 24, 40, .10);
+  --ui-font: var(--cms-ui-font, -apple-system, "Segoe UI", Roboto, Arial, sans-serif);
+}
+
+/* ---------- Tool toolbars ---------- */
+/*  OPEN toolbars only. A closed one is a quiet caption with its controls
+    hidden (inline-editor.css), and nothing here may undo that. */
+body.cms-editing .cms-section.cms-tool-panel-open > .cms-tool-panel .cms-tool-header,
+body.cms-editing .cms-tool-header.cms-tool-header-open,
+body.cms-editing .cms-active-tool-header-slot .cms-tool-header {
+  background: var(--ui-bg); color: var(--ui-text); font-family: var(--ui-font);
+  border: 1px solid var(--ui-line); border-radius: var(--ui-radius-lg);
+}
+body.cms-editing .cms-section.cms-tool-panel-open > .cms-tool-panel .cms-tool-header,
+body.cms-editing .cms-tool-header.cms-tool-header-open { box-shadow: var(--ui-shadow); padding: 10px 12px; }
+body.cms-editing .cms-tool-header-label {
+  font: 600 11px/1 var(--ui-font); letter-spacing: .06em; text-transform: uppercase; color: var(--ui-muted);
+}
+
+body.cms-editing :is(.cms-tool-panel, .cms-tool-header) :is(select, input[type="text"], input[type="number"], input[type="url"], input[type="email"]) {
+  height: 32px; padding: 0 10px; font: 13px/1.2 var(--ui-font); color: var(--ui-text);
+  background: var(--ui-bg); border: 1px solid var(--ui-line-strong); border-radius: var(--ui-radius);
+}
+body.cms-editing :is(.cms-tool-panel, .cms-tool-header) button:not(.cms-section-delete-btn):not(.cms-ui-tab):not(.cms-ui-choice) {
+  height: 32px; min-width: 32px; padding: 0 10px; font: 500 13px/1 var(--ui-font); color: var(--ui-text);
+  background: var(--ui-bg); border: 1px solid var(--ui-line-strong); border-radius: var(--ui-radius);
+}
+body.cms-editing :is(.cms-tool-panel, .cms-tool-header) button:not(.cms-section-delete-btn):not(.cms-ui-tab):not(.cms-ui-choice):hover:not(:disabled) {
+  background: var(--ui-soft); border-color: var(--ui-muted);
+}
+body.cms-editing :is(.cms-tool-panel, .cms-tool-header) button.btn-primary:not(.cms-ui-tab),
+body.cms-editing .cms-wysiwyg-toolbar button.is-active:not(.cms-ui-tab) {
+  background: var(--ui-accent); border-color: var(--ui-accent); color: #fff;
+}
+body.cms-editing :is(.cms-tool-panel, .cms-tool-header) :is(button, select, input):focus-visible,
+body.cms-editing .cms-dock-panel :is(button, select, input):focus-visible {
+  outline: 2px solid var(--ui-accent); outline-offset: 2px;
+}
+body.cms-editing :is(.cms-tool-panel, .cms-tool-header) input[type="range"] { accent-color: var(--ui-accent); width: 110px; }
+body.cms-editing :is(.cms-tool-panel, .cms-tool-header) input[type="checkbox"] { accent-color: var(--ui-accent); }
+body.cms-editing .cms-tool-header .cms-wysiwyg-toolbar {
+  background: transparent; border: 0; padding: 0; margin: 0; gap: 4px;
+}
+
+/*  The banner: tabs, then the one group they choose. */
+body.cms-editing .cms-banner-config-form { display: block; width: 100%; }
+body.cms-editing .cms-ui-tabs {
+  display: flex; flex-wrap: wrap; gap: 2px; margin: 6px 0 0; padding-bottom: 8px;
+  border-bottom: 1px solid var(--ui-line);
+}
+body.cms-editing .cms-ui-tab {
+  border: 0; background: transparent; color: var(--ui-muted); cursor: pointer;
+  font: 600 13px/1 var(--ui-font); padding: 8px 12px; border-radius: var(--ui-radius);
+}
+body.cms-editing .cms-ui-tab:hover { background: var(--ui-soft); color: var(--ui-text); }
+body.cms-editing .cms-ui-tab.is-active { background: var(--ui-accent-soft); color: var(--ui-accent); }
+body.cms-editing .cms-ui-tab-panel { margin: 0; }
+body.cms-editing .cms-ui-tab-panel[hidden] { display: none; }
+body.cms-editing .cms-ui-tab-panel .cms-banner-text-config-label { display: none; }
+/*  Portrait keeps its note, which says which screen size is being set. */
+body.cms-editing .cms-ui-tab-panel > .hint { margin: 8px 0 0; font: 12px/1.4 var(--ui-font); color: var(--ui-muted); }
+body.cms-editing .cms-banner-text-config-grid {
+  border: 0; background: transparent; padding: 10px 0 2px; gap: 12px 18px; align-items: flex-end;
+}
+body.cms-editing .cms-banner-text-config-grid label,
+body.cms-editing .cms-ui-caption,
+body.cms-editing .cms-swatches legend {
+  font: 500 11px/1.3 var(--ui-font); color: var(--ui-muted); gap: 5px;
+}
+body.cms-editing .cms-ui-field { display: flex; flex-direction: column; gap: 5px; }
+body.cms-editing .cms-swatches { grid-column: auto; width: auto; }
+body.cms-editing .cms-swatch-row { min-height: 32px; }
+body.cms-editing .cms-ui-ribbon-row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  padding-top: 8px; margin-top: 8px; border-top: 1px dashed var(--ui-line);
+}
+body.cms-editing .cms-banner-ribbon-label { font: 500 11px/1 var(--ui-font); color: var(--ui-muted); }
+
+body.cms-editing select.cms-ui-replaced { display: none; }
+body.cms-editing .cms-ui-position { display: grid; grid-template-columns: repeat(3, 18px); gap: 3px; }
+body.cms-editing .cms-ui-position .cms-ui-choice {
+  width: 18px; height: 12px; padding: 0; border: 0; border-radius: 3px; background: var(--ui-line-strong); cursor: pointer;
+}
+body.cms-editing .cms-ui-position .cms-ui-choice:hover { background: var(--ui-muted); }
+body.cms-editing .cms-ui-position .cms-ui-choice.is-active { background: var(--ui-accent); }
+body.cms-editing .cms-ui-segment {
+  display: inline-flex; padding: 2px; gap: 2px; background: var(--ui-soft); border-radius: var(--ui-radius);
+}
+body.cms-editing .cms-ui-segment .cms-ui-choice {
+  border: 0; background: transparent; height: 28px; padding: 0 12px; cursor: pointer;
+  font: 500 12px/1 var(--ui-font); color: var(--ui-muted); border-radius: 6px;
+}
+body.cms-editing .cms-ui-segment .cms-ui-choice.is-active {
+  background: var(--ui-bg); color: var(--ui-text); box-shadow: 0 1px 3px rgba(16, 24, 40, .16);
+}
+body.cms-editing .cms-style-scope { color: var(--ui-text); font: 500 12px/1.2 var(--ui-font); width: auto; }
+
+/* ---------- Section buttons: big enough to see and hit ---------- */
+body.cms-editing .cms-section-divider :is(.cms-section-edit-icon, .cms-section-divider-btn, .cms-save-pattern-btn, .cms-section-divider-delete-btn) {
+  width: 30px; height: 30px; display: inline-grid; place-items: center; padding: 0;
+  background: var(--ui-bg); color: var(--ui-text); opacity: 1;
+  border: 1px solid var(--ui-line-strong); border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(16, 24, 40, .12);
+}
+body.cms-editing .cms-section-divider :is(.cms-section-edit-icon, .cms-section-divider-btn, .cms-save-pattern-btn, .cms-section-divider-delete-btn):hover {
+  border-color: var(--ui-accent); color: var(--ui-accent); background: var(--ui-accent-soft);
+}
+body.cms-editing .cms-section-divider svg { width: 15px; height: 15px; }
+body.cms-editing .cms-section-divider .cms-section-divider-delete-btn:hover {
+  border-color: #dc2626; color: #b42318; background: #fee4e2;
+}
+
+/*  The dark bar for a section's own layout. */
+body.cms-editing .cms-section-toolbar {
+  background: #171b24; border-radius: var(--ui-radius-lg); padding: 8px 10px; gap: 6px 8px;
+  box-shadow: var(--ui-shadow); font-family: var(--ui-font);
+}
+body.cms-editing .cms-section-toolbar :is(button, select):not(.cms-section-delete-btn) {
+  border-radius: var(--ui-radius); min-height: 28px; font-weight: 500;
+}
+
+/*  The side rail is in dock-rail.css: the admin screens wear it too. */
+
+/* ---------- Side panels ---------- */
+body.cms-editing .cms-dock-panel { font-family: var(--ui-font); }
+body.cms-editing .cms-dock-title { font: 600 15px/1.2 var(--ui-font); }
+body.cms-editing .cms-dock-content .hint { font-size: 12px; line-height: 1.45; color: var(--ui-muted); margin: 4px 0 10px; }
+body.cms-editing .cms-dock-content :is(button.btn, button[type="submit"]:not([class]), input[type="submit"]) {
+  height: 32px; padding: 0 12px; font: 500 13px/1 var(--ui-font); color: var(--ui-text); cursor: pointer;
+  background: var(--ui-bg); border: 1px solid var(--ui-line-strong); border-radius: var(--ui-radius);
+}
+body.cms-editing .cms-dock-content button.btn:hover { background: var(--ui-soft); }
+body.cms-editing .cms-dock-content button.btn.btn-primary { background: var(--ui-accent); border-color: var(--ui-accent); color: #fff; }
+body.cms-editing .cms-dock-content :is(input[type="text"], select) {
+  height: 32px; padding: 0 10px; font: 13px var(--ui-font); color: var(--ui-text);
+  border: 1px solid var(--ui-line-strong); border-radius: var(--ui-radius); background: var(--ui-bg);
+}
+body.cms-editing .cms-dock-content :is(.cms-color-preset-swatch, .cms-tool-chip) {
+  border-radius: var(--ui-radius); transition: border-color .12s, box-shadow .12s;
+}
+body.cms-editing .cms-dock-content :is(.cms-color-preset-swatch, .cms-tool-chip):hover {
+  border-color: var(--ui-accent); box-shadow: 0 2px 8px rgba(16, 24, 40, .10);
+}
+@media (prefers-reduced-motion: reduce) {
+  body.cms-editing .cms-dock-content :is(.cms-color-preset-swatch, .cms-tool-chip) { transition: none; }
+}
+
+/*  A full-width section runs under the side rail; its toolbar must not,
+    or the rail covers the toolbar's own remove button. */
+body.cms-editing:has(.cms-dock-tab-btn:not(.cms-dock-bottom)) .cms-section[data-layout-width="full"] > .cms-tool-panel {
+  margin-right: 66px;
+}
+
+/* ---------- Tabbed groups for the other tools ---------- */
+body.cms-editing :is(.cms-card-config-form, .cms-blog-config-form, .cms-accordion-config-form,
+                     .cms-video-gallery-config-form, .cms-menu-tool-form, .cms-block-config-form:has(.cms-ui-tabs)) {
+  display: block; width: 100%;
+}
+body.cms-editing :is(.cms-section.cms-tool-panel-open > .cms-tool-panel, .cms-tool-header-open,
+                     .cms-active-tool-header-slot) .cms-tool-header-controls:has(.cms-ui-tabs) {
+  display: flex; flex-direction: column; align-items: stretch; width: 100%;
+}
+body.cms-editing .cms-menu-builder:has(> .cms-ui-tabs) { width: 100%; }
+body.cms-editing .cms-ui-group { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 16px; padding: 10px 0 2px; }
+body.cms-editing .cms-ui-group[hidden] { display: none; }
+body.cms-editing .cms-ui-group > label:not(.cms-swatch):not(:has(input[type="checkbox"])),
+body.cms-editing .cms-ui-group .cms-faq-config-row > label {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 5px; margin: 0;
+  font: 500 11px/1.3 var(--ui-font); color: var(--ui-muted);
+}
+body.cms-editing .cms-ui-group > label:has(input[type="checkbox"]) {
+  min-height: 32px; margin: 0; font: 500 13px/1.2 var(--ui-font); color: var(--ui-text);
+}
+body.cms-editing .cms-ui-field:has(> [hidden]) { display: none; }
+/*  Whole-width things: lists of rows, the picture strip, explanations. */
+body.cms-editing .cms-ui-group > :is(.hint, .cms-gallery-manage, .cms-accordion-panel-config,
+                                     .cms-video-clip-config, .cms-faq-config-row, .cms-wysiwyg-toolbar) {
+  flex: 0 0 100%; margin: 0;
+}
+body.cms-editing .cms-ui-group > .hint { font: 12px/1.4 var(--ui-font); color: var(--ui-muted); }
+body.cms-editing .cms-ui-group > :is(.cms-accordion-panel-config, .cms-video-clip-config) {
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  padding-top: 8px; border-top: 1px solid var(--ui-line);
+}
+body.cms-editing .cms-ui-group > a.btn {
+  display: inline-flex; align-items: center; height: 32px; padding: 0 12px;
+  border-radius: var(--ui-radius); background: var(--ui-accent); color: #fff; text-decoration: none;
+  font: 500 13px/1 var(--ui-font);
+}
+body.cms-editing .cms-ui-shared {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px; width: 100%;
+  padding-top: 10px; margin-top: 8px; border-top: 1px solid var(--ui-line);
+}
+body.cms-editing .cms-ui-shared :is(label, .cms-heading-controls) {
+  display: inline-flex; align-items: center; gap: 6px; margin: 0; font: 500 12px var(--ui-font); color: var(--ui-text);
+}
+/*  Toolbars without tabs: the same spacing and labels as the tabbed ones. */
+body.cms-editing .cms-tool-header-controls { gap: 10px 14px; }
+body.cms-editing :is(.cms-faq-config-row, .cms-config-row, .cms-buy-config-row, .cms-table-config) {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px;
+}
+
+/*  A long list of panels or videos scrolls inside the toolbar, so the thing
+    being edited is still on screen. */
+body.cms-editing :is(.cms-accordion-config-form, .cms-video-gallery-config-form) > .cms-ui-group {
+  max-height: min(300px, 38vh); overflow-y: auto; align-content: flex-start;
+}
+
+/*  The three small buttons under each gallery thumbnail share its width. */
+body.cms-editing .cms-tool-header .cms-gallery-thumb { width: 96px; gap: 2px; }
+body.cms-editing .cms-tool-header .cms-gallery-thumb img { width: 96px; height: 66px; }
+body.cms-editing .cms-tool-header .cms-gallery-thumb button:not(.cms-ui-tab):not(.cms-ui-choice):not(.cms-section-delete-btn) {
+  min-width: 0; width: 100%; height: 26px; padding: 0;
+}
+
+
+/*  Tool tiles in the side panel. A fixed height let a taller icon (the
+    table's) squeeze the name until its bottom was cut off. */
+body.cms-editing .cms-dock-panel:not(.cms-dock-bottom) .cms-tool-chip { height: auto; min-height: 58px; gap: 3px; padding-block: 6px; }
+body.cms-editing .cms-dock-panel:not(.cms-dock-bottom) .cms-tool-chip .cms-tool-icon {
+  flex: 0 0 22px; height: 22px; display: flex; align-items: center; justify-content: center; line-height: 1;
+}
+body.cms-editing .cms-dock-panel:not(.cms-dock-bottom) .cms-tool-chip .cms-tool-name { flex-shrink: 0; line-height: 1.3; }

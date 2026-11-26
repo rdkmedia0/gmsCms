@@ -6,8 +6,10 @@
   <title>{% block title %}My Site — Admin{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
   <link rel="stylesheet" href="{{ static_url('css/admin-bar.css') }}">
+  <link rel="stylesheet" href="{{ static_url('css/admin-shell.css') }}">
+  <link rel="stylesheet" href="{{ static_url('css/dock-rail.css') }}">
 </head>
-<body {% if session.get('user_id') %}data-save-template-url="{{ url_for('admin.template_save_current') }}"{% endif %}>
+<body {% if session.get('user_id') %}class="cms-has-sidebar" data-save-template-url="{{ url_for('admin.template_save_current') }}"{% endif %}>
   {% if session.get('user_id') %}
   {#  The same bar the live page shows while signed in -- see the partial. #}
   {% set bar_surface = 'admin' %}
@@ -16,6 +18,10 @@
   {% include "partials/cms_modal.html" %}
   {% endif %}
 
+  {#  Signed in, the sidebar stands beside every screen. A visitor at the
+      sign-in screen gets the page alone. #}
+  <div class="{{ 'cms-admin-shell' if session.get('user_id') }}">
+  {% if session.get('user_id') %}{% include "partials/admin_nav.html" %}{% endif %}
   <main class="admin-main">
     {#  ONE line, not a stack.
 
@@ -56,7 +62,7 @@
     {% set on_setup = request.endpoint.startswith('admin.setup') %}
     {% set todo = [] %}
     {% if setup_offer and not on_setup %}{% set _ = todo.append(('<a href="' ~ url_for('admin.setup') ~ '" title="Six short steps: the site&#39;s name, its look, your details, and what you have not set up yet">walk through setting this up</a>', 'setup')) %}{% endif %}
-    {% if borrowed_site_name and not on_setup %}{% set _ = todo.append(('name your site &mdash; it is still <strong>' ~ borrowed_site_name ~ '</strong>, the example from the look it started with (<a href="' ~ url_for('admin.dashboard') ~ '#site-name">Dashboard &rarr; Site name</a>)', 'name')) %}{% endif %}
+    {% if borrowed_site_name and not on_setup %}{% set _ = todo.append(('name your site &mdash; it is still <strong>' ~ borrowed_site_name ~ '</strong>, the example from the look it started with (<a href="' ~ url_for('admin.general_settings') ~ '#site-name">Settings &rarr; Site name</a>)', 'name')) %}{% endif %}
     {% if using_generated_password and request.endpoint != 'auth.account' %}{% set _ = todo.append(('<a href="' ~ url_for('auth.account') ~ '">set your own password</a> &mdash; the generated one is in the container log and <code>data/initial-admin-password.txt</code>', 'password')) %}{% endif %}
     {% if todo %}
   <p class="cms-owner-todo">
@@ -67,6 +73,7 @@
     {% endif %}
     {% block content %}{% endblock %}
   </main>
+  </div>
   {#  Loaded here rather than per-screen so that an action added to any
       admin page is asked about without having to remember to bring its
       own dialog. Both are safe to load twice -- a screen that pulls

@@ -353,14 +353,23 @@ def _openai_wire_messages(messages):
     for m in messages:
         if m.get("role") == "assistant" and m.get("tool_calls"):
             m2 = dict(m)
-            m2["tool_calls"] = [
-                {
+            out_calls = []
+            for c in m["tool_calls"]:
+                fn = {"name": c["name"], "arguments": json.dumps(c.get("arguments", {}))}
+                tc = {
                     "id": c.get("id", ""),
                     "type": "function",
-                    "function": {"name": c["name"], "arguments": json.dumps(c.get("arguments", {}))},
+                    "function": fn,
                 }
-                for c in m["tool_calls"]
-            ]
+                for k, v in c.items():
+                    if k in ("id", "name", "arguments", "type"):
+                        continue
+                    if k.startswith("__fn_"):
+                        fn[k[5:]] = v
+                    else:
+                        tc[k] = v
+                out_calls.append(tc)
+            m2["tool_calls"] = out_calls
             out.append(m2)
         else:
             out.append(m)
@@ -416,8 +425,19 @@ def _call_open_webui(settings, messages, tools, want_json=False, timeout=CHAT_TI
             args = json.loads(call["function"].get("arguments") or "{}")
         except ValueError:
             args = {}
-        tool_calls.append({"id": call.get("id", ""), "name": call["function"]["name"], "arguments": args})
-    return {"content": choice.get("content"), "tool_calls": tool_calls}
+        tc = {"id": call.get("id", ""), "name": call["function"]["name"], "arguments": args}
+        for k, v in call.items():
+            if k not in ("id", "type", "function"):
+                tc[k] = v
+        for k, v in call.get("function", {}).items():
+            if k not in ("name", "arguments"):
+                tc["__fn_" + k] = v
+        tool_calls.append(tc)
+    out_msg = {"content": choice.get("content"), "tool_calls": tool_calls}
+    for k, v in choice.items():
+        if k not in ("role", "content", "tool_calls"):
+            out_msg[k] = v
+    return out_msg
 
 
 def _ollama_vision_messages(messages):
@@ -446,10 +466,19 @@ def _ollama_wire_messages(messages):
     for m in messages:
         if m.get("role") == "assistant" and m.get("tool_calls"):
             m2 = dict(m)
-            m2["tool_calls"] = [
-                {"function": {"name": c["name"], "arguments": c.get("arguments", {})}}
-                for c in m["tool_calls"]
-            ]
+            out_calls = []
+            for c in m["tool_calls"]:
+                fn = {"name": c["name"], "arguments": c.get("arguments", {})}
+                tc = {"function": fn}
+                for k, v in c.items():
+                    if k in ("id", "name", "arguments"):
+                        continue
+                    if k.startswith("__fn_"):
+                        fn[k[5:]] = v
+                    else:
+                        tc[k] = v
+                out_calls.append(tc)
+            m2["tool_calls"] = out_calls
             out.append(m2)
         else:
             out.append(m)
@@ -476,7 +505,14 @@ def _call_ollama(settings, messages, tools, want_json=False, timeout=CHAT_TIMEOU
                 args = json.loads(args or "{}")
             except ValueError:
                 args = {}
-        tool_calls.append({"id": call.get("id", ""), "name": fn.get("name", ""), "arguments": args or {}})
+        tc = {"id": call.get("id", ""), "name": fn.get("name", ""), "arguments": args or {}}
+        for k, v in call.items():
+            if k not in ("id", "function"):
+                tc[k] = v
+        for k, v in fn.items():
+            if k not in ("name", "arguments"):
+                tc["__fn_" + k] = v
+        tool_calls.append(tc)
     return {"content": msg.get("content"), "tool_calls": tool_calls}
 
 
@@ -500,7 +536,16 @@ def _openai_messages_to_gemini(messages):
             if m.get("content"):
                 parts.append({"text": m["content"]})
             for call in (m.get("tool_calls") or []):
-                parts.append({"functionCall": {"name": call["name"], "args": call.get("arguments", {})}})
+                fc = {"name": call["name"], "args": call.get("arguments", {})}
+                p = {"functionCall": fc}
+                for k, v in call.items():
+                    if k in ("id", "name", "arguments"):
+                        continue
+                    if k.startswith("__fc_"):
+                        fc[k[5:]] = v
+                    else:
+                        p[k] = v
+                parts.append(p)
             contents.append({"role": "model", "parts": parts or [{"text": ""}]})
         else:
             parts = [{"text": m.get("content", "")}]
@@ -551,7 +596,14 @@ def _call_gemini(settings, messages, tools, timeout=CHAT_TIMEOUT):
             text_parts.append(part["text"])
         elif "functionCall" in part:
             fc = part["functionCall"]
-            tool_calls.append({"id": f"gemini-{i}", "name": fc.get("name", ""), "arguments": fc.get("args", {})})
+            tc = {"id": f"gemini-{i}", "name": fc.get("name", ""), "arguments": fc.get("args", {})}
+            for k, v in part.items():
+                if k != "functionCall":
+                    tc[k] = v
+            for k, v in fc.items():
+                if k not in ("name", "args"):
+                    tc["__fc_" + k] = v
+            tool_calls.append(tc)
     if not text_parts and not tool_calls:
         #  Same again for an empty candidate: SAFETY, RECITATION and
         #  MAX_TOKENS all arrive as a candidate with no parts.
@@ -781,22 +833,27 @@ def run_turn(db, message_history, image=None):
             #  the silence was an answer.
             return {"reply": said or _nothing_came_back(db)}
 
-        messages.append({"role": "assistant", "content": result.get("content"), "tool_calls": tool_calls})
+        ast_msg = {"role": "assistant", "content": result.get("content"), "tool_calls": tool_calls}
+        for k, v in result.items():
+            if k not in ("role", "content", "tool_calls", "reply", "proposal"):
+                ast_msg[k] = v
+        messages.append(ast_msg)
         halted_proposal = None
 
         for call in tool_calls:
             name = call["name"]
+            exec_name = name.split(":")[-1]
             args = call.get("arguments") or {}
 
-            if name in WRITE_TOOL_NAMES:
-                halted_proposal = {"tool": name, "args": args}
+            if exec_name in WRITE_TOOL_NAMES:
+                halted_proposal = {"tool": exec_name, "args": args}
                 # Satisfy the loop's requirement that every tool_call gets a
                 # response message, even though we're not executing it yet.
                 messages.append({"role": "tool", "tool_call_id": call.get("id", ""), "name": name,
                                   "content": "Proposed — awaiting admin approval, not yet applied."})
                 continue
 
-            tool_result = _execute_read_tool(db, name, args)
+            tool_result = _execute_read_tool(db, exec_name, args)
             messages.append({"role": "tool", "tool_call_id": call.get("id", ""), "name": name,
                               "content": json.dumps(tool_result)})
 

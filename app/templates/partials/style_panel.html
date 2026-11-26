@@ -33,7 +33,7 @@
     <h4 class="cms-tpl-section-label">Fonts</h4>
     <div class="cms-font-preset-gallery">
       {% for key, preset in font_pairings.items() %}
-      <form method="post" action="{{ url_for('admin.template_fonts_preset', template_id=template.id) }}">
+      <form method="post" action="{{ url_for('admin.template_fonts_preset', template_id=template.id) }}" class="cms-dock-form">
         <input type="hidden" name="next" value="{{ current_path }}">
         <input type="hidden" name="preset" value="{{ key }}">
         <button type="submit" class="cms-font-preset-btn" title="Use {{ preset.name }}">{{ preset.name }}</button>
@@ -41,7 +41,7 @@
       {% endfor %}
     </div>
     {% if template.font_overrides %}
-    <form method="post" action="{{ url_for('admin.template_fonts_reset', template_id=template.id) }}">
+    <form method="post" action="{{ url_for('admin.template_fonts_reset', template_id=template.id) }}" class="cms-dock-form">
       <input type="hidden" name="next" value="{{ current_path }}">
       <button type="submit" class="btn btn-small">Reset Fonts to Theme Default</button>
     </form>
@@ -56,17 +56,17 @@
         {% endfor %}
       </select>
       <div class="cms-font-role-btns">
-        <form method="post" action="{{ url_for('admin.template_heading_font', template_id=template.id) }}" class="cms-font-role-form">
+        <form method="post" action="{{ url_for('admin.template_heading_font', template_id=template.id) }}" class="cms-font-role-form cms-dock-form">
           <input type="hidden" name="next" value="{{ current_path }}">
           <input type="hidden" name="font_name" class="cms-font-role-input">
           <button type="submit" class="btn btn-small" title="Apply the selected font as the Heading font">Heading</button>
         </form>
-        <form method="post" action="{{ url_for('admin.template_body_font', template_id=template.id) }}" class="cms-font-role-form">
+        <form method="post" action="{{ url_for('admin.template_body_font', template_id=template.id) }}" class="cms-font-role-form cms-dock-form">
           <input type="hidden" name="next" value="{{ current_path }}">
           <input type="hidden" name="font_name" class="cms-font-role-input">
           <button type="submit" class="btn btn-small" title="Apply the selected font as the Body font">Body</button>
         </form>
-        <form method="post" action="{{ url_for('admin.template_footer_font', template_id=template.id) }}" class="cms-font-role-form">
+        <form method="post" action="{{ url_for('admin.template_footer_font', template_id=template.id) }}" class="cms-font-role-form cms-dock-form">
           <input type="hidden" name="next" value="{{ current_path }}">
           <input type="hidden" name="font_name" class="cms-font-role-input">
           <button type="submit" class="btn btn-small" title="Apply the selected font as the Footer font (optional — footer follows Body until set)">Footer</button>
@@ -82,7 +82,7 @@
         <dt>Footer</dt><dd>{{ font_overrides_dict.get('footer_font_family') or 'follows Body' }}</dd>
       </dl>
       {% if font_overrides_dict.get('footer_font_family') %}
-      <form method="post" action="{{ url_for('admin.template_footer_font_reset', template_id=template.id) }}">
+      <form method="post" action="{{ url_for('admin.template_footer_font_reset', template_id=template.id) }}" class="cms-dock-form">
         <input type="hidden" name="next" value="{{ current_path }}">
         <button type="submit" class="btn btn-small">Reset Footer to Match Body</button>
       </form>

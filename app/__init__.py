@@ -417,6 +417,9 @@ def create_app():
         ACCORDION_STYLES, FAQ_STYLES, MAX_FAQ_ITEMS,
     )
     app.jinja_env.globals["banner_overlay_settings"] = banner_overlay_settings
+    from .services import shared_style
+    app.jinja_env.globals["style_is_own"] = shared_style.is_own
+    app.jinja_env.globals["style_choices_of"] = shared_style.block_choices
     app.jinja_env.globals["banner_portrait_of"] = banner_portrait_of
     app.jinja_env.globals["banner_portrait_size_of"] = banner_portrait_size_of
     app.jinja_env.globals["banner_portrait_shape_of"] = banner_portrait_shape_of

@@ -316,6 +316,24 @@ body.sidebar-reach-full > .site-sidebar:not(.site-sidebar-right) { grid-column: 
 body.sidebar-right-reach-full:not(.sidebar-reach-full) > .site-sidebar:not(.site-sidebar-right) { grid-column: 1; grid-row: 2; }
 body.sidebar-right-reach-full > .site-sidebar-right { grid-column: 3; grid-row: 1 / 4; }
 body.sidebar-reach-full:not(.sidebar-right-reach-full) > .site-sidebar-right { grid-column: 3; grid-row: 2; }
+/* When logged in, the admin bar is a grid item (because it's sticky).
+   It needs to sit in row 1 spanning all columns, shifting everything else
+   down a row, otherwise auto-placement drops it in the bottom left corner. */
+body.cms-logged-in.sidebar-reach-full > .cms-admin-bar,
+body.cms-logged-in.sidebar-right-reach-full > .cms-admin-bar {
+  grid-column: 1 / -1; grid-row: 1;
+}
+body.cms-logged-in.sidebar-reach-full > .site-header,
+body.cms-logged-in.sidebar-right-reach-full > .site-header { grid-row: 2; }
+body.cms-logged-in.sidebar-reach-full > .site-content,
+body.cms-logged-in.sidebar-right-reach-full > .site-content { grid-row: 3; }
+body.cms-logged-in.sidebar-reach-full > .site-footer,
+body.cms-logged-in.sidebar-right-reach-full > .site-footer { grid-row: 4; }
+body.cms-logged-in.sidebar-reach-full > .site-sidebar:not(.site-sidebar-right) { grid-row: 2 / 5; }
+body.cms-logged-in.sidebar-right-reach-full:not(.sidebar-reach-full) > .site-sidebar:not(.site-sidebar-right) { grid-row: 3; }
+body.cms-logged-in.sidebar-right-reach-full > .site-sidebar-right { grid-row: 2 / 5; }
+body.cms-logged-in.sidebar-reach-full:not(.sidebar-right-reach-full) > .site-sidebar-right { grid-row: 3; }
+
 /* Zero sections = not activated yet — the rail shouldn't reserve its
    full 240px (pushing real content over) just because edit mode is on.
    Collapse to a thin strip at the page's true left edge holding only the
@@ -697,13 +715,7 @@ body.cms-view-mobile .cms-section.cms-sm-has-custom-height > .block-banner { ove
 .site-nav .cms-nav-item a { margin-left: 0; }
 
 /* Blog listing + post detail */
-.cms-blog-grid { display: grid; gap: 24px; margin: 20px 0 40px; }
-.cms-blog-grid.cms-blog-grid-3 { grid-template-columns: repeat(3, 1fr); }
-.cms-blog-grid.cms-blog-grid-2 { grid-template-columns: repeat(2, 1fr); }
-.cms-blog-grid.cms-blog-list { grid-template-columns: 1fr; }
-@media (max-width: 700px) {
-  .cms-blog-grid.cms-blog-grid-3, .cms-blog-grid.cms-blog-grid-2 { grid-template-columns: 1fr; }
-}
+.cms-blog-grid { display: grid; gap: 24px; margin: 20px 0 40px; container-type: inline-size; }
 .cms-blog-card {
   display: block; text-decoration: none; color: inherit;
   border: 1px solid var(--secondary-200, #e2e4e9);
@@ -714,11 +726,60 @@ body.cms-view-mobile .cms-section.cms-sm-has-custom-height > .block-banner { ove
   box-shadow: 0 4px 16px color-mix(in srgb, var(--primary-700, #2563eb) 24%, transparent);
   transform: translateY(-2px);
 }
-.cms-blog-grid.cms-blog-list .cms-blog-card { display: flex; align-items: stretch; }
 .cms-blog-card-image {
-  height: 180px; background-size: cover; background-position: center; background-color: #f0f1f3;
+  display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover;
+  background-color: var(--site-tint, #f0f1f3);
 }
-.cms-blog-grid.cms-blog-list .cms-blog-card-image { width: 220px; height: auto; min-height: 140px; flex-shrink: 0; }
+/*  Whole picture: its own proportions, nothing trimmed. */
+.cms-blog-img-full .cms-blog-card-image { aspect-ratio: auto; height: auto; object-fit: contain; }
+
+/*  The layouts. Columns count themselves from the room there is, so one
+    declaration serves a phone, a sidebar page and a full-width one. */
+.cms-blog-style-cards { grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); }
+.cms-blog-style-two { grid-template-columns: repeat(auto-fill, minmax(min(420px, 100%), 1fr)); }
+.cms-blog-style-grid { grid-template-columns: repeat(auto-fill, minmax(min(190px, 100%), 1fr)); gap: 12px; }
+.cms-blog-style-grid .cms-blog-card-image { aspect-ratio: 1 / 1; }
+.cms-blog-style-grid .cms-blog-card-body { padding: 10px 12px; }
+.cms-blog-style-grid .cms-blog-card-body h3 { font-size: 16px; }
+.cms-blog-style-grid .cms-blog-card-body p { display: none; }
+.cms-blog-style-large { grid-template-columns: 1fr; gap: 40px; }
+.cms-blog-style-large .cms-blog-card-image { aspect-ratio: 21 / 9; }
+
+.cms-blog-style-feature { grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr)); }
+.cms-blog-style-feature .cms-blog-card:first-child { grid-column: 1 / -1; }
+.cms-blog-style-feature .cms-blog-card:first-child .cms-blog-card-image { aspect-ratio: 21 / 9; }
+.cms-blog-style-feature .cms-blog-card:first-child h3 { font-size: var(--site-h2-size, 32px); }
+
+/*  Columns of cards at their own heights -- suits artwork and photographs
+    of mixed shapes, with Whole picture. */
+.cms-blog-style-masonry { display: block; columns: 280px; column-gap: 24px; }
+.cms-blog-style-masonry .cms-blog-card { break-inside: avoid; margin-bottom: 24px; }
+.cms-blog-style-masonry .cms-blog-card-image { aspect-ratio: auto; height: auto; }
+
+.cms-blog-style-overlay { grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); gap: 16px; }
+.cms-blog-style-overlay .cms-blog-card { position: relative; border: 0; min-height: 120px; }
+.cms-blog-style-overlay .cms-blog-card-image { aspect-ratio: 4 / 5; }
+.cms-blog-style-overlay.cms-blog-img-full .cms-blog-card-image { aspect-ratio: auto; }
+.cms-blog-style-overlay .cms-blog-card-image + .cms-blog-card-body {
+  position: absolute; inset: auto 0 0 0; padding: 48px 18px 14px;
+  background: linear-gradient(transparent, rgba(0,0,0,.78));
+}
+.cms-blog-style-overlay .cms-blog-card-image + .cms-blog-card-body,
+.cms-blog-style-overlay .cms-blog-card-image + .cms-blog-card-body :is(h3, p, .cms-blog-date) { color: #fff; }
+.cms-blog-style-overlay .cms-blog-card-body p { display: none; }
+
+.cms-blog-style-list, .cms-blog-style-zigzag { grid-template-columns: 1fr; }
+.cms-blog-style-list .cms-blog-card, .cms-blog-style-zigzag .cms-blog-card { display: flex; align-items: center; }
+.cms-blog-style-list .cms-blog-card-image { width: 220px; flex-shrink: 0; aspect-ratio: 4 / 3; }
+.cms-blog-style-zigzag .cms-blog-card-image { width: 48%; flex-shrink: 0; aspect-ratio: 4 / 3; }
+.cms-blog-style-zigzag .cms-blog-card:nth-child(even) { flex-direction: row-reverse; }
+.cms-blog-img-full:is(.cms-blog-style-list, .cms-blog-style-zigzag) .cms-blog-card-image { aspect-ratio: auto; }
+.cms-blog-card-body { flex: 1; min-width: 0; }
+@container (max-width: 560px) {
+  .cms-blog-style-list .cms-blog-card, .cms-blog-style-zigzag .cms-blog-card,
+  .cms-blog-style-zigzag .cms-blog-card:nth-child(even) { flex-direction: column; align-items: stretch; }
+  .cms-blog-style-list .cms-blog-card-image, .cms-blog-style-zigzag .cms-blog-card-image { width: 100%; }
+}
 /*  The side figure scales, because the card itself may be curved: a
     725px card with a 999px radius gets 87px corners, and a title sitting
     18px in loses its first letter to the curve. 6% is 43px there and
@@ -3554,3 +3615,175 @@ body.cms-view-mobile .cms-columns > .cms-column { order: var(--sm-order, 0); }
 .cms-tool-title.cms-th-align-left   { text-align: left; }
 .cms-tool-title.cms-th-align-center { text-align: center; }
 .cms-tool-title.cms-th-align-right  { text-align: right; }
+
+/*  The owner's own Text size for one banner. The headline takes the number
+    and the other lines keep their proportion to it, whichever tag they are
+    in. Capped by the banner's width so a big size cannot spill off a phone.
+    Spans the rich-text ribbon sized by hand are left alone. */
+.cms-banner-overlay[style*="--cms-banner-size"] :is(h1, h2) {
+  font-size: min(var(--cms-banner-size), 14cqw); max-width: 100%;
+}
+.cms-banner-overlay[style*="--cms-banner-size"] h3 {
+  font-size: min(calc(var(--cms-banner-size) * .7), 11cqw);
+}
+.cms-banner-overlay[style*="--cms-banner-size"] :is(p, li) {
+  font-size: max(14px, min(calc(var(--cms-banner-size) * .45), 6cqw));
+}
+/*  A banner painted from the palette brings the ink that reads on it. A
+    Text colour on the box itself is inline and still wins. */
+.cms-banner[style*="--cms-banner-ink"] .cms-banner-overlay { color: var(--cms-banner-ink); }
+
+/*  ---------- Gallery ----------
+    One list of figures; the layout classes arrange it. Columns count
+    themselves from the room available. */
+.cms-gallery { --gallery-min: 240px; display: grid; gap: 14px; width: 100%;
+  grid-template-columns: repeat(auto-fill, minmax(min(var(--gallery-min), 100%), 1fr)); }
+.cms-gallery-size-small { --gallery-min: 160px; gap: 10px; }
+.cms-gallery-size-large { --gallery-min: 360px; gap: 20px; }
+.cms-gallery-item { margin: 0; position: relative; min-width: 0; }
+.cms-gallery-item img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover;
+  border-radius: var(--site-radius, 8px); background: var(--site-tint, #f0f1f3); }
+.cms-gallery-fit-full .cms-gallery-item img { aspect-ratio: auto; height: auto; object-fit: contain; background: none; }
+.cms-gallery-zoom-on .cms-gallery-item img { cursor: zoom-in; }
+body.cms-editing .cms-gallery-zoom-on .cms-gallery-item img { cursor: default; }
+.cms-gallery-item figcaption { font-size: 14px; color: var(--site-ink-soft, #5b6472); padding: 6px 2px 0; text-align: center; }
+.cms-gallery-item figcaption:empty { display: none; }
+body.cms-editing .cms-gallery-item figcaption:empty { display: block; }
+body.cms-editing .cms-gallery-item figcaption:empty::before { content: "Add a caption"; opacity: .5; }
+.cms-gallery-empty { display: none; text-align: center; opacity: .7; }
+body.cms-editing .cms-gallery-empty { display: block; }
+
+.cms-gallery-layout-masonry { display: block; columns: var(--gallery-min); column-gap: 14px; }
+.cms-gallery-layout-masonry .cms-gallery-item { break-inside: avoid; margin-bottom: 14px; }
+.cms-gallery-layout-masonry .cms-gallery-item img { aspect-ratio: auto; height: auto; }
+
+/*  Rows of one height, each picture as wide as its own shape wants. */
+.cms-gallery-layout-justified { display: flex; flex-wrap: wrap; --row: 220px; }
+.cms-gallery-layout-justified.cms-gallery-size-small { --row: 150px; }
+.cms-gallery-layout-justified.cms-gallery-size-large { --row: 320px; }
+.cms-gallery-layout-justified .cms-gallery-item { flex: 1 1 auto; display: flex; flex-direction: column; }
+.cms-gallery-layout-justified .cms-gallery-item img { height: var(--row); width: auto; min-width: 100%; max-width: 100%; aspect-ratio: auto; object-fit: cover; }
+.cms-gallery-layout-justified.cms-gallery-fit-full .cms-gallery-item img { object-fit: contain; }
+.cms-gallery-layout-justified::after { content: ""; flex-grow: 100; }
+
+.cms-gallery-layout-feature .cms-gallery-item:first-child { grid-column: 1 / -1; }
+.cms-gallery-layout-feature .cms-gallery-item:first-child img { aspect-ratio: 21 / 9; }
+.cms-gallery-layout-feature.cms-gallery-fit-full .cms-gallery-item:first-child img { aspect-ratio: auto; }
+
+/*  Carousel and slideshow are native scrolling with snapping: they work
+    with a finger, a trackpad and the keyboard, with no script. */
+.cms-gallery-layout-carousel, .cms-gallery-layout-slideshow {
+  display: flex; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 10px; align-items: flex-start; }
+.cms-gallery-layout-carousel .cms-gallery-item { flex: 0 0 min(var(--gallery-min), 85%); scroll-snap-align: start; }
+.cms-gallery-layout-slideshow .cms-gallery-item { flex: 0 0 100%; scroll-snap-align: center; }
+.cms-gallery-layout-slideshow .cms-gallery-item img { aspect-ratio: 16 / 9; }
+.cms-gallery-layout-slideshow.cms-gallery-fit-full .cms-gallery-item img { aspect-ratio: auto; max-height: 75vh; }
+
+.cms-gallery-layout-tiles .cms-gallery-item img { aspect-ratio: 1 / 1; }
+.cms-gallery-layout-tiles.cms-gallery-fit-full .cms-gallery-item img { aspect-ratio: auto; }
+.cms-gallery-layout-tiles .cms-gallery-item figcaption:not(:empty) {
+  position: absolute; inset: auto 0 0 0; padding: 36px 12px 10px; color: #fff;
+  background: linear-gradient(transparent, rgba(0,0,0,.78));
+  border-radius: 0 0 var(--site-radius, 8px) var(--site-radius, 8px); }
+
+.cms-gallery-layout-polaroid { gap: 26px; }
+.cms-gallery-layout-polaroid .cms-gallery-item { background: #fff; padding: 10px 10px 14px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.18); transform: rotate(-1.2deg); }
+.cms-gallery-layout-polaroid .cms-gallery-item:nth-child(even) { transform: rotate(1.4deg); }
+.cms-gallery-layout-polaroid .cms-gallery-item img { aspect-ratio: 1 / 1; border-radius: 0; }
+.cms-gallery-layout-polaroid.cms-gallery-fit-full .cms-gallery-item img { aspect-ratio: auto; }
+.cms-gallery-layout-polaroid .cms-gallery-item figcaption { color: #333; }
+
+.cms-gallery-layout-stacked { grid-template-columns: 1fr; gap: 28px; }
+.cms-gallery-layout-stacked .cms-gallery-item img { aspect-ratio: 16 / 9; }
+.cms-gallery-layout-stacked.cms-gallery-fit-full .cms-gallery-item img { aspect-ratio: auto; }
+@media (prefers-reduced-motion: no-preference) {
+  .cms-gallery-layout-carousel, .cms-gallery-layout-slideshow { scroll-behavior: smooth; }
+}
+
+/*  Panels: slivers that open under the pointer or the keyboard. Many
+    pictures scroll sideways rather than shrink to nothing. */
+.cms-gallery-layout-panels { display: flex; gap: 6px; height: 380px; overflow-x: auto; }
+.cms-gallery-layout-panels.cms-gallery-size-small { height: 280px; }
+.cms-gallery-layout-panels.cms-gallery-size-large { height: 480px; }
+.cms-gallery-layout-panels .cms-gallery-item { flex: 1 0 56px; transition: flex-grow .45s ease; overflow: hidden;
+  border-radius: var(--site-radius, 8px); }
+.cms-gallery-layout-panels .cms-gallery-item:is(:hover, :focus-within) { flex-grow: 5; }
+.cms-gallery-layout-panels .cms-gallery-item img { height: 100%; aspect-ratio: auto; object-fit: cover; border-radius: 0; }
+.cms-gallery-layout-panels.cms-gallery-fit-full .cms-gallery-item img { object-fit: contain; background: var(--site-tint, #eee); }
+.cms-gallery-layout-panels .cms-gallery-item figcaption {
+  position: absolute; inset: auto 0 0 0; padding: 30px 10px 10px; color: #fff; opacity: 0;
+  background: linear-gradient(transparent, rgba(0,0,0,.78)); transition: opacity .25s; }
+.cms-gallery-layout-panels .cms-gallery-item:is(:hover, :focus-within) figcaption { opacity: 1; }
+
+/*  Cover flow: the middle picture faces you, its neighbours turn away.
+    site.js marks which is in the middle; without it this is a carousel. */
+.cms-gallery-layout-coverflow { display: flex; gap: 0; overflow-x: auto; scroll-snap-type: x mandatory;
+  perspective: 1000px; padding: 20px 24%; scrollbar-width: thin; align-items: center; }
+.cms-gallery-layout-coverflow .cms-gallery-item { flex: 0 0 100%; scroll-snap-align: center;
+  transition: transform .35s ease, opacity .35s ease; }
+.cms-gallery-layout-coverflow .cms-gallery-item.is-before { transform: rotateY(34deg) scale(.82); opacity: .6; }
+.cms-gallery-layout-coverflow .cms-gallery-item.is-after { transform: rotateY(-34deg) scale(.82); opacity: .6; }
+.cms-gallery-nav { display: flex; justify-content: center; gap: 10px; margin-top: 8px; }
+.cms-gallery-nav button { width: 38px; height: 38px; border-radius: 50%; cursor: pointer; font-size: 20px; line-height: 1;
+  border: 1px solid var(--site-line, #d5d8de); background: var(--site-card-bg, #fff); color: var(--site-ink, #111); }
+
+/*  Deck: a stack; --deck is a card's place from the top. */
+.cms-gallery-layout-deck { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; padding: 10px 20px 44px; }
+.cms-gallery-layout-deck .cms-gallery-item { grid-area: 1 / 1; width: min(520px, 90%);
+  z-index: calc(50 - var(--deck, 0)); transition: transform .35s ease, opacity .35s ease;
+  transform: translateY(calc(min(var(--deck, 0), 4) * 9px)) rotate(calc(min(var(--deck, 0), 4) * 1.6deg));
+  background: var(--site-card-bg, #fff); border-radius: var(--site-radius, 8px);
+  box-shadow: 0 10px 26px rgba(0,0,0,.2); cursor: pointer; }
+.cms-gallery-layout-deck .cms-gallery-item figcaption { padding: 8px; }
+.cms-gallery-layout-deck .cms-gallery-item:not(.is-front) { pointer-events: none; }
+.cms-gallery-layout-deck .cms-gallery-item:not(.is-front) figcaption { visibility: hidden; }
+body.cms-editing .cms-gallery-layout-deck .cms-gallery-item { cursor: default; }
+
+@media (max-width: 640px) {
+  .cms-gallery-layout-panels { flex-direction: column; height: auto; }
+  .cms-gallery-layout-panels .cms-gallery-item { flex: 0 0 auto; }
+  .cms-gallery-layout-panels .cms-gallery-item img { height: 220px; }
+  .cms-gallery-layout-panels .cms-gallery-item figcaption { opacity: 1; }
+  .cms-gallery-layout-coverflow { padding-inline: 8%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cms-gallery-layout-panels .cms-gallery-item, .cms-gallery-layout-coverflow .cms-gallery-item,
+  .cms-gallery-layout-deck .cms-gallery-item { transition: none; }
+}
+
+/*  ---------- A card's own Shape ----------
+    The Shape menu saved a class that no rule ever drew. The class is
+    repeated to outrank both the site-wide Corners and a theme.css: a shape
+    chosen for one card is the most specific choice there is. */
+body .cms-card-shape.cms-card-rounded.cms-card-rounded.cms-card-rounded { border-radius: 24px; }
+body .cms-card-shape.cms-card-oval.cms-card-oval.cms-card-oval {
+  border-radius: 50%; padding: 48px 12%; text-align: center; align-items: center; }
+body .cms-card-shape.cms-card-pill.cms-card-pill.cms-card-pill {
+  border-radius: 999px; padding: 28px 10%; text-align: center; align-items: center; }
+body .cms-card-shape.cms-card-circle.cms-card-circle.cms-card-circle {
+  border-radius: 50%; aspect-ratio: 1 / 1; width: min(100%, 360px); height: auto; margin-inline: auto;
+  padding: 12%; overflow: hidden; display: flex; flex-direction: column; justify-content: center;
+  align-items: center; text-align: center; }
+
+/*  A tool's chosen Colour reaches its words too, not only its links: on a
+    gallery or a list of questions there is often no link to colour. */
+[style*="--tool-accent"] .cms-gallery-item figcaption,
+[style*="--tool-accent"] .cms-faq-q { color: var(--tool-accent); }
+
+/*  ---------- What the owner chose beats what the template drew ----------
+    A theme.css styles headings and paragraphs directly, which outranks a
+    value the words merely inherit. So a font, colour or alignment chosen
+    for one banner's text box is handed down explicitly. Only when it was
+    chosen: the attribute is there only if the owner set it. */
+body .cms-banner-overlay[style*="font-family"] :is(h1, h2, h3, h4, p, li) { font-family: inherit; }
+body .cms-banner-overlay:is([style^="color:"], [style*=" color:"], [style*=";color:"]) :is(h1, h2, h3, h4, p, li) { color: inherit; }
+body .cms-banner-overlay[style*="text-align"] :is(h1, h2, h3, h4, p, li) { text-align: inherit; }
+
+/*  A full-width element is flat by default; a Depth chosen on the tool or
+    its section is a choice, and applies. */
+body .cms-section[data-layout-width="full"] > .block[data-shadow-style] :is(.cms-banner, .cms-managed-image),
+body .cms-section[data-layout-width="full"][data-shadow-style]:not([data-shadow-style=""]) :is(.cms-banner, .cms-managed-image) {
+  box-shadow: var(--site-shadow, none);
+}
+

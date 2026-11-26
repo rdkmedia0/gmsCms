@@ -15,10 +15,13 @@ from html import escape as html_escape
 from bs4 import BeautifulSoup
 
 from ..icons import render_icon
+from werkzeug.datastructures import MultiDict
 from werkzeug.utils import secure_filename
 from flask import request, current_app
 
 from ..db import get_db
+from . import colour_choice
+from . import filecache
 from .. import ai_image
 from .. import ai_video
 
@@ -1621,6 +1624,34 @@ def _hex_to_rgba(hex_color, opacity_pct):
     return f"rgba({r},{g},{b},{a:.2f})"
 
 
+def _clear_text_overrides(overlay, properties):
+    """Removes these properties from the words inside a banner's text box.
+
+    A colour, size, font or alignment set on a few words is inline, so it
+    beats the box's own. Left there, changing the whole-banner control
+    appears to do nothing -- so changing one of those clears the same
+    setting from the words. Buttons keep their own styling.
+    """
+    if not properties:
+        return
+    legacy = {"color": "color", "font-size": "size", "font-family": "face", "text-align": "align"}
+    for el in overlay.find_all(True):
+        if el.find_parent(class_="cms-hero-actions") or "cms-hero-actions" in (el.get("class") or []):
+            continue
+        if el.has_attr("style"):
+            props = _parse_style(el["style"])
+            for name in properties:
+                props.pop(name, None)
+            if _style_str(props):
+                el["style"] = _style_str(props)
+            else:
+                del el["style"]
+        for name in properties:
+            attr = legacy[name]
+            if el.has_attr(attr) and (el.name == "font" or attr == "align"):
+                del el[attr]
+
+
 def _update_banner_overlay_style(content, form, view="desktop"):
     """Applies the overlay text box's own styling — background color/
     opacity, text color/size/font/weight/style/alignment, and the whole
@@ -1638,6 +1669,9 @@ def _update_banner_overlay_style(content, form, view="desktop"):
         overlay["class"] = "cms-banner-overlay"
         div.append(overlay)
 
+    #  What the toolbar was showing, to tell a setting the owner changed
+    #  from one that was only sent back.
+    shown = banner_overlay_settings(content, view)
     outer_props = _parse_style(div.get("style"))
     position = form.get("position", "")
     if position in BANNER_POSITIONS:
@@ -1668,21 +1702,48 @@ def _update_banner_overlay_style(content, form, view="desktop"):
     elif div.has_attr("style"):
         del div["style"]
 
+    #  Each colour is only touched when its own control was sent, and
+    #  "Auto" stores nothing -- see services/colour_choice.py.
+    banner_choice = form.get("banner_color_choice", "keep")
+    if banner_choice != "keep":
+        banner_hex = form.get("banner_color", "")
+        outer_props = _parse_style(div.get("style"))
+        for key in ("background-color", "color", "--cms-banner-ink"):
+            outer_props.pop(key, None)
+        colour = colour_choice.css_colour(banner_choice, banner_hex)
+        if colour:
+            outer_props["background-color"] = colour
+            outer_props["--cms-banner-ink"] = colour_choice.ink_on(banner_choice, banner_hex)
+        if _style_str(outer_props):
+            div["style"] = _style_str(outer_props)
+        elif div.has_attr("style"):
+            del div["style"]
+
     ov_props = _parse_style(overlay.get("style"))
-    bg = (form.get("overlay_bg_color") or "").strip()
-    opacity = form.get("overlay_opacity", type=int)
-    if bg and HEX_RE.match(bg):
-        ov_props["background"] = _hex_to_rgba(bg, opacity)
-    text_color = (form.get("text_color") or "").strip()
-    if text_color and HEX_RE.match(text_color):
-        ov_props["color"] = text_color
-    else:
-        ov_props.pop("color", None)
+    before = dict(ov_props)
+    box_choice = form.get("overlay_bg_choice", "keep")
+    if box_choice != "keep":
+        colour = colour_choice.css_colour(box_choice, form.get("overlay_bg_color", ""))
+        if colour:
+            ov_props["background"] = colour_choice.with_opacity(
+                colour, form.get("overlay_opacity", type=int))
+        else:
+            ov_props.pop("background", None)
+    text_choice = form.get("text_color_choice", "keep")
+    if text_choice != "keep":
+        colour = colour_choice.css_colour(text_choice, form.get("text_color", ""))
+        if colour:
+            ov_props["color"] = colour
+        else:
+            ov_props.pop("color", None)
+    #  One number scales the whole box: the headline takes it and the
+    #  smaller lines keep their proportion to it (see composition.css).
+    for key in ("font-size", "--cms-banner-size", "--site-h1-size",
+                "--site-h2-size", "--site-h3-size"):
+        ov_props.pop(key, None)
     font_size = form.get("font_size", type=int)
     if font_size:
-        ov_props["font-size"] = f"{max(10, min(96, font_size))}px"
-    else:
-        ov_props.pop("font-size", None)
+        ov_props["--cms-banner-size"] = f"{max(10, min(160, font_size))}px"
     font_key = form.get("font_family", "default")
     if BANNER_FONTS.get(font_key):
         ov_props["font-family"] = BANNER_FONTS[font_key]
@@ -1745,6 +1806,15 @@ def _update_banner_overlay_style(content, form, view="desktop"):
     else:
         ov_props.pop("border-radius", None)
 
+    _clear_text_overrides(overlay, [
+        css for css, source, field in (
+            ("color", "color", "text_color_choice"), ("font-size", "--cms-banner-size", "font_size"),
+            ("font-family", "font-family", "font_family"), ("text-align", "text-align", "text_align"))
+        if before.get(source) != ov_props.get(source)
+        and str(form.get(field, "")) != str(shown.get(field, ""))
+        or (field == "text_color_choice" and form.get(field) == "custom"
+            and before.get(source) != ov_props.get(source))])
+
     ov_style = _style_str(ov_props)
     if ov_style:
         overlay["style"] = ov_style
@@ -1752,6 +1822,13 @@ def _update_banner_overlay_style(content, form, view="desktop"):
         del overlay["style"]
 
     return str(soup)
+
+
+def untouched_banner(content, view="desktop"):
+    """The markup that saving this banner's toolbar unchanged would give."""
+    shown = banner_overlay_settings(content, view)
+    return _update_banner_overlay_style(content, MultiDict(
+        {key: str(value) for key, value in shown.items()}), view)
 
 
 def banner_overlay_settings(content, view="desktop"):
@@ -1777,12 +1854,13 @@ def banner_overlay_settings(content, view="desktop"):
             position = key
             break
 
-    bg_color, opacity = "#000000", 45
-    bg = ov_props.get("background", "")
-    m = re.match(r"rgba\((\d+),(\d+),(\d+),([\d.]+)\)", bg.replace(" ", ""))
-    if m:
-        bg_color = "#{:02x}{:02x}{:02x}".format(int(m.group(1)), int(m.group(2)), int(m.group(3)))
-        opacity = round(float(m.group(4)) * 100)
+    def chosen(value):
+        choice, custom, percent = colour_choice.read(value)
+        return ("keep" if value and not choice else choice), custom, percent
+
+    box_choice, box_hex, opacity = chosen(ov_props.get("background", ""))
+    text_choice, text_hex, _ = chosen(ov_props.get("color", ""))
+    banner_choice, banner_hex, _ = chosen(outer_props.get("background-color", ""))
 
     font_key = "default"
     font_family = ov_props.get("font-family", "")
@@ -1793,10 +1871,15 @@ def banner_overlay_settings(content, view="desktop"):
 
     return {
         "position": position,
-        "overlay_bg_color": bg_color,
-        "overlay_opacity": opacity,
-        "text_color": ov_props.get("color", "#ffffff"),
-        "font_size": re.sub(r"[^\d]", "", ov_props.get("font-size", "")) or "",
+        "banner_color_choice": banner_choice,
+        "banner_color": banner_hex or "#444444",
+        "overlay_bg_choice": box_choice,
+        "overlay_bg_color": box_hex or "#000000",
+        "overlay_opacity": 45 if opacity is None else opacity,
+        "text_color_choice": text_choice,
+        "text_color": text_hex or "#ffffff",
+        "font_size": re.sub(r"[^\d]", "", ov_props.get("--cms-banner-size")
+                            or ov_props.get("font-size", "")) or "",
         "font_family": font_key,
         "font_weight": "bold" if ov_props.get("font-weight") in ("700", "bold") else "normal",
         "font_style": "italic" if ov_props.get("font-style") == "italic" else "normal",
@@ -1860,6 +1943,55 @@ EDITOR_ONLY_ELEMENTS = ("cms-tag-drag-handle",)
 EDITOR_ONLY_WRAPPERS = ("cms-tag-wrap",)
 
 
+#  Tags that hold a line of text and so cannot hold another block.
+LINE_TAGS = ("h1", "h2", "h3", "h4", "h5", "h6", "p")
+
+
+def tidy_nested_blocks(html):
+    """Unwraps headings and paragraphs that ended up containing each other.
+
+    The browser's own editing commands will put an <h2> inside a <p> inside
+    an <h2>, layer after layer. A size or colour then lands on an outer
+    wrapper while an inner tag overrides it, so the controls look dead. A
+    line that contains another block is only a wrapper: it is unwrapped,
+    and the empty lines left over from the same damage go with it. Markup
+    with no such nesting is returned exactly as it came.
+    """
+    if not html:
+        return html
+    soup = BeautifulSoup(html, "html.parser")
+    blocks = LINE_TAGS + ("div", "ul", "ol")
+    nested = [el for el in soup.find_all(LINE_TAGS) if el.find(blocks)]
+    if not nested:
+        return html
+    parents = [el.parent for el in nested]
+    for el in nested:
+        el.unwrap()
+    for parent in parents:
+        if parent is None:
+            continue
+        for line in parent.find_all(LINE_TAGS, recursive=False):
+            if not line.get_text(strip=True) and not line.find(("img", "br", "a", "svg", "iframe")):
+                line.decompose()
+    return str(soup)
+
+
+#  Added to a gallery on screen to lay it out; not part of the content.
+GALLERY_STATE_CLASSES = ("is-front", "is-before", "is-after")
+
+
+def _strip_gallery_state(html):
+    if not html or "cms-gallery-item" not in html or not any(
+            marker in html for marker in GALLERY_STATE_CLASSES + ("--deck",)):
+        return html
+    soup = BeautifulSoup(html, "html.parser")
+    for item in soup.find_all(class_="cms-gallery-item"):
+        item["class"] = [c for c in item.get("class", []) if c not in GALLERY_STATE_CLASSES]
+        if item.has_attr("style"):
+            del item["style"]
+    return str(soup)
+
+
 def strip_editor_markup(html):
     """Removes editing scaffolding from content on its way to storage.
 
@@ -1869,6 +2001,7 @@ def strip_editor_markup(html):
     than only in the browser so it holds for every route that stores
     content, including one written later.
     """
+    html = _strip_gallery_state(tidy_nested_blocks(html))
     markers = ("contenteditable", "cms-block-editable", "cms-tag-drag-handle", "cms-tag-wrap")
     if not html or not any(marker in html for marker in markers):
         return html
@@ -1908,17 +2041,21 @@ def _update_card_classes(content, shape, color):
     if shape != "rectangle":
         classes.append(f"cms-card-{shape}")
     div["class"] = classes
-    props = _parse_style(div.get("style"))
-    color = (color or "").strip()
-    if color and re.match(r"^#[0-9a-fA-F]{6}$", color):
-        props["background-color"] = color
-    else:
-        props.pop("background-color", None)
-    style = _style_str(props)
-    if style:
-        div["style"] = style
-    elif div.has_attr("style"):
-        del div["style"]
+    #  `color` is a (choice, custom hex) pair; "keep" leaves it alone.
+    choice, custom = color
+    if choice != "keep":
+        props = _parse_style(div.get("style"))
+        value = colour_choice.css_colour(choice, custom)
+        for key in ("background-color", "color"):
+            props.pop(key, None)
+        if value:
+            props["background-color"] = value
+            props["color"] = colour_choice.ink_on(choice, custom)
+        style = _style_str(props)
+        if style:
+            div["style"] = style
+        elif div.has_attr("style"):
+            del div["style"]
     return str(soup)
 
 
@@ -2075,9 +2212,12 @@ def card_style_settings(content):
     classes = div.get("class") or [] if div is not None else []
     shape = next((c[len("cms-card-"):] for c in classes if c.startswith("cms-card-") and c != "cms-card-shape"), "rectangle")
     props = _parse_style(div.get("style")) if div is not None else {}
+    stored = props.get("background-color", "")
+    choice, custom, _ = colour_choice.read(stored)
     return {
         "shape": shape,
-        "color": props.get("background-color", ""),
+        "color_choice": "keep" if stored and not choice else choice,
+        "color": custom or "#ffffff",
         "has_image": "background-image" in props,
     }
 
@@ -2086,7 +2226,7 @@ def _reset_card_style(content):
     """Back to a plain default card: no shape modifier, no background
     color override, no background image — the one-click undo for however
     many individual shape/color/image changes an admin has made."""
-    content = _update_card_classes(content, "rectangle", "")
+    content = _update_card_classes(content, "rectangle", ("", ""))
     content = _set_card_image(content, None)
     return content
 
@@ -2182,6 +2322,7 @@ def _banner_dom_response(content):
         "class": " ".join(div.get("class") or []) if div is not None else "cms-banner",
         "style": div.get("style", "") if div is not None else "",
         "overlay_style": overlay.get("style", "") if overlay is not None else "",
+        "overlay_html": overlay.decode_contents() if overlay is not None else None,
         #  The portrait is a child, not an attribute, and the in-place
         #  update carried only attributes -- so choosing a portrait did
         #  nothing on screen until a refresh. Empty string means "none":
@@ -2603,12 +2744,7 @@ def _installed_template_media(db, image_only=False):
     out = []
     for slug in sorted(os.listdir(themes)):
         folder = os.path.join(themes, slug, "media")
-        if not os.path.isdir(folder):
-            continue
-        for filename in sorted(os.listdir(folder)):
-            path = os.path.join(folder, filename)
-            if not os.path.isfile(path):
-                continue
+        for filename, mtime in filecache.listing(folder):
             ext = os.path.splitext(filename)[1].lower()
             #  Same rule the uploads listing uses: everything, unless the
             #  caller asked for pictures only.
@@ -2623,7 +2759,7 @@ def _installed_template_media(db, image_only=False):
                 "owned_by": names.get(slug) or slug,
                 "can_delete": False,
                 "created_at": None,
-                "mtime": os.path.getmtime(path),
+                "mtime": mtime,
             })
     return out
 
@@ -2851,6 +2987,10 @@ def faq_settings(content):
         #  rather than showing an empty box under a page full of
         #  questions. Saving once stores it properly.
         md, intro = faq_document_source(content), ""
+    #  A Reader holds no questions of its own to carry the grouping, so
+    #  it is written on its box instead.
+    if box.get("data-faq-grouped") == "1":
+        grouped = True
     return {
         "md": md,
         #  The same document, as something to edit on the page. Built here
@@ -3260,7 +3400,7 @@ def faq_editor_html(md):
     if parsed["intro"]:
         out.append(as_blocks(parsed["intro"]))
     for item in parsed["items"]:
-        out.append("<h3>" + html_escape(item["q"]) + "</h3>")
+        out.append(f"<h3>{html_escape(item['q'])}</h3>")
         out.append(as_blocks(item["a"]) or "<p></p>")
     return "".join(out) or "<p></p>"
 
@@ -3271,14 +3411,17 @@ def build_faq_mirror(source_id, ids, style="list", one_at_a_time=True, show_cont
     page is rendered, so editing one on the FAQ page updates every block
     repeating it, and there is no second copy to fall out of step.
     """
-    style = style if style in dict(FAQ_STYLES) else "list"
+    #  FAQ_VIEWS is what the Reader's View menu offers. Checking against the
+    #  older FAQ_STYLES turned "Document" into expandable rows.
+    style = style if style in dict(FAQ_VIEWS) else "list"
     classes = f"cms-faq {FAQ_STYLE_PREFIX}{style} cms-faq-mirror"
+    source = "" if source_id is None else f'data-faq-source="{int(source_id)}" '
     grouped = ' data-faq-grouped="1"' if one_at_a_time else ""
     #  A reader's display parts. Stored on the block, so two readers of the
     #  same questions can present them differently — which is the whole
     #  reason reading is a separate tool from writing.
     contents = ' data-faq-contents="1"' if show_contents else ""
-    return (f'<div class="{classes}" data-faq-source="{int(source_id)}" '
+    return (f'<div class="{classes}" {source}'
             f'data-faq-ids="{",".join(html_escape(i) for i in ids)}"'
             f'{grouped}{contents}></div>')
 
@@ -3381,8 +3524,7 @@ def resolve_faq_mirror(db, content):
     #  rather than to the questions. Built from the same items that were
     #  just rendered, so it can never name one that is not below it.
     links = "".join(
-        '<li><a href="#faq-' + item["id"] + '" data-faq-jump="' + item["id"] + '">'
-        + html_escape(item["q"]) + "</a></li>"
+        f'<li><a href="#faq-{item["id"]}" data-faq-jump="{item["id"]}">{html_escape(item["q"])}</a></li>'
         for item in items
     )
     return '<ol class="cms-faq-contents">' + links + "</ol>" + body
@@ -3396,9 +3538,13 @@ def apply_faq_form(content):
     #  "Where do these questions come from" is the first decision, because
     #  everything else on this bar depends on the answer.
     source = (form.get("faq_source") or "").strip()
-    if source.isdigit():
+    #  Only a Reader sends faq_source at all, and it stays a Reader even
+    #  with no page chosen yet. It used to fall through to the writer
+    #  below, so picking a style first turned it into an empty FAQ.
+    if "faq_source" in form:
         picked = [v for k, v in form.items(multi=True) if k == "faq_pick"]
-        return build_faq_mirror(int(source), picked, form.get("faq_style"),
+        return build_faq_mirror(int(source) if source.isdigit() else None,
+                                picked, form.get("faq_style"),
                                 form.get("one_at_a_time") == "1",
                                 form.get("show_contents") == "1")
 
@@ -3789,8 +3935,8 @@ def build_search(style="bar", placeholder="", show_count="1"):
         ' data-search-tool data-show-count="' + count + '">'
         '<label class="cms-search-box">'
         '<span class="cms-search-icon" aria-hidden="true">&#128269;</span>'
-        '<input type="search" placeholder="' + html_escape(placeholder, quote=True) + '"'
-        ' aria-label="' + html_escape(placeholder, quote=True) + '">'
+        f'<input type="search" placeholder="{html_escape(placeholder, quote=True)}"'
+        f' aria-label="{html_escape(placeholder, quote=True)}">'
         "</label>"
         '<p class="cms-search-count" hidden></p>'
         "</div>"

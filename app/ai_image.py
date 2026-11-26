@@ -204,7 +204,7 @@ def _generate_gemini(settings, prompt, width, height, reference_image_bytes, ref
         headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
     )
     try:
-        with urllib.request.urlopen(req, timeout=90) as resp:
+        with urllib.request.urlopen(req, timeout=IMAGE_TIMEOUT) as resp:
             data = json.loads(resp.read().decode())
     except urllib.error.HTTPError as e:
         detail = e.read().decode(errors="ignore")[:300]

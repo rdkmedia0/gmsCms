@@ -5,14 +5,15 @@ import json
 import shutil
 import tempfile
 import datetime
-from flask import (request, flash, redirect, url_for, jsonify, current_app,
+from flask import (request, flash, redirect, url_for, jsonify, current_app, session,
                    send_file, render_template, abort)
 
 from . import bp
 from ..auth import login_required
 from ...db import get_db
 from ...services.menu import refresh_site_menus
-from ...services import lifecycle, packages
+from ...services import lifecycle, packages, recolour
+from ...services import page_background
 from ...services.palette import _match_palette_roles, color_scheme_choices
 from ...services import palettes as palette_lib
 from . import (
@@ -144,6 +145,7 @@ def pages_tidy():
 #  failing check rather than a shipped template somebody quietly edited.
 LOOK_ENDPOINTS = frozenset({
     "admin.template_colors", "admin.template_colors_preset", "admin.template_colors_reset",
+    "admin.template_colors_undo",
     "admin.template_fonts_preset", "admin.template_fonts_reset",
     "admin.template_heading_font", "admin.template_body_font",
     "admin.template_footer_font", "admin.template_footer_font_reset",
@@ -152,6 +154,23 @@ LOOK_ENDPOINTS = frozenset({
     "admin.template_shape_preset",
     "admin.template_shape_reset", "admin.template_zone_style",
 })
+
+
+@bp.after_request
+def _answer_look_changes_in_place(response):
+    """A style change made in place is answered, not redirected.
+
+    The browser follows a redirect by itself, so every colour or font click
+    rendered the whole page once for the redirect -- which nothing read --
+    and again for the refresh that actually shows the change.
+    """
+    if (wants_json() and 300 <= response.status_code < 400
+            and request.endpoint in LOOK_ENDPOINTS | {"admin.template_ground"}):
+        #  The page says what happened itself; a queued message would only
+        #  surface later, on some unrelated screen.
+        session.pop("_flashes", None)
+        return jsonify({"ok": True})
+    return response
 
 
 @bp.before_request
@@ -278,8 +297,30 @@ def template_colors_preset(template_id):
         if preset.get(role):
             overrides[slug] = preset[role]
     db.execute("UPDATE templates SET color_overrides = ? WHERE id = ?", (json.dumps(overrides), template_id))
+    recoloured = 0
+    if tpl["is_active"]:
+        recoloured = recolour.follow_palette(db, tpl, tpl)
     db.commit()
-    flash(f'Applied the "{preset["name"]}" color collection!', "success")
+    message = f'Applied the "{preset["name"]}" colours to the whole site.'
+    if wants_json():
+        return jsonify({"ok": True, "name": preset["name"], "recoloured": recoloured})
+    flash(message, "success")
+    return _redirect_next("admin.dashboard")
+
+
+@bp.route("/templates/<int:template_id>/colors/undo", methods=["POST"])
+@login_required
+def template_colors_undo(template_id):
+    """Puts back the colours the last palette change replaced."""
+    db = get_db()
+    undone = recolour.undo(db, template_id)
+    db.commit()
+    if wants_json():
+        if undone:
+            return jsonify({"ok": True})
+        return jsonify({"ok": False, "error": "There is no colour change to undo."}), 400
+    flash("Your previous colours are back." if undone else "There is no colour change to undo.",
+          "success" if undone else "error")
     return _redirect_next("admin.dashboard")
 
 
@@ -615,6 +656,10 @@ def template_ground(template_id):
     if not db.execute("SELECT 1 FROM templates WHERE id = ?", (template_id,)).fetchone():
         return redirect(url_for("admin.dashboard"))
     choice = (request.form.get("ground") or "").strip().lower()
+    if "ground_choice" in request.form:
+        #  The panel's swatches: "" is automatic, a role follows the palette.
+        choice = page_background.stored_colour(
+            request.form.get("ground_choice", ""), choice) or "default"
     #  The ink goes with the ground, because they are one decision.
     #
     #  A template can arrive carrying the ink its reference picture was
@@ -628,7 +673,7 @@ def template_ground(template_id):
         db.commit()
         flash("Background put back to the one this template ships with.", "success")
         return _redirect_next("admin.dashboard")
-    if not _HEX.match(choice):
+    if not (_HEX.match(choice) or page_background.colour_choice(choice)[0]):
         flash("That isn't a colour.", "error")
         return _redirect_next("admin.dashboard")
     db.execute("UPDATE templates SET ground_color = ?, ink_color = NULL WHERE id = ?",
