@@ -1,0 +1,44 @@
+{#  Background controls for the Colors panel: "All pages" and "This page".
+    Every control saves as it changes (form.cms-dock-form submits in place).
+    See services/page_background.py. #}
+{% from "partials/colour_swatches.html" import colour_swatches %}
+
+{% macro picture_form(scope, current, page_id, current_path) %}
+<form method="post" action="{{ url_for('admin.background_update') }}" class="cms-dock-form cms-bg-picture" data-toast="Background saved">
+  <input type="hidden" name="next" value="{{ current_path }}">
+  <input type="hidden" name="scope" value="{{ scope }}">
+  <input type="hidden" name="page_id" value="{{ page_id }}">
+  <input type="hidden" name="bg_image" value="{{ current.bg_image or '' }}">
+  {% set has_picture = current.bg_image and current.bg_image != 'none' %}
+  {% if has_picture %}
+  <img class="cms-bg-thumb" src="{{ current.bg_image }}" alt="The picture in use">
+  {% endif %}
+  <span class="cms-bg-buttons">
+    <button type="button" class="btn btn-small btn-primary cms-bg-choose" title="Choose a picture from the Media Library, or upload one">{{ 'Change picture' if has_picture else 'Choose picture' }}</button>
+    {% if has_picture %}
+    <button type="submit" class="btn btn-small" name="bg_image_op" value="inherit" title="Take this picture off">Remove picture</button>
+    {% endif %}
+    {% if scope == 'page' %}
+      {% if current.bg_image == 'none' %}
+      <button type="submit" class="btn btn-small" name="bg_image_op" value="inherit" title="Follow the All pages choice again">Same as all pages</button>
+      {% elif not current.bg_image %}
+      <button type="submit" class="btn btn-small" name="bg_image_op" value="none" title="Leave this page plain even when All pages has a picture">No picture here</button>
+      {% endif %}
+    {% endif %}
+  </span>
+  {% if scope == 'page' and current.bg_image == 'none' %}
+  <p class="hint">This page is set to have no picture.</p>
+  {% endif %}
+  {% for name, label, options, fallback in [('bg_overlay', 'Wash over it', bg_overlays, 'light'),
+                                           ('bg_surface', 'Content sits', bg_surfaces, 'plain'),
+                                           ('bg_attach', 'Picture', bg_attachments, 'fixed')] %}
+  <label class="cms-bg-option" {{ 'hidden' if not has_picture }}>{{ label }}
+    <select name="{{ name }}" onchange="this.form.requestSubmit()">
+      {% for value, text in options %}
+      <option value="{{ value }}" {{ 'selected' if (current[name] or fallback) == value }}>{{ text }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  {% endfor %}
+</form>
+{% endmacro %}

@@ -60,15 +60,15 @@
     <a class="cms-admin-bar-brand" href="{{ url_for('admin.dashboard') }}" title="Back to the Dashboard">🛠️ {{ site_settings.site_title or 'My Site' }} &mdash; Admin</a>
   {% endif %}
   <nav class="cms-admin-bar-links" aria-label="Admin screens">
-    <a href="{{ url_for('admin.dashboard') }}" title="The Dashboard: your site's name, address and favicon, and the way to every other screen">Dashboard</a>
+    <a href="{{ url_for('admin.dashboard') }}" title="The Dashboard: your site at a glance, and the way to every other screen">Dashboard</a>
     <a href="{{ url_for('auth.account') }}" title="Your password, sign-in method and who else can sign in">Account</a>
     <a href="{{ url_for('admin.image_library') }}" title="Every picture and file on this site, yours and your template's">Media Library</a>
     <a href="{{ url_for('admin.help') }}" title="How this site's editor works, all on one page">Help</a>
     <a href="{{ url_for('admin.support_screen') }}" class="cms-admin-bar-support" title="gmsCms is free. If it has been useful, this is where to say thanks — and where a supporter's key removes the line under your site's footer.">♥ Support</a>
     {% if bar_surface != 'site' %}
-    <a href="{{ url_for('public.home') }}" title="Open your site. Signed in, you can edit it right on the page.">View Site</a>
+    <a href="{{ url_for('public.home') }}" data-bar-keep title="Open your site. Signed in, you can edit it right on the page.">View Site</a>
     {% endif %}
-    <a href="{{ url_for('auth.logout') }}" title="Sign out of the editor">Log out</a>
+    <a href="{{ url_for('auth.logout') }}" data-bar-keep title="Sign out of the editor">Log out</a>
   </nav>
   {#  Which build this is, so "is it updated?" is answered by looking.
       The number is the VERSION file; the bracket is the commit the

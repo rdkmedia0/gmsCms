@@ -1,4 +1,6 @@
 {% from "partials/panel_help.html" import panel_help, panel_section with context %}
+{% from "partials/background_controls.html" import picture_form with context %}
+{% from "partials/colour_swatches.html" import colour_swatches %}
 {# The site's color controls — presets + per-color pickers — live here, on
    the live page's edit bar, rather than buried in a per-template row on the
    Dashboard. They apply to `template` (the currently ACTIVE template only):
@@ -93,30 +95,39 @@
     {% elif not template.palette_json %}
     <p class="hint">"{{ template.name }}" doesn't have an editable color palette.</p>
     {% else %}
-    <p class="hint">Colors for "{{ template.name }}" — your site's current look.</p>
-    <div class="cms-color-preset-gallery">
-      {% for key, preset in color_presets.items() if preset.source != 'library' %}
-      <form method="post" action="{{ url_for('admin.template_colors_preset', template_id=template.id) }}">
-        <input type="hidden" name="next" value="{{ current_path }}">
-        <input type="hidden" name="preset" value="{{ key }}">
-        {# A template's own scheme sits in the same gallery as the built-in
-           ones — the point is being able to put the Bakery colours on a
-           Clinic site without activating Bakery and taking its layout and
-           content with it. Named by its template so where it came from is
-           obvious. #}
-        <button type="submit" class="cms-color-preset-swatch" title="{{ ('Use the colours from the ' ~ preset.name ~ ' template') if preset.source == 'template' else ('Use ' ~ preset.name) }}">
-          <span class="cms-color-preset-dots">
-            <span class="cms-color-preset-dot" style="background:{{ preset.primary }}"></span>
-            <span class="cms-color-preset-dot" style="background:{{ preset.secondary }}"></span>
-            <span class="cms-color-preset-dot" style="background:{{ preset.accent }}"></span>
-          </span>
-          <span class="cms-color-preset-label">{{ preset.name }}</span>
-        </button>
-      </form>
-      {% endfor %}
+    <p class="hint">Pick a palette. Your whole site changes to it, including anything you coloured by hand.</p>
+    {% macro palette_tile(key, preset) %}
+    {% set is_current = current_colours.get('primary') == preset.primary|lower
+                        and current_colours.get('secondary') == preset.secondary|lower
+                        and current_colours.get('accent') == preset.accent|lower %}
+    <form method="post" action="{{ url_for('admin.template_colors_preset', template_id=template.id) }}" class="cms-dock-form" data-toast="Colours: {{ preset.name }} — applied to the whole site">
+      <input type="hidden" name="next" value="{{ current_path }}">
+      <input type="hidden" name="preset" value="{{ key }}">
+      <button type="submit" class="cms-color-preset-swatch{{ ' is-current' if is_current }}" aria-pressed="{{ 'true' if is_current else 'false' }}" title="Use {{ preset.name }}">
+        <span class="cms-palette-bar">
+          <i style="background:{{ preset.primary }}"></i><i style="background:{{ preset.secondary }}"></i><i style="background:{{ preset.accent }}"></i>
+        </span>
+        <span class="cms-color-preset-label">{{ preset.name }}</span>
+      </button>
+    </form>
+    {% endmacro %}
+    {% if can_undo_colours %}
+    <form method="post" action="{{ url_for('admin.template_colors_undo', template_id=template.id) }}" class="cms-dock-form" data-toast="Your previous colours are back">
+      <input type="hidden" name="next" value="{{ current_path }}">
+      <button type="submit" class="btn btn-small" title="Put back the colours you had before the last palette">↶ Undo colour change</button>
+    </form>
+    {% endif %}
+    <div class="cms-color-preset-gallery cms-palette-gallery">
+      {% for key, preset in color_presets.items() if preset.source == 'built-in' %}{{ palette_tile(key, preset) }}{% endfor %}
     </div>
+    <details class="cms-color-advanced">
+      <summary>More palettes{{ panel_help("The colours of every installed template. Only the colours are used: your layout and your pages stay as they are.") }}</summary>
+      <div class="cms-color-preset-gallery cms-palette-gallery">
+        {% for key, preset in color_presets.items() if preset.source == 'template' %}{{ palette_tile(key, preset) }}{% endfor %}
+      </div>
+    </details>
     {% if template.color_overrides %}
-    <form method="post" action="{{ url_for('admin.template_colors_reset', template_id=template.id) }}">
+    <form method="post" action="{{ url_for('admin.template_colors_reset', template_id=template.id) }}" class="cms-dock-form">
       <input type="hidden" name="next" value="{{ current_path }}">
       <button type="submit" class="btn btn-small" title="Put every colour back to the ones this template ships with">Reset</button>
     </form>
@@ -140,7 +151,7 @@
       {% for key, preset in lib %}
       {% set pid = key.split(':')[1] %}
       <div class="cms-palette-lib-row">
-        <form method="post" action="{{ url_for('admin.template_colors_preset', template_id=template.id) }}" class="cms-palette-lib-apply">
+        <form method="post" action="{{ url_for('admin.template_colors_preset', template_id=template.id) }}" class="cms-palette-lib-apply cms-dock-form">
           <input type="hidden" name="next" value="{{ current_path }}">
           <input type="hidden" name="preset" value="{{ key }}">
           <button type="submit" title="Put these colours on your site">
@@ -195,7 +206,7 @@
     <details class="cms-color-advanced">
       <summary>Customize{{ panel_help("Set each palette colour by hand instead of picking a ready-made scheme. Everything on the site that uses that role follows the colour you choose here.") }}</summary>
       {% set overrides = (template.color_overrides | from_json) if template.color_overrides else {} %}
-      <form method="post" action="{{ url_for('admin.template_colors', template_id=template.id) }}" class="cms-color-picker-form">
+      <form method="post" action="{{ url_for('admin.template_colors', template_id=template.id) }}" class="cms-color-picker-form cms-dock-form">
         <input type="hidden" name="next" value="{{ current_path }}">
         {% for c in (template.palette_json | from_json) %}
         <label class="cms-color-picker-item">
@@ -218,7 +229,7 @@
       <p class="hint">How much colour the eleven shades keep as they get lighter and darker. Each tile is drawn in your own colour, so it shows what it would do.</p>
       <div class="cms-color-preset-gallery">
         {% for key, preset in shade_spreads.items() %}
-        <form method="post" action="{{ url_for('admin.template_shades_preset', template_id=template.id) }}">
+        <form method="post" action="{{ url_for('admin.template_shades_preset', template_id=template.id) }}" class="cms-dock-form">
           <input type="hidden" name="next" value="{{ current_path }}">
           <input type="hidden" name="preset" value="{{ key }}">
           <button type="submit" class="cms-color-preset-swatch{{ ' is-current' if (template.shade_spread or 'balanced') == key }}" title="{{ preset.name }} shades">
@@ -238,11 +249,33 @@
         {% endfor %}
       </div>
       {% if template.shade_spread %}
-      <form method="post" action="{{ url_for('admin.template_shades_reset', template_id=template.id) }}">
+      <form method="post" action="{{ url_for('admin.template_shades_reset', template_id=template.id) }}" class="cms-dock-form">
         <input type="hidden" name="next" value="{{ current_path }}">
         <button type="submit" class="btn btn-small" title="Back to Balanced, the shades every site had before this control existed">Reset</button>
       </form>
       {% endif %}
+    </details>
+
+    {{ panel_section("Page background", "A colour or a picture behind your pages. The text, cards and lines are worked out from the colour so they stay readable. Swatches follow your palette; a custom colour stays as you set it.") }}
+    <div class="cms-bg-scope">
+      <strong>All pages</strong>
+      <form method="post" action="{{ url_for('admin.template_ground', template_id=template.id) }}" class="cms-dock-form" data-toast="Background colour saved">
+        <input type="hidden" name="next" value="{{ current_path }}">
+        {{ colour_swatches('Colour', 'ground_choice', 'ground', site_ground_choice[0], site_ground_choice[1] or ground or '#ffffff') }}
+      </form>
+      {{ picture_form('site', site_background, page.id, current_path) }}
+    </div>
+    <details class="cms-color-advanced">
+      <summary>Just this page{{ panel_help("Give the page you are on its own background. Anything left on Auto follows the All pages choice.") }}</summary>
+      {% set own = (page_own_background.bg_color or '') %}
+      {% set own_choice = own[5:] if own.startswith('role:') else ('custom' if own else '') %}
+      <form method="post" action="{{ url_for('admin.background_update') }}" class="cms-dock-form" data-toast="This page's colour saved">
+        <input type="hidden" name="next" value="{{ current_path }}">
+        <input type="hidden" name="scope" value="page">
+        <input type="hidden" name="page_id" value="{{ page.id }}">
+        {{ colour_swatches('Colour', 'ground_choice', 'ground', own_choice, own if own_choice == 'custom' else (ground or '#ffffff')) }}
+      </form>
+      {{ picture_form('page', page_own_background, page.id, current_path) }}
     </details>
 
     {{ panel_section("Corners", "Shapes Banner/Card boxes and section corners site-wide — not text, which has no corners to round.") }}
@@ -270,7 +303,7 @@
     {{ panel_section("Composition", "What the page is shaped like, as against what colour it is: how tall a banner stands, how much air a band gets, how big a heading is next to its writing. This is the biggest single difference between two looks — bigger than the colours.") }}
     <div class="cms-color-preset-gallery">
       {% for key, preset in composition_presets.items() %}
-      <form method="post" action="{{ url_for('admin.template_composition_preset', template_id=template.id) }}">
+      <form method="post" action="{{ url_for('admin.template_composition_preset', template_id=template.id) }}" class="cms-dock-form">
         <input type="hidden" name="next" value="{{ current_path }}">
         <input type="hidden" name="preset" value="{{ key }}">
         <button type="submit" class="cms-color-preset-swatch" title="{{ preset.blurb }}">
@@ -281,29 +314,11 @@
       {% endfor %}
     </div>
     {% if template.composition_override %}
-    <form method="post" action="{{ url_for('admin.template_composition_reset', template_id=template.id) }}">
+    <form method="post" action="{{ url_for('admin.template_composition_reset', template_id=template.id) }}" class="cms-dock-form">
       <input type="hidden" name="next" value="{{ current_path }}">
       <button type="submit" class="btn btn-small" title="Put the composition back to the one this template ships with">Reset</button>
     </form>
     {% endif %}
-
-    {{ panel_section("Background", "The colour of the whole page. Everything else — the writing, the band colours, the lines, the cards — is worked out from it and kept readable, so it is one choice rather than a dozen. Pale or dark, it all follows. To colour one section instead, click it on the page first.") }}
-    {#  Any colour, not a light/dark pair: the page works its ink out from
-        whatever ground it is given (palette.page_colours measures which
-        ink reads, rather than assuming a side), so the only thing a
-        two-way switch ever added was a limit. #}
-    <form method="post" action="{{ url_for('admin.template_ground', template_id=template.id) }}" class="cms-color-picker-form">
-      <input type="hidden" name="next" value="{{ current_path }}">
-      <label class="cms-color-picker-item">
-        <input type="color" name="ground" value="{{ ground or '#ffffff' }}"
-               title="The page's background colour. The text and everything else are re-coloured to stay readable on it.">
-        Page
-      </label>
-      <button type="submit" class="btn btn-small btn-primary" title="Use this colour as the site's background.">Save</button>
-      {% if template.ground_color %}
-      <button type="submit" name="ground" value="default" class="btn btn-small" title="Put the background back to the one this template ships with">Reset</button>
-      {% endif %}
-    </form>
 
     {{ panel_section("Depth", "Raises Cards, Images, Banners and file cards off the page with a soft shadow, tinted from the words around it rather than a fixed black or palette colour — so it shows on a dark theme as a soft lift and on a light one as a shadow. A full-width section stays flat on purpose: a shadow says 'this sits above the page', which reads as a mistake on something that IS the page.") }}
     <div class="cms-color-preset-gallery">

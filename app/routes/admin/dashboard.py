@@ -6,6 +6,7 @@ from flask import request, flash, redirect, url_for, render_template, current_ap
 from . import bp
 from ..auth import login_required
 from ...db import get_db
+from ...services import backup as backup_service
 from ...services import blog as blog_service
 from ...services import maintenance as maintenance_mod
 from ... import assistant, ai_image
@@ -110,9 +111,38 @@ def _screen_context(db):
 @bp.route("/")
 @login_required
 def dashboard():
-    """What is left of it: where you are, what still needs doing, and the
-    way to everything else."""
-    return render_template("admin/dashboard.html", **_screen_context(get_db()))
+    """The Overview: where the site stands and what to do next."""
+    db = get_db()
+    return render_template("admin/dashboard.html", overview=_overview(db), **_screen_context(db))
+
+
+@bp.route("/settings")
+@login_required
+def general_settings():
+    """The site's own settings: name, address, icon, maintenance, width."""
+    return render_template("admin/settings_general.html", **_screen_context(get_db()))
+
+
+def _overview(db):
+    """The few facts the Overview leads with."""
+    posts = db.execute(
+        "SELECT COUNT(*) AS everything, "
+        "SUM(CASE WHEN COALESCE(published_at, '') != '' THEN 1 ELSE 0 END) AS published "
+        "FROM blog_posts").fetchone()
+    recent = db.execute(
+        "SELECT p.id, p.blog_id, p.title, p.published_at, b.name AS blog_name "
+        "FROM blog_posts p JOIN blogs b ON b.id = p.blog_id ORDER BY p.id DESC LIMIT 5").fetchall()
+    try:
+        stored = backup_service.list_backups()
+    except OSError:
+        stored = []
+    return {
+        "published": posts["published"] or 0,
+        "drafts": posts["everything"] - (posts["published"] or 0),
+        "recent": recent,
+        "maintenance": maintenance_mod.is_on(db),
+        "last_backup": stored[0]["created_at"][:10] if stored else None,
+    }
 
 
 @bp.route("/blogs")

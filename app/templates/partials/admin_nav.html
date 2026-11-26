@@ -1,0 +1,73 @@
+{#  The way to every admin screen, on every admin screen.
+
+    It was a row of buttons on the Dashboard, so getting from one area to
+    another meant going back there first, and nothing said which area you
+    were in. One list now, grouped by what somebody is trying to do.
+
+    `match` is the start of the endpoint names that belong to an entry, so
+    a screen's own sub-pages keep it lit. The first match wins, which is
+    why the narrower entries come before the ones that would swallow them.
+    Inside a <details> so that on a phone it folds to one "Menu" line. #}
+{% set groups = [
+  ('Site', [
+    ('Overview', 'admin.dashboard', '🏠', ['admin.dashboard', 'admin.setup'], "Your site at a glance, and what to do next"),
+    ('Design', 'admin.pages_screen', '🎨', ['admin.pages_screen', 'admin.page_', 'admin.templates_screen', 'admin.template_', 'admin.layout', 'admin.generator', 'admin.theme_', 'admin.language'], "Your pages, templates, layout and the theme generator"),
+    ('Blog', 'admin.blogs_screen', '📰', ['admin.blog'], "Your blogs and every post in them"),
+    ('Media', 'admin.image_library', '🖼️', ['admin.image'], "Every picture and file on this site"),
+  ]),
+  ('Reach', [
+    ('Email', 'admin.newsletters', '✉️', ['admin.newsletter', 'admin.subscriber', 'admin.site_email', 'admin.settings_email', 'admin.email'], "Newsletters, your list and the mail server"),
+    ('Visitors', 'admin.visitors', '📈', ['admin.visitor'], "How many people visited, and roughly where from"),
+  ]),
+  ('Sell', [
+    ('Commerce', 'admin.commerce_fulfilment', '🛍️', ['admin.commerce'], "Products, orders and bookings"),
+  ]),
+  ('Manage', [
+    ('Settings', 'admin.general_settings', '⚙️', ['admin.general_settings'], "Site name, address, icon and maintenance mode"),
+    ('Connections', 'admin.settings_integrations', '🔌', ['admin.settings_integrations'], "Payments, bookings and AI keys"),
+    ('Backups', 'admin.backups', '💾', ['admin.backup'], "Copy everything, restore it, and schedule copies"),
+    ('Schedules', 'admin.schedules_screen', '🕒', ['admin.schedule'], "Named times for sending, publishing and backups"),
+    ('Legal pages', 'admin.legal_pages', '⚖️', ['admin.legal'], "Refunds, terms, privacy and site details"),
+    ('Activity', 'admin.activity', '📋', ['admin.activity'], "Everything this site has told you"),
+  ]),
+  ('You', [
+    ('Account', 'auth.account', '👤', ['auth.account'], "Password, sign-in method and who else can sign in"),
+    ('Help', 'admin.help', '❓', ['admin.help'], "How the editor works"),
+    ('Support', 'admin.support_screen', '♥', ['admin.support'], "Say thanks, or enter a supporter's key"),
+  ]),
+] %}
+{% set here = namespace(endpoint=none, label='Menu') %}
+{% for _group, entries in groups %}
+  {% for label, endpoint, _icon, match, _title in entries %}
+    {% for start in match %}
+      {% if not here.endpoint and (request.endpoint or '').startswith(start) %}
+        {% set here.endpoint = endpoint %}{% set here.label = label %}
+      {% endif %}
+    {% endfor %}
+  {% endfor %}
+{% endfor %}
+<nav class="cms-admin-nav" aria-label="Admin sections">
+  <details class="cms-admin-nav-fold" open>
+    <summary>☰ {{ here.label }}</summary>
+    {% for group, entries in groups %}
+    <div class="cms-admin-nav-group">
+      <p class="cms-admin-nav-heading">{{ group }}</p>
+      {% for label, endpoint, icon, _match, title in entries %}
+      <a href="{{ url_for(endpoint) }}" title="{{ title }}"
+         {% if here.endpoint == endpoint %}class="is-current" aria-current="page"{% endif %}>
+        <span class="cms-admin-nav-icon" aria-hidden="true">{{ icon }}</span>{{ label }}</a>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </details>
+</nav>
+<script>
+  //  Folded on a narrow screen, open beside the page on a wide one.
+  (function () {
+    var fold = document.currentScript.previousElementSibling.querySelector("details");
+    var narrow = window.matchMedia("(max-width: 860px)");
+    function apply() { fold.open = !narrow.matches; }
+    narrow.addEventListener("change", apply);
+    apply();
+  })();
+</script>

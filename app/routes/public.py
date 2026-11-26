@@ -12,6 +12,10 @@ from .. import icons
 from .. import version as _version
 from ..services import support
 from ..services import analytics
+from ..services import filecache
+from ..services import page_background
+from ..services import recolour as recolour_service
+from ..services import tones
 from ..services import maintenance
 from ..services import seo as seo_service
 from ..services import site as site_service
@@ -1219,9 +1223,7 @@ def _pickable_images(template):
     slugs = sorted(os.listdir(themes), key=lambda d: (d != active, d))
     for slug in slugs:
         folder = os.path.join(themes, slug, "media")
-        if not os.path.isdir(folder):
-            continue
-        for filename in sorted(os.listdir(folder)):
+        for filename, _ in filecache.listing(folder):
             if os.path.splitext(filename)[1].lower() in MEDIA_IMAGE_EXTS:
                 items.append({"url": f"/static/themes/{slug}/media/{filename}",
                               "name": filename})
@@ -2166,7 +2168,55 @@ def _fonts_for(template):
     return {}
 
 
-def _theme_override_css(template):
+def _page_colours_for(template, page_ground=None):
+    """palette.page_colours for the palette as the owner has it now.
+
+    These were worked out from the template's shipped palette, ignoring
+    the colours applied since -- so buttons turned to the new palette while
+    headings, text, bands and the page itself stayed in the old one. A
+    template's own ground and ink belong to its own colours, so once other
+    colours are applied they are worked out afresh. The owner's explicit
+    Background choice still stands either way.
+    """
+    palette = json.loads(template["palette_json"] or "[]")
+    try:
+        overrides = json.loads(_column(template, "color_overrides") or "{}")
+    except ValueError:
+        overrides = {}
+    applied = [dict(c, color=overrides.get(c.get("slug")) or c.get("color")) for c in palette]
+    recoloured = any((a.get("color") or "").lower() != (c.get("color") or "").lower()
+                     for a, c in zip(applied, palette))
+    ground = ""
+    if recoloured:
+        #  A dark design stays dark. Its theme.css sets light words on that
+        #  assumption, so a pale page under them left headings invisible.
+        shipped = palette_mod.page_colours(
+            palette, _column(template, "ground_default") or "",
+            _column(template, "ink_default") or "").get("--site-ground", "")
+        if shipped and tones.is_dark(shipped):
+            primary = next((c.get("color") for c in applied if c.get("slug") == "primary"), "")
+            if primary:
+                ground = _darken_hex(primary, 0.82)
+    #  The owner's Background choice: this page's own, else the site's. A
+    #  "role:..." choice is resolved against the palette as applied, so it
+    #  follows every palette change.
+    wanted = page_ground or _column(template, "ground_color") or ""
+    role, custom = page_background.colour_choice(wanted)
+    if role and role != "custom":
+        by_slug = {c.get("slug"): c.get("color") for c in applied}
+        primary = by_slug.get("primary") or "#333333"
+        custom = {"light": (tones.scale(primary) or ["#ffffff"])[0],
+                  "dark": _darken_hex(primary, 0.82)}.get(role) or by_slug.get(role) or primary
+    ink_choice = "" if page_ground else (_column(template, "ink_color") or "")
+    return palette_mod.page_colours(
+        applied,
+        custom or ground
+        or ("" if recoloured else _column(template, "ground_default")) or "",
+        ink_choice
+        or ("" if recoloured or custom else _column(template, "ink_default")) or "")
+
+
+def _theme_override_css(template, page_ground=None):
     """Inline :root override, output after the theme's own stylesheet link
     so it wins the cascade (same specificity, later in source order). Four
     kinds of admin customization, all layered on top of a template's own
@@ -2290,10 +2340,7 @@ def _theme_override_css(template):
     try:
         #  The owner's choice, else what the template shipped -- the same
         #  override-then-default pair Corners and Depth read.
-        for name, value in palette_mod.page_colours(
-                json.loads(template["palette_json"] or "[]"),
-                _column(template, "ground_color") or _column(template, "ground_default") or "",
-                _column(template, "ink_color") or _column(template, "ink_default") or "").items():
+        for name, value in _page_colours_for(template, page_ground).items():
             lines.append("%s: %s;" % (name, value))
     except (ValueError, TypeError):
         pass
@@ -2383,11 +2430,7 @@ def _effective_ground(template):
     if not template:
         return ""
     try:
-        return palette_mod.page_colours(
-            json.loads(template["palette_json"] or "[]"),
-            _column(template, "ground_color") or _column(template, "ground_default") or "",
-            _column(template, "ink_color") or _column(template, "ink_default") or "",
-        ).get("--site-ground", "")
+        return _page_colours_for(template).get("--site-ground", "")
     except (ValueError, TypeError):
         return ""
 
@@ -2567,7 +2610,13 @@ def _render_page(db, page, post=None, post_content=""):
     sidebar_sections = [] if page["hide_sidebar"] else _zone_sections(db, template, "sidebar", nav_html, breadcrumb_html, dict(SECTION_TYPES), active_lang=_zlang)
     sidebar_right_sections = [] if page["hide_sidebar_right"] else _zone_sections(db, template, "sidebar_right", nav_html, breadcrumb_html, dict(SECTION_TYPES), active_lang=_zlang)
     footer_sections = [] if page["hide_footer"] else _zone_sections(db, template, "footer", nav_html, breadcrumb_html, dict(SECTION_TYPES), active_lang=_zlang)
-    theme_css_vars = _theme_override_css(template)
+    own_background = dict(page)
+    own_ground = own_background.get("bg_color")
+    page = page_background.for_page(db, page)
+    theme_css_vars = _theme_override_css(template, own_ground)
+    if own_ground and template:
+        #  Some themes paint the body themselves; a page's own colour wins.
+        theme_css_vars = (theme_css_vars or "") + "\nbody { background-color: var(--site-ground); color: var(--site-ink); }"
     all_templates = db.execute("SELECT * FROM templates ORDER BY is_builtin DESC, name").fetchall() if editing else []
     activate_conflict_map, active_content, template_covers = (
         dashboard_template_maps(db, current_app.static_folder, all_templates)
@@ -2679,6 +2728,7 @@ def _render_page(db, page, post=None, post_content=""):
         faq_rules=FAQ_RULES,
         blogs=(blog_service.list_blogs(db) if editing else []),
         blog_styles=blog_service.BLOG_STYLES,
+        blog_image_fits=blog_service.BLOG_IMAGE_FITS,
         section_type_labels=dict(SECTION_TYPES),
         email_configured=mailer.is_configured(get_email_settings(db)),
         icon_choices=icons.icon_choices_for() if editing else [],
@@ -2687,6 +2737,10 @@ def _render_page(db, page, post=None, post_content=""):
         #  group -- see services/patterns.py.
         patterns=(_patterns.list_patterns(db) if editing else []),
         role_color_ramps=_role_color_ramps(template) if editing else {},
+        can_undo_colours=bool(editing and template
+                              and recolour_service.can_undo(db, template["id"])),
+        current_colours={k: v["base"].lower() for k, v in _role_color_ramps(template).items()}
+        if editing else {},
         font_pairings=FONT_PAIRINGS if editing else {},
         #  Which composition this template wears, if any. It gates
         #  composition.css: no choice, no rules, which is how a template
@@ -2701,6 +2755,12 @@ def _render_page(db, page, post=None, post_content=""):
         #  cannot change is a decision taken away from them.
         composition_presets=COMPOSITION_PRESETS if editing else {},
         ground=_effective_ground(template) if editing else "",
+        site_ground_choice=page_background.colour_choice(
+            _column(template, "ground_color") if template else ""),
+        site_background=page_background.site_picture(db) if editing else {},
+        page_own_background=own_background if editing else {},
+        bg_overlays=page_background.OVERLAYS, bg_surfaces=page_background.SURFACES,
+        bg_attachments=page_background.ATTACHMENTS,
         shade_spreads=SHADE_SPREADS if editing else {},
         shade_previews=_shade_previews(template) if editing else {},
         stripe_catalogue=(integrations.stripe_catalogue_cached(db)[0]

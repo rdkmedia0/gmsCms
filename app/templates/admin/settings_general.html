@@ -1,0 +1,8 @@
+{% extends "admin/base.html" %}
+{% block title %}Settings — My Site Admin{% endblock %}
+{% block content %}
+<div class="cms-page-head"><h1>Settings</h1></div>
+{% include "partials/dash/settings.html" %}
+<script src="{{ static_url('js/admin/image-picker.js') }}"></script>
+<script src="{{ static_url('js/admin/dashboard.js') }}"></script>
+{% endblock %}

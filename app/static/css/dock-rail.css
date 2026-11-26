@@ -1,0 +1,39 @@
+/*  The tabs down the side of the screen, on every signed-in surface: the
+    page editor, the site while viewing it, and the admin screens. One
+    file, so they cannot drift apart. The app's own colours, never the
+    site's. */
+:is(body.cms-logged-in, body.cms-has-sidebar) {
+  --ui-bg: #ffffff; --ui-soft: #f4f5f7; --ui-line: #e3e5ea; --ui-text: #1d222b; --ui-muted: #667085;
+  --ui-accent: #2563eb; --ui-font: var(--cms-ui-font, -apple-system, "Segoe UI", Roboto, Arial, sans-serif);
+}
+
+/* ---------- Side rail ---------- */
+/*  Down the side only. Along the bottom the tabs keep their own layout. */
+:is(body.cms-logged-in, body.cms-has-sidebar) .cms-dock-tab-btn:not(.cms-dock-bottom) {
+  width: 58px; height: 54px; padding: 6px 2px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  background: var(--ui-bg); color: var(--ui-text);
+  border: 1px solid var(--ui-line); border-right: 0; border-radius: 0;
+  box-shadow: -3px 2px 10px rgba(16, 24, 40, .10);
+}
+:is(body.cms-logged-in, body.cms-has-sidebar) .cms-dock-tab-btn:not(.cms-dock-bottom)::after {
+  font: 600 10px/1 var(--ui-font); color: var(--ui-muted);
+}
+:is(body.cms-logged-in, body.cms-has-sidebar) .cms-dock-tab-assistant:not(.cms-dock-bottom) { top: 90px; border-radius: 12px 0 0 0; }
+:is(body.cms-logged-in, body.cms-has-sidebar) .cms-dock-tab-tools:not(.cms-dock-bottom) { top: 143px; }
+:is(body.cms-logged-in, body.cms-has-sidebar) .cms-dock-tab-colors:not(.cms-dock-bottom) { top: 196px; }
+:is(body.cms-logged-in, body.cms-has-sidebar) .cms-dock-tab-style:not(.cms-dock-bottom) { top: 249px; }
+:is(body.cms-logged-in, body.cms-has-sidebar) .cms-dock-tab-template:not(.cms-dock-bottom) { top: 302px; border-radius: 0 0 0 12px; }
+:is(body.cms-logged-in, body.cms-has-sidebar) .cms-dock-tab-assistant:not(.cms-dock-bottom)::after { content: "Assistant"; }
+:is(body.cms-logged-in, body.cms-has-sidebar) .cms-dock-tab-tools:not(.cms-dock-bottom)::after { content: "Add"; }
+:is(body.cms-logged-in, body.cms-has-sidebar) .cms-dock-tab-colors:not(.cms-dock-bottom)::after { content: "Colours"; }
+:is(body.cms-logged-in, body.cms-has-sidebar) .cms-dock-tab-style:not(.cms-dock-bottom)::after { content: "Fonts"; }
+:is(body.cms-logged-in, body.cms-has-sidebar) .cms-dock-tab-template:not(.cms-dock-bottom)::after { content: "Layout"; }
+:is(body.cms-logged-in, body.cms-has-sidebar) .cms-dock-tab-btn:not(.cms-dock-bottom):hover { background: var(--ui-soft); }
+:is(body.cms-logged-in, body.cms-has-sidebar) .cms-dock-tab-btn.cms-dock-front:not(.cms-dock-bottom) { background: var(--ui-accent); color: #fff; border-color: var(--ui-accent); }
+:is(body.cms-logged-in, body.cms-has-sidebar) .cms-dock-tab-btn.cms-dock-front:not(.cms-dock-bottom)::after { color: #fff; }
+
+/*  Where the Assistant is the only tab, it is rounded top and bottom. */
+:is(body.cms-logged-in, body.cms-has-sidebar):not(:has(.cms-dock-tab-tools)) .cms-dock-tab-assistant:not(.cms-dock-bottom) {
+  border-radius: 12px 0 0 12px;
+}

@@ -1,5 +1,7 @@
 (function () {
   var select = document.getElementById("ai_provider");
+  //  The AI settings are one tab of Connections; the script loads on all.
+  if (!select) return;
   var fieldsets = document.querySelectorAll(".ai-provider-fields");
   function sync() {
     fieldsets.forEach(function (fs) {

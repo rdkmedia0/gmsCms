@@ -375,8 +375,18 @@ def blog_post_new(blog_id):
         flash("Post created.", "success")
         return redirect(_post_return_url(
             url_for("admin.blog_post_edit", blog_id=blog_id, post_id=post_id)))
-    return render_template("admin/blog_post_edit.html", blog=blog, post=None,
-                           next_url=_post_return_url(""))
+    #  The editor always holds a post -- there is no empty form to show,
+    #  and rendering one without a post was a server error. So "write a
+    #  post" opens a blank draft: the one already waiting if there is one,
+    #  so that opening and backing out does not collect empty drafts.
+    blank = db.execute(
+        "SELECT id FROM blog_posts WHERE blog_id = ? AND TRIM(title) = '' "
+        "AND TRIM(COALESCE(content, '')) = '' AND COALESCE(published_at, '') = '' "
+        "AND featured_image IS NULL ORDER BY id DESC LIMIT 1", (blog_id,)).fetchone()
+    post_id = blank["id"] if blank else blog_service.create_post(db, blog_id, "", published_at="")
+    db.commit()
+    return redirect(url_for("admin.blog_post_edit", blog_id=blog_id, post_id=post_id,
+                            next=request.args.get("next") or None))
 
 
 @bp.route("/blogs/<int:blog_id>/posts/<int:post_id>", methods=["GET", "POST"])
@@ -417,6 +427,12 @@ def blog_post_edit(blog_id, post_id):
                 post_id,
             ),
         )
+        #  A draft started blank was addressed before it had a name. It
+        #  takes its title's address now, while nobody can have the old one.
+        if (title and not post["published_at"]
+                and re.fullmatch(r"(blog|post|new-post)(-\d+)?", post["slug"])):
+            db.execute("UPDATE blog_posts SET slug = ? WHERE id = ?",
+                       (blog_service.unique_slug(db, blog_id, title), post_id))
         db.commit()
         flash("Post updated.", "success")
         #  ...and when it appears. Save does the work, the same as the

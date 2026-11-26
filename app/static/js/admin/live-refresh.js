@@ -52,7 +52,7 @@
   //  Also in document order, and also the order they must appear in the
   //  <head> — fonts, then the theme's own stylesheet, then the colour
   //  overrides that have to win against it.
-  var THEME_ASSETS = ["fonts", "theme", "colors", "font-preview"];
+  var THEME_ASSETS = ["fonts", "composition", "theme", "colors", "font-preview"];
 
   var PANELS = ["cms-colors-panel", "cms-style-panel", "cms-template-panel"];
 
@@ -232,6 +232,9 @@
         syncThemeAssets(fresh);
         document.title = fresh.title;
         document.body.className = fresh.body.className;
+        var composed = fresh.body.getAttribute("data-composition");
+        if (composed) document.body.setAttribute("data-composition", composed);
+        else document.body.removeAttribute("data-composition");
         var style = fresh.body.getAttribute("style");
         if (style) document.body.setAttribute("style", style);
         else document.body.removeAttribute("style");

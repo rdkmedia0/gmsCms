@@ -52,7 +52,7 @@
       not one of its rules exists for that page. That is why nothing in
       composition.css carries a scoping selector -- see its own header. #}
   {% if composition %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/composition.css') }}"
+  <link rel="stylesheet" href="{{ static_url('css/composition.css') }}"
         data-cms-theme-asset="composition">
   {% endif %}
   {% if template and template.css_path %}
@@ -68,6 +68,8 @@
      is inserted just before this link so it still lands after site-base.css
      and in the same order as the server would have rendered it. #}
   <link rel="stylesheet" href="{{ static_url('css/inline-editor.css') }}" data-cms-theme-end>
+  {% if editing %}<link rel="stylesheet" href="{{ static_url('css/editor-ui.css') }}">{% endif %}
+  {% if logged_in %}<link rel="stylesheet" href="{{ static_url('css/dock-rail.css') }}">{% endif %}
   {#  The signed-in bar at the top, shared with the admin screens. #}
   <link rel="stylesheet" href="{{ static_url('css/admin-bar.css') }}">
   {% endif %}
@@ -84,7 +86,6 @@
 {% set body_sidebar_width_px = sidebar_sections[0].sidebar_width_px if sidebar_sections and sidebar_sections[0].sidebar_width == 'custom' and sidebar_sections[0].sidebar_width_px else none %}
 {% set body_sidebar_right_width_px = sidebar_right_sections[0].sidebar_width_px if sidebar_right_sections and sidebar_right_sections[0].sidebar_width == 'custom' and sidebar_right_sections[0].sidebar_width_px else none %}
 {% set body_style_parts = [] %}
-{% if page.bg_color %}{% set _ = body_style_parts.append('background-color:' ~ page.bg_color) %}{% set _ = body_style_parts.append('color:' ~ ink_for(page.bg_color)) %}{% endif %}
 {# A picture behind the whole page. Fixed makes the content travel over a
    still image; scroll makes the image travel with it, which is what turns
    a tall backdrop into something that frames the page's own structure. #}
@@ -134,6 +135,17 @@
 
   {% from "partials/icon_picker.html" import icon_picker_grid with context %}
   {% from "partials/file_tool.html" import file_tool %}
+  {% from "partials/colour_swatches.html" import colour_swatches %}
+  {#  "Apply style to all pages" -- see services/shared_style.py. `submits`
+      is false in forms that already save on any change. #}
+  {% macro style_scope(content, kind, noun, submits=true) %}
+    <input type="hidden" name="apply_all_present" value="1">
+    <label class="cms-style-scope" title="Ticked: a style change here is made to every other ticked {{ noun }}, on every page. Words and pictures are never shared. Untick to give this one its own look.">
+      <input type="checkbox" name="apply_all" value="1" {{ 'checked' if not style_is_own(content, kind) }}
+             {% if submits %}onchange="this.form.requestSubmit()"{% endif %}>
+      Apply style to all pages
+    </label>
+  {% endmacro %}
   {%- macro wysiwyg_body(content, save_url, extra_class='', editable=true) %}
     {#- The editable words of a tool: the one place this markup is written.
         Nine call sites had their own copy of it — five in render_cell, four
@@ -951,8 +963,9 @@
     {# Which set of writing this shows, and how. The posts themselves are
        managed away from the page, because they belong to the blog rather
        than to any one place it is shown. #}
-    {% set blog = cell.blog or {'blog_id': none, 'style': 'cards', 'count': 0} %}
+    {% set blog = cell.blog or {'blog_id': none, 'style': 'cards', 'count': 0, 'image': 'crop'} %}
     {% set chosen = (blogs | selectattr('id', 'equalto', blog.blog_id) | list | first) %}
+    {{ style_scope(cell.content, 'blog', 'blog') }}
     <div class="cms-faq-config-row">
       <label class="cms-faq-config-label" title="Which blog's posts to show here">Blog
         <select name="blog_id" onchange="this.form.requestSubmit()" title="Which blog's posts to show here">
@@ -973,6 +986,13 @@
         <select name="blog_style" onchange="this.form.requestSubmit()" title="How the posts are laid out here">
           {% for value, label in blog_styles %}
           <option value="{{ value }}" {{ 'selected' if blog.style == value }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="cms-faq-config-label" title="Trim each picture to a tidy shape, or show all of it at its own proportions">Pictures
+        <select name="blog_image" onchange="this.form.requestSubmit()" title="Trim each picture to a tidy shape, or show all of it at its own proportions">
+          {% for value, label in blog_image_fits %}
+          <option value="{{ value }}" {{ 'selected' if blog.image == value }}>{{ label }}</option>
           {% endfor %}
         </select>
       </label>
@@ -1186,7 +1206,7 @@
     {% endif %}
   {% endmacro %}
 
-  {% macro block_config_fields(cell) %}
+  {% macro block_config_fields(cell, gallery_generate_url=none) %}
     {# The words are edited on the page — click them and type. What is left
        here is what cannot be typed into a page: which style, which
        picture, where a button goes, and how many of something there is. #}
@@ -1206,6 +1226,22 @@
     {%- endif %}
     {% set images = media_images or [] %}
     {% set counts = cell.block_counts or {} %}
+    {% if style_choices_of(cell.block_key) %}
+    {{ style_scope(cell.content, 'block:' ~ cell.block_key, spec.name | lower ~ ' tool', submits=false) }}
+    {% endif %}
+    {% if spec.pictures %}
+    {#  The strip of thumbnails is drawn in the browser from the pictures on
+        the page, so it cannot disagree with them (inline-editor.js). #}
+    <div class="cms-gallery-manage">
+      <button type="button" class="btn btn-small btn-primary cms-gallery-image-pick" title="Add a picture from the Media Library">+ From library</button>
+      <button type="button" class="btn btn-small cms-gallery-upload-btn" title="Upload one or several pictures from your device">Upload pictures</button>
+      <input type="file" class="cms-gallery-upload" accept="image/*" multiple hidden>
+      {% if gallery_generate_url %}
+      <button type="button" class="btn btn-small cms-gallery-generate" data-url="{{ gallery_generate_url }}" title="Make a picture from a description, and add it to the gallery">{{ ic_generate() }} Generate</button>
+      {% endif %}
+      <div class="cms-gallery-strip"></div>
+    </div>
+    {% endif %}
     <div class="cms-config-row">
       {% for entry in spec.fields %}
         {% if not entry.group and entry.kind not in ('text', 'textarea') %}
@@ -1320,6 +1356,7 @@
   {% macro banner_config_fields(cell, generate_url=none, apply_url=none, image_upload_url=none, image_clear_url=none, portrait_upload_url=none, edit_view="desktop") %}
     {% set ov = banner_overlay_settings(cell.content, edit_view) %}
     {% set portrait = banner_portrait_of(cell.content, edit_view) %}
+    {{ style_scope(cell.content, 'banner', 'banner') }}
     {#  THREE SECTIONS, ONE LAYOUT. The panel was a stack of full-width
         controls -- two selects, then two more, then six buttons, then a
         grid -- and nothing said which button belonged to which picture.
@@ -1363,6 +1400,7 @@
         <label>Banner height
           <input type="number" name="hero_height" min="120" max="1200" placeholder="auto" value="{{ ov.hero_height }}" onchange="this.form.requestSubmit()" title="How tall the banner stands, in pixels — blank uses the theme default. Increase it to fit a taller image.">
         </label>
+        {{ colour_swatches('Banner colour', 'banner_color_choice', 'banner_color', ov.banner_color_choice, ov.banner_color) }}
         {% if image_upload_url %}
         <span class="cms-config-actions">
           <button type="button" class="cms-pick-library-btn" data-library-pick
@@ -1388,46 +1426,9 @@
             {% endfor %}
           </select>
         </label>
-        <label>Box color
-          <input type="color" name="overlay_bg_color" value="{{ ov.overlay_bg_color }}" onchange="this.form.requestSubmit()" title="Text box background color">
-        </label>
+        {{ colour_swatches('Box colour', 'overlay_bg_choice', 'overlay_bg_color', ov.overlay_bg_choice, ov.overlay_bg_color) }}
         <label>Box opacity
           <input type="range" name="overlay_opacity" min="0" max="100" value="{{ ov.overlay_opacity }}" onchange="this.form.requestSubmit()" title="Text box background opacity">
-        </label>
-        <label>Text color
-          <input type="color" name="text_color" value="{{ ov.text_color }}" onchange="this.form.requestSubmit()" title="Headline/body text color">
-        </label>
-        <label>Text size
-          <input type="number" name="font_size" min="10" max="96" placeholder="auto" value="{{ ov.font_size }}" onchange="this.form.requestSubmit()" title="Text size in pixels — blank follows the theme's default">
-        </label>
-        <label>Font
-          <select name="font_family" onchange="this.form.requestSubmit()" title="Font family for the banner's text">
-            <option value="default" {{ 'selected' if ov.font_family == 'default' }}>Theme default</option>
-            <option value="serif" {{ 'selected' if ov.font_family == 'serif' }}>Serif</option>
-            <option value="sans" {{ 'selected' if ov.font_family == 'sans' }}>Sans-serif</option>
-            <option value="mono" {{ 'selected' if ov.font_family == 'mono' }}>Monospace</option>
-            <option value="rounded" {{ 'selected' if ov.font_family == 'rounded' }}>Rounded</option>
-            <option value="elegant" {{ 'selected' if ov.font_family == 'elegant' }}>Elegant</option>
-          </select>
-        </label>
-        <label>Weight
-          <select name="font_weight" onchange="this.form.requestSubmit()" title="Bold or normal text weight">
-            <option value="normal" {{ 'selected' if ov.font_weight == 'normal' }}>Normal</option>
-            <option value="bold" {{ 'selected' if ov.font_weight == 'bold' }}>Bold</option>
-          </select>
-        </label>
-        <label>Style
-          <select name="font_style" onchange="this.form.requestSubmit()" title="Italic or normal text style">
-            <option value="normal" {{ 'selected' if ov.font_style == 'normal' }}>Normal</option>
-            <option value="italic" {{ 'selected' if ov.font_style == 'italic' }}>Italic</option>
-          </select>
-        </label>
-        <label>Align
-          <select name="text_align" onchange="this.form.requestSubmit()" title="Text alignment within the box">
-            <option value="left" {{ 'selected' if ov.text_align == 'left' }}>Left</option>
-            <option value="center" {{ 'selected' if ov.text_align == 'center' }}>Center</option>
-            <option value="right" {{ 'selected' if ov.text_align == 'right' }}>Right</option>
-          </select>
         </label>
         <label>Box padding
           <input type="range" name="box_padding" min="4" max="80" value="{{ ov.box_padding }}" onchange="this.form.requestSubmit()" title="How much padding surrounds the text inside the box">
@@ -1548,11 +1549,41 @@
         </select>
       </div>
     </div>
+    {#  The words, last, so that they sit directly above the ribbon: one
+        place for text. These apply to the whole banner; the ribbon applies
+        to the words you select. Weight and slant are the ribbon's B and I. #}
+    <div class="cms-banner-text-config cms-banner-words">
+      <span class="cms-banner-text-config-label">Text — whole banner</span>
+      <div class="cms-banner-text-config-grid">
+        <label>Size
+          <input type="number" name="font_size" min="10" max="160" step="2" placeholder="auto" value="{{ ov.font_size }}" onchange="this.form.requestSubmit()" title="Headline size in pixels; the smaller lines scale with it. Blank follows the theme">
+        </label>
+        {{ colour_swatches('Text colour', 'text_color_choice', 'text_color', ov.text_color_choice, ov.text_color) }}
+        <label>Font
+          <select name="font_family" onchange="this.form.requestSubmit()" title="Font family for the banner's text">
+            <option value="default" {{ 'selected' if ov.font_family == 'default' }}>Theme default</option>
+            <option value="serif" {{ 'selected' if ov.font_family == 'serif' }}>Serif</option>
+            <option value="sans" {{ 'selected' if ov.font_family == 'sans' }}>Sans-serif</option>
+            <option value="mono" {{ 'selected' if ov.font_family == 'mono' }}>Monospace</option>
+            <option value="rounded" {{ 'selected' if ov.font_family == 'rounded' }}>Rounded</option>
+            <option value="elegant" {{ 'selected' if ov.font_family == 'elegant' }}>Elegant</option>
+          </select>
+        </label>
+        <label>Align
+          <select name="text_align" onchange="this.form.requestSubmit()" title="Text alignment within the box">
+            <option value="left" {{ 'selected' if ov.text_align == 'left' }}>Left</option>
+            <option value="center" {{ 'selected' if ov.text_align == 'center' }}>Center</option>
+            <option value="right" {{ 'selected' if ov.text_align == 'right' }}>Right</option>
+          </select>
+        </label>
+      </div>
+    </div>
   {% endmacro %}
 
   {% macro card_config_fields(cell, image_upload_url=none, image_clear_url=none, generate_url=none, apply_url=none, reset_url=none) %}
     {% set cs = card_style_settings(cell.content) %}
     {% set cb = card_button_settings(cell.content) %}
+    {{ style_scope(cell.content, 'card', 'card') }}
     <select name="shape" onchange="this.form.requestSubmit()" title="Shape of the card's background">
       <option value="rectangle" {{ 'selected' if cs.shape == 'rectangle' }}>Rectangle</option>
       <option value="rounded" {{ 'selected' if cs.shape == 'rounded' }}>Rounded</option>
@@ -1560,7 +1591,7 @@
       <option value="circle" {{ 'selected' if cs.shape == 'circle' }}>Circle</option>
       <option value="pill" {{ 'selected' if cs.shape == 'pill' }}>Pill</option>
     </select>
-    <input type="color" name="color" value="{{ cs.color or '#f0f1f3' }}" onchange="this.form.requestSubmit()" title="Background color (shows through/behind any image)">
+    {{ colour_swatches('Card colour', 'color_choice', 'color', cs.color_choice, cs.color) }}
     {# A card could always hold a link, but a link is underlined text. This
        is the button — added here, then written on the page like the rest of
        the card, because the words on a button are words on the page. #}
@@ -1663,7 +1694,7 @@
           {%- if item.is_block -%}
           <form method="post" action="{{ url_for('admin.section_block_update', section_id=section.id, key=item.block_key, col_index=col_index) }}{{ row_qs }}" class="cms-inline-form cms-block-config-form">
             <input type="hidden" name="next" value="{{ current_path }}">
-            {{ block_config_fields(item) }}
+            {{ block_config_fields(item, url_for('admin.section_gallery_generate', section_id=section.id, col_index=col_index) ~ row_qs if item.block_key == 'gallery' else none) }}
           </form>
           {%- endif %}
           {%- if item.is_faq -%}
@@ -1768,10 +1799,11 @@
                  url_for('admin.section_banner_portrait_upload', section_id=section.id, col_index=col_index) ~ row_qs,
                  edit_view=edit_view) }}
           </form>
-          {# The overlay's headline/text is a full rich-text body (it saves
-             its innerHTML through section_update), so it gets the one
-             shared ribbon like Text — bold, colour, font, alignment. #}
-          {{ wysiwyg_toolbar() }}
+          {#  The ribbon, for selected words only. Colour, font, size and
+              alignment are the whole-banner controls just above: offered
+              in both places, whichever was used last silently lost. #}
+          <span class="cms-banner-ribbon-label">Selected words</span>
+          {{ wysiwyg_toolbar(include_image=false, include_layout=false) }}
           {%- endif %}
           {%- if item.type == 'card' -%}
           <form method="post" action="{{ url_for('admin.section_card_update', section_id=section.id, col_index=col_index) }}{{ row_qs }}" class="cms-inline-form cms-card-config-form">
@@ -2199,7 +2231,7 @@
       {% set effective_width = default_section_width if s.layout_width == 'auto' else s.layout_width %}
       {% set effective_pct = s.layout_width_pct or (default_section_width_pct | int) %}
       {% set section_style_parts = [] %}
-      {% if s.bg_color %}{% set _ = section_style_parts.append('background-color:' ~ s.bg_color) %}{% set _ = section_style_parts.append('color:' ~ ink_for(s.bg_color)) %}{% endif %}
+      {% if s.bg_color %}{% set _ = section_style_parts.append('background-color:' ~ s.bg_color) %}{% set _ = section_style_parts.append('color:' ~ ('var(--site-ink)' if s.bg_color.startswith('var(') else ink_for(s.bg_color))) %}{% endif %}
       {# A picture behind the section. The overlay is a class rather than
          another inline value so it can adapt to the theme, and so the
          same photograph can sit under dark text on one page and light
@@ -2809,6 +2841,7 @@
   <script src="{{ static_url('js/admin/image-picker.js') }}"></script>
   <script src="{{ static_url('js/wysiwyg-commands.js') }}"></script>
   <script src="{{ static_url('js/inline-editor.js') }}"></script>
+  <script src="{{ static_url('js/editor-ui.js') }}"></script>
   <script src="{{ static_url('js/admin/column-resize.js') }}"></script>
   <script src="{{ static_url('js/admin/column-dnd.js') }}"></script>
   <script src="{{ static_url('js/admin/heading-zone.js') }}"></script>

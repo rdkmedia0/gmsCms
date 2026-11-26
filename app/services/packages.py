@@ -16,11 +16,13 @@ load_template_package()'s output.
 import os
 import re
 import json
+import pickle
 import shutil
 import sqlite3
 import tempfile
 import zipfile
 
+from . import filecache
 from .tools import export_all_custom_tools, import_tools
 
 #  Where the shipped templates are AUTHORED. Present in the source tree
@@ -631,6 +633,9 @@ def backfill_ground_defaults(db, static_folder):
     db.commit()
 
 
+_PACKAGES = {}
+
+
 def load_package_dir(pkg_dir):
     """Reassemble any package directory's manifest.json + pages/*.json +
     optional blog_posts.json back into the single dict shape
@@ -685,9 +690,19 @@ def load_template_package(static_folder, slug, is_builtin):
     Returns None if the folder's manifest.json is missing (shouldn't
     normally happen for a template that's actually installed)."""
     pkg_dir = template_package_dir(static_folder, slug, is_builtin)
-    if not os.path.isfile(os.path.join(pkg_dir, "manifest.json")):
+    #  Saving a template replaces its whole folder, so these four move
+    #  whenever its contents do. See services/filecache.py.
+    signature = filecache.stamp(*(os.path.join(pkg_dir, n) for n in
+                                  ("manifest.json", "pages", "blog_posts.json", "zones.json")))
+    if signature[0] is None:
+        _PACKAGES.pop(pkg_dir, None)
         return None
-    return point_media_at_installed_copy(load_package_dir(pkg_dir), slug)
+    hit = _PACKAGES.get(pkg_dir)
+    if not hit or hit[0] != signature:
+        loaded = point_media_at_installed_copy(load_package_dir(pkg_dir), slug)
+        hit = _PACKAGES[pkg_dir] = (signature, pickle.dumps(loaded))
+    #  A fresh copy every time: callers are free to change what they get.
+    return pickle.loads(hit[1])
 
 
 #  A picture belonging to a template is written in that template's own
@@ -1132,11 +1147,9 @@ def cover_for(static_folder, slug):
     honest answer there rather than a stock image standing in for one).
     """
     folder = os.path.join(static_folder, "themes", slug, "media")
-    if not os.path.isdir(folder):
-        return ""
-    names = sorted(
-        n for n in os.listdir(folder)
-        if os.path.splitext(n)[1].lower() in (".webp", ".png", ".jpg", ".jpeg"))
+    names = [
+        n for n, _ in filecache.listing(folder)
+        if os.path.splitext(n)[1].lower() in (".webp", ".png", ".jpg", ".jpeg")]
     if not names:
         return ""
     #  The banner first, by name, because that is the picture the front

@@ -4,6 +4,7 @@ import json
 import uuid
 from flask import (request, flash, redirect, url_for, jsonify, render_template,
                    current_app, Response, session)
+from werkzeug.datastructures import MultiDict
 from werkzeug.utils import secure_filename
 
 from . import bp
@@ -11,6 +12,7 @@ from ..auth import login_required
 from ...db import get_db
 from ...services import packages
 from ...services import blog as blog_service
+from ...services import shared_style
 from ... import ai_image
 from ...services.menu import _menu_updated_html
 from ...services.tools import export_tools, export_all_custom_tools, import_tools
@@ -24,7 +26,7 @@ from ...services.sections import (
     _columns_section_or_404, _get_columns_cells, _save_columns_cells, _normalize_cell, _cell_slot,
     set_columns_width, set_columns_widths, COLUMN_WIDTHS,
     _update_banner_classes, _update_banner_overlay_style, _card_div, _update_card_classes,
-    _update_banner_portrait, _set_banner_portrait_image, banner_portrait_of,
+    _update_banner_portrait, _set_banner_portrait_image, banner_portrait_of, tidy_nested_blocks, untouched_banner,
     banner_portrait_size_of, banner_portrait_shape_of,
     _set_card_image, _set_banner_image, _banner_dom_response, _save_card_image_file, _reset_card_style,
     set_card_button, set_banner_button, button_color_valid, _form_new_tab, strip_editor_markup,
@@ -276,6 +278,8 @@ def _section_home(section):
 def section_new(page_id):
     db = get_db()
     section_type, content = _resolve_tool_content(db, request.form)
+    if section_type is not None:
+        content = shared_style.adopt(db, content)
     if section_type is None:
         if wants_json():
             return jsonify({"error": "That tool no longer exists."}), 404
@@ -380,6 +384,8 @@ def zone_section_new(template_id, zone):
         flash("This sidebar already has a section — use Divide for more rows.", "error")
         return redirect(url_for("admin.dashboard"))
     section_type, content = _resolve_tool_content(db, request.form)
+    if section_type is not None:
+        content = shared_style.adopt(db, content)
     if section_type is None:
         if wants_json():
             return jsonify({"error": "That tool no longer exists."}), 404
@@ -446,6 +452,8 @@ def section_set_tool(section_id):
             return jsonify({"error": "Section not found."}), 404
         return redirect(url_for("admin.dashboard"))
     section_type, content = _resolve_tool_content(db, request.form)
+    if section_type is not None:
+        content = shared_style.adopt(db, content)
     if section_type is None:
         if wants_json():
             return jsonify({"error": "That tool no longer exists."}), 404
@@ -493,6 +501,8 @@ def section_column_set_tool(section_id, col_index):
     tool_id = request.form.get("tool_id", type=int)
     tool = db.execute("SELECT * FROM content_tools WHERE id = ?", (tool_id,)).fetchone() if tool_id else None
     section_type, content = _resolve_tool_content(db, request.form)
+    if section_type is not None:
+        content = shared_style.adopt(db, content)
     if section_type is None:
         if wants_json():
             return jsonify({"error": "That tool no longer exists."}), 404
@@ -715,11 +725,17 @@ def section_block_update(section_id, key, col_index=None):
     if key not in blocks.BLOCKS:
         return redirect(url_for("admin.dashboard"))
     content = blocks.apply_form(key, request.form, where.read())
-    where.write(content, tool_name=blocks.BLOCKS[key]["name"])
+    sync = False
+    if shared_style.block_choices(key):
+        content, sync = shared_style.save(where, "block:" + key, content, request.form,
+                                          untouched=blocks.apply_form(key, MultiDict(), where.read()),
+                                          tool_name=blocks.BLOCKS[key]["name"])
+    else:
+        where.write(content, tool_name=blocks.BLOCKS[key]["name"])
     #  Hand the rebuilt block back so the editor can swap it in place. A
     #  declared block used to need an explicit Apply and a page load, while
     #  every other tool changed as you changed it.
-    return where.respond({"html": content})
+    return where.respond({"html": content, "sync": sync})
 
 
 @bp.route("/sections/<int:section_id>/shop-update", methods=["POST"])
@@ -758,7 +774,11 @@ def section_blog_update(section_id, col_index=None):
     if bail:
         return bail
     content = blog_service.apply_blog_form(where.db, request.form)
-    where.write(content, tool_name="Blog")
+    was = blog_service.blog_settings(where.read())
+    shared_style.save(where, "blog", content, request.form,
+                      untouched=blog_service.build_blog(was["blog_id"], was["style"],
+                                                        was["count"], was["image"]),
+                      tool_name="Blog")
     return where.respond()
 
 
@@ -904,8 +924,14 @@ def section_banner_update(section_id, col_index=None):
     content = set_banner_button(content, request.form.get("button") == "1", _blink,
                                 new_tab=_form_new_tab(request.form),
                                 color=request.form.get("button_color", "") if button_color_valid(request.form.get("button_color", "")) else "")
-    where.write(content, tool_name="Banner", cell_type="banner")
-    return where.respond(_banner_dom_response(content))
+    #  Repairs headings the text ribbon left nested, which is what made the
+    #  size and colour controls look dead on an affected banner.
+    content = tidy_nested_blocks(content)
+    content, sync = shared_style.save(where, "banner", content, request.form,
+                                      untouched=untouched_banner(where.read(), _view),
+                                      tool_name="Banner", cell_type="banner")
+    return where.respond(dict(_banner_dom_response(content),
+                              own=shared_style.is_own(content, "banner"), sync=sync))
 
 
 @bp.route("/sections/<int:section_id>/banner-image-upload", methods=["POST"])
@@ -982,15 +1008,20 @@ def section_card_update(section_id, col_index=None):
     where, bail = _where(section_id, col_index)
     if bail:
         return bail
-    content = _update_card_classes(where.read(), request.form.get("shape"),
-                                   request.form.get("color", ""))
+    content = _update_card_classes(
+        where.read(), request.form.get("shape"),
+        (request.form.get("color_choice", "keep"), request.form.get("color", "")))
     content = set_card_button(content, request.form.get("button"),
                               request.form.get("button_link", ""),
                               new_tab=_form_new_tab(request.form),
                               color=request.form.get("button_color", "") if button_color_valid(request.form.get("button_color", "")) else "")
-    where.write(content, tool_name="Card", cell_type="card")
+    content, sync = shared_style.save(where, "card", content, request.form,
+                                      tool_name="Card", cell_type="card")
     _, div = _card_div(content)
+    button = div.find(class_="cms-card-btn") if div is not None else None
     return where.respond({
+        "own": shared_style.is_own(content, "card"), "sync": sync,
+        "button_html": str(button) if button is not None else "",
         "class": " ".join(div.get("class") or []) if div is not None else "cms-card-shape",
         "style": div.get("style", "") if div is not None else "",
     })
@@ -1098,6 +1129,21 @@ def section_accordion_image_apply(section_id, panel_index, col_index=None):
     where.write(_set_accordion_panel_image(where.read(), panel_index, url),
                 tool_name="Accordion")
     return jsonify({"ok": True, "url": url})
+
+
+@bp.route("/sections/<int:section_id>/gallery-generate", methods=["POST"])
+@bp.route("/sections/<int:section_id>/columns/<int:col_index>/gallery-generate", methods=["POST"])
+@login_required
+def section_gallery_generate(section_id, col_index=None):
+    """A few gallery-shaped pictures to choose from. Choosing one adds it,
+    through the same step as a picture from the library."""
+    where, bail = _where(section_id, col_index)
+    if bail:
+        return bail
+    images, error = _generate_and_save_images(where.db, *IMAGE_WIDTH_PX["medium"])
+    if error and not images:
+        return jsonify({"error": error}), 400
+    return jsonify({"ok": True, "images": images, "error": error})
 
 
 @bp.route("/sections/<int:section_id>/image-generate", methods=["POST"])

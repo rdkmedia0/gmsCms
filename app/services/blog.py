@@ -26,10 +26,23 @@ from markupsafe import escape as html_escape
 #  blog may reasonably look different.
 BLOG_STYLES = (
     ("cards", "Cards"),
-    ("list", "Simple list"),
+    ("two", "Two across"),
     ("grid", "Tight grid"),
+    ("large", "Large, one per row"),
+    ("feature", "Newest featured"),
+    ("masonry", "Masonry"),
+    ("overlay", "Picture tiles"),
+    ("list", "Simple list"),
+    ("zigzag", "Alternating rows"),
 )
 BLOG_STYLE_ATTR = "data-blog-style"
+#  Whether a card's picture is trimmed to a tidy shape, or shown whole at
+#  its own proportions. A property of this showing, like the style.
+BLOG_IMAGE_FITS = (
+    ("crop", "Trimmed to fit"),
+    ("full", "Whole picture"),
+)
+BLOG_IMAGE_ATTR = "data-blog-image"
 
 
 def slugify(value):
@@ -307,7 +320,7 @@ def post_html(content):
     return "\n".join("<p>%s</p>" % escape(p) for p in paragraphs)
 
 
-def build_blog(blog_id, style="cards", count=0):
+def build_blog(blog_id, style="cards", count=0, image="crop"):
     """The tool's stored markup: which blog, shown how, how many.
 
     A marker rather than the posts themselves — the same reasoning as the
@@ -320,9 +333,10 @@ def build_blog(blog_id, style="cards", count=0):
         count = max(0, int(count))
     except (TypeError, ValueError):
         count = 0
+    image = image if image in dict(BLOG_IMAGE_FITS) else "crop"
     blog_attr = f' data-blog-id="{int(blog_id)}"' if blog_id else ' data-blog-id=""'
     return (f'<div class="cms-blog"{blog_attr} {BLOG_STYLE_ATTR}="{style}" '
-            f'data-blog-count="{count}"></div>')
+            f'{BLOG_IMAGE_ATTR}="{image}" data-blog-count="{count}"></div>')
 
 
 def blog_settings(content):
@@ -330,7 +344,7 @@ def blog_settings(content):
     soup = BeautifulSoup(content or "", "html.parser")
     box = soup.find(class_="cms-blog")
     if box is None:
-        return {"blog_id": None, "style": "cards", "count": 0}
+        return {"blog_id": None, "style": "cards", "count": 0, "image": "crop"}
     raw_id = box.get("data-blog-id") or ""
     style = box.get(BLOG_STYLE_ATTR) or "cards"
     try:
@@ -341,6 +355,7 @@ def blog_settings(content):
         "blog_id": int(raw_id) if raw_id.isdigit() else None,
         "style": style if style in dict(BLOG_STYLES) else "cards",
         "count": count,
+        "image": "full" if box.get(BLOG_IMAGE_ATTR) == "full" else "crop",
     }
 
 
@@ -357,7 +372,8 @@ def apply_blog_form(db, form):
         blog_id = int(chosen) if chosen.isdigit() else None
     if blog_id and (form.get("blog_name") or "").strip():
         rename_blog(db, blog_id, form.get("blog_name"))
-    return build_blog(blog_id, form.get("blog_style"), form.get("blog_count") or 0)
+    return build_blog(blog_id, form.get("blog_style"), form.get("blog_count") or 0,
+                      form.get("blog_image"))
 
 
 def render_blog(db, content, editing=False, post_url=None, edit_url=None):
@@ -391,8 +407,9 @@ def render_blog(db, content, editing=False, post_url=None, edit_url=None):
             href, extra = (post_url(blog["slug"], post["slug"]) if post_url else "#"), ""
         image = ""
         if post["featured_image"]:
-            image = ('<div class="cms-blog-card-image" style="background-image:url(\''
-                     + html_escape(post["featured_image"]) + '\')"></div>')
+            #  A real <img>, so "Whole picture" can take its own height.
+            image = (f'<img class="cms-blog-card-image" src="{html_escape(post["featured_image"])}" '
+                     'alt="" loading="lazy">')
         date = (f'<span class="cms-blog-date">{html_escape(post["published_at"])}</span>'
                 if post["published_at"] else
                 '<span class="cms-blog-date cms-blog-draft">Draft</span>')
@@ -402,5 +419,6 @@ def render_blog(db, content, editing=False, post_url=None, edit_url=None):
             f'<div class="cms-blog-card-body"><h3>{html_escape(post["title"])}</h3>'
             f"{date}{excerpt}</div></a>"
         )
-    return (f'<div class="cms-blog-grid cms-blog-{settings["style"]}">'
+    return (f'<div class="cms-blog-grid cms-blog-style-{settings["style"]} '
+            f'cms-blog-img-{settings["image"]}">'
             + "".join(cards) + "</div>")

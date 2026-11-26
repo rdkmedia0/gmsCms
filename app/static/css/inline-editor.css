@@ -1394,3 +1394,53 @@ body.cms-preview-open { overflow: hidden; }
   padding: 5px 8px; font: inherit; font-size: 13px;
   border: 1px solid var(--cms-ui-border, #d7dbe0); border-radius: var(--cms-ui-radius-control, 4px);
 }
+
+/*  Palette swatches (partials/colour_swatches.html). */
+.cms-swatches { border: 0; margin: 0; padding: 0; min-width: 0; grid-column: 1 / -1; }
+.cms-swatches legend { font-size: 12px; padding: 0; margin-bottom: 4px; }
+.cms-swatch-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.cms-swatch { position: relative; display: inline-flex; margin: 0; cursor: pointer; }
+.cms-swatch input[type="radio"] { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.cms-swatch > span {
+  width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+  font: 700 12px/1 sans-serif; color: #333; border: 1px solid rgba(0,0,0,.25);
+}
+.cms-swatch input[type="radio"]:checked + span,
+.cms-swatch-custom.is-current input[type="color"] { outline: 2px solid #2563eb; outline-offset: 2px; }
+.cms-swatch input[type="radio"]:focus-visible + span { outline: 2px dashed #2563eb; outline-offset: 2px; }
+.cms-swatch-auto > span { background: #fff; }
+.cms-swatch-primary > span { background: var(--primary, #888); }
+.cms-swatch-secondary > span { background: var(--secondary, #888); }
+.cms-swatch-accent > span { background: var(--accent, #888); }
+.cms-swatch-light > span { background: var(--site-tint, #f5f5f5); }
+.cms-swatch-dark > span { background: var(--primary-900, #1c1c1c); }
+.cms-swatch-keep > span { background: repeating-linear-gradient(45deg, #bbb 0 4px, #fff 4px 8px); }
+.cms-swatch-custom input[type="color"] { width: 34px; height: 28px; padding: 0; border: 1px solid rgba(0,0,0,.25); cursor: pointer; }
+
+/*  A palette as one bar of its three colours, so two schemes can be told
+    apart at a glance; the one in use is ringed. */
+.cms-palette-bar { display: flex; width: 100%; min-width: 64px; height: 26px; border-radius: 6px; overflow: hidden; }
+.cms-palette-bar i { flex: 1; }
+.cms-palette-bar i:first-child { flex: 2; }
+.cms-palette-gallery .cms-color-preset-swatch.is-current { outline: 2px solid #2563eb; outline-offset: 1px; }
+
+/*  Background controls in the Colors panel. */
+.cms-bg-scope, .cms-bg-picture { display: flex; flex-direction: column; gap: 8px; }
+.cms-bg-picture { margin-top: 8px; }
+.cms-bg-thumb { width: 100%; max-width: 200px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 6px; }
+.cms-bg-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+.cms-bg-option { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0; }
+.cms-bg-option[hidden] { display: none; }
+
+.cms-banner-ribbon-label { font-size: 12px; font-weight: 600; align-self: center; }
+
+.cms-gallery-manage { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
+.cms-gallery-strip { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; max-height: 190px; overflow: auto; }
+.cms-gallery-thumb { display: grid; grid-template-columns: repeat(3, 1fr); width: 78px; }
+.cms-gallery-thumb img { grid-column: 1 / -1; width: 78px; height: 56px; object-fit: cover; border-radius: 4px; }
+.cms-gallery-thumb button { padding: 0; min-width: 0; height: 24px; cursor: pointer; }
+.cms-gallery-thumb button:disabled { opacity: .35; cursor: default; }
+
+.cms-style-scope { display: flex; align-items: center; gap: 6px; width: 100%; margin: 0; font-size: 12px; font-weight: 600; }
+.cms-style-scope input { width: auto; margin: 0; }
+

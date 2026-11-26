@@ -43,7 +43,7 @@ def settings_site():
     if wants_json():
         return jsonify({"ok": True})
     flash("Site name saved.", "success")
-    return redirect(url_for("admin.dashboard"))
+    return redirect(url_for("admin.general_settings"))
 
 
 @bp.route("/settings/maintenance", methods=["POST"])
@@ -66,7 +66,7 @@ def settings_maintenance():
               "You still see the site while you're signed in.", "success")
     else:
         flash("Maintenance mode is off — the site is live again.", "success")
-    return redirect(url_for("admin.dashboard"))
+    return redirect(url_for("admin.general_settings"))
 
 
 FAVICON_EMOJI_CHOICES = (
@@ -83,11 +83,11 @@ def settings_favicon_upload():
     url, error = _save_card_image_file()
     if error:
         flash(error[0], "error")
-        return redirect(url_for("admin.dashboard"))
+        return redirect(url_for("admin.general_settings"))
     _set_setting(db, "favicon_url", url)
     db.commit()
     flash("Favicon updated.", "success")
-    return redirect(url_for("admin.dashboard"))
+    return redirect(url_for("admin.general_settings"))
 
 
 @bp.route("/settings/favicon/library", methods=["POST"])
@@ -105,11 +105,11 @@ def settings_favicon_library():
     item = known.get(picked)
     if not item:
         flash("That picture is not in your Media Library — choose another.", "error")
-        return redirect(url_for("admin.dashboard"))
+        return redirect(url_for("admin.general_settings"))
     _set_setting(db, "favicon_url", item["url"])
     db.commit()
     flash("Favicon updated.", "success")
-    return redirect(url_for("admin.dashboard"))
+    return redirect(url_for("admin.general_settings"))
 
 
 @bp.route("/settings/favicon/emoji", methods=["POST"])
@@ -119,7 +119,7 @@ def settings_favicon_emoji():
     emoji = (request.form.get("emoji") or "").strip()
     if not emoji or emoji not in FAVICON_EMOJI_CHOICES:
         flash("Please pick one of the offered emoji.", "error")
-        return redirect(url_for("admin.dashboard"))
+        return redirect(url_for("admin.general_settings"))
     # An inline SVG data URI with the emoji as text — every modern browser
     # accepts this directly as a favicon, so a one-character "logo" needs
     # no generated image file or upload at all.
@@ -132,7 +132,7 @@ def settings_favicon_emoji():
     _set_setting(db, "favicon_url", data_url)
     db.commit()
     flash("Favicon updated.", "success")
-    return redirect(url_for("admin.dashboard"))
+    return redirect(url_for("admin.general_settings"))
 
 
 @bp.route("/settings/favicon/generate", methods=["POST"])
@@ -142,7 +142,7 @@ def settings_favicon_generate():
     prompt = (request.form.get("prompt") or "").strip()
     if not prompt:
         flash("Describe the favicon you want.", "error")
-        return redirect(url_for("admin.dashboard"))
+        return redirect(url_for("admin.general_settings"))
     try:
         image_bytes = ai_image.generate_image(
             db, prompt + " — a simple, bold, minimal icon/logo mark on a plain background, no text, no words, no letters",
@@ -150,7 +150,7 @@ def settings_favicon_generate():
         )
     except ai_image.ImageGenError as e:
         flash(str(e), "error")
-        return redirect(url_for("admin.dashboard"))
+        return redirect(url_for("admin.general_settings"))
     unique_name = f"{uuid.uuid4().hex}.png"
     os.makedirs(current_app.config["UPLOAD_FOLDER"], exist_ok=True)
     with open(os.path.join(current_app.config["UPLOAD_FOLDER"], unique_name), "wb") as f:
@@ -160,7 +160,7 @@ def settings_favicon_generate():
     _set_setting(db, "favicon_url", url)
     db.commit()
     flash("Favicon generated!", "success")
-    return redirect(url_for("admin.dashboard"))
+    return redirect(url_for("admin.general_settings"))
 
 
 @bp.route("/settings/favicon/clear", methods=["POST"])
@@ -170,7 +170,7 @@ def settings_favicon_clear():
     _set_setting(db, "favicon_url", "")
     db.commit()
     flash("Favicon removed.", "success")
-    return redirect(url_for("admin.dashboard"))
+    return redirect(url_for("admin.general_settings"))
 
 
 
@@ -190,7 +190,7 @@ def settings_layout():
         )
     db.commit()
     flash("Default section width saved.", "success")
-    return redirect(url_for("admin.dashboard"))
+    return redirect(url_for("admin.general_settings"))
 
 
 def _missing_email_fields(settings):
@@ -829,11 +829,11 @@ def settings_site_address():
     saved, error = site.set_base(db, request.form.get("site_public_url"))
     if error:
         flash(error, "error")
-        return redirect(url_for("admin.dashboard"))
+        return redirect(url_for("admin.general_settings"))
     db.commit()
     if not saved:
         flash("Site address cleared. Links will fall back to whatever address you happen to be using.", "warning")
-        return redirect(url_for("admin.dashboard"))
+        return redirect(url_for("admin.general_settings"))
 
     moved, repictured = [], 0
     if integrations.is_configured(db, "stripe") and previous and previous != saved:
@@ -873,7 +873,7 @@ def settings_site_address():
         if not moved and not repictured:
             parts.append("Emails, Stripe returns and product pictures will all use it.")
         flash(" ".join(parts), "success")
-    return redirect(url_for("admin.dashboard"))
+    return redirect(url_for("admin.general_settings"))
 
 
 @bp.route("/commerce/products/add", methods=["POST"])

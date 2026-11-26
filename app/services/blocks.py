@@ -196,6 +196,72 @@ def build_logos(values):
 TAG_COLORS = ("accent", "primary", "neutral", "outline")
 
 
+#  How many pictures one gallery holds.
+MAX_GALLERY_PICTURES = 40
+
+
+def build_gallery(values):
+    """Pictures laid out as a gallery. A picture's place in the list is its
+    place on the page; its caption is words, typed on the page."""
+    photos = _items(values, "photo", MAX_GALLERY_PICTURES, ("image", "caption"))
+    photos = [item for item in photos if item["image"]]
+    chosen = {}
+    for name, _label, options in GALLERY_CHOICES:
+        value = values.get(name) or ""
+        chosen[name] = value if value in dict(options) else options[0][0]
+    figures = "".join(
+        f'<figure class="cms-gallery-item">'
+        f'<img src="{esc(item["image"])}" alt="{esc(item["caption"])}" loading="lazy" '
+        f'data-field="photo{i}_image">'
+        f'<figcaption data-field="photo{i}_caption">{esc(item["caption"])}</figcaption></figure>'
+        for i, item in enumerate(photos, start=1))
+    if not figures:
+        return _wrap("gallery", '<p class="cms-gallery-empty">No pictures yet. '
+                     'Add some from this tool\'s toolbar.</p>', **chosen)
+    classes = " ".join(f"cms-gallery-{name}-{value}" for name, value in chosen.items())
+    return _wrap("gallery", f'<div class="cms-gallery {classes}">{figures}</div>', **chosen)
+
+
+#  (name, label, options) -- the first option of each is its default.
+GALLERY_CHOICES = (
+    ("layout", "Layout", (("grid", "Grid"), ("masonry", "Masonry"), ("justified", "Rows"),
+                          ("feature", "First one large"), ("carousel", "Carousel"),
+                          ("slideshow", "Slideshow"), ("tiles", "Caption tiles"),
+                          ("polaroid", "Polaroid"), ("stacked", "One per row"),
+                         ("panels", "Panels (hover to expand)"),
+                         ("coverflow", "Cover flow"), ("deck", "Deck (click through)"))),
+    ("size", "Picture size", (("medium", "Medium"), ("small", "Small"), ("large", "Large"))),
+    ("fit", "Pictures", (("crop", "Trimmed to fit"), ("full", "Whole picture"))),
+    ("zoom", "Click to enlarge", (("on", "Yes"), ("off", "No"))),
+)
+
+
+def _picture_op(values, op, form):
+    """Add, move or remove one of a gallery's pictures."""
+    photos = [(values.get(f"photo{i}_image", ""), values.get(f"photo{i}_caption", ""))
+              for i in range(1, MAX_GALLERY_PICTURES + 1) if values.get(f"photo{i}_image")]
+    if op == "pic_add":
+        for url in (form.get("pic_url") or "").split("\n"):
+            url = url.strip()
+            if url.startswith(("/static/", "https://", "http://")):
+                photos.append((url, ""))
+    else:
+        action, _, number = op[4:].partition("_")
+        index = int(number) - 1 if number.isdigit() else -1
+        if 0 <= index < len(photos):
+            if action == "remove":
+                photos.pop(index)
+            else:
+                other = index + (-1 if action == "left" else 1)
+                if 0 <= other < len(photos):
+                    photos[index], photos[other] = photos[other], photos[index]
+    for i in range(1, MAX_GALLERY_PICTURES + 1):
+        values.pop(f"photo{i}_image", None)
+        values.pop(f"photo{i}_caption", None)
+    for i, (image, caption) in enumerate(photos[:MAX_GALLERY_PICTURES], start=1):
+        values[f"photo{i}_image"], values[f"photo{i}_caption"] = image, caption
+
+
 def build_tags(values):
     """A row of short labels, each a pill -- skills, topics, categories.
 
@@ -409,6 +475,15 @@ BLOCKS = {
             "stat3_value": "98%", "stat3_label": "Would recommend",
         },
     },
+    "gallery": {
+        "name": "Gallery", "icon": "🗂️",
+        "blurb": "Your pictures as a grid, masonry, carousel, slideshow and more.",
+        "build": build_gallery,
+        "pictures": True,   # its pictures have their own controls
+        "fields": [_field(name, label, "select", options=list(options))
+                   for name, label, options in GALLERY_CHOICES],
+        "defaults": {name: options[0][0] for name, _label, options in GALLERY_CHOICES},
+    },
     "logos": {
         "name": "Logo row", "icon": "🏷️",
         "blurb": "Who you've worked with, or where you've been featured.",
@@ -621,7 +696,9 @@ def apply_form(key, form, current=""):
     #  Adding or removing one of a repeated group — the same stepper
     #  pattern the FAQ and Video Gallery tools use.
     op = (form.get("op") or "").strip()
-    if op.startswith("add_"):
+    if BLOCKS[key].get("pictures") and op.startswith("pic_"):
+        _picture_op(values, op, form)
+    elif op.startswith("add_"):
         prefix = op[4:]
         group = next((e for e in BLOCKS[key]["fields"] if e.get("group") == prefix), None)
         if group:

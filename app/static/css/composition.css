@@ -494,6 +494,32 @@
 .site-content .cms-section > .block .cms-banner-portrait {
   border-radius: var(--portrait-radius, 50%);
 }
+/*  ...and a corner somebody CHOSE. Square is only the default of a band:
+    with these flattened too, the Corners menu on a full-width banner (and
+    its Shape setting) saved an answer and then showed nothing. A choice
+    made on the tool, or on its section, applies.
+
+    A banner, a card and a picture show the shape's REAL outline -- that is
+    what was picked from the menu, and one safe length for all of them made
+    pill, lens and both organic shapes look like the same rounded box.
+    Lists, tables and thumbnails take the plain length, which is what the
+    shapes provide for surfaces that cannot wear a lens. */
+.site-content .cms-section[data-corner-style]:not([data-corner-style=""]):not([data-corner-style="sharp"]) > .block :is(.cms-banner, .cms-card-shape, .cms-managed-image):not(.cms-mask-circle),
+.site-content .cms-section > .block[data-corner-style] :is(.cms-banner, .cms-card-shape, .cms-managed-image):not(.cms-mask-circle) {
+  border-radius: var(--site-radius, 0);
+}
+.site-content .cms-section[data-corner-style]:not([data-corner-style=""]):not([data-corner-style="sharp"]) > .block :is(.cms-gallery-item img, .cms-blog-card, .cms-cta, .cms-file-card, table),
+.site-content .cms-section > .block[data-corner-style] :is(.cms-gallery-item img, .cms-blog-card, .cms-cta, .cms-file-card, table) {
+  border-radius: var(--site-radius-safe, var(--site-radius, 0));
+}
+/*  The strongly curved shapes reach into their own box; the words step in
+    to stay clear of the curve. */
+.site-content .cms-section > .block[data-corner-style] .cms-card-shape {
+  padding: var(--site-radius-pad, var(--pad-panel, 20px));
+}
+.site-content .cms-section > .block .cms-banner.cms-mask-rounded { border-radius: 24px; }
+.site-content .cms-section > .block .cms-banner.cms-mask-circle { border-radius: 50%; }
+
 /*  And a wide surface anywhere takes the shape as a plain LENGTH --
     `--site-radius-safe` is what is already prescribed for
     anything that cannot wear a lens or a pill. */
@@ -501,3 +527,7 @@
   border-radius: var(--site-radius-safe, 10px);
 }
 .cms-btn, .cms-cta-btn { border-radius: var(--site-radius, 8px); }
+
+/*  The shade over a banner takes the banner's shape. A banner with a portrait
+    lets things overflow, so nothing else was clipping the shade. */
+.cms-banner::after, .cms-banner::before { border-radius: inherit; }

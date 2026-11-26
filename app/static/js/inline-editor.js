@@ -694,7 +694,9 @@
   // ---------- Autosave helper ----------
   function debounce(fn, wait) {
     let t;
-    return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); };
+    const run = (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); };
+    run.cancel = () => clearTimeout(t);
+    return run;
   }
 
   async function saveField(url, field, value, extra) {
@@ -1769,6 +1771,37 @@
   // in admin.py) so this can apply it in place instead.
   function applyCardBannerDom(scope, data, isBanner) {
     const target = scope.querySelector(isBanner ? ".cms-banner" : ".cms-card-shape");
+    if (!isBanner && target && "button_html" in data) {
+      //  The button is a child of the card, so class and style alone left
+      //  a ticked "Button" invisible until the page was reloaded.
+      const old = target.querySelector(".cms-card-btn");
+      const made = document.createElement("template");
+      made.innerHTML = data.button_html;
+      const button = made.content.firstElementChild;
+      if (old && button) {
+        //  Its words are typed on the page, so keep what is there.
+        ["href", "target", "rel", "class", "style"].forEach((name) => {
+          if (button.hasAttribute(name)) old.setAttribute(name, button.getAttribute(name));
+          else old.removeAttribute(name);
+        });
+      } else if (old) old.remove();
+      else if (button) target.appendChild(button);
+      //  ...and the settings that only make sense with a button.
+      const form = scope.querySelector(".cms-card-config-form");
+      if (form) {
+        ['[name="button_link"]', '[name="new_tab"]', '[name="button_color"]'].forEach((selector) => {
+          const field = form.querySelector(selector);
+          if (!field) return;
+          const box = field.type === "checkbox" ? field.closest("label") : field;
+          box.hidden = !button;
+        });
+      }
+    }
+    if (target && "own" in data) {
+      //  Kept on the live element: the next text save stores this markup.
+      if (data.own) target.setAttribute("data-style-own", "1");
+      else target.removeAttribute("data-style-own");
+    }
     if (target) {
       target.className = data.class || target.className;
       if (data.style) target.setAttribute("style", data.style);
@@ -1779,6 +1812,13 @@
       if (overlay) {
         if (data.overlay_style) overlay.setAttribute("style", data.overlay_style);
         else overlay.removeAttribute("style");
+        //  The words too, when the server tidied them or cleared a colour
+        //  or size from them -- otherwise the next text save puts it back.
+        if (typeof data.overlay_html === "string") {
+          const probe = document.createElement("div");
+          probe.innerHTML = data.overlay_html;
+          if (probe.innerHTML !== overlay.innerHTML) overlay.innerHTML = data.overlay_html;
+        }
       }
       //  The portrait is a child of the banner, not an attribute of it,
       //  and this used to apply attributes only -- so picking a portrait
@@ -1802,6 +1842,88 @@
         }
       }
     }
+  }
+
+  //  A menu's two colours each have a tick to switch them on. Choosing a
+  //  colour is asking for it: without this the pick was thrown away unless
+  //  the tick had been found first. Capturing, so it runs before the
+  //  input's own onchange submits the form.
+  document.addEventListener("change", (e) => {
+    const name = e.target && e.target.name;
+    if (name !== "menu_text_color" && name !== "menu_bg_color") return;
+    const tick = e.target.form?.querySelector(`[name="${name}_on"]`);
+    if (tick) tick.checked = true;
+  }, true);
+
+  // ---------- Shared styles: bring the rest of the page up to date ----------
+  //  After a change is shared, other tools here have a new style, and their
+  //  toolbars still show the old settings -- which their next save would
+  //  send back. Both are copied from a fresh copy of the page. Nothing is
+  //  replaced wholesale, so the open toolbar stays open.
+  async function syncSharedTools(toolSelector, formSelector) {
+    let fresh;
+    try {
+      const res = await fetch(location.href, { headers: { "X-Cms-Refresh": "1" } });
+      if (!res.ok) throw new Error(String(res.status));
+      fresh = new DOMParser().parseFromString(await res.text(), "text/html");
+    } catch {
+      location.reload();
+      return;
+    }
+    const pairs = (selector) => {
+      const mine = document.querySelectorAll(selector);
+      const theirs = fresh.querySelectorAll(selector);
+      return mine.length === theirs.length ? [...mine].map((el, i) => [el, theirs[i]]) : [];
+    };
+    const copyAttrs = (to, from, names) => names.forEach((name) => {
+      if (from.hasAttribute(name)) to.setAttribute(name, from.getAttribute(name));
+      else to.removeAttribute(name);
+    });
+    pairs(toolSelector).forEach(([mine, theirs]) => {
+      if (mine.classList.contains("cms-block")) {
+        if (mine.outerHTML === theirs.outerHTML) return;
+        const host = mine.closest(".cms-block-host");
+        if (!host) return;
+        mine.replaceWith(document.importNode(theirs, true));
+        makeBlockFieldsEditable(host);
+        wireTagsDragToReorder(host);
+        return;
+      }
+      copyAttrs(mine, theirs, ["class", "style", "data-style-own"]);
+      const words = mine.querySelector(".cms-banner-overlay");
+      const newWords = theirs.querySelector(".cms-banner-overlay");
+      if (words && newWords) {
+        copyAttrs(words, newWords, ["style"]);
+        if (words.innerHTML !== newWords.innerHTML) words.innerHTML = newWords.innerHTML;
+      }
+    });
+    pairs(formSelector).forEach(([mine, theirs]) => {
+      const settings = (form) => {
+        const seen = new Map();
+        const out = new Map();
+        [...form.elements].forEach((el) => {
+          if (!el.name || ["file", "submit", "button"].includes(el.type)) return;
+          const base = el.name + (el.type === "radio" ? "=" + el.value : "");
+          const n = seen.get(base) || 0;
+          seen.set(base, n + 1);
+          out.set(base + "#" + n, el);
+        });
+        return out;
+      };
+      const source = settings(theirs);
+      settings(mine).forEach((el, key) => {
+        const from = source.get(key);
+        if (!from) return;
+        if (el.type === "checkbox" || el.type === "radio") el.checked = from.hasAttribute("checked");
+        else if (el.tagName === "SELECT") {
+          const chosen = from.querySelector("option[selected]");
+          if (chosen) el.value = chosen.value;
+        } else el.value = from.getAttribute("value") || "";
+      });
+    });
+    document.querySelectorAll(".cms-block-config-form").forEach(drawGalleryStrip);
+    cmsBindings.forEach((run) => run());
+    document.dispatchEvent(new CustomEvent("cms:controls-synced"));
   }
 
   //  Declared blocks (Pricing, Testimonial, Numbers, Logo row, The team,
@@ -1916,6 +2038,11 @@
           //  add three tags and the number still reads what it did. Read
           //  the true counts back from the new markup and write them in.
           syncBlockStepperCounts(form, host);
+          drawGalleryStrip(form);
+        }
+        if (data.sync) {
+          const kind = (/block-update\/([a-z0-9_-]+)/.exec(form.action) || [])[1];
+          if (kind) await syncSharedTools(".cms-block-host .cms-block-" + kind, ".cms-block-config-form");
         }
         document.dispatchEvent(new CustomEvent("cms:site-refreshed"));
       } else {
@@ -1925,6 +2052,108 @@
       toast("Couldn't save — check your connection");
     }
   }
+
+  //  ---------- Gallery: add, upload, reorder and remove pictures ----------
+  const blockHostFor = (form) => form.closest(".cms-section, .cms-column, .cms-row-cell")
+    ?.querySelector(".cms-block-host");
+  function drawGalleryStrip(form) {
+    const strip = form.querySelector(".cms-gallery-strip");
+    const host = blockHostFor(form);
+    if (!strip || !host) return;
+    const pictures = [...host.querySelectorAll(".cms-gallery-item img")];
+    strip.textContent = "";
+    pictures.forEach((img, i) => {
+      const item = document.createElement("span");
+      item.className = "cms-gallery-thumb";
+      const thumb = document.createElement("img");
+      thumb.src = img.getAttribute("src");
+      thumb.alt = "Picture " + (i + 1);
+      item.appendChild(thumb);
+      [["left", "\u2039", "Move earlier", i === 0],
+       ["right", "\u203a", "Move later", i === pictures.length - 1],
+       ["remove", "\u00d7", "Remove from the gallery", false]].forEach(([op, text, label, off]) => {
+        const button = document.createElement("button");
+        button.type = "submit";
+        button.name = "op";
+        button.value = "pic_" + op + "_" + (i + 1);
+        button.textContent = text;
+        button.title = label;
+        button.setAttribute("aria-label", label + ": picture " + (i + 1));
+        button.disabled = off;
+        item.appendChild(button);
+      });
+      strip.appendChild(item);
+    });
+  }
+  bindEach(".cms-block-config-form", (form) => {
+    if (!form.querySelector(".cms-gallery-manage")) return;
+    drawGalleryStrip(form);
+    form.querySelector(".cms-gallery-image-pick").addEventListener("click", async () => {
+      const chosen = await window.cmsImagePicker?.open();
+      if (chosen) await submitBlockConfig(form, { op: "pic_add", pic_url: chosen });
+    });
+    const generate = form.querySelector(".cms-gallery-generate");
+    if (generate) {
+      generate.addEventListener("click", async () => {
+        const { confirmed, value, count } = await cmsModal({
+          message: "Describe the picture you want:",
+          showInput: true, showCount: true, confirmLabel: "Generate", danger: false,
+        });
+        if (!confirmed || !value || !value.trim()) return;
+        //  Pictures can take well over a minute, so say it is working.
+        const label = generate.innerHTML;
+        let seconds = 0;
+        generate.disabled = true;
+        generate.textContent = "Generating\u2026 0s";
+        const timer = setInterval(() => {
+          generate.textContent = "Generating\u2026 " + (++seconds) + "s";
+        }, 1000);
+        try {
+          const res = await fetch(generate.dataset.url, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded", "X-Inline-Edit": "1" },
+            body: new URLSearchParams({ prompt: value.trim(), count: String(count || 1) }),
+          });
+          const data = await res.json();
+          const images = data.images || [];
+          if (!res.ok || !images.length) {
+            toast(data.error || "Image generation failed");
+          } else {
+            const chosen = images.length === 1 ? images[0].url : await cmsImagePicker(images);
+            if (chosen) await submitBlockConfig(form, { op: "pic_add", pic_url: chosen });
+            else toast("Not added \u2014 the pictures are saved in the Media Library");
+          }
+        } catch {
+          toast("Image generation failed \u2014 check your connection");
+        } finally {
+          clearInterval(timer);
+          generate.disabled = false;
+          generate.innerHTML = label;
+        }
+      });
+    }
+    const input = form.querySelector(".cms-gallery-upload");
+    form.querySelector(".cms-gallery-upload-btn").addEventListener("click", () => input.click());
+    input.addEventListener("change", async () => {
+      const urls = [];
+      let failed = 0;
+      for (const file of input.files) {
+        const body = new FormData();
+        body.append("image", file);
+        try {
+          const res = await fetch("/admin/upload-image", { method: "POST", body });
+          const data = await res.json();
+          if (res.ok && data.url) urls.push(data.url);
+          else failed++;
+        } catch {
+          failed++;
+        }
+      }
+      input.value = "";
+      if (urls.length) await submitBlockConfig(form, { op: "pic_add", pic_url: urls.join("\n") });
+      if (failed) toast(failed + (failed === 1 ? " picture" : " pictures") + " couldn't be uploaded");
+    });
+  });
 
   bindEach(".cms-block-config-form", (form) => {
     form.addEventListener("submit", (e) => {
@@ -1938,7 +2167,8 @@
     //  A dropdown or a colour lands as soon as it changes; typing waits
     //  for a pause, the same debounce the rest of the editor uses.
     form.addEventListener("change", (e) => {
-      if (e.target.type === "text" || e.target.tagName === "TEXTAREA") return;
+      if (e.target.type === "text" || e.target.tagName === "TEXTAREA" || e.target.type === "file") return;
+      if (e.target.hasAttribute("onchange")) return;
       form.requestSubmit();
     });
     //  One debounced submitter per form, made once. Building it inside
@@ -1957,6 +2187,14 @@
       const scope = form.closest(".cms-row-cell, .cms-column, .cms-section");
       const isBanner = form.classList.contains("cms-banner-config-form");
       try {
+        //  The words are saved first. This route restyles what is STORED,
+        //  and a text save still waiting on its timer would then arrive
+        //  late with the old styling and undo the change.
+        const words = isBanner && scope.querySelector(".cms-wysiwyg-body[data-save-url]");
+        if (words) {
+          debouncedSave.cancel();
+          await saveField(words.dataset.saveUrl, "content", words.innerHTML);
+        }
         const res = await fetch(form.action, {
           method: "POST",
           headers: { "X-Inline-Edit": "1" },
@@ -1965,6 +2203,10 @@
         const data = await res.json();
         if (res.ok && data.ok) {
           applyCardBannerDom(scope, data, isBanner);
+          if (data.sync) {
+            await syncSharedTools(isBanner ? ".site-content .cms-banner" : ".site-content .cms-card-shape",
+                                  isBanner ? ".cms-banner-config-form" : ".cms-card-config-form");
+          }
         } else {
           toast(data.error || "Couldn't save — please try again");
         }
