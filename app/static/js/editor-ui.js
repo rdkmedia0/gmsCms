@@ -296,6 +296,64 @@
     sharedRow();
   }
 
+  // ---------- Room for a toolbar over a narrow tool ----------
+  //  A section or column can be as narrow as the owner likes; its open
+  //  toolbar cannot, or the controls spill out of it. So the toolbar alone
+  //  is widened, kept on screen and clear of the side rail.
+  const ROOM = 360;
+  const OPEN = [".cms-section.cms-tool-panel-open > .cms-tool-panel > .cms-tool-header",
+                ".cms-tool-header.cms-tool-header-open",
+                ".cms-active-tool-header-slot .cms-tool-header"].join(",");
+
+  function makeRoom() {
+    document.querySelectorAll(".cms-tool-header.cms-ui-widened").forEach((header) => {
+      header.classList.remove("cms-ui-widened");
+      header.style.width = header.style.left = "";
+    });
+    const open = [...document.querySelectorAll(OPEN)];
+    if (!open.length) return;
+    let edge = document.documentElement.clientWidth;
+    document.querySelectorAll(".cms-dock-tab-btn:not(.cms-dock-bottom)").forEach((tab) => {
+      const box = tab.getBoundingClientRect();
+      if (box.width && box.left > edge / 2) edge = Math.min(edge, box.left);
+    });
+    open.forEach((header) => {
+      const space = header.parentElement.getBoundingClientRect();
+      const width = Math.min(ROOM, edge - 16);
+      if (!space.width || space.width >= width) return;
+      header.classList.add("cms-ui-widened");
+      header.style.width = width + "px";
+      const now = header.getBoundingClientRect().left;
+      const centred = space.left + (space.width - width) / 2;
+      const left = Math.max(8, Math.min(centred, edge - width - 8));
+      header.style.left = (left - now) + "px";
+    });
+  }
+
+  let roomQueued = false;
+  const queueRoom = () => {
+    if (roomQueued) return;
+    roomQueued = true;
+    requestAnimationFrame(() => {
+      roomQueued = false;
+      watcher.disconnect();
+      makeRoom();
+      watch();
+    });
+  };
+  //  Toolbars open by gaining a class, or by being moved into a columns
+  //  section's shared slot. Not watched while this is the one changing them.
+  const watcher = new MutationObserver((changes) => {
+    if (changes.some((c) => c.type === "childList"
+        || /cms-tool-(panel|header)-open/.test((c.oldValue || "") + " " + c.target.className))) queueRoom();
+  });
+  const watch = () => watcher.observe(document.body, {
+    subtree: true, childList: true, attributes: true,
+    attributeFilter: ["class"], attributeOldValue: true,
+  });
+  watch();
+  window.addEventListener("resize", queueRoom);
+
   //  After shared styles are copied in, the drawn buttons are redrawn.
   document.addEventListener("cms:controls-synced", () => {
     document.querySelectorAll("select.cms-ui-replaced").forEach((s) => s.cmsPaint && s.cmsPaint());

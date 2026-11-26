@@ -164,6 +164,10 @@ body.cms-editing .cms-dock-content :is(.cms-color-preset-swatch, .cms-tool-chip)
   body.cms-editing .cms-dock-content :is(.cms-color-preset-swatch, .cms-tool-chip) { transition: none; }
 }
 
+/*  A toolbar wider than its narrow tool (editor-ui.js) lies over what is
+    beside it, so it must be on top. */
+body.cms-editing .cms-tool-header.cms-ui-widened { position: relative; max-width: none; box-sizing: border-box; z-index: 40; }
+
 /*  A full-width section runs under the side rail; its toolbar must not,
     or the rail covers the toolbar's own remove button. */
 body.cms-editing:has(.cms-dock-tab-btn:not(.cms-dock-bottom)) .cms-section[data-layout-width="full"] > .cms-tool-panel {
